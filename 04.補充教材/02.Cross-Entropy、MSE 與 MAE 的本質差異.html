@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>機器學習三大損失函數互動指南：Cross-Entropy vs MSE vs MAE</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- KaTeX for math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        mse: '#3b82f6',
+                        mae: '#10b981',
+                        ce: '#f43f5e',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap');
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #0b0f19;
+            color: #f1f5f9;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .code-font {
+            font-family: 'Fira Code', monospace;
+        }
+        input[type=range] {
+            accent-color: #6366f1;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-2.5">
+                <span class="px-2 py-1 bg-indigo-600/20 text-indigo-400 rounded-lg font-mono text-lg font-bold border border-indigo-500/30">ℒ</span>
+                <div>
+                    <h1 class="text-sm sm:text-base font-bold tracking-tight text-slate-100 flex items-center gap-1.5">
+                        損失函數互動全景指南
+                        <span class="text-[9px] sm:text-[10px] uppercase px-1.5 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-700/50">v2.5</span>
+                    </h1>
+                </div>
+            </div>
+            <nav class="flex items-center space-x-1 sm:space-x-2 text-xs font-medium overflow-x-auto py-1">
+                <a href="#summary-cards" class="px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">📌 比喻與實例</a>
+                <a href="#task-distinction" class="px-2.5 py-1.5 rounded-lg text-cyan-400 hover:text-white hover:bg-cyan-600/30 transition whitespace-nowrap">🧭 分類 vs 回歸</a>
+                <a href="#guided-steps" class="px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">🪜 導覽</a>
+                <a href="#simulator" class="px-2.5 py-1.5 rounded-lg text-indigo-400 hover:text-white hover:bg-indigo-600/30 transition whitespace-nowrap">🧪 沙盒</a>
+                <a href="#distributions" class="px-2.5 py-1.5 rounded-lg text-amber-400 hover:text-white hover:bg-amber-600/30 transition whitespace-nowrap">📈 機率分佈</a>
+                <a href="#deep-dive" class="px-2.5 py-1.5 rounded-lg text-rose-400 hover:text-white hover:bg-rose-600/30 transition whitespace-nowrap">🗣️ 白話剖析</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-10">
+        <!-- Hero Section -->
+        <section class="text-center max-w-3xl mx-auto space-y-3 pt-2">
+            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-900/40 border border-indigo-700/50 text-indigo-300 text-xs font-semibold">
+                <span>⚡ 神經痛覺系統：決定模型修正的力度與方向</span>
+            </div>
+            <h2 class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
+                Cross-Entropy、MSE 與 MAE 的本質差異
+            </h2>
+            <p class="text-slate-400 text-xs sm:text-sm leading-relaxed">
+                損失函數直接定義了模型的「犯錯痛感」。整合「一句話本質、生活生動比喻、工業真實案例」，搭配高斯/拉普拉斯/伯努利機率分佈圖形與自動沙盒演練。
+            </p>
+        </section>
+
+        <!-- Core Metaphor & Industrial Case Cards -->
+        <section id="summary-cards" class="space-y-4">
+            <div class="border-b border-slate-800 pb-3">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-full">核心精粹</span>
+                <h3 class="text-lg sm:text-xl font-bold text-white mt-1.5 flex items-center gap-2">
+                    📌 一句話本質、生活比喻與工業案例
+                </h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <!-- MSE Card -->
+                <div class="bg-slate-900/80 border border-blue-500/30 rounded-2xl p-5 relative overflow-hidden flex flex-col justify-between hover:border-blue-500/60 transition shadow-lg">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">L2 回歸標配</span>
+                            <span class="text-[11px] text-slate-400 font-mono">二次方拋物線</span>
+                        </div>
+                        <h4 class="text-lg font-bold text-white">MSE（均方誤差）</h4>
+                        
+                        <div class="bg-blue-950/40 border border-blue-500/20 rounded-xl p-3 text-xs text-blue-200 leading-relaxed font-medium">
+                            <div class="text-[10px] text-blue-400 font-bold uppercase mb-1">📌 一句話說明</div>
+                            「算數值差幾何，差距平方加倍罰；微小誤差可容忍，極端大錯判死刑。」
+                        </div>
+
+                        <div class="katex-container bg-slate-950/80 rounded-lg p-2.5 text-center text-blue-300 font-mono text-xs border border-slate-800">
+                            $$\text{MSE} = \frac{1}{n}\sum_{i=1}^{n}(y_i - \hat{y}_i)^2$$
+                        </div>
+
+                        <div class="space-y-2 text-xs text-slate-300">
+                            <div class="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+                                <span class="text-amber-300 font-semibold block mb-0.5">🍳 生活例子（調味放鹽巴）</span>
+                                少放或多放半匙鹽，湯還能喝（微小誤差，代價低）；整罐手滑倒進去，整鍋直接倒掉報廢（大誤差平方暴增）。
+                            </div>
+                            <div class="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+                                <span class="text-blue-400 font-semibold block mb-0.5">🚗 工業實例（自動駕駛車道控制）</span>
+                                偏離中心 2 公分在容許公差內；偏離超過 50 公分就直接撞護欄。必須用 MSE 以超大推力瞬間將方向盤回正。
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-[11px] text-slate-400 pt-3 border-t border-slate-800 mt-4 flex items-center justify-between">
+                        <span>底層機率：高斯常態分佈</span>
+                        <span class="text-blue-400 font-mono font-bold">梯度 $\propto -2e$</span>
+                    </div>
+                </div>
+
+                <!-- MAE Card -->
+                <div class="bg-slate-900/80 border border-emerald-500/30 rounded-2xl p-5 relative overflow-hidden flex flex-col justify-between hover:border-emerald-500/60 transition shadow-lg">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">L1 抗噪首選</span>
+                            <span class="text-[11px] text-slate-400 font-mono">V型線性</span>
+                        </div>
+                        <h4 class="text-lg font-bold text-white">MAE（平均絕對誤差）</h4>
+                        
+                        <div class="bg-emerald-950/40 border border-emerald-500/20 rounded-xl p-3 text-xs text-emerald-200 leading-relaxed font-medium">
+                            <div class="text-[10px] text-emerald-400 font-bold uppercase mb-1">📌 一句話說明</div>
+                            「就事論事實事求是，每差一分罰一分；不管離群多離譜，鐵面無私不被牽著走。」
+                        </div>
+
+                        <div class="katex-container bg-slate-950/80 rounded-lg p-2.5 text-center text-emerald-300 font-mono text-xs border border-slate-800">
+                            $$\text{MAE} = \frac{1}{n}\sum_{i=1}^{n}|y_i - \hat{y}_i|$$
+                        </div>
+
+                        <div class="space-y-2 text-xs text-slate-300">
+                            <div class="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+                                <span class="text-amber-300 font-semibold block mb-0.5">🚕 生活例子（計程車跳表）</span>
+                                多坐 1 公里多收 25 元，多坐 10 公里多收 250 元，每一公里的代價永遠固定公平，不會突然向你漫天要價。
+                            </div>
+                            <div class="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+                                <span class="text-emerald-400 font-semibold block mb-0.5">📦 工業實例（電商商品需求預估）</span>
+                                衛生紙平日每天銷 100 包，突然遇系統 Bug 或黃牛暴刷 10,000 包（離群值）。MAE 不會被牽制誤判，模型依然穩健。
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-[11px] text-slate-400 pt-3 border-t border-slate-800 mt-4 flex items-center justify-between">
+                        <span>底層機率：拉普拉斯分佈</span>
+                        <span class="text-emerald-400 font-mono font-bold">梯度 $\pm 1$ (常數)</span>
+                    </div>
+                </div>
+
+                <!-- Cross-Entropy Card -->
+                <div class="bg-slate-900/80 border border-rose-500/30 rounded-2xl p-5 relative overflow-hidden flex flex-col justify-between hover:border-rose-500/60 transition shadow-lg">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full">Log 分類標配</span>
+                            <span class="text-[11px] text-slate-400 font-mono">負對數曲線</span>
+                        </div>
+                        <h4 class="text-lg font-bold text-white">Cross-Entropy（交叉熵）</h4>
+                        
+                        <div class="bg-rose-950/40 border border-rose-500/20 rounded-xl p-3 text-xs text-rose-200 leading-relaxed font-medium">
+                            <div class="text-[10px] text-rose-400 font-bold uppercase mb-1">📌 一句話說明</div>
+                            「衡量機率猜測有多準；猶豫不決罰一點，自負猜錯直接送你破產無限大。」
+                        </div>
+
+                        <div class="katex-container bg-slate-950/80 rounded-lg p-2.5 text-center text-rose-300 font-mono text-xs border border-slate-800">
+                            $$\text{BCE} = -[y \ln \hat{y} + (1 - y) \ln (1 - \hat{y})]$$
+                        </div>
+
+                        <div class="space-y-2 text-xs text-slate-300">
+                            <div class="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+                                <span class="text-amber-300 font-semibold block mb-0.5">🎲 生活例子（拍胸脯發毒誓）</span>
+                                猜明天 50% 下雨，猜錯也沒人怪你；但若押全部身家發毒誓「絕對大晴天」卻暴雨，信用原地破產（代價無限大）。
+                            </div>
+                            <div class="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+                                <span class="text-rose-400 font-semibold block mb-0.5">🏥 工業實例（AI 癌症腫瘤影像篩檢）</span>
+                                病人罹癌（$y=1$），若 AI 斷言良性機率 99.999% 將直接喪命。Cross-Entropy 在自負誤判時噴出巨大梯度強迫校正。
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-[11px] text-slate-400 pt-3 border-t border-slate-800 mt-4 flex items-center justify-between">
+                        <span>底層機率：伯努利/多項分佈</span>
+                        <span class="text-rose-400 font-mono font-bold">梯度 $\hat{y} - y$</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Classification vs Regression In-depth Chapter -->
+        <section id="task-distinction" class="bg-gradient-to-br from-slate-900 via-slate-900/90 to-slate-950 border border-cyan-500/30 rounded-2xl p-5 sm:p-7 backdrop-blur-sm shadow-xl space-y-6">
+            <div class="border-b border-slate-800 pb-4">
+                <div class="flex items-center gap-2">
+                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">核心架構思維</span>
+                    <span class="text-xs text-slate-400">專題剖析</span>
+                </div>
+                <h3 class="text-lg sm:text-2xl font-extrabold text-white mt-2 flex items-center gap-2">
+                    🧭 任務本質決定痛感：分類用 Cross-Entropy，回歸用 MSE / MAE
+                </h3>
+                <p class="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed">
+                    初學者常困惑：「既然都是算偏差，為什麼不能全拿 MSE 算到底？」因為<strong>連續物理空間的『距離大小』</strong>與<strong>離散狀態的『信念機率』</strong>在數學物理本質上是完全不同的維度。
+                </p>
+            </div>
+
+            <!-- Conceptual Comparison Matrix -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <!-- Regression Side -->
+                <div class="bg-slate-950/80 border border-blue-500/30 rounded-xl p-4 sm:p-5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-blue-400 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-blue-500"></span> 回歸任務 (Regression)：幾何度量衡
+                        </span>
+                        <span class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded">MSE / MAE / Huber</span>
+                    </div>
+                    <div class="text-xs text-slate-300 leading-relaxed space-y-2">
+                        <p>
+                            • <strong>目標本質：</strong>預測「有物理量綱的連續數值」（例如溫度 $26.5^\circ\text{C}$、房價 $1500$ 萬、外送耗時 $35$ 分鐘）。數值間具有嚴格的數軸順序與等距尺度。
+                        </p>
+                        <p>
+                            • <strong>痛感定義（距離）：</strong>偏差就是<strong>歐幾里得幾何距離</strong> $|y - \hat{y}|$。猜 100 萬但真實是 120 萬，差了 20 萬的實體差距。
+                        </p>
+                    </div>
+
+                    <!-- Metaphor & Industry for Regression -->
+                    <div class="pt-2 border-t border-slate-800/80 space-y-2.5">
+                        <div class="bg-slate-900/90 p-3 rounded-lg border border-blue-500/20 text-xs">
+                            <span class="text-amber-300 font-bold block mb-1">📐 生活比喻：西裝老師傅的捲尺</span>
+                            師傅幫你量袖長，差 0.5 公分幾乎看不出來（MSE 微小誤差代價極低）；但若差了 15 公分，手腕全露出來整件西裝直接報廢（MSE 平方暴力處罰）。若量的是日常買褲子長度，每長一公分多折一折（MAE 1:1 線性計費）。
+                        </div>
+                        <div class="bg-slate-900/90 p-3 rounded-lg border border-blue-500/20 text-xs">
+                            <span class="text-blue-400 font-bold block mb-1">🏭 工業應用實例：</span>
+                            <ul class="list-disc list-inside space-y-1 text-slate-300">
+                                <li><strong>半導體薄膜沉積厚度控制（MSE）：</strong>目標膜厚 $12.5\,\text{nm}$，誤差超過 $0.3\,\text{nm}$ 會引發晶圓漏電整批作廢，必須用 MSE 給予二次方極刑回推修正。</li>
+                                <li><strong>外送抵達時間 (ETA) 預估（MAE）：</strong>路況充滿偶發事故與紅綠燈極端值（離群點），用 MAE 能鎖定大部分騎手的中位數時間，不被單一堵車特例帶偏。</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Classification Side -->
+                <div class="bg-slate-950/80 border border-rose-500/30 rounded-xl p-4 sm:p-5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-rose-400 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-rose-500"></span> 分類任務 (Classification)：機率分佈與信念
+                        </span>
+                        <span class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded">Cross-Entropy</span>
+                    </div>
+                    <div class="text-xs text-slate-300 leading-relaxed space-y-2">
+                        <p>
+                            • <strong>目標本質：</strong>預測「互斥事件發生的機率或信心程度」（例如是否罹癌 $\{0, 1\}$、郵件是否為垃圾郵件）。類別標籤之間<strong>沒有連續距離尺度</strong>（「貓」和「狗」不能在數軸上相減）。
+                        </p>
+                        <p>
+                            • <strong>痛感定義（驚訝度）：</strong>真實標籤為 $y=1$ 時，模型預測 $\hat{y}$。損失為資訊論中的<strong>自資訊量（驚訝度）$-\ln(\hat{y})$</strong>。若你說發生機率只有 $0.0001$，而它竟然發生了，你承受的資訊震撼無限大！
+                        </p>
+                    </div>
+
+                    <!-- Metaphor & Industry for Classification -->
+                    <div class="pt-2 border-t border-slate-800/80 space-y-2.5">
+                        <div class="bg-slate-900/90 p-3 rounded-lg border border-rose-500/20 text-xs">
+                            <span class="text-amber-300 font-bold block mb-1">⚖️ 生活比喻：法庭陪審團宣判</span>
+                            被告要嘛有罪、要嘛無罪，沒有「有罪了 3.2 公分」這種說法。如果法官心中保留懷疑（猜 50%），大家能理解；但若檢察官拍桌發誓「100% 絕對是無辜良民」，結果調出監視器現行犯抓包——檢察官的公信力直接當場毀滅（代價趨近無限大）。
+                        </div>
+                        <div class="bg-slate-900/90 p-3 rounded-lg border border-rose-500/20 text-xs">
+                            <span class="text-rose-400 font-bold block mb-1">🏭 工業應用實例：</span>
+                            <ul class="list-disc list-inside space-y-1 text-slate-300">
+                                <li><strong>金融即時信用卡盜刷偵測（Cross-Entropy）：</strong>每一筆交易輸出「盜刷機率」。若詐騙交易被模型確信判定為「正常（$\hat{y}=0.001$）」，Cross-Entropy 會噴出劇烈梯度迫使模型強化對異常特徵的敏感度。</li>
+                                <li><strong>自動駕駛路面行人識別（Cross-Entropy）：</strong>斑馬線上是否有人。若將行人的置信度壓低誤判為背景，對數損失暴增，確保安全裕度不容許自信的誤讀。</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Warning Box: What if we mix them up? -->
+            <div class="bg-slate-950 p-4 rounded-xl border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                <div class="space-y-1">
+                    <span class="text-amber-400 font-bold flex items-center gap-1">
+                        ⚠️ 破除迷思：為什麼分類問題不能用 MSE「加減算一算」就好？
+                    </span>
+                    <p class="text-slate-300 leading-relaxed">
+                        1. <strong>分類標籤無距離順序：</strong>貓=1、狗=2、鳥=3，如果用 MSE 計算，模型會誤以為「鳥和貓的差距」大於「狗和貓的差距」，強行注入不存在的幾何幾何偏見。<br>
+                        2. <strong>Sigmoid 致命梯度消失：</strong>分類輸出經過 Sigmoid 壓縮至 $[0, 1]$，兩極導數近乎 0。若搭配 MSE，嚴重誤判時推力直接歸零；唯有 Cross-Entropy 的對數微分能完美抵消 Sigmoid 導數分母，維持滿格推力。
+                    </p>
+                </div>
+                <a href="#deep-dive" class="shrink-0 px-3 py-1.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 font-semibold transition">
+                    查看數學推導 →
+                </a>
+            </div>
+        </section>
+
+        <!-- Guided Learning Section -->
+        <section id="guided-steps" class="bg-slate-900/90 border border-indigo-900/40 rounded-2xl p-5 sm:p-7 backdrop-blur-sm shadow-xl space-y-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                <div>
+                    <span class="text-indigo-400 text-[10px] font-bold uppercase tracking-wider bg-indigo-500/10 px-2 py-0.5 rounded-full">循序漸進</span>
+                    <h3 class="text-lg sm:text-xl font-bold text-white mt-1 flex items-center gap-2">
+                        🪜 5 步完全掌握：從直覺到數學推導
+                    </h3>
+                </div>
+                <div class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0" id="stepPills">
+                    <button onclick="setStep(0)" id="pill-0" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition">1. 本質</button>
+                    <button onclick="setStep(1)" id="pill-1" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white transition">2. 懲罰</button>
+                    <button onclick="setStep(2)" id="pill-2" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white transition">3. 離群值</button>
+                    <button onclick="setStep(3)" id="pill-3" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white transition">4. 梯度飽和</button>
+                    <button onclick="setStep(4)" id="pill-4" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white transition">5. 演進</button>
+                </div>
+            </div>
+
+            <!-- Dynamic Card -->
+            <div id="stepCard" class="bg-slate-950/70 border border-slate-800 rounded-xl p-5 relative min-h-[190px] flex flex-col justify-between">
+                <!-- Content by JS -->
+            </div>
+
+            <div class="flex items-center justify-between pt-1">
+                <button onclick="prevStep()" id="prevStepBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                    ← 上一步
+                </button>
+                <span id="stepIndicator" class="text-xs text-slate-400 font-mono">步驟 1 / 5</span>
+                <button onclick="nextStep()" id="nextStepBtn" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition flex items-center gap-1">
+                    <span>下一步</span> →
+                </button>
+            </div>
+        </section>
+
+        <!-- Interactive Sandbox -->
+        <section id="simulator" class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 sm:p-7 backdrop-blur-sm space-y-6 shadow-2xl">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="p-1 bg-indigo-500/20 text-indigo-400 rounded text-sm">🧪</span>
+                        <h3 class="text-xl font-bold text-white">動態損失函數沙盒 (Interactive Sandbox)</h3>
+                    </div>
+                    <p class="text-slate-400 text-xs mt-1">拖動預測值觀察損失與斜率突變，或點擊「一鍵自動演示」動態播放。</p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <button id="autoPlayBtn" onclick="toggleAutoPlay()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold shadow-md transition flex items-center gap-1.5">
+                        <span id="playIcon">▶</span>
+                        <span id="playText">一鍵自動演示</span>
+                    </button>
+
+                    <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
+                        <button id="modeProbBtn" onclick="switchMode('prob')" class="px-3 py-1 rounded-lg bg-indigo-600 text-white transition">
+                            機率模式 (0~1)
+                        </button>
+                        <button id="modeRegBtn" onclick="switchMode('reg')" class="px-3 py-1 rounded-lg text-slate-400 hover:text-white transition">
+                            回歸模式 (-5~5)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Auto-play Storyboard Banner -->
+            <div id="storyBanner" class="hidden bg-indigo-950/70 border border-indigo-500/40 rounded-xl p-3.5 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 rounded bg-indigo-600 text-white font-mono text-[10px] font-bold uppercase" id="storySceneTag">Scene 1</span>
+                    <span class="text-slate-200 font-medium" id="storyMessage">正在演示：從自信錯誤逼近真實標籤...</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-28 bg-slate-800 h-2 rounded-full overflow-hidden">
+                        <div id="storyProgressBar" class="bg-indigo-400 h-full w-0 transition-all duration-100"></div>
+                    </div>
+                    <button onclick="toggleAutoPlay()" class="text-slate-400 hover:text-white text-xs underline ml-1">停止</button>
+                </div>
+            </div>
+
+            <!-- Sandbox Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Left Sliders -->
+                <div class="lg:col-span-5 space-y-4">
+                    <div class="bg-slate-950/80 p-4 rounded-xl border border-slate-800 space-y-3.5">
+                        <div>
+                            <div class="flex justify-between text-xs font-medium mb-1">
+                                <span class="text-slate-300">真實標籤 (Ground Truth <span class="katex-inline">$y$</span>)：</span>
+                                <span id="yValDisplay" class="font-mono text-indigo-400 font-bold">1.00</span>
+                            </div>
+                            <input type="range" id="ySlider" min="0" max="1" step="0.01" value="1" class="w-full h-2 bg-slate-800 rounded-lg cursor-pointer">
+                            <div class="flex justify-between text-[10px] text-slate-500 font-mono mt-0.5">
+                                <span id="yMinLabel">0.0 (負類)</span>
+                                <span id="yMaxLabel">1.0 (正類)</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs font-medium mb-1">
+                                <span class="text-slate-300">模型預測值 (<span class="katex-inline">$\hat{y}$</span>)：</span>
+                                <span id="yHatValDisplay" class="font-mono text-purple-400 font-bold">0.15</span>
+                            </div>
+                            <input type="range" id="yHatSlider" min="0.01" max="0.99" step="0.01" value="0.15" class="w-full h-2 bg-slate-800 rounded-lg cursor-pointer">
+                            <div class="flex justify-between text-[10px] text-slate-500 font-mono mt-0.5">
+                                <span id="yHatMinLabel">0.01 (極度懷疑)</span>
+                                <span id="yHatMaxLabel">0.99 (極度確信)</span>
+                            </div>
+                        </div>
+
+                        <div class="text-xs text-slate-400 bg-slate-900/80 p-2.5 rounded-lg border border-slate-800 flex items-center justify-between">
+                            <span>當前絕對偏差 <span class="katex-inline">$|y - \hat{y}|$</span>：</span>
+                            <span id="diffDisplay" class="font-mono text-amber-300 font-bold text-sm">0.85</span>
+                        </div>
+                    </div>
+
+                    <!-- Metrics -->
+                    <div class="grid grid-cols-3 gap-2.5">
+                        <div class="bg-blue-950/30 border border-blue-500/30 p-3 rounded-xl text-center">
+                            <div class="text-[10px] uppercase font-bold text-blue-400">MSE Loss</div>
+                            <div id="mseValue" class="text-lg font-extrabold font-mono text-blue-300">0.723</div>
+                            <div id="mseGrad" class="text-[9px] text-slate-400 mt-0.5 font-mono">梯度: -1.70</div>
+                        </div>
+                        <div class="bg-emerald-950/30 border border-emerald-500/30 p-3 rounded-xl text-center">
+                            <div class="text-[10px] uppercase font-bold text-emerald-400">MAE Loss</div>
+                            <div id="maeValue" class="text-lg font-extrabold font-mono text-emerald-300">0.850</div>
+                            <div id="maeGrad" class="text-[9px] text-slate-400 mt-0.5 font-mono">梯度: -1.00</div>
+                        </div>
+                        <div class="bg-rose-950/30 border border-rose-500/30 p-3 rounded-xl text-center">
+                            <div class="text-[10px] uppercase font-bold text-rose-400">Cross-Entropy</div>
+                            <div id="ceValue" class="text-lg font-extrabold font-mono text-rose-300">1.897</div>
+                            <div id="ceGrad" class="text-[9px] text-slate-400 mt-0.5 font-mono">梯度: -6.67</div>
+                        </div>
+                    </div>
+
+                    <!-- Observations -->
+                    <div id="observationBox" class="p-3.5 rounded-xl bg-slate-950 border border-indigo-500/30 text-xs text-slate-300 leading-relaxed">
+                        <!-- Dynamic by JS -->
+                    </div>
+                </div>
+
+                <!-- Right Chart -->
+                <div class="lg:col-span-7 bg-slate-950/90 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <h4 class="text-xs font-semibold text-slate-300">📈 損失曲面曲線圖 (Loss vs. Prediction)</h4>
+                        <div class="flex items-center gap-2.5 text-[11px]">
+                            <span class="flex items-center gap-1 text-slate-300"><span class="w-2 h-2 rounded-full bg-blue-500"></span> MSE</span>
+                            <span class="flex items-center gap-1 text-slate-300"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> MAE</span>
+                            <span id="ceLegend" class="flex items-center gap-1 text-slate-300"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Cross-Entropy</span>
+                        </div>
+                    </div>
+
+                    <div class="relative w-full h-[260px] sm:h-[300px]">
+                        <canvas id="lossChart"></canvas>
+                    </div>
+
+                    <div class="text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-2 mt-1">
+                        <span>X 軸：模型預測值 $\hat{y}$</span>
+                        <span>Y 軸：損失額 $\mathcal{L}$</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Probability Distributions Visualizer Section -->
+        <section id="distributions" class="bg-slate-900/90 border border-amber-500/30 rounded-2xl p-5 sm:p-7 backdrop-blur-sm shadow-2xl space-y-6">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="p-1 bg-amber-500/20 text-amber-400 rounded text-sm">📈</span>
+                        <h3 class="text-xl font-bold text-white">底層機率分佈幾何視覺化</h3>
+                    </div>
+                    <p class="text-slate-400 text-xs mt-1">
+                        損失函數本質皆源於<strong>負對數最大概似估計（Negative Log-Likelihood）</strong>。
+                    </p>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
+                    <button id="tabDistContBtn" onclick="switchDistTab('continuous')" class="px-3 py-1 rounded-lg bg-amber-600 text-white transition flex items-center gap-1">
+                        <span>🔔</span> 連續回歸：高斯 vs 拉普拉斯
+                    </button>
+                    <button id="tabDistDiscBtn" onclick="switchDistTab('discrete')" class="px-3 py-1 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1">
+                        <span>📊</span> 離散分類：伯努利與多項分佈
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab 1: Continuous -->
+            <div id="distContinuousContainer" class="space-y-5">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div class="lg:col-span-5 space-y-4">
+                        <div class="bg-slate-950/80 p-4 rounded-xl border border-slate-800 space-y-3">
+                            <h4 class="text-xs font-bold text-amber-400 uppercase">⚙️ 機率參數與誤差採樣</h4>
+                            <div>
+                                <div class="flex justify-between text-xs font-medium mb-1">
+                                    <span class="text-slate-300">均值中心 (<span class="katex-inline">$\mu$</span>)：</span>
+                                    <span id="distMuVal" class="font-mono text-indigo-400 font-bold">0.0</span>
+                                </div>
+                                <input type="range" id="distMuSlider" min="-2.0" max="2.0" step="0.1" value="0.0" class="w-full h-2 bg-slate-800 rounded-lg cursor-pointer">
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-xs font-medium mb-1">
+                                    <span class="text-slate-300">尺度寬度 (<span class="katex-inline">$\sigma, b$</span>)：</span>
+                                    <span id="distScaleVal" class="font-mono text-indigo-400 font-bold">1.0</span>
+                                </div>
+                                <input type="range" id="distScaleSlider" min="0.5" max="2.0" step="0.1" value="1.0" class="w-full h-2 bg-slate-800 rounded-lg cursor-pointer">
+                            </div>
+
+                            <div class="pt-1.5 border-t border-slate-800">
+                                <div class="flex justify-between text-xs font-medium mb-1">
+                                    <span class="text-slate-300">觀測誤差採樣點 (<span class="katex-inline">$e = y - \hat{y}$</span>)：</span>
+                                    <span id="distSampleVal" class="font-mono text-rose-400 font-bold">2.00</span>
+                                </div>
+                                <input type="range" id="distSampleSlider" min="-4.0" max="4.0" step="0.05" value="2.00" class="w-full h-2 bg-slate-800 rounded-lg cursor-pointer">
+                            </div>
+                        </div>
+
+                        <!-- Side by side numbers -->
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div class="bg-blue-950/30 border border-blue-500/40 p-3 rounded-xl space-y-1">
+                                <div class="text-[10px] font-bold text-blue-400 uppercase">高斯分佈 (Gaussian)</div>
+                                <div class="text-[11px] text-slate-400">密度 <span class="katex-inline">$p(e)$</span>：<span id="gaussDensityVal" class="font-mono font-bold text-blue-300">0.0540</span></div>
+                                <div class="text-[11px] text-slate-400">負對數 NLL：<span id="gaussNLLVal" class="text-blue-400 font-mono font-bold">2.919</span></div>
+                            </div>
+                            <div class="bg-emerald-950/30 border border-emerald-500/40 p-3 rounded-xl space-y-1">
+                                <div class="text-[10px] font-bold text-emerald-400 uppercase">拉普拉斯 (Laplace)</div>
+                                <div class="text-[11px] text-slate-400">密度 <span class="katex-inline">$p(e)$</span>：<span id="laplaceDensityVal" class="font-mono font-bold text-emerald-300">0.0677</span></div>
+                                <div class="text-[11px] text-slate-400">負對數 NLL：<span id="laplaceNLLVal" class="text-emerald-400 font-mono font-bold">2.693</span></div>
+                            </div>
+                        </div>
+
+                        <div class="p-3 rounded-xl bg-slate-950 border border-amber-500/30 text-xs text-slate-300 leading-relaxed">
+                            <span class="text-amber-300 font-bold">💡 幾何本質洞察：</span><br>
+                            高斯分佈兩側以 $e^{-x^2}$ 劇烈衰減（<strong>輕尾</strong>），將大誤差視為絕不該發生的意外，因此取對數後推導出 <strong>MSE（平方處罰）</strong>；拉普拉斯分佈以 $e^{-|x|}$ 衰減（<strong>肥尾</strong>），容許異常值出現，推導出 <strong>MAE（線性處罰）</strong>。
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-7 bg-slate-950/90 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <h4 class="text-xs font-semibold text-slate-300">📉 機率密度函數 PDF 曲線</h4>
+                            <div class="flex items-center gap-2.5 text-[11px]">
+                                <span class="flex items-center gap-1 text-slate-300"><span class="w-2 h-2 rounded-full bg-blue-500"></span> 高斯常態 (MSE)</span>
+                                <span class="flex items-center gap-1 text-slate-300"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> 拉普拉斯 (MAE)</span>
+                            </div>
+                        </div>
+                        <div class="relative w-full h-[260px] sm:h-[300px]">
+                            <canvas id="distContinuousChart"></canvas>
+                        </div>
+                        <div class="text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-2 mt-1">
+                            <span>X 軸：誤差偏差量 $e$</span>
+                            <span>Y 軸：機率密度 $p(e)$</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Discrete -->
+            <div id="distDiscreteContainer" class="hidden space-y-5">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div class="lg:col-span-5 space-y-4">
+                        <div class="bg-slate-950/80 p-4 rounded-xl border border-slate-800 space-y-3">
+                            <div class="flex bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs">
+                                <button id="subTabBernoulli" onclick="setDiscreteSubTab('bernoulli')" class="flex-1 py-1 rounded bg-rose-600 text-white font-semibold transition">
+                                    伯努利 (二元)
+                                </button>
+                                <button id="subTabCategorical" onclick="setDiscreteSubTab('categorical')" class="flex-1 py-1 rounded text-slate-400 hover:text-white font-semibold transition">
+                                    多項分佈 (多元)
+                                </button>
+                            </div>
+
+                            <div id="bernoulliControls" class="space-y-3">
+                                <div class="flex justify-between text-xs font-medium">
+                                    <span class="text-slate-300">真實類別標籤：</span>
+                                    <span class="text-xs font-bold text-indigo-400">
+                                        <label class="cursor-pointer mr-2"><input type="radio" name="bernTarget" value="1" checked onchange="updateDiscreteDist()"> 正類 (1)</label>
+                                        <label class="cursor-pointer"><input type="radio" name="bernTarget" value="0" onchange="updateDiscreteDist()"> 負類 (0)</label>
+                                    </span>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs font-medium mb-1">
+                                        <span class="text-slate-300">預測正類機率 (<span class="katex-inline">$\hat{p}$</span>)：</span>
+                                        <span id="bernProbVal" class="font-mono text-rose-400 font-bold">0.80</span>
+                                    </div>
+                                    <input type="range" id="bernProbSlider" min="0.01" max="0.99" step="0.01" value="0.80" class="w-full h-2 bg-slate-800 rounded-lg cursor-pointer">
+                                </div>
+                            </div>
+
+                            <div id="categoricalControls" class="hidden space-y-3">
+                                <div class="text-xs text-slate-300">
+                                    選擇真實類別：
+                                    <div class="grid grid-cols-4 gap-1.5 mt-1.5" id="targetClassRadioGroup">
+                                        <label class="flex flex-col items-center p-1.5 rounded-lg bg-slate-900 border border-rose-500/80 cursor-pointer text-[10px] text-rose-300 font-bold">
+                                            <input type="radio" name="catTarget" value="0" checked onchange="updateDiscreteDist()"> 🐱 貓
+                                        </label>
+                                        <label class="flex flex-col items-center p-1.5 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer text-[10px] text-slate-300 font-bold">
+                                            <input type="radio" name="catTarget" value="1" onchange="updateDiscreteDist()"> 🐶 狗
+                                        </label>
+                                        <label class="flex flex-col items-center p-1.5 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer text-[10px] text-slate-300 font-bold">
+                                            <input type="radio" name="catTarget" value="2" onchange="updateDiscreteDist()"> 🐦 鳥
+                                        </label>
+                                        <label class="flex flex-col items-center p-1.5 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer text-[10px] text-slate-300 font-bold">
+                                            <input type="radio" name="catTarget" value="3" onchange="updateDiscreteDist()"> 🐟 魚
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs font-medium mb-1">
+                                        <span class="text-slate-300">真實類別預測機率：</span>
+                                        <span id="catTargetProbVal" class="font-mono text-rose-400 font-bold">0.70</span>
+                                    </div>
+                                    <input type="range" id="catTargetProbSlider" min="0.05" max="0.95" step="0.05" value="0.70" class="w-full h-2 bg-slate-800 rounded-lg cursor-pointer">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-rose-950/30 border border-rose-500/40 p-3.5 rounded-xl space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[11px] font-bold text-rose-400 uppercase">當前 Cross-Entropy 損失</span>
+                                <span id="discreteLossValue" class="text-xl font-mono font-extrabold text-rose-300">0.223</span>
+                            </div>
+                            <div class="text-[11px] text-slate-300">
+                                資訊論詮釋：看見標籤時的「驚訝度」，$\mathcal{L} = -\ln(p_{\text{target}})$。預測機率越低，驚訝度呈對數飆升至無限大。
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-7 bg-slate-950/90 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <h4 class="text-xs font-semibold text-slate-300">📊 機率質量直方圖 PMF</h4>
+                            <div class="flex items-center gap-2.5 text-[11px]">
+                                <span class="flex items-center gap-1 text-slate-300"><span class="w-2 h-2 rounded bg-indigo-500"></span> 預測機率 $\hat{p}$</span>
+                                <span class="flex items-center gap-1 text-slate-300"><span class="w-2 h-2 rounded bg-rose-500"></span> 真實 One-Hot</span>
+                            </div>
+                        </div>
+                        <div class="relative w-full h-[260px] sm:h-[300px]">
+                            <canvas id="distDiscreteChart"></canvas>
+                        </div>
+                        <div class="text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-2 mt-1">
+                            <span>長條高度為各類別分配機率</span>
+                            <span>總和恆為 $\sum p = 1.0$</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Deep Dive & Colloquial Breakdown -->
+        <section id="deep-dive" class="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-5 sm:p-7 space-y-5 shadow-xl">
+            <div>
+                <span class="text-rose-400 text-[10px] font-bold uppercase tracking-wider bg-rose-500/10 px-2.5 py-0.5 rounded-full">高頻深度考點</span>
+                <h3 class="text-xl font-bold text-white mt-1.5">
+                    核心剖析：為什麼分類問題搭配 Sigmoid 時不能使用 MSE？
+                </h3>
+            </div>
+
+            <!-- Colloquial Metaphor Card -->
+            <div class="bg-indigo-950/40 border border-indigo-500/40 rounded-xl p-4 sm:p-5 space-y-3">
+                <div class="flex items-center gap-2 text-indigo-300 font-bold text-xs sm:text-sm">
+                    <span>🗣️ 一聽就懂的生活白話比喻：「自負鐵齒的考生與兩位老師」</span>
+                </div>
+                <p class="text-xs text-slate-300 leading-relaxed">
+                    假設題目正確答案是「<strong>是（1.0）</strong>」，但此時模型非常<strong>自滿且鐵齒</strong>，以 99.9% 把握大喊：「<strong>絕對不是！機率只有 0.001！（$\hat{y} = 0.001$）</strong>」。此時兩位老師登場：
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div class="bg-slate-900/80 p-3 rounded-lg border border-rose-500/30">
+                        <div class="text-rose-400 font-bold mb-1 flex items-center gap-1">❌ 佛系失靈的 MSE 老師</div>
+                        <p class="text-slate-300 leading-relaxed">
+                            被 Sigmoid 兩側極為平緩的坡度困住（導數僅 $0.001 \times 0.999 \approx 0.00099$）。<br>
+                            給學生的處罰居然只是「<strong>輕拍一下肩膀，力道近乎 0</strong>」。<br>
+                            👉 學生心想：「老師根本沒打我，看來我差不多對了吧？」，於是直接<strong>躺平停止學習（梯度消失）</strong>！
+                        </p>
+                    </div>
+                    <div class="bg-slate-900/80 p-3 rounded-lg border border-emerald-500/30">
+                        <div class="text-emerald-400 font-bold mb-1 flex items-center gap-1">✅ 當頭棒喝的 Cross-Entropy 老師</div>
+                        <p class="text-slate-300 leading-relaxed">
+                            看到錯得如此離譜，損失直接<strong>飆升到無限大</strong>！對數微分剛好把平緩項消去，梯度就是純粹的 $(\hat{y}-y) = -0.999$。<br>
+                            👉 老師直接拿起大聲公<strong>當頭棒喝</strong>，以最大馬力將自負的模型強制拉回正軌。
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Math Proof Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
+                    <div class="text-rose-400 font-bold">❌ MSE + Sigmoid 梯度飽和推導</div>
+                    <div class="katex-container bg-slate-950 p-2.5 rounded-lg text-slate-200 font-mono border border-slate-800">
+                        $$\frac{\partial \mathcal{L}_{\text{MSE}}}{\partial w} = (\hat{y} - y) \cdot \mathbf{\hat{y}(1 - \hat{y})} \cdot x$$
+                    </div>
+                    <p class="text-amber-300/90 leading-relaxed">
+                        當嚴重誤判（$y=1, \hat{y} \approx 0$）時，$\hat{y}(1-\hat{y}) \approx 0$，使反向傳播梯度趨近於 0，陷入假死。
+                    </p>
+                </div>
+
+                <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
+                    <div class="text-emerald-400 font-bold">✅ Cross-Entropy 完美消去飽和項</div>
+                    <div class="katex-container bg-slate-950 p-2.5 rounded-lg text-emerald-300 font-mono border border-slate-800 font-bold">
+                        $$\frac{\partial \mathcal{L}_{\text{CE}}}{\partial w} = (\hat{y} - y) \cdot x$$
+                    </div>
+                    <p class="text-slate-300 leading-relaxed">
+                        分母與激活函數導數精準相消，梯度僅取決於誤差本身，建立良好凸優化空間，收斂神速。
+                    </p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="border-t border-slate-800/80 py-5 text-center text-xs text-slate-500 bg-slate-950">
+        機器學習損失函數深度指南 · 支援跨裝置互動與精準數學排版
+    </footer>
+
+    <script>
+        function triggerKaTeX(element = document.body) {
+            if (typeof renderMathInElement === 'function') {
+                try {
+                    renderMathInElement(element, {
+                        delimiters: [
+                            {left: '$$', right: '$$', display: true},
+                            {left: '$', right: '$', display: false},
+                            {left: '\\(', right: '\\)', display: false},
+                            {left: '\\[', right: '\\]', display: true}
+                        ],
+                        throwOnError: false
+                    });
+                } catch (e) {
+                    console.error("KaTeX render error:", e);
+                }
+            }
+        }
+
+        const stepsData = [
+            {
+                title: "第一步：什麼是損失函數？（距離度量 vs 資訊分佈）",
+                tag: "核心本質",
+                content: `
+                    損失函數（Loss Function $\\mathcal{L}(y, \\hat{y})$）是用於評估模型預測值 $\\hat{y}$ 與真實值 $y$ 不一致程度的數學工具。<br><br>
+                    • <strong>回歸問題（MSE / MAE）：</strong>度量幾何空間上的實體數值偏差（如房價差幾萬元）。<br>
+                    • <strong>分類問題（Cross-Entropy）：</strong>度量機率分佈的差異（KL 散度），衡量模型預測的機率是否貼近真實類別分佈。
+                `
+            },
+            {
+                title: "第二步：懲罰曲面的斜率差異（平方成長 vs 線性成長）",
+                tag: "幾何曲率",
+                content: `
+                    當誤差 $|y - \\hat{y}| = 0.5$ 增加到 $4.0$ 時：<br>
+                    • <strong>MAE（線性）：</strong>損失從 $0.5$ 成長到 $4.0$（8 倍）。梯度永遠固定為常數 $\\pm 1$。<br>
+                    • <strong>MSE（平方）：</strong>損失從 $0.25$ 劇增到 $16.0$（64 倍）！<br>
+                    這意味著 MSE 極度厭惡大失誤，會迫使模型優先拉平極端偏差。
+                `
+            },
+            {
+                title: "第三步：離群值（Outliers）的抗性考驗",
+                tag: "魯棒性",
+                content: `
+                    在真實數據集中，經常存在測量故障產生的極端錯誤值。<br>
+                    • 若用 <strong>MSE</strong>，少數幾個離群點的平方項會霸占梯度，將整條回歸直線扯偏。<br>
+                    • 若改用 <strong>MAE</strong>，離群點對梯度的推力依然只有常數 $1$，使模型能堅守大眾常態分佈，展現高度的抗噪能力。
+                `
+            },
+            {
+                title: "第四步：分類任務的致命死穴（梯度飽和與白話比喻）",
+                tag: "最佳化陷阱",
+                content: `
+                    <strong>考生與老師的生活比喻：</strong>當真實答案是 1，模型卻極度自負猜 0.001 時：<br>
+                    • <strong>MSE 老師（佛系）：</strong>受 Sigmoid 兩端平緩限制，梯度幾乎為 0，像摸頭一樣無力，模型誤以為自己猜對而躺平假死。<br>
+                    • <strong>Cross-Entropy 老師（嚴厲）：</strong>對數特性使損失飆向無限大，消除平坦項，以完整力道 $(\\hat{y}-y)$ 當頭棒喝，迅速喚醒模型！
+                `
+            },
+            {
+                title: "第五步：現代工程演進（Huber Loss 與 Focal Loss）",
+                tag: "現代應用",
+                content: `
+                    實務應用中，純 MSE 或純 MAE 往往各有缺陷：<br>
+                    • <strong>Huber Loss：</strong>在原點附近取 MSE（處處可微好收斂），在外圍取 MAE（抗離群值），常用於目標檢測邊框回歸。<br>
+                    • <strong>Focal Loss：</strong>在交叉熵前加入動態衰減權重，大幅削弱大量簡單背景的梯度，集中精力攻克邊緣難分類樣本。
+                `
+            }
+        ];
+
+        let currentStepIndex = 0;
+
+        function renderStep() {
+            const step = stepsData[currentStepIndex];
+            const card = document.getElementById('stepCard');
+            card.innerHTML = `
+                <div>
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">${step.tag}</span>
+                        <h4 class="text-sm sm:text-base font-bold text-white">${step.title}</h4>
+                    </div>
+                    <div class="text-xs sm:text-sm text-slate-300 leading-relaxed mt-2.5">
+                        ${step.content}
+                    </div>
+                </div>
+            `;
+
+            for (let i = 0; i < stepsData.length; i++) {
+                const pill = document.getElementById(`pill-${i}`);
+                if (i === currentStepIndex) {
+                    pill.className = "px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition shadow";
+                } else {
+                    pill.className = "px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white transition";
+                }
+            }
+
+            document.getElementById('stepIndicator').textContent = `步驟 ${currentStepIndex + 1} / ${stepsData.length}`;
+            document.getElementById('prevStepBtn').disabled = (currentStepIndex === 0);
+            document.getElementById('nextStepBtn').innerHTML = currentStepIndex === stepsData.length - 1 ? '重新開始' : '下一步 →';
+
+            triggerKaTeX(card);
+        }
+
+        function setStep(index) {
+            currentStepIndex = index;
+            renderStep();
+        }
+
+        function nextStep() {
+            currentStepIndex = (currentStepIndex + 1) % stepsData.length;
+            renderStep();
+        }
+
+        function prevStep() {
+            if (currentStepIndex > 0) {
+                currentStepIndex--;
+                renderStep();
+            }
+        }
+
+        let currentMode = 'prob';
+        let chartInstance = null;
+        let isAutoPlaying = false;
+        let autoPlayTimer = null;
+
+        const ySlider = document.getElementById('ySlider');
+        const yHatSlider = document.getElementById('yHatSlider');
+        const yValDisplay = document.getElementById('yValDisplay');
+        const yHatValDisplay = document.getElementById('yHatValDisplay');
+        const diffDisplay = document.getElementById('diffDisplay');
+        const mseValue = document.getElementById('mseValue');
+        const maeValue = document.getElementById('maeValue');
+        const ceValue = document.getElementById('ceValue');
+        const mseGrad = document.getElementById('mseGrad');
+        const maeGrad = document.getElementById('maeGrad');
+        const ceGrad = document.getElementById('ceGrad');
+        const observationBox = document.getElementById('observationBox');
+        const modeProbBtn = document.getElementById('modeProbBtn');
+        const modeRegBtn = document.getElementById('modeRegBtn');
+        const ceLegend = document.getElementById('ceLegend');
+
+        function calculateMetrics(y, yHat) {
+            const err = y - yHat;
+            const absErr = Math.abs(err);
+            const mse = Math.pow(err, 2);
+            const mae = absErr;
+            
+            const dMSE = -2 * err;
+            const dMAE = err === 0 ? 0 : -Math.sign(err);
+
+            let ce = null;
+            let dCE = null;
+
+            if (currentMode === 'prob') {
+                const eps = 1e-6;
+                const safeYHat = Math.max(eps, Math.min(1 - eps, yHat));
+                if (y === 1) {
+                    ce = -Math.log(safeYHat);
+                    dCE = -1 / safeYHat;
+                } else if (y === 0) {
+                    ce = -Math.log(1 - safeYHat);
+                    dCE = 1 / (1 - safeYHat);
+                } else {
+                    ce = -(y * Math.log(safeYHat) + (1 - y) * Math.log(1 - safeYHat));
+                    dCE = (safeYHat - y) / (safeYHat * (1 - safeYHat));
+                }
+            }
+
+            return { mse, mae, ce, dMSE, dMAE, dCE, absErr };
+        }
+
+        function updateObservations(y, yHat, metrics) {
+            let html = '';
+            if (currentMode === 'prob') {
+                if (y === 1 && yHat <= 0.2) {
+                    html = `<span class="text-rose-400 font-bold">🚨 自信的誤判（嚴重懲罰）：</span><br>真實標籤是 1，但模型判定機率僅 $\\hat{y} = ${yHat.toFixed(2)}$！<br>此時 <strong>Cross-Entropy 激增至 ${metrics.ce.toFixed(2)}</strong>（梯度達 ${metrics.dCE.toFixed(2)}），強烈推回；而 MSE 僅為 ${metrics.mse.toFixed(2)}，懲罰極度無力。`;
+                } else if (metrics.absErr <= 0.08) {
+                    html = `<span class="text-emerald-400 font-bold">🎯 完美收斂：</span><br>預測值 $\\hat{y} = ${yHat.toFixed(2)}$ 貼合真實值！所有損失函數降至趨近 0，MSE 梯度平滑遞減至 0。`;
+                } else {
+                    html = `<span class="text-indigo-300 font-bold">ℹ️ 一般過渡狀態：</span><br>當前誤差 $|y - \\hat{y}| = ${metrics.absErr.toFixed(2)}$。MSE 損失為 ${metrics.mse.toFixed(3)}，Cross-Entropy 為 ${metrics.ce.toFixed(3)}。隨著預測偏離真實標籤，CE 上升坡度遠高於 MSE。`;
+                }
+            } else {
+                if (metrics.absErr >= 2.5) {
+                    html = `<span class="text-amber-400 font-bold">⚠️ 遇到極端離群值：</span><br>回歸偏差達 ${metrics.absErr.toFixed(2)}。MSE 經平方放大達 <strong>${metrics.mse.toFixed(2)}</strong>，會強烈拉偏模型；而 MAE 僅為 <strong>${metrics.mae.toFixed(2)}</strong>，保持平穩抗噪。`;
+                } else {
+                    html = `<span class="text-blue-300 font-bold">ℹ️ 正常回歸範圍：</span><br>偏差為 ${metrics.absErr.toFixed(2)}。MSE = ${metrics.mse.toFixed(3)}，MAE = ${metrics.mae.toFixed(3)}。當誤差小於 1 時，MSE 數值小於 MAE。`;
+                }
+            }
+            observationBox.innerHTML = html;
+            triggerKaTeX(observationBox);
+        }
+
+        function buildChartData(y) {
+            const labels = [];
+            const mseData = [];
+            const maeData = [];
+            const ceData = [];
+
+            if (currentMode === 'prob') {
+                for (let v = 0.02; v <= 0.98; v += 0.03) {
+                    labels.push(v.toFixed(2));
+                    const res = calculateMetrics(y, v);
+                    mseData.push(res.mse);
+                    maeData.push(res.mae);
+                    ceData.push(res.ce);
+                }
+            } else {
+                for (let v = -5; v <= 5; v += 0.3) {
+                    labels.push(v.toFixed(1));
+                    const res = calculateMetrics(y, v);
+                    mseData.push(res.mse);
+                    maeData.push(res.mae);
+                }
+            }
+
+            return { labels, mseData, maeData, ceData };
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('lossChart').getContext('2d');
+            const data = buildChartData(parseFloat(ySlider.value));
+
+            const datasets = [
+                {
+                    label: 'MSE (L2)',
+                    data: data.mseData,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                    borderWidth: 2,
+                    tension: 0.15,
+                    pointRadius: 0
+                },
+                {
+                    label: 'MAE (L1)',
+                    data: data.maeData,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                    borderWidth: 2,
+                    tension: 0,
+                    pointRadius: 0
+                }
+            ];
+
+            if (currentMode === 'prob') {
+                datasets.push({
+                    label: 'Cross-Entropy',
+                    data: data.ceData,
+                    borderColor: '#f43f5e',
+                    backgroundColor: 'rgba(244, 63, 94, 0.08)',
+                    borderWidth: 2,
+                    tension: 0.2,
+                    pointRadius: 0
+                });
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { labels: data.labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8', maxTicksLimit: 9 } },
+                        y: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' }, max: currentMode === 'prob' ? 4.5 : 25 }
+                    }
+                }
+            });
+        }
+
+        function updateUI() {
+            const y = parseFloat(ySlider.value);
+            const yHat = parseFloat(yHatSlider.value);
+
+            yValDisplay.textContent = y.toFixed(2);
+            yHatValDisplay.textContent = yHat.toFixed(2);
+
+            const m = calculateMetrics(y, yHat);
+            diffDisplay.textContent = m.absErr.toFixed(2);
+
+            mseValue.textContent = m.mse.toFixed(3);
+            maeValue.textContent = m.mae.toFixed(3);
+            mseGrad.textContent = `梯度: ${m.dMSE.toFixed(2)}`;
+            maeGrad.textContent = `梯度: ${m.dMAE.toFixed(2)}`;
+
+            if (currentMode === 'prob') {
+                ceValue.textContent = m.ce !== null ? m.ce.toFixed(3) : '-';
+                ceGrad.textContent = m.dCE !== null ? `梯度: ${m.dCE.toFixed(2)}` : '-';
+            } else {
+                ceValue.textContent = '不適用';
+                ceGrad.textContent = '(非機率任務)';
+            }
+
+            updateObservations(y, yHat, m);
+
+            if (chartInstance) {
+                const chartData = buildChartData(y);
+                chartInstance.data.labels = chartData.labels;
+                chartInstance.data.datasets[0].data = chartData.mseData;
+                chartInstance.data.datasets[1].data = chartData.maeData;
+                if (currentMode === 'prob' && chartInstance.data.datasets[2]) {
+                    chartInstance.data.datasets[2].data = chartData.ceData;
+                }
+                chartInstance.options.scales.y.max = currentMode === 'prob' ? 4.5 : 25;
+                chartInstance.update();
+            }
+        }
+
+        function switchMode(mode) {
+            if (isAutoPlaying) stopAutoPlay();
+            currentMode = mode;
+            if (mode === 'prob') {
+                modeProbBtn.className = "px-3 py-1 rounded-lg bg-indigo-600 text-white transition";
+                modeRegBtn.className = "px-3 py-1 rounded-lg text-slate-400 hover:text-white transition";
+                ceLegend.style.display = 'flex';
+
+                ySlider.min = "0"; ySlider.max = "1"; ySlider.step = "0.01"; ySlider.value = "1.00";
+                yHatSlider.min = "0.01"; yHatSlider.max = "0.99"; yHatSlider.step = "0.01"; yHatSlider.value = "0.15";
+
+                document.getElementById('yMinLabel').textContent = "0.0 (負類)";
+                document.getElementById('yMaxLabel').textContent = "1.0 (正類)";
+                document.getElementById('yHatMinLabel').textContent = "0.01 (極度懷疑)";
+                document.getElementById('yHatMaxLabel').textContent = "0.99 (極度確信)";
+            } else {
+                modeRegBtn.className = "px-3 py-1 rounded-lg bg-indigo-600 text-white transition";
+                modeProbBtn.className = "px-3 py-1 rounded-lg text-slate-400 hover:text-white transition";
+                ceLegend.style.display = 'none';
+
+                ySlider.min = "-4"; ySlider.max = "4"; ySlider.step = "0.1"; ySlider.value = "0.0";
+                yHatSlider.min = "-5"; yHatSlider.max = "5"; yHatSlider.step = "0.1"; yHatSlider.value = "2.8";
+
+                document.getElementById('yMinLabel').textContent = "-4.0";
+                document.getElementById('yMaxLabel').textContent = "4.0";
+                document.getElementById('yHatMinLabel').textContent = "-5.0";
+                document.getElementById('yHatMaxLabel').textContent = "5.0";
+            }
+
+            if (chartInstance) chartInstance.destroy();
+            initChart();
+            updateUI();
+        }
+
+        ySlider.addEventListener('input', updateUI);
+        yHatSlider.addEventListener('input', updateUI);
+
+        const storyScript = [
+            { mode: 'prob', y: 1.0, yHat: 0.05, scene: "Scene 1/4", msg: "分類場景：模型自負判錯（y=1, ŷ=0.05），Cross-Entropy 損失爆炸！" },
+            { mode: 'prob', y: 1.0, yHat: 0.50, scene: "Scene 2/4", msg: "分類場景：模型修正中（ŷ=0.50），梯度強烈拉回。" },
+            { mode: 'prob', y: 1.0, yHat: 0.95, scene: "Scene 3/4", msg: "分類場景：完美收斂（ŷ=0.95），損失趨近 0。" },
+            { mode: 'reg',  y: 0.0, yHat: 4.50, scene: "Scene 4/4", msg: "回歸場景：巨大離群值出現！MSE 飆破 20，MAE 依然抗噪。" }
+        ];
+
+        let scriptStep = 0;
+
+        function toggleAutoPlay() {
+            if (isAutoPlaying) stopAutoPlay();
+            else startAutoPlay();
+        }
+
+        function startAutoPlay() {
+            isAutoPlaying = true;
+            document.getElementById('storyBanner').classList.remove('hidden');
+            document.getElementById('playIcon').textContent = "⏸";
+            document.getElementById('playText').textContent = "暫停演示";
+            scriptStep = 0;
+            runAutoPlayTick();
+        }
+
+        function stopAutoPlay() {
+            isAutoPlaying = false;
+            if (autoPlayTimer) clearTimeout(autoPlayTimer);
+            document.getElementById('storyBanner').classList.add('hidden');
+            document.getElementById('playIcon').textContent = "▶";
+            document.getElementById('playText').textContent = "一鍵自動演示";
+        }
+
+        function runAutoPlayTick() {
+            if (!isAutoPlaying) return;
+
+            const cur = storyScript[scriptStep];
+            document.getElementById('storySceneTag').textContent = cur.scene;
+            document.getElementById('storyMessage').textContent = cur.msg;
+
+            if (currentMode !== cur.mode) switchMode(cur.mode);
+
+            const totalTicks = 30;
+            let tick = 0;
+            const startYHat = parseFloat(yHatSlider.value);
+            const targetYHat = cur.yHat;
+            const startY = parseFloat(ySlider.value);
+            const targetY = cur.y;
+
+            function stepLerp() {
+                if (!isAutoPlaying) return;
+                tick++;
+                const ratio = tick / totalTicks;
+                const eased = 0.5 - Math.cos(ratio * Math.PI) / 2;
+
+                yHatSlider.value = (startYHat + (targetYHat - startYHat) * eased).toFixed(2);
+                ySlider.value = (startY + (targetY - startY) * eased).toFixed(2);
+                updateUI();
+
+                const overallProgress = ((scriptStep + ratio) / storyScript.length) * 100;
+                document.getElementById('storyProgressBar').style.width = `${overallProgress}%`;
+
+                if (tick < totalTicks) {
+                    autoPlayTimer = setTimeout(stepLerp, 40);
+                } else {
+                    autoPlayTimer = setTimeout(() => {
+                        scriptStep = (scriptStep + 1) % storyScript.length;
+                        runAutoPlayTick();
+                    }, 1800);
+                }
+            }
+            stepLerp();
+        }
+
+        let activeDistTab = 'continuous';
+        let activeDiscreteSubTab = 'bernoulli';
+        let distContinuousChartInstance = null;
+        let distDiscreteChartInstance = null;
+
+        const distMuSlider = document.getElementById('distMuSlider');
+        const distScaleSlider = document.getElementById('distScaleSlider');
+        const distSampleSlider = document.getElementById('distSampleSlider');
+        const distMuVal = document.getElementById('distMuVal');
+        const distScaleVal = document.getElementById('distScaleVal');
+        const distSampleVal = document.getElementById('distSampleVal');
+        const gaussDensityVal = document.getElementById('gaussDensityVal');
+        const gaussNLLVal = document.getElementById('gaussNLLVal');
+        const laplaceDensityVal = document.getElementById('laplaceDensityVal');
+        const laplaceNLLVal = document.getElementById('laplaceNLLVal');
+
+        const bernProbSlider = document.getElementById('bernProbSlider');
+        const bernProbVal = document.getElementById('bernProbVal');
+        const catTargetProbSlider = document.getElementById('catTargetProbSlider');
+        const catTargetProbVal = document.getElementById('catTargetProbVal');
+        const discreteLossValue = document.getElementById('discreteLossValue');
+
+        function gaussianPDF(x, mu, sigma) {
+            return (1 / (sigma * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mu) / sigma, 2));
+        }
+
+        function laplacePDF(x, mu, b) {
+            return (1 / (2 * b)) * Math.exp(-Math.abs(x - mu) / b);
+        }
+
+        function initContinuousDistChart() {
+            const ctx = document.getElementById('distContinuousChart').getContext('2d');
+            const mu = parseFloat(distMuSlider.value);
+            const scale = parseFloat(distScaleSlider.value);
+
+            const labels = [];
+            const gaussData = [];
+            const laplaceData = [];
+
+            for (let x = -4; x <= 4; x += 0.2) {
+                labels.push(x.toFixed(1));
+                gaussData.push(gaussianPDF(x, mu, scale));
+                laplaceData.push(laplacePDF(x, mu, scale));
+            }
+
+            distContinuousChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '高斯常態分佈 (L2/MSE)',
+                            data: gaussData,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                            fill: true,
+                            borderWidth: 2,
+                            tension: 0.2,
+                            pointRadius: 0
+                        },
+                        {
+                            label: '拉普拉斯分佈 (L1/MAE)',
+                            data: laplaceData,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                            fill: true,
+                            borderWidth: 2,
+                            tension: 0,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8', maxTicksLimit: 9 } },
+                        y: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' }, min: 0 }
+                    }
+                }
+            });
+        }
+
+        function updateContinuousDist() {
+            const mu = parseFloat(distMuSlider.value);
+            const scale = parseFloat(distScaleSlider.value);
+            const sampleX = parseFloat(distSampleSlider.value);
+
+            distMuVal.textContent = mu.toFixed(1);
+            distScaleVal.textContent = scale.toFixed(1);
+            distSampleVal.textContent = sampleX.toFixed(2);
+
+            const gDens = gaussianPDF(sampleX, mu, scale);
+            const lDens = laplacePDF(sampleX, mu, scale);
+
+            gaussDensityVal.textContent = gDens.toFixed(4);
+            laplaceDensityVal.textContent = lDens.toFixed(4);
+
+            const gNLL = -Math.log(Math.max(1e-9, gDens));
+            const lNLL = -Math.log(Math.max(1e-9, lDens));
+
+            gaussNLLVal.textContent = gNLL.toFixed(3);
+            laplaceNLLVal.textContent = lNLL.toFixed(3);
+
+            if (distContinuousChartInstance) {
+                const labels = [];
+                const gaussData = [];
+                const laplaceData = [];
+
+                for (let x = -4; x <= 4; x += 0.2) {
+                    labels.push(x.toFixed(1));
+                    gaussData.push(gaussianPDF(x, mu, scale));
+                    laplaceData.push(laplacePDF(x, mu, scale));
+                }
+
+                distContinuousChartInstance.data.labels = labels;
+                distContinuousChartInstance.data.datasets[0].data = gaussData;
+                distContinuousChartInstance.data.datasets[1].data = laplaceData;
+                distContinuousChartInstance.update();
+            }
+        }
+
+        function initDiscreteDistChart() {
+            const ctx = document.getElementById('distDiscreteChart').getContext('2d');
+            distDiscreteChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['類別 0 (負類)', '類別 1 (正類)'],
+                    datasets: [
+                        {
+                            label: '模型預測機率',
+                            data: [0.20, 0.80],
+                            backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                            borderColor: '#6366f1',
+                            borderWidth: 1.5,
+                            borderRadius: 6
+                        },
+                        {
+                            label: '真實標籤 One-Hot',
+                            data: [0.0, 1.0],
+                            backgroundColor: 'rgba(244, 63, 94, 0.85)',
+                            borderColor: '#f43f5e',
+                            borderWidth: 1.5,
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: '#1e293b' }, ticks: { color: '#cbd5e1' } },
+                        y: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' }, max: 1.05, min: 0 }
+                    }
+                }
+            });
+        }
+
+        function updateDiscreteDist() {
+            if (activeDiscreteSubTab === 'bernoulli') {
+                const p = parseFloat(bernProbSlider.value);
+                bernProbVal.textContent = p.toFixed(2);
+                
+                const targetRadio = document.querySelector('input[name="bernTarget"]:checked');
+                const target = targetRadio ? parseInt(targetRadio.value, 10) : 1;
+
+                const predProbs = [1 - p, p];
+                const trueProbs = target === 1 ? [0, 1] : [1, 0];
+                const loss = target === 1 ? -Math.log(p) : -Math.log(1 - p);
+
+                discreteLossValue.textContent = loss.toFixed(3);
+
+                if (distDiscreteChartInstance) {
+                    distDiscreteChartInstance.data.labels = ['類別 0 (負類)', '類別 1 (正類)'];
+                    distDiscreteChartInstance.data.datasets[0].data = predProbs;
+                    distDiscreteChartInstance.data.datasets[1].data = trueProbs;
+                    distDiscreteChartInstance.update();
+                }
+            } else {
+                const targetRadio = document.querySelector('input[name="catTarget"]:checked');
+                const targetIdx = targetRadio ? parseInt(targetRadio.value, 10) : 0;
+                const targetProb = parseFloat(catTargetProbSlider.value);
+                catTargetProbVal.textContent = targetProb.toFixed(2);
+
+                const remProb = (1.0 - targetProb) / 3;
+                const predProbs = [remProb, remProb, remProb, remProb];
+                predProbs[targetIdx] = targetProb;
+
+                const trueProbs = [0, 0, 0, 0];
+                trueProbs[targetIdx] = 1.0;
+
+                const loss = -Math.log(targetProb);
+                discreteLossValue.textContent = loss.toFixed(3);
+
+                const labels = document.querySelectorAll('#targetClassRadioGroup label');
+                labels.forEach((l, idx) => {
+                    if (idx === targetIdx) {
+                        l.className = "flex flex-col items-center p-1.5 rounded-lg bg-slate-900 border border-rose-500/80 cursor-pointer text-[10px] text-rose-300 font-bold";
+                    } else {
+                        l.className = "flex flex-col items-center p-1.5 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer text-[10px] text-slate-300 font-bold";
+                    }
+                });
+
+                if (distDiscreteChartInstance) {
+                    distDiscreteChartInstance.data.labels = ['🐱 貓', '🐶 狗', '🐦 鳥', '🐟 魚'];
+                    distDiscreteChartInstance.data.datasets[0].data = predProbs;
+                    distDiscreteChartInstance.data.datasets[1].data = trueProbs;
+                    distDiscreteChartInstance.update();
+                }
+            }
+        }
+
+        function switchDistTab(tab) {
+            activeDistTab = tab;
+            const contContainer = document.getElementById('distContinuousContainer');
+            const discContainer = document.getElementById('distDiscreteContainer');
+            const contBtn = document.getElementById('tabDistContBtn');
+            const discBtn = document.getElementById('tabDistDiscBtn');
+
+            if (tab === 'continuous') {
+                contContainer.classList.remove('hidden');
+                discContainer.classList.add('hidden');
+                contBtn.className = "px-3 py-1 rounded-lg bg-amber-600 text-white transition flex items-center gap-1";
+                discBtn.className = "px-3 py-1 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1";
+                if (!distContinuousChartInstance) initContinuousDistChart();
+                updateContinuousDist();
+            } else {
+                contContainer.classList.add('hidden');
+                discContainer.classList.remove('hidden');
+                discBtn.className = "px-3 py-1 rounded-lg bg-rose-600 text-white transition flex items-center gap-1";
+                contBtn.className = "px-3 py-1 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1";
+                if (!distDiscreteChartInstance) initDiscreteDistChart();
+                updateDiscreteDist();
+            }
+            triggerKaTeX(document.getElementById('distributions'));
+        }
+
+        function setDiscreteSubTab(sub) {
+            activeDiscreteSubTab = sub;
+            const bBtn = document.getElementById('subTabBernoulli');
+            const cBtn = document.getElementById('subTabCategorical');
+            const bCtrl = document.getElementById('bernoulliControls');
+            const cCtrl = document.getElementById('categoricalControls');
+
+            if (sub === 'bernoulli') {
+                bBtn.className = "flex-1 py-1 rounded bg-rose-600 text-white font-semibold transition";
+                cBtn.className = "flex-1 py-1 rounded text-slate-400 hover:text-white font-semibold transition";
+                bCtrl.classList.remove('hidden');
+                cCtrl.classList.add('hidden');
+            } else {
+                cBtn.className = "flex-1 py-1 rounded bg-rose-600 text-white font-semibold transition";
+                bBtn.className = "flex-1 py-1 rounded text-slate-400 hover:text-white font-semibold transition";
+                cCtrl.classList.remove('hidden');
+                bCtrl.classList.add('hidden');
+            }
+            updateDiscreteDist();
+        }
+
+        distMuSlider.addEventListener('input', updateContinuousDist);
+        distScaleSlider.addEventListener('input', updateContinuousDist);
+        distSampleSlider.addEventListener('input', updateContinuousDist);
+        bernProbSlider.addEventListener('input', updateDiscreteDist);
+        catTargetProbSlider.addEventListener('input', updateDiscreteDist);
+
+        window.addEventListener('load', function() {
+            renderStep();
+            initChart();
+            updateUI();
+            initContinuousDistChart();
+            updateContinuousDist();
+            triggerKaTeX();
+        });
+    </script>
+</body>
+</html>

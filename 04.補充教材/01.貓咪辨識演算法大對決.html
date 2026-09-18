@@ -1,0 +1,1861 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>貓咪辨識演算法大對決：四大架構深度解析</title>
+    
+    <!-- External Libs (Tailwind, KaTeX, Chart.js) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- ROBUST INTERNAL CSS FALLBACK: Prevents raw unstyled text on mobile WebViews -->
+    <style>
+        :root {
+            --bg-main: #f8fafc;
+            --text-main: #0f172a;
+            --primary-brain: #4f46e5;
+            --primary-course: #2563eb;
+            --primary-cnn: #059669;
+            --primary-clip: #7c3aed;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            line-height: 1.5;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Mobile Scrollbar Tuning */
+        ::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        button, input[type="range"] {
+            touch-action: manipulation;
+        }
+        .katex {
+            font-size: 1.05em !important;
+        }
+        /* Resilient Card Containers */
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 12px;
+            width: 100%;
+        }
+        .resilient-card {
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .interactive-panel {
+            min-height: 280px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-50 text-slate-900 antialiased">
+
+    <header class="sticky top-0 z-40 bg-slate-900 text-white shadow-md border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-start">
+                <div class="flex items-center space-x-2.5">
+                    <span class="text-3xl filter drop-shadow">🐱</span>
+                    <div>
+                        <h1 class="text-base sm:text-lg font-black tracking-tight bg-gradient-to-r from-indigo-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
+                            貓咪辨識演算法大對決
+                        </h1>
+                        <p class="text-[11px] text-slate-400">四大架構深度對照：Google Brain 論文 vs 吳恩達作業範例 vs CNN vs CLIP</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-1.5 flex-wrap justify-center w-full sm:w-auto">
+                <button onclick="switchTab('brain'); scrollToPanel('panel-main-interactive');" class="px-2.5 py-1.5 rounded-lg bg-indigo-900/90 hover:bg-indigo-800 text-indigo-200 border border-indigo-500/60 text-xs font-bold transition">
+                    1️⃣ Google Brain 論文
+                </button>
+                <button onclick="switchTab('course'); scrollToPanel('panel-main-interactive');" class="px-2.5 py-1.5 rounded-lg bg-blue-900/90 hover:bg-blue-800 text-blue-200 border border-blue-600/60 text-xs font-bold transition">
+                    2️⃣ 吳恩達作業範例
+                </button>
+                <button onclick="switchTab('cnn'); scrollToPanel('panel-main-interactive');" class="px-2.5 py-1.5 rounded-lg bg-emerald-900/90 hover:bg-emerald-800 text-emerald-200 border border-emerald-600/60 text-xs font-bold transition">
+                    3️⃣ CNN 卷積
+                </button>
+                <button onclick="switchTab('clip'); scrollToPanel('panel-main-interactive');" class="px-2.5 py-1.5 rounded-lg bg-purple-900/90 hover:bg-purple-800 text-purple-200 border border-purple-600/60 text-xs font-bold transition">
+                    4️⃣ OpenAI CLIP
+                </button>
+                <button onclick="toggleGrandMasterAutoPlay()" id="btn-grand-tour" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white text-xs font-bold transition shadow flex items-center gap-1">
+                    <span id="grand-tour-icon">⚡</span>
+                    <span id="grand-tour-text">全自動巡航導覽</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="app-container flex-grow space-y-6">
+
+        <section class="resilient-card">
+            <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-5 py-3.5 text-white flex flex-col md:flex-row md:items-center justify-between gap-2">
+                <div>
+                    <h2 class="text-sm sm:text-base font-bold flex items-center gap-2">
+                        <span>🔍</span> 核心關鍵剖析：這四種方式是「監督式學習 (Supervised Learning)」嗎？
+                    </h2>
+                    <p class="text-[11px] text-slate-300">以訓練損失函數（Loss）與標籤依賴性嚴謹界定本質</p>
+                </div>
+                <span class="text-[11px] font-semibold px-2.5 py-0.5 bg-indigo-950/80 text-indigo-300 border border-indigo-700/50 rounded-full w-fit">
+                    演算法範式判定
+                </span>
+            </div>
+
+            <!-- 4 Grid Cards -->
+            <div class="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                <!-- 1. Google Brain 2012 -->
+                <div class="rounded-xl p-4 border-2 border-indigo-300 bg-indigo-50/50 flex flex-col justify-between relative">
+                    <div class="absolute top-0 right-0 bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">
+                        非監督式學習
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-1.5 text-indigo-900 font-bold mb-1">
+                            <span>1️⃣</span>
+                            <h3 class="text-xs sm:text-sm font-black">吳恩達（Google Brain 論文）</h3>
+                        </div>
+                        <p class="text-[11px] text-slate-600 mb-2 font-mono bg-indigo-100/70 p-1.5 rounded">
+                            2012 稀疏自編碼器 (Autoencoder)
+                        </p>
+                        <ul class="text-xs text-slate-700 space-y-1.5 mb-3">
+                            <li class="flex items-start gap-1">
+                                <span class="text-indigo-600 font-bold">✕</span>
+                                <span><strong>完全無人工標籤：</strong>餵入 1,000 萬部未標註 YouTube 影片畫面，無人告知「何謂貓」。</span>
+                            </li>
+                            <li class="flex items-start gap-1">
+                                <span class="text-indigo-600 font-bold">⚡</span>
+                                <span><strong>重構損失驅動：</strong>依靠自我重建畫面與稀疏懲罰，頂層神經元<strong>自主湧現</strong>貓臉概念。</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="pt-2 border-t border-indigo-200 text-[11px] text-indigo-800 font-semibold flex items-center justify-between">
+                        <span>❌ 非監督 (Unsupervised)</span>
+                        <span class="text-indigo-600 cursor-pointer hover:underline font-bold" onclick="switchTab('brain'); scrollToPanel('panel-main-interactive');">進入 5 步逐步 ➔</span>
+                    </div>
+                </div>
+
+                <!-- 2. Coursera Homework 2017 -->
+                <div class="rounded-xl p-4 border-2 border-blue-300 bg-blue-50/50 flex flex-col justify-between relative">
+                    <div class="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">
+                        100% 監督式
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-1.5 text-blue-900 font-bold mb-1">
+                            <span>2️⃣</span>
+                            <h3 class="text-xs sm:text-sm font-black">吳恩達（作業範例）</h3>
+                        </div>
+                        <p class="text-[11px] text-slate-600 mb-2 font-mono bg-blue-100/70 p-1.5 rounded">
+                            2017 邏輯迴歸 / 淺層 MLP
+                        </p>
+                        <ul class="text-xs text-slate-700 space-y-1.5 mb-3">
+                            <li class="flex items-start gap-1">
+                                <span class="text-blue-600 font-bold">✓</span>
+                                <span><strong>必須提供真實標籤：</strong>每張圖均有人工標記的真值 $y \in \{0, 1\}$。</span>
+                            </li>
+                            <li class="flex items-start gap-1">
+                                <span class="text-blue-600 font-bold">✓</span>
+                                <span><strong>二元交叉熵 Loss：</strong>比對預測 $\hat{y}$ 與人工 $y$ 的落差反向更新權重 $W$。</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="pt-2 border-t border-blue-200 text-[11px] text-blue-800 font-semibold flex items-center justify-between">
+                        <span>🏷️ 標準監督式 (Supervised)</span>
+                        <span class="text-blue-600 cursor-pointer hover:underline font-bold" onclick="switchTab('course'); scrollToPanel('panel-main-interactive');">進入 5 步逐步 ➔</span>
+                    </div>
+                </div>
+
+                <!-- 3. CNN -->
+                <div class="rounded-xl p-4 border-2 border-emerald-300 bg-emerald-50/50 flex flex-col justify-between relative">
+                    <div class="absolute top-0 right-0 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">
+                        標準監督式
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-1.5 text-emerald-900 font-bold mb-1">
+                            <span>3️⃣</span>
+                            <h3 class="text-xs sm:text-sm font-black">CNN (卷積神經網路)</h3>
+                        </div>
+                        <p class="text-[11px] text-slate-600 mb-2 font-mono bg-emerald-100/70 p-1.5 rounded">
+                            經典 AlexNet, VGG, ResNet
+                        </p>
+                        <ul class="text-xs text-slate-700 space-y-1.5 mb-3">
+                            <li class="flex items-start gap-1">
+                                <span class="text-emerald-600 font-bold">✓</span>
+                                <span><strong>人工預設固定類別：</strong>依賴預先標記的海量類別庫（如 ImageNet 閉集 1,000 類）。</span>
+                            </li>
+                            <li class="flex items-start gap-1">
+                                <span class="text-emerald-600 font-bold">✓</span>
+                                <span><strong>多元交叉熵 Loss：</strong>Softmax 比對 One-Hot 向量，只能辨別字典內的已知事物。</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="pt-2 border-t border-emerald-200 text-[11px] text-emerald-800 font-semibold flex items-center justify-between">
+                        <span>🏷️ 經典分類監督式</span>
+                        <span class="text-emerald-600 cursor-pointer hover:underline font-bold" onclick="switchTab('cnn'); scrollToPanel('panel-main-interactive');">進入 5 步逐步 ➔</span>
+                    </div>
+                </div>
+
+                <!-- 4. CLIP -->
+                <div class="rounded-xl p-4 border-2 border-purple-300 bg-purple-50/50 flex flex-col justify-between relative">
+                    <div class="absolute top-0 right-0 bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">
+                        弱監督 / 對比學習
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-1.5 text-purple-900 font-bold mb-1">
+                            <span>4️⃣</span>
+                            <h3 class="text-xs sm:text-sm font-black">OpenAI CLIP</h3>
+                        </div>
+                        <p class="text-[11px] text-slate-600 mb-2 font-mono bg-purple-100/70 p-1.5 rounded">
+                            圖文對比預訓練 (4 億自然配對)
+                        </p>
+                        <ul class="text-xs text-slate-700 space-y-1.5 mb-3">
+                            <li class="flex items-start gap-1">
+                                <span class="text-purple-600 font-bold">⚡</span>
+                                <span><strong>無人工離散類別：</strong>利用網路自然的圖文描述作為語意引導，不受固定標籤束縛。</span>
+                            </li>
+                            <li class="flex items-start gap-1">
+                                <span class="text-purple-600 font-bold">⚡</span>
+                                <span><strong>零樣本推理 (Zero-Shot)：</strong>推理時不必重新訓練，直接以 Prompt 餘弦夾角決策。</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="pt-2 border-t border-purple-200 text-[11px] text-purple-800 font-semibold flex items-center justify-between">
+                        <span>🌐 跨模態自監督對比</span>
+                        <span class="text-purple-600 cursor-pointer hover:underline font-bold" onclick="switchTab('clip'); scrollToPanel('panel-main-interactive');">進入 5 步逐步 ➔</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="resilient-card">
+            <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                    <h2 class="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+                        <span>🧪</span> 四方演算法即時實戰對決擂台
+                    </h2>
+                    <p class="text-xs text-slate-500">點擊不同考驗情境，觀察 4 種架構各展身手的辨識置信度與判定邏輯</p>
+                </div>
+                <button onclick="toggleSandboxAutoPlay()" id="btn-sandbox-auto" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1">
+                    <span id="icon-sandbox-auto">▶️</span>
+                    <span id="text-sandbox-auto">自動切換情境</span>
+                </button>
+            </div>
+
+            <!-- Test Sample Selectors -->
+            <div class="p-4 sm:p-5 space-y-4">
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <button onclick="selectSample('normal')" id="btn-normal" class="sample-btn border-2 border-indigo-500 bg-indigo-50/80 rounded-xl p-3 text-left transition">
+                        <div class="text-2xl mb-1">🐱</div>
+                        <div class="font-bold text-xs text-slate-900">1. 標準正臉貓</div>
+                        <div class="text-[11px] text-slate-500">五官置中、清晰輪廓</div>
+                    </button>
+                    <button onclick="selectSample('shifted')" id="btn-shifted" class="sample-btn border-2 border-slate-200 hover:border-slate-300 rounded-xl p-3 text-left transition">
+                        <div class="text-2xl mb-1">↗️</div>
+                        <div class="font-bold text-xs text-slate-900">2. 平移角落貓</div>
+                        <div class="text-[11px] text-slate-500">位移至右上、背景空白</div>
+                    </button>
+                    <button onclick="selectSample('loaf')" id="btn-loaf" class="sample-btn border-2 border-slate-200 hover:border-slate-300 rounded-xl p-3 text-left transition">
+                        <div class="text-2xl mb-1">🍞</div>
+                        <div class="font-bold text-xs text-slate-900">3. 母雞蹲吐司貓</div>
+                        <div class="text-[11px] text-slate-500">四肢收攏、非典型輪廓</div>
+                    </button>
+                    <button onclick="selectSample('cartoon')" id="btn-cartoon" class="sample-btn border-2 border-slate-200 hover:border-slate-300 rounded-xl p-3 text-left transition">
+                        <div class="text-2xl mb-1">🎨</div>
+                        <div class="font-bold text-xs text-slate-900">4. 抽象漫畫貓</div>
+                        <div class="text-[11px] text-slate-500">簡化線條、極簡色塊</div>
+                    </button>
+                </div>
+
+                <!-- 4 Performance Meters Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-1">
+                    <!-- Meter 1: Brain -->
+                    <div class="bg-slate-50 rounded-xl border border-indigo-200 p-3.5 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">1. Google Brain 論文</span>
+                                <span id="score-brain" class="font-mono text-xs font-black text-indigo-600">0.962 放電</span>
+                            </div>
+                            <h4 class="font-bold text-xs text-slate-800 mb-1">非監督神經元自發激活率</h4>
+                            <div class="w-full bg-slate-200 rounded-full h-2 mb-2 overflow-hidden">
+                                <div id="bar-brain" class="bg-indigo-600 h-2 rounded-full transition-all duration-500" style="width: 96.2%"></div>
+                            </div>
+                        </div>
+                        <div id="diag-brain" class="text-xs p-2.5 rounded-lg bg-white border border-slate-200 text-slate-700 leading-relaxed">
+                            <strong>判斷分析：</strong>無監督貓神經元產生 0.962 強烈電位響應，正中央典型貓臉激發最強。
+                        </div>
+                    </div>
+
+                    <!-- Meter 2: Course -->
+                    <div class="bg-slate-50 rounded-xl border border-blue-200 p-3.5 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800">2. 吳恩達作業範例</span>
+                                <span id="score-course" class="font-mono text-xs font-black text-blue-600">88.5% 置信</span>
+                            </div>
+                            <h4 class="font-bold text-xs text-slate-800 mb-1">1D 向量平鋪映射</h4>
+                            <div class="w-full bg-slate-200 rounded-full h-2 mb-2 overflow-hidden">
+                                <div id="bar-course" class="bg-blue-600 h-2 rounded-full transition-all duration-500" style="width: 88.5%"></div>
+                            </div>
+                        </div>
+                        <div id="diag-course" class="text-xs p-2.5 rounded-lg bg-white border border-slate-200 text-slate-700 leading-relaxed">
+                            <strong>判斷分析：</strong>因貓咪處於正中央，像素坐標與權重矩陣 $W$ 的亮暗點重合，啟動值 $\sigma(w^T x + b)$ 高，成功判定為貓。
+                        </div>
+                    </div>
+
+                    <!-- Meter 3: CNN -->
+                    <div class="bg-slate-50 rounded-xl border border-emerald-200 p-3.5 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">3. CNN 卷積網路</span>
+                                <span id="score-cnn" class="font-mono text-xs font-black text-emerald-600">96.8% 置信</span>
+                            </div>
+                            <h4 class="font-bold text-xs text-slate-800 mb-1">卷積特徵金字塔</h4>
+                            <div class="w-full bg-slate-200 rounded-full h-2 mb-2 overflow-hidden">
+                                <div id="bar-cnn" class="bg-emerald-600 h-2 rounded-full transition-all duration-500" style="width: 96.8%"></div>
+                            </div>
+                        </div>
+                        <div id="diag-cnn" class="text-xs p-2.5 rounded-lg bg-white border border-slate-200 text-slate-700 leading-relaxed">
+                            <strong>判斷分析：</strong>底層捕捉鬍鬚紋理，中高層特徵圖組裝三角尖耳與眼鼻幾何結構。位移完全不影響分類。
+                        </div>
+                    </div>
+
+                    <!-- Meter 4: CLIP -->
+                    <div class="bg-slate-50 rounded-xl border border-purple-200 p-3.5 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-800">4. OpenAI CLIP</span>
+                                <span id="score-clip" class="font-mono text-xs font-black text-purple-600">98.2% 相似</span>
+                            </div>
+                            <h4 class="font-bold text-xs text-slate-800 mb-1">超球面語意餘弦匹配</h4>
+                            <div class="w-full bg-slate-200 rounded-full h-2 mb-2 overflow-hidden">
+                                <div id="bar-clip" class="bg-purple-600 h-2 rounded-full transition-all duration-500" style="width: 98.2%"></div>
+                            </div>
+                        </div>
+                        <div id="diag-clip" class="text-xs p-2.5 rounded-lg bg-white border border-slate-200 text-slate-700 leading-relaxed">
+                            <strong>判斷分析：</strong>自注意力機制捕捉全局抽象語意，就算變成漫畫線條或吐司蹲姿，仍能辨識出核心概念。
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Radar Chart Container -->
+                <div class="pt-3 border-t border-slate-100 flex flex-col items-center">
+                    <span class="text-xs font-bold text-slate-700 mb-2">五維能力雷達全景對照</span>
+                    <div class="w-full max-w-lg h-60">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="resilient-card" id="panel-main-interactive">
+            <!-- Tabs Navigation -->
+            <div class="border-b border-slate-200 grid grid-cols-2 md:grid-cols-4 bg-slate-100/70 p-2 gap-1.5">
+                <button onclick="switchTab('brain')" id="tab-btn-brain" class="p-2.5 font-bold text-xs rounded-xl border-2 border-indigo-600 bg-white text-indigo-700 shadow-sm transition flex flex-col items-center text-center">
+                    <span class="text-sm">1️⃣ 吳恩達 (Google Brain)</span>
+                    <span class="text-[10px] text-indigo-600 font-normal mt-0.5">2012 論文．5 步驟非監督湧現</span>
+                </button>
+                <button onclick="switchTab('course')" id="tab-btn-course" class="p-2.5 font-bold text-xs rounded-xl border-2 border-transparent bg-slate-200/70 text-slate-700 hover:bg-white transition flex flex-col items-center text-center">
+                    <span class="text-sm">2️⃣ 吳恩達 (作業範例)</span>
+                    <span class="text-[10px] text-slate-500 font-normal mt-0.5">2017 監督向量拉平 5 步</span>
+                </button>
+                <button onclick="switchTab('cnn')" id="tab-btn-cnn" class="p-2.5 font-bold text-xs rounded-xl border-2 border-transparent bg-slate-200/70 text-slate-700 hover:bg-white transition flex flex-col items-center text-center">
+                    <span class="text-sm">3️⃣ CNN (卷積網路)</span>
+                    <span class="text-[10px] text-slate-500 font-normal mt-0.5">感受野與池化 5 步</span>
+                </button>
+                <button onclick="switchTab('clip')" id="tab-btn-clip" class="p-2.5 font-bold text-xs rounded-xl border-2 border-transparent bg-slate-200/70 text-slate-700 hover:bg-white transition flex flex-col items-center text-center">
+                    <span class="text-sm">4️⃣ OpenAI CLIP</span>
+                    <span class="text-[10px] text-slate-500 font-normal mt-0.5">圖文雙塔超球面 5 步</span>
+                </button>
+            </div>
+
+            <div class="p-4 sm:p-6">
+                <!-- ================= 1. ANDREW NG (GOOGLE BRAIN PAPER 2012) 5-STEP ================= -->
+                <div id="panel-brain" class="space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                        <div>
+                            <h4 class="text-xs sm:text-sm font-bold text-indigo-950 flex items-center gap-1.5">
+                                <span>🧬</span> 1. 吳恩達（Google Brain 論文 2012）：大尺度非監督學習（5 步驟拆解）
+                            </h4>
+                            <p class="text-[11px] text-slate-500">1,000 萬未標註 YouTube 影格 $\to$ 9層深度自編碼 $\to$ 稀疏性懲罰約束 $\to$ 重構自身畫面 $\to$ 頂層貓神經元自發湧現</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="togglePipelineAutoPlay('brain')" id="btn-auto-brain" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-xs font-bold transition flex items-center gap-1">
+                                <span id="icon-auto-brain">▶️</span>
+                                <span id="text-auto-brain">自動運行步進</span>
+                            </button>
+                            <span class="text-xs font-mono font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full" id="brain-step-badge">
+                                步驟 1 / 5
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Step Stepper Bar -->
+                    <div class="grid grid-cols-5 gap-1.5" id="brain-stepper">
+                        <button onclick="goToBrainStep(1)" id="brain-step-btn-1" class="p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-indigo-600 bg-indigo-50 text-indigo-700 transition flex flex-col items-center">
+                            <span>1. 未標註影格</span>
+                            <span class="text-[9px] text-slate-400 font-normal">1,000萬部影片</span>
+                        </button>
+                        <button onclick="goToBrainStep(2)" id="brain-step-btn-2" class="p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition flex flex-col items-center">
+                            <span>2. 深度自編碼</span>
+                            <span class="text-[9px] text-slate-400 font-normal">16,000核集群</span>
+                        </button>
+                        <button onclick="goToBrainStep(3)" id="brain-step-btn-3" class="p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition flex flex-col items-center">
+                            <span>3. 稀疏性約束</span>
+                            <span class="text-[9px] text-slate-400 font-normal">KL 散度懲罰</span>
+                        </button>
+                        <button onclick="goToBrainStep(4)" id="brain-step-btn-4" class="p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition flex flex-col items-center">
+                            <span>4. 重構誤差</span>
+                            <span class="text-[9px] text-slate-400 font-normal">min ||x - x̂||²</span>
+                        </button>
+                        <button onclick="goToBrainStep(5)" id="brain-step-btn-5" class="p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition flex flex-col items-center">
+                            <span>5. 貓神經元湧現</span>
+                            <span class="text-[9px] text-slate-400 font-normal">特異性電位探針</span>
+                        </button>
+                    </div>
+
+                    <!-- Dynamic Step Box -->
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 interactive-panel" id="brain-step-content-box"></div>
+
+                    <!-- Nav Controls -->
+                    <div class="flex items-center justify-between pt-1">
+                        <button onclick="prevBrainStep()" id="brain-prev-btn" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed">← 上一步</button>
+                        <span class="text-[11px] text-slate-400">真．非監督式學習：完全無人工標籤「貓」</span>
+                        <button onclick="nextBrainStep()" id="brain-next-btn" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs">下一步 →</button>
+                    </div>
+                </div>
+
+                <!-- ================= 2. ANDREW NG (COURSERA 2017) ================= -->
+                <div id="panel-course" class="hidden space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                        <div>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                                <span>🏷️</span> 2. 吳恩達（作業範例）：向量拉平與標準監督式學習（5 步驟拆解）
+                            </h4>
+                            <p class="text-[11px] text-slate-500">輸入 $64 \times 64 \times 3$ 影像 $\to$ 拉平成 $12,288$ 維長條 $\to$ 權重內積 $\to$ 人工標籤 $y \in \{0, 1\}$ 損失回傳</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="togglePipelineAutoPlay('course')" id="btn-auto-course" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-bold transition flex items-center gap-1">
+                                <span id="icon-auto-course">▶️</span>
+                                <span id="text-auto-course">自動運行步進</span>
+                            </button>
+                            <span class="text-xs font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full" id="course-step-badge">
+                                步驟 1 / 5
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Step Stepper Bar -->
+                    <div class="grid grid-cols-5 gap-1.5" id="course-stepper">
+                        <button onclick="goToCourseStep(1)" id="course-step-btn-1" class="p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-blue-600 bg-blue-50 text-blue-700 transition flex flex-col items-center">
+                            <span>1. 整張貓圖</span>
+                            <span class="text-[9px] text-slate-400 font-normal">64×64×3</span>
+                        </button>
+                        <button onclick="goToCourseStep(2)" id="course-step-btn-2" class="p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition flex flex-col items-center">
+                            <span>2. 局部像素</span>
+                            <span class="text-[9px] text-slate-400 font-normal">RGB 矩陣</span>
+                        </button>
+                        <button onclick="goToCourseStep(3)" id="course-step-btn-3" class="p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition flex flex-col items-center">
+                            <span>3. 向量拉平</span>
+                            <span class="text-[9px] text-slate-400 font-normal">1D 12,288 維</span>
+                        </button>
+                        <button onclick="goToCourseStep(4)" id="course-step-btn-4" class="p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition flex flex-col items-center">
+                            <span>4. 內積激活</span>
+                            <span class="text-[9px] text-slate-400 font-normal">z & σ(z)</span>
+                        </button>
+                        <button onclick="goToCourseStep(5)" id="course-step-btn-5" class="p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition flex flex-col items-center">
+                            <span>5. 監督式 BCE</span>
+                            <span class="text-[9px] text-slate-400 font-normal">反向傳播</span>
+                        </button>
+                    </div>
+
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 interactive-panel" id="course-step-content-box"></div>
+
+                    <div class="flex items-center justify-between pt-1">
+                        <button onclick="prevCourseStep()" id="course-prev-btn" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed">← 上一步</button>
+                        <span class="text-[11px] text-slate-400">標準監督式：人工提供 y ∈ {0, 1}</span>
+                        <button onclick="nextCourseStep()" id="course-next-btn" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xs">下一步 →</button>
+                    </div>
+                </div>
+
+                <!-- ================= 3. CNN CONVOLUTIONAL ================= -->
+                <div id="panel-cnn" class="hidden space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                        <div>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                                <span>📐</span> 3. CNN (卷積神經網路)：感受野、滑窗與特徵金字塔（5 步驟拆解）
+                            </h4>
+                            <p class="text-[11px] text-slate-500">滑窗感受野 $\to$ 邊緣/紋理卷積 $\to$ ReLU 非線性整流 $\to$ MaxPooling 池化 $\to$ 多元交叉熵監督式分類</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="togglePipelineAutoPlay('cnn')" id="btn-auto-cnn" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-bold transition flex items-center gap-1">
+                                <span id="icon-auto-cnn">▶️</span>
+                                <span id="text-auto-cnn">自動運行步進</span>
+                            </button>
+                            <span class="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full" id="cnn-step-badge">
+                                步驟 1 / 5
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Step Stepper Bar -->
+                    <div class="grid grid-cols-5 gap-1.5" id="cnn-stepper">
+                        <button onclick="goToCnnStep(1)" id="cnn-step-btn-1" class="p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-emerald-600 bg-emerald-50 text-emerald-700 transition flex flex-col items-center">
+                            <span>1. 2D空間結構</span>
+                            <span class="text-[9px] text-slate-400 font-normal">保留張量</span>
+                        </button>
+                        <button onclick="goToCnnStep(2)" id="cnn-step-btn-2" class="p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition flex flex-col items-center">
+                            <span>2. 局部感受野</span>
+                            <span class="text-[9px] text-slate-400 font-normal">3×3 滑窗</span>
+                        </button>
+                        <button onclick="goToCnnStep(3)" id="cnn-step-btn-3" class="p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition flex flex-col items-center">
+                            <span>3. 卷積核計算</span>
+                            <span class="text-[9px] text-slate-400 font-normal">濾波特徵圖</span>
+                        </button>
+                        <button onclick="goToCnnStep(4)" id="cnn-step-btn-4" class="p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition flex flex-col items-center">
+                            <span>4. 最大池化</span>
+                            <span class="text-[9px] text-slate-400 font-normal">平移不變性</span>
+                        </button>
+                        <button onclick="goToCnnStep(5)" id="cnn-step-btn-5" class="p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition flex flex-col items-center">
+                            <span>5. 監督式Softmax</span>
+                            <span class="text-[9px] text-slate-400 font-normal">多元分類</span>
+                        </button>
+                    </div>
+
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 interactive-panel" id="cnn-step-content-box"></div>
+
+                    <div class="flex items-center justify-between pt-1">
+                        <button onclick="prevCnnStep()" id="cnn-prev-btn" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed">← 上一步</button>
+                        <span class="text-[11px] text-slate-400">滑窗感受野是平移不變性的關鍵</span>
+                        <button onclick="nextCnnStep()" id="cnn-next-btn" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs">下一步 →</button>
+                    </div>
+                </div>
+
+                <!-- ================= 4. OPENAI CLIP ================= -->
+                <div id="panel-clip" class="hidden space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                        <div>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                                <span>🌐</span> 4. OpenAI CLIP：圖文雙塔跨模態對比學習（5 步驟拆解）
+                            </h4>
+                            <p class="text-[11px] text-slate-500">4 億自然圖文對 $\to$ 影像/文字雙編碼器 $\to$ 512 維超球面投影 $\to$ 對比矩陣最大化 $\to$ 零樣本 (Zero-Shot) 推理</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="togglePipelineAutoPlay('clip')" id="btn-auto-clip" class="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-full text-xs font-bold transition flex items-center gap-1">
+                                <span id="icon-auto-clip">▶️</span>
+                                <span id="text-auto-clip">自動運行步進</span>
+                            </button>
+                            <span class="text-xs font-mono font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2.5 py-0.5 rounded-full" id="clip-step-badge">
+                                步驟 1 / 5
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Step Stepper Bar -->
+                    <div class="grid grid-cols-5 gap-1.5" id="clip-stepper">
+                        <button onclick="goToClipStep(1)" id="clip-step-btn-1" class="p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-purple-600 bg-purple-50 text-purple-700 transition flex flex-col items-center">
+                            <span>1. 自然圖文對</span>
+                            <span class="text-[9px] text-slate-400 font-normal">4 億對無標籤</span>
+                        </button>
+                        <button onclick="goToClipStep(2)" id="clip-step-btn-2" class="p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition flex flex-col items-center">
+                            <span>2. 雙塔編碼</span>
+                            <span class="text-[9px] text-slate-400 font-normal">ViT + Text</span>
+                        </button>
+                        <button onclick="goToClipStep(3)" id="clip-step-btn-3" class="p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition flex flex-col items-center">
+                            <span>3. 投影超球面</span>
+                            <span class="text-[9px] text-slate-400 font-normal">向量夾角 θ</span>
+                        </button>
+                        <button onclick="goToClipStep(4)" id="clip-step-btn-4" class="p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition flex flex-col items-center">
+                            <span>4. 對比學習</span>
+                            <span class="text-[9px] text-slate-400 font-normal">對角線相似度</span>
+                        </button>
+                        <button onclick="goToClipStep(5)" id="clip-step-btn-5" class="p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition flex flex-col items-center">
+                            <span>5. 零樣本推論</span>
+                            <span class="text-[9px] text-slate-400 font-normal">自訂 Prompt</span>
+                        </button>
+                    </div>
+
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 interactive-panel" id="clip-step-content-box"></div>
+
+                    <div class="flex items-center justify-between pt-1">
+                        <button onclick="prevClipStep()" id="clip-prev-btn" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed">← 上一步</button>
+                        <span class="text-[11px] text-slate-400">Zero-Shot 無需重新訓練即可辨識</span>
+                        <button onclick="nextClipStep()" id="clip-next-btn" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-purple-600 hover:bg-purple-700 text-white shadow-xs">下一步 →</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="resilient-card">
+            <div class="p-4 sm:p-5 border-b border-slate-200">
+                <h2 class="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
+                    <span>📊</span> 四大演算法架構全維度對比矩陣
+                </h2>
+                <p class="text-xs text-slate-500 mt-0.5">完整對照：Google Brain 論文 vs 吳恩達作業範例 vs CNN vs OpenAI CLIP</p>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-700 min-w-[700px]">
+                    <thead class="bg-slate-50 text-slate-900 uppercase font-mono text-[11px] border-b border-slate-200">
+                        <tr>
+                            <th class="px-3.5 py-3">比較維度</th>
+                            <th class="px-3.5 py-3 text-indigo-700 bg-indigo-50/50">1. Google Brain 論文</th>
+                            <th class="px-3.5 py-3 text-blue-700 bg-blue-50/50">2. 吳恩達作業範例</th>
+                            <th class="px-3.5 py-3 text-emerald-700 bg-emerald-50/50">3. CNN (卷積神經網路)</th>
+                            <th class="px-3.5 py-3 text-purple-700 bg-purple-50/50">4. OpenAI CLIP</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        <tr>
+                            <td class="px-3.5 py-3 font-bold text-slate-900 bg-slate-50/40">是否為監督式學習？</td>
+                            <td class="px-3.5 py-3 bg-indigo-50/20">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-100 text-indigo-800">
+                                    否 (真．非監督式)
+                                </span>
+                                <div class="mt-1 text-[11px] text-slate-500">1,000 萬未標註影片無監督自學</div>
+                            </td>
+                            <td class="px-3.5 py-3 bg-blue-50/20">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-blue-100 text-blue-800">
+                                    是 (標準監督式)
+                                </span>
+                                <div class="mt-1 text-[11px] text-slate-500">依賴人工給予的 $y \in \{0, 1\}$</div>
+                            </td>
+                            <td class="px-3.5 py-3 bg-emerald-50/20">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                                    是 (經典分類範式)
+                                </span>
+                                <div class="mt-1 text-[11px] text-slate-500">依賴人工標記的多類別 (ImageNet)</div>
+                            </td>
+                            <td class="px-3.5 py-3 bg-purple-50/20">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-purple-100 text-purple-800">
+                                    弱監督 / 對比學習
+                                </span>
+                                <div class="mt-1 text-[11px] text-slate-500">利用 4 億對自然圖文對對比學習</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="px-3.5 py-3 font-bold text-slate-900 bg-slate-50/40">損失函數 (Loss)</td>
+                            <td class="px-3.5 py-3 font-mono text-[11px]">重構誤差 + 稀疏懲罰 $\mathrm{KL}(\rho\|\hat{\rho})$</td>
+                            <td class="px-3.5 py-3 font-mono text-[11px]">二元交叉熵 $\mathcal{L}_{\mathrm{BCE}}$</td>
+                            <td class="px-3.5 py-3 font-mono text-[11px]">多元交叉熵 $\mathcal{L}_{\mathrm{CE}}$</td>
+                            <td class="px-3.5 py-3 font-mono text-[11px]">對比損失 InfoNCE</td>
+                        </tr>
+                        <tr>
+                            <td class="px-3.5 py-3 font-bold text-slate-900 bg-slate-50/40">特徵捕捉方式</td>
+                            <td class="px-3.5 py-3">深度自編碼重建與稀疏放電特化</td>
+                            <td class="px-3.5 py-3">強制拉平 1D 向量，死板對齊坐標</td>
+                            <td class="px-3.5 py-3">卷積核滑窗局部點積，幾何層級組合</td>
+                            <td class="px-3.5 py-3">圖塊 Patches，全局自注意力對齊</td>
+                        </tr>
+                        <tr>
+                            <td class="px-3.5 py-3 font-bold text-slate-900 bg-slate-50/40">平移不變性 (貓在角落)</td>
+                            <td class="px-3.5 py-3 text-amber-600 font-bold">中等（高層具部分不變性）</td>
+                            <td class="px-3.5 py-3 text-red-600 font-bold">極差（幾何錯位直接誤判）</td>
+                            <td class="px-3.5 py-3 text-emerald-600 font-bold">優異（滑窗權重共享 + 池化）</td>
+                            <td class="px-3.5 py-3 text-purple-600 font-bold">極強（基於全局語意嵌入）</td>
+                        </tr>
+                        <tr>
+                            <td class="px-3.5 py-3 font-bold text-slate-900 bg-slate-50/40">零樣本辨識 (Zero-Shot)</td>
+                            <td class="px-3.5 py-3 text-slate-400">無法 (無文字介面)</td>
+                            <td class="px-3.5 py-3 text-slate-400">無法 (需重新標記訓練)</td>
+                            <td class="px-3.5 py-3 text-slate-400">無法 (閉集標籤限制)</td>
+                            <td class="px-3.5 py-3 text-purple-600 font-bold">極強 (更改文字 Prompt 即用)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        /* Smooth Scroll Helper */
+        function scrollToPanel(id) {
+            const el = document.getElementById(id);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        /* 4 Algorithms Tab Switcher */
+        function switchTab(tabId) {
+            const tabs = ['brain', 'course', 'cnn', 'clip'];
+            tabs.forEach(t => {
+                const panel = document.getElementById(`panel-${t}`);
+                const btn = document.getElementById(`tab-btn-${t}`);
+                if (!panel || !btn) return;
+                if (t === tabId) {
+                    panel.classList.remove('hidden');
+                    const color = t === 'brain' ? 'indigo' : (t === 'course' ? 'blue' : (t === 'cnn' ? 'emerald' : 'purple'));
+                    btn.className = `p-2.5 font-bold text-xs rounded-xl border-2 border-${color}-600 bg-white text-${color}-700 shadow-sm transition flex flex-col items-center text-center`;
+                    renderMath(panel);
+                } else {
+                    panel.classList.add('hidden');
+                    btn.className = 'p-2.5 font-bold text-xs rounded-xl border-2 border-transparent bg-slate-200/70 text-slate-700 hover:bg-white transition flex flex-col items-center text-center';
+                }
+            });
+        }
+
+        /* Math formula renderer */
+        function renderMath(container = document.body) {
+            if (window.renderMathInElement) {
+                renderMathInElement(container, {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '$', right: '$', display: false }
+                    ],
+                    ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+                    throwOnError: false
+                });
+            }
+        }
+
+        /* -------------------------------------------------------------
+           1. GOOGLE BRAIN PAPER (2012) 5-STEP CODE & INTERACTION
+        ------------------------------------------------------------- */
+        let currentBrainStep = 1;
+        let autoPlayTimerBrain = null;
+
+        function renderBrainStep(step) {
+            currentBrainStep = step;
+            document.getElementById('brain-step-badge').innerText = `步驟 ${step} / 5`;
+
+            for (let i = 1; i <= 5; i++) {
+                const btn = document.getElementById(`brain-step-btn-${i}`);
+                if (!btn) continue;
+                if (i === step) {
+                    btn.className = 'p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-indigo-600 bg-indigo-50 text-indigo-700 transition flex flex-col items-center shadow-xs';
+                } else if (i < step) {
+                    btn.className = 'p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-indigo-200 bg-white text-indigo-600 hover:border-indigo-300 transition flex flex-col items-center';
+                } else {
+                    btn.className = 'p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition flex flex-col items-center';
+                }
+            }
+
+            const prevBtn = document.getElementById('brain-prev-btn');
+            const nextBtn = document.getElementById('brain-next-btn');
+            prevBtn.disabled = step === 1;
+            prevBtn.className = step === 1 ? 'px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed' : 'px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-700 hover:bg-slate-800 text-white cursor-pointer transition';
+            nextBtn.disabled = step === 5;
+            nextBtn.className = step === 5 ? 'px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed' : 'px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs cursor-pointer transition';
+
+            const box = document.getElementById('brain-step-content-box');
+
+            if (step === 1) {
+                box.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                        <div class="lg:col-span-7 space-y-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800">第一步：海量無標籤影格輸入</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800">第一步：完全未標註的 1,000 萬部 YouTube 影片影格</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                吳恩達與 Jeff Dean 團隊從 YouTube 隨機擷取 1,000 萬支影片的靜止畫面（每個影格 $200 \times 200$ 像素）。
+                            </p>
+                            <div class="p-2.5 bg-indigo-50 border border-indigo-200 rounded-lg text-xs text-indigo-900 leading-relaxed">
+                                <strong>✕ 完全零標籤：</strong>資料庫中<strong>沒有任何一個標籤</strong>寫著「這是貓」或「這不是貓」！神經網路就像剛出生的嬰兒，眼睛單純看著這個世界流動的畫面。
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 flex flex-col items-center justify-center p-3 bg-white rounded-xl border border-slate-200">
+                            <div class="grid grid-cols-3 gap-1.5 p-2 bg-slate-100 rounded-xl border border-slate-300">
+                                <div class="w-16 h-12 bg-slate-300 rounded flex items-center justify-center text-xl shadow-xs">🐱</div>
+                                <div class="w-16 h-12 bg-slate-300 rounded flex items-center justify-center text-xl shadow-xs">🚗</div>
+                                <div class="w-16 h-12 bg-slate-300 rounded flex items-center justify-center text-xl shadow-xs">👨</div>
+                                <div class="w-16 h-12 bg-slate-300 rounded flex items-center justify-center text-xl shadow-xs">🌳</div>
+                                <div class="w-16 h-12 bg-indigo-200 border-2 border-indigo-500 rounded flex items-center justify-center text-xl shadow-xs animate-pulse">🐱</div>
+                                <div class="w-16 h-12 bg-slate-300 rounded flex items-center justify-center text-xl shadow-xs">🎸</div>
+                            </div>
+                            <span class="text-[10px] text-slate-400 mt-1.5 font-mono">10,000,000 Unlabeled Frames</span>
+                        </div>
+                    </div>
+                `;
+            } else if (step === 2) {
+                box.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                        <div class="lg:col-span-7 space-y-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800">第二步：9層深度稀疏自編碼器 (Deep Autoencoder)</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800">第二步：16,000 顆 CPU 核心組成 10 億個參數神經網路</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                構建一個 9 層深度自編碼網路（包含局部連接與池化層）。影像經由層層編碼壓縮至中央瓶頸層（Bottleneck），再逐步解碼還原。
+                            </p>
+                            <div class="p-2.5 bg-white border border-slate-200 rounded-lg text-xs space-y-1 font-mono text-slate-700">
+                                <div>• 分散式運算: 1,000 台伺服器 (16,000 CPU 核心)</div>
+                                <div>• 網路規模: 10 億個可訓練連接權重 (1 Billion Parameters)</div>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 flex flex-col items-center justify-center p-3 bg-white rounded-xl border border-slate-200">
+                            <div class="flex items-center gap-1.5 text-xs font-bold text-center">
+                                <div class="p-2 bg-slate-100 border border-slate-300 rounded-lg w-16">
+                                    <span>輸入 x</span>
+                                    <span class="text-[9px] text-slate-400 block font-mono">200×200</span>
+                                </div>
+                                <span class="text-indigo-600">➔</span>
+                                <div class="p-2.5 bg-indigo-600 text-white rounded-lg w-20 shadow-xs">
+                                    <span>深度編碼</span>
+                                    <span class="text-[9px] text-indigo-200 block font-mono">9 層網路</span>
+                                </div>
+                                <span class="text-indigo-600">➔</span>
+                                <div class="p-2 bg-slate-100 border border-slate-300 rounded-lg w-16">
+                                    <span>重構 x̂</span>
+                                    <span class="text-[9px] text-slate-400 block font-mono">重建畫面</span>
+                                </div>
+                            </div>
+                            <span class="text-[10px] text-slate-400 mt-1.5">非監督自編碼沙漏結構</span>
+                        </div>
+                    </div>
+                `;
+            } else if (step === 3) {
+                box.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                        <div class="lg:col-span-7 space-y-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800">第三步：稀疏性約束懲罰 (Sparsity Penalty)</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800">第三步：強制 98% 神經元靜默，逼迫提煉「高階概念」</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                若不加限制，網路只會偷懶複製像素。吳恩達加入 <strong>KL 散度稀疏性約束 $\mathrm{KL}(\rho \| \hat{\rho}_j)$</strong>，規定神經元的平均激活率必須極低（如 $\rho = 0.03$）。
+                            </p>
+                            <div class="p-2.5 bg-white border border-slate-200 rounded-lg text-xs space-y-1.5">
+                                <label class="font-bold text-slate-700 block">拖曳調節稀疏目標值 $\rho$，觀察神經元放電比例：</label>
+                                <div class="flex items-center gap-2.5">
+                                    <input type="range" min="0.01" max="0.2" step="0.01" value="0.03" id="brain-rho-slider" oninput="updateBrainRhoDemo()" class="w-full accent-indigo-600">
+                                    <span class="font-mono text-xs font-bold text-indigo-600 w-24" id="brain-rho-val">ρ = 0.03 (極稀疏)</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 flex flex-col items-center justify-center p-3 bg-slate-900 text-white rounded-xl font-mono text-xs text-center space-y-2">
+                            <span class="text-slate-400 text-[10px]">稀疏放電陣列模擬</span>
+                            <div class="grid grid-cols-6 gap-1 p-2 bg-slate-800 rounded-lg border border-slate-700" id="brain-sparse-grid">
+                                ${Array(24).fill(0).map((_, i) => `<div class="w-4 h-4 rounded-full ${i === 7 ? 'bg-amber-400 animate-pulse' : 'bg-slate-700'}"></div>`).join('')}
+                            </div>
+                            <span class="text-[10px] text-amber-300 font-bold" id="brain-sparse-status">僅特異神經元在看到關鍵特徵時放電！</span>
+                        </div>
+                    </div>
+                `;
+            } else if (step === 4) {
+                box.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                        <div class="lg:col-span-7 space-y-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800">第四步：無監督重構目標 (Reconstruction Loss)</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800">第四步：損失函數目標是「重構自己」，不需外部標籤 $y$</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                整個巨型網路的最佳化目標單純是讓輸出的畫面 $\hat{x}$ 盡可能還原輸入的畫面 $x$：
+                                $$\min_{W, b} \frac{1}{2} \|x - \hat{x}\|^2 + \beta \sum \mathrm{KL}(\rho \| \hat{\rho}_j)$$
+                            </p>
+                            <div class="p-2.5 bg-indigo-50 border border-indigo-200 rounded-lg text-xs text-indigo-950 leading-relaxed">
+                                <strong>💡 這是徹底的非監督學習：</strong>完全不需要人工標籤，反向傳播的誤差是「自己與自己的像素差距」！
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 flex flex-col items-center justify-center p-3 bg-white rounded-xl border border-slate-200 font-mono text-xs">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div class="w-16 h-16 bg-slate-100 border border-slate-300 rounded flex flex-col items-center justify-center text-2xl">
+                                    🐱
+                                    <span class="text-[8px] text-slate-500 font-mono">原圖 x</span>
+                                </div>
+                                <span class="text-indigo-600 font-bold text-sm">VS</span>
+                                <div class="w-16 h-16 bg-indigo-50 border-2 border-indigo-400 rounded flex flex-col items-center justify-center text-2xl">
+                                    🐱
+                                    <span class="text-[8px] text-indigo-600 font-mono">重構 x̂</span>
+                                </div>
+                            </div>
+                            <div class="p-2 bg-slate-100 rounded text-center text-slate-700 w-full text-[11px]">
+                                重構均方誤差 MSE = <span class="text-indigo-600 font-bold">0.0142</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (step === 5) {
+                box.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                        <div class="lg:col-span-7 space-y-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800">第五步：貓神經元自發湧現 (Grandmother Cell)</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800">第五步：無心插柳！最頂層特定神經元自主發明了「貓臉」概念</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                訓練完成後，研究人員拿測試集探測頂層神經元，震驚地發現 **神經元 #1280** 在看到貓時產生高達 <strong>0.962</strong> 的特異性強烈放電，而看到人臉或車輛時保持靜默！
+                            </p>
+                            <div class="flex gap-2">
+                                <button onclick="probeTestStep5('cat')" id="p-s5-cat" class="flex-1 py-1 px-2 text-xs font-bold rounded bg-indigo-600 text-white transition">🐱 測試貓臉</button>
+                                <button onclick="probeTestStep5('human')" id="p-s5-human" class="flex-1 py-1 px-2 text-xs font-bold rounded bg-slate-200 text-slate-700 transition">👨 測試人臉</button>
+                                <button onclick="probeTestStep5('car')" id="p-s5-car" class="flex-1 py-1 px-2 text-xs font-bold rounded bg-slate-200 text-slate-700 transition">🚗 測試車輛</button>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 flex flex-col justify-center p-3.5 bg-slate-900 text-white rounded-xl font-mono text-xs space-y-2">
+                            <span class="text-slate-400 text-[10px]">Neuron #1280 電位放電計</span>
+                            <div class="flex justify-between items-center text-sm font-bold">
+                                <span class="text-slate-300">放電響應 (Spike Rate):</span>
+                                <span class="text-amber-400 text-lg" id="p-s5-rate">0.962</span>
+                            </div>
+                            <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                                <div id="p-s5-bar" class="bg-gradient-to-r from-amber-500 to-rose-500 h-2.5 rounded-full transition-all duration-300" style="width: 96.2%"></div>
+                            </div>
+                            <div class="text-[11px] text-indigo-300 font-sans p-1.5 bg-slate-800/80 rounded" id="p-s5-msg">
+                                🔥 <strong>強烈放電！</strong>無人監督下，神經網路自主誕生出代表「貓臉」的專屬神經元！
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            renderMath(box);
+        }
+
+        function nextBrainStep() { if (currentBrainStep < 5) renderBrainStep(currentBrainStep + 1); }
+        function prevBrainStep() { if (currentBrainStep > 1) renderBrainStep(currentBrainStep - 1); }
+        function goToBrainStep(s) { renderBrainStep(s); }
+
+        function updateBrainRhoDemo() {
+            const val = parseFloat(document.getElementById('brain-rho-slider').value);
+            document.getElementById('brain-rho-val').innerText = `ρ = ${val.toFixed(2)} (${val < 0.05 ? '極稀疏' : '較寬鬆'})`;
+            const activeCount = Math.max(1, Math.round(24 * (val / 0.2)));
+            const container = document.getElementById('brain-sparse-grid');
+            if (container) {
+                container.innerHTML = Array(24).fill(0).map((_, i) => {
+                    const isActive = i < activeCount;
+                    return `<div class="w-4 h-4 rounded-full ${isActive ? 'bg-amber-400 animate-pulse' : 'bg-slate-700'}"></div>`;
+                }).join('');
+            }
+        }
+
+        function probeTestStep5(type) {
+            const bCat = document.getElementById('p-s5-cat');
+            const bHum = document.getElementById('p-s5-human');
+            const bCar = document.getElementById('p-s5-car');
+            const rTxt = document.getElementById('p-s5-rate');
+            const bar = document.getElementById('p-s5-bar');
+            const msg = document.getElementById('p-s5-msg');
+
+            bCat.className = type === 'cat' ? 'flex-1 py-1 px-2 text-xs font-bold rounded bg-indigo-600 text-white transition' : 'flex-1 py-1 px-2 text-xs font-bold rounded bg-slate-200 text-slate-700 transition';
+            bHum.className = type === 'human' ? 'flex-1 py-1 px-2 text-xs font-bold rounded bg-indigo-600 text-white transition' : 'flex-1 py-1 px-2 text-xs font-bold rounded bg-slate-200 text-slate-700 transition';
+            bCar.className = type === 'car' ? 'flex-1 py-1 px-2 text-xs font-bold rounded bg-indigo-600 text-white transition' : 'flex-1 py-1 px-2 text-xs font-bold rounded bg-slate-200 text-slate-700 transition';
+
+            if (type === 'cat') {
+                rTxt.innerText = '0.962';
+                bar.style.width = '96.2%';
+                msg.innerHTML = '🔥 <strong>強烈放電！</strong>無人監督下，神經網路自主誕生出代表「貓臉」的專屬神經元！';
+            } else if (type === 'human') {
+                rTxt.innerText = '0.210';
+                bar.style.width = '21.0%';
+                msg.innerHTML = '💤 <strong>低度響應：</strong>人臉缺少貓耳三角特徵，貓神經元僅有極微弱電位。';
+            } else {
+                rTxt.innerText = '0.045';
+                bar.style.width = '4.5%';
+                msg.innerHTML = '❄️ <strong>完全靜默：</strong>剛性車輛線條被稀疏懲罰完全抑制，神經元不放電。';
+            }
+        }
+
+        /* -------------------------------------------------------------
+           2. COURSERA (2017) 5-STEP CODE & INTERACTION
+        ------------------------------------------------------------- */
+        let currentCourseStep = 1;
+        let autoPlayTimerCourse = null;
+
+        function renderCourseStep(step) {
+            currentCourseStep = step;
+            document.getElementById('course-step-badge').innerText = `步驟 ${step} / 5`;
+
+            for (let i = 1; i <= 5; i++) {
+                const btn = document.getElementById(`course-step-btn-${i}`);
+                if (!btn) continue;
+                if (i === step) {
+                    btn.className = 'p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-blue-600 bg-blue-50 text-blue-700 transition flex flex-col items-center shadow-xs';
+                } else if (i < step) {
+                    btn.className = 'p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-blue-200 bg-white text-blue-600 hover:border-blue-300 transition flex flex-col items-center';
+                } else {
+                    btn.className = 'p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition flex flex-col items-center';
+                }
+            }
+
+            const prevBtn = document.getElementById('course-prev-btn');
+            const nextBtn = document.getElementById('course-next-btn');
+            prevBtn.disabled = step === 1;
+            prevBtn.className = step === 1 ? 'px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed' : 'px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-700 hover:bg-slate-800 text-white cursor-pointer transition';
+            nextBtn.disabled = step === 5;
+            nextBtn.className = step === 5 ? 'px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed' : 'px-3 py-1.5 text-xs font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xs cursor-pointer transition';
+
+            const box = document.getElementById('course-step-content-box');
+
+            if (step === 1) {
+                box.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                        <div class="lg:col-span-7 space-y-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">第一步：整張貓圖尺寸規格</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800">第一步：載入完整的貓咪彩色影像</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                在吳恩達 Coursera 經典作業 <code>Cat vs Non-Cat</code> 中，由檔案載入整張貓咪照片。系統將每張圖片統一縮放為 <strong>$64 \times 64$ 像素</strong>，並具備 <strong>RGB</strong> 三個顏色通道。
+                            </p>
+                            <div class="p-2.5 bg-white border border-slate-200 rounded-lg text-xs space-y-1 font-mono text-slate-700">
+                                <div>• 原始尺寸: <code>(64, 64, 3)</code> 像素矩陣</div>
+                                <div>• 正規化: <code>X = image / 255.0</code>（縮放至 0.0 ~ 1.0 區間）</div>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 flex flex-col items-center justify-center p-3 bg-white rounded-xl border border-slate-200">
+                            <div class="relative w-32 h-32 rounded-xl bg-gradient-to-tr from-amber-100 via-orange-100 to-blue-100 border-2 border-blue-400 flex items-center justify-center shadow-sm overflow-hidden">
+                                <span class="text-5xl filter drop-shadow">🐱</span>
+                                <div class="absolute bottom-1 right-1.5 text-[9px] font-mono text-blue-800 bg-white/90 px-1 py-0.5 rounded font-bold">64×64×3</div>
+                            </div>
+                            <span class="text-[11px] text-slate-500 font-semibold mt-1.5">輸入的完整貓咪彩色影像</span>
+                        </div>
+                    </div>
+                `;
+            } else if (step === 2) {
+                box.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                        <div class="lg:col-span-7 space-y-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">第二步：抓取局部像素並拆解為數值</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800">第二步：電腦抓取微觀像素方格數值</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                電腦將圖片放大為微小的方格。例如貓耳朵或眼睛的局部區域，是由數千個帶有 RGB 強度（0~255）的數值矩陣所構成。
+                            </p>
+                            <div class="p-2.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-700">
+                                <strong>💡 懸停互動：</strong>滑鼠移到右側的局部放大像素格上，即時查看電腦眼中讀取到的貓咪區域色彩強度值。
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 flex flex-col items-center justify-center p-3 bg-white rounded-xl border border-slate-200">
+                            <span class="text-[11px] font-bold text-slate-700 mb-1.5">貓耳局部像素採樣 (8×8 局部)</span>
+                            <div class="grid grid-cols-8 gap-1 p-2 bg-slate-100 rounded-lg border border-slate-300">
+                                ${Array(64).fill(0).map((_, idx) => {
+                                    const r = Math.floor(180 + Math.sin(idx) * 60);
+                                    const g = Math.floor(130 + Math.cos(idx) * 40);
+                                    const b = Math.floor(90 + Math.sin(idx * 0.5) * 30);
+                                    return `<div class="w-3.5 h-3.5 rounded-[2px] cursor-pointer hover:scale-125 transition" style="background-color: rgb(${r},${g},${b})" title="R=${r}, G=${g}, B=${b}"></div>`;
+                                }).join('')}
+                            </div>
+                            <span class="text-[10px] text-slate-400 mt-1.5">局部抓取各像素色彩強度</span>
+                        </div>
+                    </div>
+                `;
+            } else if (step === 3) {
+                box.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                        <div class="lg:col-span-7 space-y-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">第三步：強制拉平成 1D 長向量 (Flattening)</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800">第三步：將 3D 張量壓平成 $12,288$ 維長向量</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                這是吳恩達作業架構最致命的特徵：因為單層邏輯迴歸無法處理 2D/3D 空間網格，程式使用 <code>image.reshape(image.shape[0], -1).T</code> 將 $64 \times 64 \times 3$ 像素像捲麵條一樣拉成一條具有 <strong>$12,288$ 個數字</strong> 的超長水管。
+                            </p>
+                            <div class="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800 leading-relaxed">
+                                <strong>⚠️ 破壞幾何相鄰性：</strong>
+                                貓咪的左耳尖與左耳底本來上下相鄰，但在拉平後的向量中卻相距了數百個數字！模型完全失去「形狀」與「邊緣」的空間幾何認知。
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 flex items-center justify-center p-3 bg-white rounded-xl border border-slate-200">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-14 h-14 bg-blue-100 border border-blue-400 rounded-lg flex flex-col items-center justify-center text-xs font-bold text-blue-900">
+                                    <span>2D 貓圖</span>
+                                    <span class="text-[9px] text-slate-500 font-mono">64×64×3</span>
+                                </div>
+                                <div class="text-blue-500 font-bold text-sm">➔ 壓平 ➔</div>
+                                <div class="w-14 h-36 bg-slate-100 border border-slate-300 rounded-lg flex flex-col justify-between p-1 text-[9px] font-mono text-center">
+                                    <div class="bg-blue-200 rounded py-0.5">x[0]: 0.82</div>
+                                    <div class="bg-blue-200 rounded py-0.5">x[1]: 0.74</div>
+                                    <div class="text-slate-400 py-0.5">⋮ 12,288</div>
+                                    <div class="bg-blue-300 rounded py-0.5 font-bold text-blue-900">x[12287]</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (step === 4) {
+                box.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                        <div class="lg:col-span-7 space-y-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">第四步：線性內積與 Sigmoid 機率映射</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800">第四步：權重內積與激活 $z = w^T x + b, \hat{y} = \sigma(z)$</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                模型具備一組可訓練權重 $W$（共 12,288 個數字）與偏差 $b$。每個像素乘上相應權重加總，再經由 Sigmoid 函數將數值壓縮在 0 到 1 之間代表預測是貓的機率。
+                            </p>
+                            <div class="p-2.5 bg-white border border-slate-200 rounded-lg text-xs space-y-1.5">
+                                <label class="font-bold text-slate-700 block">拖曳調節計算值 z，觀察預測機率變化：</label>
+                                <div class="flex items-center gap-2.5">
+                                    <input type="range" min="-5" max="5" step="0.2" value="2.2" id="course-z-slider" oninput="updateCourseZDirect()" class="w-full accent-blue-600">
+                                    <span class="font-mono text-xs font-bold text-blue-600 w-16" id="course-z-slider-val">z = +2.2</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 flex flex-col items-center justify-center p-4 bg-slate-900 text-white rounded-xl font-mono text-xs text-center space-y-2">
+                            <span class="text-slate-400 text-[10px]">Sigmoid 函數激活結果</span>
+                            <div class="text-2xl font-black text-blue-400" id="course-prob-display">90.0%</div>
+                            <div class="px-2.5 py-1 rounded-full text-xs font-bold" id="course-verdict-badge" style="background:#1e3a8a; color:#93c5fd;">
+                                判定為：🐱 貓咪 (Cat)
+                            </div>
+                            <span class="text-[10px] text-slate-400">門檻值 $\hat{y} \ge 0.5$ 判為 1，否則為 0</span>
+                        </div>
+                    </div>
+                `;
+            } else if (step === 5) {
+                box.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                        <div class="lg:col-span-7 space-y-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">第五步：比對人工標籤，計算監督式損失 (BCE Loss)</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800">第五步：標準監督式學習——二元交叉熵與梯度更新</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                這徹底證明了它是<strong>監督式學習</strong>！每一筆訓練資料都伴隨人工標記的真實答案 $y$。透過比對預測值 $\hat{y}$ 與真實值 $y$ 的誤差，利用梯度下降更新權重：$w := w - \alpha \frac{\partial \mathcal{L}}{\partial w}$。
+                            </p>
+                            <div class="p-2.5 bg-white border border-slate-200 rounded-lg text-xs space-y-1.5">
+                                <label class="font-bold text-slate-700 block">切換資料集給予的真實標籤 y：</label>
+                                <div class="flex gap-2">
+                                    <button onclick="setCourseLabelDemo(1)" id="course-demo-lbl-1" class="flex-1 py-1 px-2 rounded bg-blue-600 text-white font-bold text-xs transition">y = 1 (有貓)</button>
+                                    <button onclick="setCourseLabelDemo(0)" id="course-demo-lbl-0" class="flex-1 py-1 px-2 rounded bg-slate-200 text-slate-700 font-bold text-xs transition">y = 0 (非貓)</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 flex flex-col justify-center p-3.5 bg-slate-900 text-white rounded-xl font-mono text-xs space-y-1.5">
+                            <span class="text-slate-400 text-[10px]">監督式損失函數與梯度反饋</span>
+                            <div class="text-slate-300">模型預測 $\hat{y} = 0.88$</div>
+                            <div class="text-blue-300">真實標籤 $y = <span id="course-demo-y" class="font-bold">1</span>$</div>
+                            <div class="p-2 bg-slate-800 rounded border border-slate-700 space-y-1">
+                                <div>BCE Loss = <span class="text-amber-400 font-bold" id="course-demo-loss">0.1278</span></div>
+                                <div>梯度 dz = (ŷ - y) = <span class="text-emerald-400 font-bold" id="course-demo-grad">-0.1200</span></div>
+                            </div>
+                            <p class="text-[10px] text-slate-400 font-sans">
+                                完全依賴人工標籤 $y$ 計算反向傳播，故為 100% 監督式學習。
+                            </p>
+                        </div>
+                    </div>
+                `;
+            }
+            renderMath(box);
+        }
+
+        function nextCourseStep() { if (currentCourseStep < 5) renderCourseStep(currentCourseStep + 1); }
+        function prevCourseStep() { if (currentCourseStep > 1) renderCourseStep(currentCourseStep - 1); }
+        function goToCourseStep(s) { renderCourseStep(s); }
+
+        function updateCourseZDirect() {
+            const z = parseFloat(document.getElementById('course-z-slider').value);
+            document.getElementById('course-z-slider-val').innerText = `z = ${z >= 0 ? '+' : ''}${z.toFixed(1)}`;
+            const prob = 1 / (1 + Math.exp(-z));
+            document.getElementById('course-prob-display').innerText = (prob * 100).toFixed(1) + '%';
+            const badge = document.getElementById('course-verdict-badge');
+            if (prob >= 0.5) {
+                badge.style.background = '#1e3a8a';
+                badge.style.color = '#93c5fd';
+                badge.innerText = '判定為：🐱 貓咪 (Cat)';
+            } else {
+                badge.style.background = '#991b1b';
+                badge.style.color = '#fecaca';
+                badge.innerText = '判定為：🚫 非貓 (Non-Cat)';
+            }
+        }
+
+        function setCourseLabelDemo(y) {
+            document.getElementById('course-demo-lbl-1').className = y === 1 ? 'flex-1 py-1 px-2 rounded bg-blue-600 text-white font-bold text-xs transition' : 'flex-1 py-1 px-2 rounded bg-slate-200 text-slate-700 font-bold text-xs transition';
+            document.getElementById('course-demo-lbl-0').className = y === 0 ? 'flex-1 py-1 px-2 rounded bg-blue-600 text-white font-bold text-xs transition' : 'flex-1 py-1 px-2 rounded bg-slate-200 text-slate-700 font-bold text-xs transition';
+            document.getElementById('course-demo-y').innerText = y;
+            const yHat = 0.88;
+            const loss = y === 1 ? -Math.log(yHat) : -Math.log(1 - yHat);
+            const grad = yHat - y;
+            document.getElementById('course-demo-loss').innerText = loss.toFixed(4);
+            document.getElementById('course-demo-grad').innerText = (grad >= 0 ? '+' : '') + grad.toFixed(4);
+        }
+
+        /* -------------------------------------------------------------
+           3. CNN CONVOLUTIONAL 5-STEP CODE & INTERACTION
+        ------------------------------------------------------------- */
+        let currentCnnStep = 1;
+        let autoPlayTimerCnn = null;
+
+        function renderCnnStep(step) {
+            currentCnnStep = step;
+            document.getElementById('cnn-step-badge').innerText = `步驟 ${step} / 5`;
+
+            for (let i = 1; i <= 5; i++) {
+                const btn = document.getElementById(`cnn-step-btn-${i}`);
+                if (!btn) continue;
+                if (i === step) {
+                    btn.className = 'p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-emerald-600 bg-emerald-50 text-emerald-700 transition flex flex-col items-center shadow-xs';
+                } else if (i < step) {
+                    btn.className = 'p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-emerald-200 bg-white text-emerald-600 hover:border-emerald-300 transition flex flex-col items-center';
+                } else {
+                    btn.className = 'p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition flex flex-col items-center';
+                }
+            }
+
+            const prevBtn = document.getElementById('cnn-prev-btn');
+            const nextBtn = document.getElementById('cnn-next-btn');
+            prevBtn.disabled = step === 1;
+            prevBtn.className = step === 1 ? 'px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed' : 'px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-700 hover:bg-slate-800 text-white cursor-pointer transition';
+            nextBtn.disabled = step === 5;
+            nextBtn.className = step === 5 ? 'px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed' : 'px-3 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer transition';
+
+            const box = document.getElementById('cnn-step-content-box');
+
+            if (step === 1) {
+                box.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                        <div class="lg:col-span-7 space-y-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">第一步：嚴格保留 2D/3D 空間結構</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800">第一步：拒絕壓平！以多通道特徵張量輸入</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                與拉平成一維水管不同，CNN <strong>完整保留圖片的空間幾何網格</strong>（高 $H \times$ 寬 $W \times$ 通道 $C$）。貓咪的左耳、右耳、鼻子和鬍鬚的相對位置關係被完整維護。
+                            </p>
+                            <div class="p-2.5 bg-white border border-slate-200 rounded-lg text-xs space-y-1 text-slate-700">
+                                <div>• 輸入形狀: <code>(Height, Width, 3 Channels)</code></div>
+                                <div>• 核心優勢: 維護像素之間的<strong>空間相鄰性 (Spatial Locality)</strong></div>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 flex flex-col items-center justify-center p-3 bg-white rounded-xl border border-slate-200">
+                            <div class="w-32 h-32 rounded-xl bg-emerald-50 border-2 border-emerald-400 flex flex-col items-center justify-center shadow-sm relative">
+                                <span class="text-5xl">🐱</span>
+                                <div class="absolute inset-0 border border-dashed border-emerald-300 rounded-xl pointer-events-none"></div>
+                                <span class="text-[10px] text-emerald-800 font-mono font-bold mt-1">2D 網格張量</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (step === 2) {
+                box.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                        <div class="lg:col-span-7 space-y-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">第二步：局域感受野 (Receptive Field)</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800">第二步：小尺寸窗口（如 $3 \times 3$）滑動掃描</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                人類看貓時也是先聚焦在局部（如先看眼睛、看耳朵）。CNN 的卷積核（Kernel）以 $3 \times 3$ 的小方塊在圖像上滑動，只關注方寸之間的微小關聯。
+                            </p>
+                            <div class="p-2.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-700">
+                                <strong>💡 局部連接性：</strong>神經元不需要與全圖每一處連接，大幅縮減了參數總量。
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 flex flex-col items-center justify-center p-3 bg-white rounded-xl border border-slate-200">
+                            <div class="relative w-36 h-36 bg-slate-100 border border-slate-300 rounded-lg flex items-center justify-center overflow-hidden">
+                                <span class="text-5xl opacity-80">🐱</span>
+                                <div class="absolute w-12 h-12 border-2 border-emerald-500 bg-emerald-400/30 rounded flex items-center justify-center text-[10px] font-mono font-bold text-emerald-900 animate-pulse" style="top: 15px; left: 15px;">
+                                    3×3
+                                </div>
+                            </div>
+                            <span class="text-[10px] text-slate-400 mt-1.5">3×3 感受野滑窗巡邏</span>
+                        </div>
+                    </div>
+                `;
+            } else if (step === 3) {
+                box.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                        <div class="lg:col-span-7 space-y-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">第三步：卷積核點積與特徵圖 (Feature Map)</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800">第三步：利用濾波器提取鬍鬚線條與輪廓</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                卷積核內的數值與局部像素做點積（內積加總）。不同的濾波器能提取不同方向的線條（如貓咪細長的橫向鬍鬚、豎直的瞳孔、傾斜的尖耳斜邊）。
+                            </p>
+                            <div class="flex gap-2">
+                                <button onclick="setCnnFilterDemo('horizontal')" id="cnn-f-btn-h" class="py-1 px-2.5 text-xs font-bold rounded bg-emerald-600 text-white transition">水平鬍鬚濾波器</button>
+                                <button onclick="setCnnFilterDemo('edge')" id="cnn-f-btn-e" class="py-1 px-2.5 text-xs font-bold rounded bg-slate-200 text-slate-700 transition">尖耳斜邊濾波器</button>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 flex flex-col items-center justify-center p-3.5 bg-slate-900 text-white rounded-xl font-mono text-xs space-y-2 text-center">
+                            <span class="text-slate-400 text-[10px]">卷積核矩陣點積</span>
+                            <div class="p-2 bg-slate-800 rounded border border-slate-700 text-emerald-300 font-bold" id="cnn-filter-matrix">
+                                [-1, -1, -1]<br>[ 2,  2,  2]<br>[-1, -1, -1]
+                            </div>
+                            <span class="text-[10px] text-slate-400" id="cnn-filter-desc">強烈激活貓咪水平橫向鬍鬚！</span>
+                        </div>
+                    </div>
+                `;
+            } else if (step === 4) {
+                box.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                        <div class="lg:col-span-7 space-y-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">第四步：最大池化 (MaxPooling) 與平移不變性</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800">第四步：降採樣只留最強特徵——平移不變性的根基</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                $2 \times 2$ MaxPooling 在四格中只挑出最大值。這帶來了無比關鍵的<strong>「平移不變性」</strong>：貓耳朵即使往右位移了 2 個像素，池化後產生的特徵數值完全不變！
+                            </p>
+                            <div class="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-900">
+                                <strong>💡 破解吳恩達作業弱點：</strong>這就是為什麼 CNN 遇到「平移角落貓」依然能精準辨識的原因！
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 flex flex-col items-center justify-center p-3 bg-white rounded-xl border border-slate-200">
+                            <div class="flex items-center gap-2">
+                                <div class="grid grid-cols-2 gap-1 p-1.5 bg-slate-100 border border-slate-300 rounded text-center font-mono text-xs">
+                                    <div class="p-1.5 bg-white rounded">12</div>
+                                    <div class="p-1.5 bg-emerald-200 font-bold text-emerald-900 rounded">95</div>
+                                    <div class="p-1.5 bg-white rounded">34</div>
+                                    <div class="p-1.5 bg-white rounded">8</div>
+                                </div>
+                                <span class="text-emerald-600 font-bold text-sm">➔ Max ➔</span>
+                                <div class="w-12 h-12 bg-emerald-600 text-white font-bold rounded-lg flex items-center justify-center text-sm shadow-sm font-mono">
+                                    95
+                                </div>
+                            </div>
+                            <span class="text-[10px] text-slate-400 mt-1.5">2×2 區域提取最大激發值</span>
+                        </div>
+                    </div>
+                `;
+            } else if (step === 5) {
+                box.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                        <div class="lg:col-span-7 space-y-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">第五步：全連接層與 Softmax 監督式多分類</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800">第五步：標準監督式學習——ImageNet 預設標籤比對</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                CNN 的分類頭（Fully Connected Layers）將高階特徵整合，經由 Softmax 輸出如 <code>[貓: 96.8%, 狗: 2.1%, 虎斑: 1.1%]</code>。
+                            </p>
+                            <div class="p-2.5 bg-white border border-slate-200 rounded-lg text-xs space-y-1">
+                                <strong>🏷️ 監督式本質：</strong>依賴預先標註好的類別資料庫（如 ImageNet 1,000 類）。CNN <strong>無法辨識字典以外的未知事物</strong>。
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 flex flex-col justify-center p-3.5 bg-slate-900 text-white rounded-xl font-mono text-xs space-y-1.5">
+                            <span class="text-slate-400 text-[10px]">Softmax 監督式機率分佈</span>
+                            <div class="flex justify-between items-center text-emerald-400 font-bold">
+                                <span>1. 貓咪 (Cat):</span>
+                                <span>96.8%</span>
+                            </div>
+                            <div class="flex justify-between items-center text-slate-400">
+                                <span>2. 小狗 (Dog):</span>
+                                <span>2.1%</span>
+                            </div>
+                            <div class="flex justify-between items-center text-slate-500">
+                                <span>3. 老虎 (Tiger):</span>
+                                <span>1.1%</span>
+                            </div>
+                            <div class="pt-1.5 border-t border-slate-800 text-[10px] text-slate-400 font-sans">
+                                依據標籤 One-Hot 向量計算交叉熵損失進行反向傳播。
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            renderMath(box);
+        }
+
+        function nextCnnStep() { if (currentCnnStep < 5) renderCnnStep(currentCnnStep + 1); }
+        function prevCnnStep() { if (currentCnnStep > 1) renderCnnStep(currentCnnStep - 1); }
+        function goToCnnStep(s) { renderCnnStep(s); }
+
+        function setCnnFilterDemo(type) {
+            const btnH = document.getElementById('cnn-f-btn-h');
+            const btnE = document.getElementById('cnn-f-btn-e');
+            const m = document.getElementById('cnn-filter-matrix');
+            const d = document.getElementById('cnn-filter-desc');
+            if (type === 'horizontal') {
+                btnH.className = 'py-1 px-2.5 text-xs font-bold rounded bg-emerald-600 text-white transition';
+                btnE.className = 'py-1 px-2.5 text-xs font-bold rounded bg-slate-200 text-slate-700 transition';
+                m.innerHTML = '[-1, -1, -1]<br>[ 2,  2,  2]<br>[-1, -1, -1]';
+                d.innerText = '強烈激活貓咪水平橫向鬍鬚！';
+            } else {
+                btnH.className = 'py-1 px-2.5 text-xs font-bold rounded bg-slate-200 text-slate-700 transition';
+                btnE.className = 'py-1 px-2.5 text-xs font-bold rounded bg-emerald-600 text-white transition';
+                m.innerHTML = '[ 2, -1, -1]<br>[-1,  2, -1]<br>[-1, -1,  2]';
+                d.innerText = '強烈響應三角形尖耳與瞳孔邊緣！';
+            }
+        }
+
+        /* -------------------------------------------------------------
+           4. OPENAI CLIP 5-STEP CODE & INTERACTION
+        ------------------------------------------------------------- */
+        let currentClipStep = 1;
+        let autoPlayTimerClip = null;
+
+        function renderClipStep(step) {
+            currentClipStep = step;
+            document.getElementById('clip-step-badge').innerText = `步驟 ${step} / 5`;
+
+            for (let i = 1; i <= 5; i++) {
+                const btn = document.getElementById(`clip-step-btn-${i}`);
+                if (!btn) continue;
+                if (i === step) {
+                    btn.className = 'p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-purple-600 bg-purple-50 text-purple-700 transition flex flex-col items-center shadow-xs';
+                } else if (i < step) {
+                    btn.className = 'p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-purple-200 bg-white text-purple-600 hover:border-purple-300 transition flex flex-col items-center';
+                } else {
+                    btn.className = 'p-1.5 text-[10px] sm:text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition flex flex-col items-center';
+                }
+            }
+
+            const prevBtn = document.getElementById('clip-prev-btn');
+            const nextBtn = document.getElementById('clip-next-btn');
+            prevBtn.disabled = step === 1;
+            prevBtn.className = step === 1 ? 'px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed' : 'px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-700 hover:bg-slate-800 text-white cursor-pointer transition';
+            nextBtn.disabled = step === 5;
+            nextBtn.className = step === 5 ? 'px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed' : 'px-3 py-1.5 text-xs font-bold rounded-lg bg-purple-600 hover:bg-purple-700 text-white shadow-xs cursor-pointer transition';
+
+            const box = document.getElementById('clip-step-content-box');
+
+            if (step === 1) {
+                box.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                        <div class="lg:col-span-7 space-y-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">第一步：自然圖文對輸入 (無需人工標籤)</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800">第一步：網路上 4 億組「圖片 + 描述文本」自然配對</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                CLIP 徹底告別「人工將每張圖片貼上『這是貓』標籤」的繁重勞力。它直接從網路爬取成對的自然語言數據（如 IG 照片配上 "a cute cat on the sofa"）。
+                            </p>
+                            <div class="p-2.5 bg-purple-50 border border-purple-200 rounded-lg text-xs text-purple-900">
+                                <strong>⚡ 弱監督/對比學習本質：</strong>語言本身就是豐富的引導訊號，不再被單一整數類別 ID 拘束。
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 flex flex-col items-center justify-center p-3 bg-white rounded-xl border border-slate-200">
+                            <div class="p-2.5 bg-purple-50 border border-purple-300 rounded-lg space-y-1.5 text-center">
+                                <span class="text-4xl">🐱🛋️</span>
+                                <div class="text-[11px] font-mono text-purple-900 bg-white px-2 py-1 rounded border border-purple-200">
+                                    "a photo of a sleeping fluffy cat"
+                                </div>
+                            </div>
+                            <span class="text-[10px] text-slate-400 mt-1.5">自然語言文字與圖像共存配對</span>
+                        </div>
+                    </div>
+                `;
+            } else if (step === 2) {
+                box.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                        <div class="lg:col-span-7 space-y-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">第二步：雙塔編碼器提取特徵 (Dual Encoders)</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800">第二步：Vision Transformer 與 Text Transformer 各司其職</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                • <strong>影像編碼塔（ViT）：</strong>將貓圖切割為 $16 \times 16$ 的小圖片圖塊（Patches），利用自注意力機制捕捉全局特徵。<br>
+                                • <strong>文字編碼塔（Text Transformer）：</strong>將英文 Prompt 拆解為詞元（Tokens），提煉出高階語意。
+                            </p>
+                        </div>
+                        <div class="lg:col-span-5 flex items-center justify-center p-3 bg-white rounded-xl border border-slate-200">
+                            <div class="flex flex-col gap-2 w-full max-w-[200px] text-center text-xs font-bold">
+                                <div class="p-2 bg-indigo-100 text-indigo-900 rounded-lg border border-indigo-300">
+                                    📷 影像塔 (ViT)
+                                </div>
+                                <div class="text-purple-600 text-sm font-black">⇅ 投影至共同空間 ⇅</div>
+                                <div class="p-2 bg-purple-100 text-purple-900 rounded-lg border border-purple-300">
+                                    📝 文字塔 (Transformer)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (step === 3) {
+                box.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                        <div class="lg:col-span-7 space-y-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">第三步：投影至共同 512 維超球面 (Hypersphere)</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800">第三步：計算向量餘弦相似度 $\cos(\theta) = \frac{I \cdot T}{\|I\| \|T\|}$</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                兩座編碼塔將特徵向量正規化，投射到同一顆高維超球面上。只要影像內容與文字意思相同，它們的<strong>夾角 $\theta$ 就越小，餘弦相似度越接近 1.0</strong>！
+                            </p>
+                            <div class="p-2.5 bg-white border border-slate-200 rounded-lg text-xs space-y-1.5">
+                                <label class="font-bold text-slate-700 block">拖曳調節向量夾角 $\theta$，觀察語意相似度變化：</label>
+                                <div class="flex items-center gap-2.5">
+                                    <input type="range" min="0" max="90" step="5" value="12" id="clip-angle-slider" oninput="updateClipAngleDirect()" class="w-full accent-purple-600">
+                                    <span class="font-mono text-xs font-bold text-purple-600 w-16" id="clip-angle-slider-val">θ = 12°</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 flex flex-col items-center justify-center p-3.5 bg-slate-900 text-white rounded-xl font-mono text-xs space-y-2 text-center">
+                            <span class="text-slate-400 text-[10px]">超球面向量相似度</span>
+                            <div class="text-2xl font-black text-purple-400" id="clip-sim-display">0.978</div>
+                            <div class="px-2.5 py-0.5 rounded-full text-[11px] font-bold" id="clip-sim-badge" style="background:#4c1d95; color:#e9d5ff;">
+                                語意極度吻合！
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (step === 4) {
+                box.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                        <div class="lg:col-span-7 space-y-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">第四步：對比學習矩陣與 InfoNCE 損失</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800">第四步：對角線（正樣本）拉近，非對角線（負樣本）推開</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                在一個批次（Batch）內有 $N$ 張圖與 $N$ 句描述，形成 $N \times N$ 相似度矩陣。訓練目標就是讓<strong>對角線上的配對相似度極大化</strong>，同時把其他配對推遠。
+                            </p>
+                            <div class="p-2.5 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-700">
+                                損失函數: $\mathcal{L} = \text{InfoNCE}(\text{Image}, \text{Text})$
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 flex flex-col items-center justify-center p-3 bg-white rounded-xl border border-slate-200">
+                            <div class="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded border border-slate-300 font-mono text-[10px] text-center">
+                                <div class="p-1.5 bg-purple-600 text-white font-bold rounded">0.98</div>
+                                <div class="p-1.5 bg-white rounded">0.05</div>
+                                <div class="p-1.5 bg-white rounded">0.02</div>
+                                <div class="p-1.5 bg-white rounded">0.04</div>
+                                <div class="p-1.5 bg-purple-600 text-white font-bold rounded">0.96</div>
+                                <div class="p-1.5 bg-white rounded">0.01</div>
+                                <div class="p-1.5 bg-white rounded">0.02</div>
+                                <div class="p-1.5 bg-white rounded">0.03</div>
+                                <div class="p-1.5 bg-purple-600 text-white font-bold rounded">0.95</div>
+                            </div>
+                            <span class="text-[10px] text-slate-400 mt-1.5">對角線正樣本相似度最大化</span>
+                        </div>
+                    </div>
+                `;
+            } else if (step === 5) {
+                box.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                        <div class="lg:col-span-7 space-y-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">第五步：零樣本推論 (Zero-Shot Inference)</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800">第五步：隨意更換 Prompt 即可辨識任何事物</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                推理時<strong>完全不需要微調（Fine-tune）任何一個權重</strong>！輸入圖片，再給它幾個文字選項（例如 "a cat", "a dog", "a loaf of bread"），直接計算誰的餘弦夾角最小。
+                            </p>
+                            <div class="flex gap-2">
+                                <input type="text" id="clip-custom-prompt" value="a photo of a cute cat" class="flex-1 px-2.5 py-1 text-xs border border-slate-300 rounded-lg font-mono">
+                                <button onclick="testClipCustomPrompt()" class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg transition">即時比對</button>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 flex flex-col justify-center p-3.5 bg-slate-900 text-white rounded-xl font-mono text-xs space-y-2">
+                            <span class="text-slate-400 text-[10px]">Zero-Shot 餘弦匹配結果</span>
+                            <div class="space-y-1">
+                                <div class="flex justify-between items-center text-purple-300 font-bold">
+                                    <span id="clip-prompt-text-disp">"a photo of a cute cat"</span>
+                                    <span id="clip-prompt-score-disp">98.2%</span>
+                                </div>
+                                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                                    <div id="clip-prompt-bar-disp" class="bg-purple-500 h-2 rounded-full transition-all duration-300" style="width: 98.2%"></div>
+                                </div>
+                            </div>
+                            <span class="text-[10px] text-slate-400 font-sans">
+                                具備極致的泛化能力，通吃漫畫、插畫、母雞蹲吐司各種形體！
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }
+            renderMath(box);
+        }
+
+        function nextClipStep() { if (currentClipStep < 5) renderClipStep(currentClipStep + 1); }
+        function prevClipStep() { if (currentClipStep > 1) renderClipStep(currentClipStep - 1); }
+        function goToClipStep(s) { renderClipStep(s); }
+
+        function updateClipAngleDirect() {
+            const deg = parseFloat(document.getElementById('clip-angle-slider').value);
+            document.getElementById('clip-angle-slider-val').innerText = `θ = ${deg}°`;
+            const rad = deg * (Math.PI / 180);
+            const sim = Math.cos(rad);
+            document.getElementById('clip-sim-display').innerText = sim.toFixed(3);
+            const badge = document.getElementById('clip-sim-badge');
+            if (sim > 0.85) {
+                badge.style.background = '#4c1d95';
+                badge.style.color = '#e9d5ff';
+                badge.innerText = '語意極度吻合！';
+            } else if (sim > 0.5) {
+                badge.style.background = '#1e3a8a';
+                badge.style.color = '#bfdbfe';
+                badge.innerText = '部分語意關聯';
+            } else {
+                badge.style.background = '#334155';
+                badge.style.color = '#94a3b8';
+                badge.innerText = '無關或反向概念';
+            }
+        }
+
+        function testClipCustomPrompt() {
+            const val = document.getElementById('clip-custom-prompt').value.toLowerCase();
+            document.getElementById('clip-prompt-text-disp').innerText = `"${val}"`;
+            let score = 30;
+            if (val.includes('cat') || val.includes('kitten') || val.includes('fluffy')) score += 55;
+            if (val.includes('photo') || val.includes('cute')) score += 12;
+            if (val.includes('dog') || val.includes('car')) score = 8;
+            score = Math.min(99, Math.max(5, score));
+
+            document.getElementById('clip-prompt-score-disp').innerText = score.toFixed(1) + '%';
+            document.getElementById('clip-prompt-bar-disp').style.width = score + '%';
+        }
+
+        /* -------------------------------------------------------------
+           Pipelines Auto-Play Engine
+        ------------------------------------------------------------- */
+        function togglePipelineAutoPlay(algo) {
+            const colorClass = algo === 'brain' ? 'bg-indigo-600' : (algo === 'course' ? 'bg-blue-600' : (algo === 'cnn' ? 'bg-emerald-600' : 'bg-purple-600'));
+            
+            if (algo === 'brain') {
+                if (autoPlayTimerBrain) {
+                    clearInterval(autoPlayTimerBrain);
+                    autoPlayTimerBrain = null;
+                    resetAutoBtn(algo, colorClass);
+                    return;
+                }
+                setRunningAutoBtn(algo);
+                autoPlayTimerBrain = setInterval(() => {
+                    let next = currentBrainStep >= 5 ? 1 : currentBrainStep + 1;
+                    renderBrainStep(next);
+                }, 2600);
+            } else if (algo === 'course') {
+                if (autoPlayTimerCourse) {
+                    clearInterval(autoPlayTimerCourse);
+                    autoPlayTimerCourse = null;
+                    resetAutoBtn(algo, colorClass);
+                    return;
+                }
+                setRunningAutoBtn(algo);
+                autoPlayTimerCourse = setInterval(() => {
+                    let next = currentCourseStep >= 5 ? 1 : currentCourseStep + 1;
+                    renderCourseStep(next);
+                }, 2600);
+            } else if (algo === 'cnn') {
+                if (autoPlayTimerCnn) {
+                    clearInterval(autoPlayTimerCnn);
+                    autoPlayTimerCnn = null;
+                    resetAutoBtn(algo, colorClass);
+                    return;
+                }
+                setRunningAutoBtn(algo);
+                autoPlayTimerCnn = setInterval(() => {
+                    let next = currentCnnStep >= 5 ? 1 : currentCnnStep + 1;
+                    renderCnnStep(next);
+                }, 2600);
+            } else if (algo === 'clip') {
+                if (autoPlayTimerClip) {
+                    clearInterval(autoPlayTimerClip);
+                    autoPlayTimerClip = null;
+                    resetAutoBtn(algo, colorClass);
+                    return;
+                }
+                setRunningAutoBtn(algo);
+                autoPlayTimerClip = setInterval(() => {
+                    let next = currentClipStep >= 5 ? 1 : currentClipStep + 1;
+                    renderClipStep(next);
+                }, 2600);
+            }
+        }
+
+        function setRunningAutoBtn(algo) {
+            const btn = document.getElementById(`btn-auto-${algo}`);
+            const icon = document.getElementById(`icon-auto-${algo}`);
+            const text = document.getElementById(`text-auto-${algo}`);
+            btn.className = 'px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-full text-xs font-bold transition flex items-center gap-1 animate-pulse';
+            icon.innerText = '⏸️';
+            text.innerText = '暫停步進';
+        }
+
+        function resetAutoBtn(algo, colorClass) {
+            const btn = document.getElementById(`btn-auto-${algo}`);
+            const icon = document.getElementById(`icon-auto-${algo}`);
+            const text = document.getElementById(`text-auto-${algo}`);
+            btn.className = `px-2.5 py-1 ${colorClass} text-white rounded-full text-xs font-bold transition flex items-center gap-1`;
+            icon.innerText = '▶️';
+            text.innerText = '自動運行步進';
+        }
+
+        /* -------------------------------------------------------------
+           Grand Master Tour & Sandbox Auto-Play
+        ------------------------------------------------------------- */
+        let grandTourTimer = null;
+        let grandTourActive = false;
+        const sampleOrder = ['normal', 'shifted', 'loaf', 'cartoon'];
+        let currentSampleIdx = 0;
+        let sandboxAutoTimer = null;
+
+        function toggleGrandMasterAutoPlay() {
+            const btn = document.getElementById('btn-grand-tour');
+            const icon = document.getElementById('grand-tour-icon');
+            const text = document.getElementById('grand-tour-text');
+
+            if (grandTourActive) {
+                clearInterval(grandTourTimer);
+                grandTourTimer = null;
+                grandTourActive = false;
+                btn.className = 'px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white text-xs font-bold transition shadow flex items-center gap-1';
+                icon.innerText = '⚡';
+                text.innerText = '全自動巡航導覽';
+            } else {
+                grandTourActive = true;
+                btn.className = 'px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow flex items-center gap-1 animate-pulse';
+                icon.innerText = '⏸️';
+                text.innerText = '暫停巡航';
+
+                let currentTourStage = 0;
+                grandTourTimer = setInterval(() => {
+                    if (currentTourStage <= 3) {
+                        selectSample(sampleOrder[currentTourStage]);
+                    } else if (currentTourStage >= 4 && currentTourStage <= 8) {
+                        switchTab('brain');
+                        renderBrainStep(currentTourStage - 3);
+                        scrollToPanel('panel-main-interactive');
+                    } else if (currentTourStage >= 9 && currentTourStage <= 13) {
+                        switchTab('course');
+                        renderCourseStep(currentTourStage - 8);
+                        scrollToPanel('panel-main-interactive');
+                    } else if (currentTourStage >= 14 && currentTourStage <= 18) {
+                        switchTab('cnn');
+                        renderCnnStep(currentTourStage - 13);
+                        scrollToPanel('panel-main-interactive');
+                    } else if (currentTourStage >= 19 && currentTourStage <= 23) {
+                        switchTab('clip');
+                        renderClipStep(currentTourStage - 18);
+                        scrollToPanel('panel-main-interactive');
+                    }
+
+                    currentTourStage++;
+                    if (currentTourStage > 23) currentTourStage = 0;
+                }, 2600);
+            }
+        }
+
+        function toggleSandboxAutoPlay() {
+            const btn = document.getElementById('btn-sandbox-auto');
+            const icon = document.getElementById('icon-sandbox-auto');
+            const text = document.getElementById('text-sandbox-auto');
+
+            if (sandboxAutoTimer) {
+                clearInterval(sandboxAutoTimer);
+                sandboxAutoTimer = null;
+                btn.className = 'px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1';
+                icon.innerText = '▶️';
+                text.innerText = '自動切換情境';
+            } else {
+                btn.className = 'px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition flex items-center gap-1 animate-pulse';
+                icon.innerText = '⏸️';
+                text.innerText = '暫停巡航';
+
+                sandboxAutoTimer = setInterval(() => {
+                    currentSampleIdx = (currentSampleIdx + 1) % sampleOrder.length;
+                    selectSample(sampleOrder[currentSampleIdx]);
+                }, 2600);
+            }
+        }
+
+        /* Sandbox Sample Data */
+        const sampleData = {
+            normal: {
+                brain: { score: '0.962 放電', bar: '96.2%', diag: '<strong>判斷分析：</strong>無監督貓神經元產生 0.962 強烈電位響應，正中央典型貓臉激發最強。' },
+                course: { score: '88.5% 置信', bar: '88.5%', diag: '<strong>判斷分析：</strong>因貓咪處於正中央，像素坐標與權重矩陣 $W$ 的亮暗點重合，啟動值 $\\sigma(w^T x + b)$ 高，成功判定為貓。' },
+                cnn: { score: '96.8% 置信', bar: '96.8%', diag: '<strong>判斷分析：</strong>底層捕捉鬍鬚紋理，中高層特徵圖組裝三角尖耳與眼鼻幾何結構。位移完全不影響分類。' },
+                clip: { score: '98.2% 相似', bar: '98.2%', diag: '<strong>判斷分析：</strong>自注意力機制捕捉全局抽象語意，就算變成漫畫線條或吐司蹲姿，仍能辨識出核心概念。' }
+            },
+            shifted: {
+                brain: { score: '0.620 放電', bar: '62.0%', diag: '<strong>響應稍降：</strong>具備一定層級池化不變性，但位移到角落導致重構響應略微衰退。' },
+                course: { score: '24.1% 誤判', bar: '24.1%', diag: '<strong>⚠️ 預測失敗！</strong>貓咪位置平移到右上角，原本對應耳朵和眼睛的矩陣權重落空在空白背景上，輸出值低於門檻，誤判為「非貓」。' },
+                cnn: { score: '94.2% 置信', bar: '94.2%', diag: '<strong>判斷分析：</strong>卷積核滑動過整個圖片空間，權重共享機制與 MaxPooling 保留了相對幾何結構，平移不影響分類。' },
+                clip: { score: '97.5% 相似', bar: '97.5%', diag: '<strong>判斷分析：</strong>自注意力機制 (Self-Attention) 連結全局資訊，即便是局部裁切依然能準確鎖定貓咪核心語意。' }
+            },
+            loaf: {
+                brain: { score: '0.710 放電', bar: '71.0%', diag: '<strong>中度放電：</strong>神經元對貓耳與臉部輪廓維持激發，但對無四肢形體產生部分抑制。' },
+                course: { score: '42.0% 存疑', bar: '42.0%', diag: '<strong>判斷失敗：</strong>四肢收縮成一團，外觀長寬比例改變，像素特徵和訓練集標準坐標不符。' },
+                cnn: { score: '78.5% 置信', bar: '78.5%', diag: '<strong>判斷尚可：</strong>雖然整體輪廓神似吐司，但毛皮細節與隱約露出的雙耳特徵激活了貓的特定通道。' },
+                clip: { score: '96.4% 相似', bar: '96.4%', diag: '<strong>判斷分析：</strong>CLIP 具備高維網路語意！若以 "a cat sitting like a loaf of bread" 比對，能達成極高相似度。' }
+            },
+            cartoon: {
+                brain: { score: '0.280 放電', bar: '28.0%', diag: '<strong>低度響應：</strong>Google Brain 僅看過自然真實 YouTube 影片，對卡通色塊線條的自編碼重建損失較大。' },
+                course: { score: '15.3% 誤判', bar: '15.3%', diag: '<strong>⚠️ 徹底誤判：</strong>色塊分佈與真實攝影照片完全不同，像素值落差過大，完全失去辨識能力。' },
+                cnn: { score: '56.1% 勉強', bar: '56.1%', diag: '<strong>信心度大幅下滑：</strong>若未曾在動漫/繪圖風格資料集微調，自然圖像訓練的卷積核反應有限。' },
+                clip: { score: '94.9% 相似', bar: '94.9%', diag: '<strong>依然游刃有餘：</strong>CLIP 在網路預訓練中接觸過海量二次元、插畫與漫畫圖文對，輕鬆理解抽象貓咪概念。' }
+            }
+        };
+
+        function selectSample(type) {
+            document.querySelectorAll('.sample-btn').forEach(btn => {
+                btn.className = 'sample-btn border-2 border-slate-200 hover:border-slate-300 rounded-xl p-3 text-left transition';
+            });
+            const activeBtn = document.getElementById(`btn-${type}`);
+            if (activeBtn) {
+                activeBtn.className = 'sample-btn border-2 border-indigo-500 bg-indigo-50/80 rounded-xl p-3 text-left transition';
+            }
+
+            const d = sampleData[type];
+            document.getElementById('score-brain').innerText = d.brain.score;
+            document.getElementById('bar-brain').style.width = d.brain.bar;
+            document.getElementById('diag-brain').innerHTML = d.brain.diag;
+
+            document.getElementById('score-course').innerText = d.course.score;
+            document.getElementById('bar-course').style.width = d.course.bar;
+            document.getElementById('diag-course').innerHTML = d.course.diag;
+
+            document.getElementById('score-cnn').innerText = d.cnn.score;
+            document.getElementById('bar-cnn').style.width = d.cnn.bar;
+            document.getElementById('diag-cnn').innerHTML = d.cnn.diag;
+
+            document.getElementById('score-clip').innerText = d.clip.score;
+            document.getElementById('bar-clip').style.width = d.clip.bar;
+            document.getElementById('diag-clip').innerHTML = d.clip.diag;
+
+            renderMath(document.getElementById('diag-brain'));
+            renderMath(document.getElementById('diag-course'));
+            renderMath(document.getElementById('diag-cnn'));
+            renderMath(document.getElementById('diag-clip'));
+        }
+
+        /* -------------------------------------------------------------
+           Initialization on Load
+        ------------------------------------------------------------- */
+        window.onload = function() {
+            renderMath(document.body);
+            renderBrainStep(1);
+            renderCourseStep(1);
+            renderCnnStep(1);
+            renderClipStep(1);
+
+            // Radar Chart Init
+            const canvas = document.getElementById('radarChart');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: [
+                            '平移不變性', 
+                            '零樣本推理', 
+                            '無標籤適應力', 
+                            '風格轉換抗性', 
+                            '空間特徵理解'
+                        ],
+                        datasets: [
+                            {
+                                label: '1. Google Brain 論文',
+                                data: [60, 5, 98, 30, 75],
+                                borderColor: 'rgba(79, 70, 229, 0.9)',
+                                backgroundColor: 'rgba(79, 70, 229, 0.15)',
+                                borderWidth: 2,
+                                pointRadius: 3
+                            },
+                            {
+                                label: '2. 吳恩達作業範例',
+                                data: [15, 5, 10, 10, 10],
+                                borderColor: 'rgba(37, 99, 235, 0.9)',
+                                backgroundColor: 'rgba(37, 99, 235, 0.15)',
+                                borderWidth: 2,
+                                pointRadius: 3
+                            },
+                            {
+                                label: '3. CNN 卷積網路',
+                                data: [92, 20, 25, 65, 95],
+                                borderColor: 'rgba(5, 150, 105, 0.9)',
+                                backgroundColor: 'rgba(5, 150, 105, 0.15)',
+                                borderWidth: 2,
+                                pointRadius: 3
+                            },
+                            {
+                                label: '4. OpenAI CLIP',
+                                data: [95, 98, 92, 94, 90],
+                                borderColor: 'rgba(124, 58, 237, 0.9)',
+                                backgroundColor: 'rgba(124, 58, 237, 0.15)',
+                                borderWidth: 2,
+                                pointRadius: 3
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            r: {
+                                angleLines: { color: 'rgba(0,0,0,0.06)' },
+                                grid: { color: 'rgba(0,0,0,0.06)' },
+                                suggestedMin: 0,
+                                suggestedMax: 100,
+                                ticks: { display: false }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    boxWidth: 10,
+                                    font: { size: 10 }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        };
+    </script>
+</body>
+</html>

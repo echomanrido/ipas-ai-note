@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>為什麼分類訓練不能用 MSE？3D 互動視覺化教學</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <!-- Three.js & OrbitControls for 3D simulation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0fdfa',
+              500: '#14b8a6',
+              600: '#0d9488',
+              900: '#134e4a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom scrollbar and glow animations */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    .glow-cyan { box-shadow: 0 0 25px rgba(20, 184, 166, 0.35); }
+    .glow-amber { box-shadow: 0 0 25px rgba(245, 158, 11, 0.35); }
+  </style>
+</head>
+
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen selection:bg-teal-500 selection:text-white">
+
+  <!-- Top Navigation -->
+  <header class="border-b border-slate-800/80 sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-teal-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-teal-500/20">
+          <svg class="w-5 h-5 text-slate-950 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </div>
+        <div>
+          <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-teal-300 bg-clip-text text-transparent">AI 核心觀念實驗室</span>
+          <span class="hidden sm:inline-block text-xs text-teal-400 bg-teal-950/80 border border-teal-800/60 px-2 py-0.5 rounded-full ml-2">互動圖解篇</span>
+        </div>
+      </div>
+      <nav class="flex items-center space-x-4 text-sm font-medium">
+        <a href="#simulator" class="text-slate-300 hover:text-teal-400 transition">3D 滾球實驗</a>
+        <a href="#morph-walkthrough" class="text-amber-300 hover:text-amber-200 transition font-semibold">✨ 動畫拉平解析</a>
+        <a href="#math-intuition" class="text-slate-300 hover:text-teal-400 transition">數學直覺</a>
+        <a href="#comparison" class="text-slate-300 hover:text-teal-400 transition">核心對比</a>
+        <a href="#quiz" class="px-3 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold transition shadow-sm">測驗</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="relative pt-12 pb-8 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center">
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-teal-500/10 border border-teal-500/20 text-teal-400 mb-6">
+      <span class="inline-block w-2 h-2 rounded-full bg-teal-400 animate-ping"></span>
+      StanCode 精彩觀點深度拆解
+    </div>
+    <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
+      為什麼做分類訓練不能用 <span class="bg-gradient-to-r from-red-400 via-rose-300 to-amber-400 bg-clip-text text-transparent">MSE</span>？
+    </h1>
+    <p class="mt-5 text-base sm:text-lg text-slate-400 max-w-3xl mx-auto leading-relaxed">
+      想像訓練 AI 就像讓一顆球順著坡度滾進山谷底。用錯損失函數，平滑好優化的「碗公」就會變成處處是陷阱的「雞蛋盒」！親手操作下方 3D 地形，親眼見證梯度下降的收斂奧秘。
+    </p>
+  </section>
+
+  <!-- Main 3D Simulator Section -->
+  <section id="simulator" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div class="bg-slate-900/90 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl p-4 sm:p-6 lg:p-8">
+      
+      <!-- Control Bar Header -->
+      <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <h2 class="text-xl sm:text-2xl font-bold text-white">3D 損失曲面與梯度下降模擬</h2>
+            <span id="terrainBadge" class="text-xs px-2.5 py-1 rounded-md font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+              凸函數 (Convex)
+            </span>
+          </div>
+          <p class="text-sm text-slate-400 mt-1">
+            拖曳旋轉視角、滑輪縮放。點擊「釋放小球」觀察梯度下降（Gradient Descent）的滾動路徑！
+          </p>
+        </div>
+
+        <!-- Mode Toggle Switcher -->
+        <div class="flex p-1 bg-slate-950 rounded-2xl border border-slate-800 w-full sm:w-auto self-stretch sm:self-auto">
+          <button id="btnCrossEntropy" class="flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 bg-teal-500 text-slate-950 shadow-md">
+            🥣 Cross-Entropy (碗公地形)
+          </button>
+          <button id="btnMSE" class="flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 text-slate-400 hover:text-white">
+            🥚 MSE 平方誤差 (雞蛋盒地形)
+          </button>
+        </div>
+      </div>
+
+      <!-- NEW: Step-by-Step Animated Morphing Theater Toolbar -->
+      <div id="morph-walkthrough" class="mt-5 p-4 rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border border-amber-500/30 shadow-lg">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">
+              動畫特輯
+            </span>
+            <h3 class="text-sm sm:text-base font-bold text-white flex items-center gap-1.5">
+              <span>🪄「把雞蛋盒拉平成碗公」4 步動畫拆解</span>
+            </h3>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btnAutoMorph" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-xs font-bold transition shadow-md flex items-center gap-1.5 active:scale-95">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+              <span>▶ 連續播放拉平動畫</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 Steps Interactive Tabs -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 pt-3">
+          <button onclick="jumpToMorphStep(0)" id="stepBtn0" class="morph-step-btn text-left p-2.5 rounded-xl border border-rose-500/40 bg-rose-950/20 hover:bg-rose-950/40 transition">
+            <div class="text-[11px] font-bold text-rose-400">步驟 1 (0%)</div>
+            <div class="text-xs font-semibold text-white mt-0.5">🥚 雞蛋盒陷阱</div>
+            <div class="text-[11px] text-slate-400 mt-1 leading-snug">坑窪密布，小球卡在半山腰局部極小值</div>
+          </button>
+
+          <button onclick="jumpToMorphStep(1)" id="stepBtn1" class="morph-step-btn text-left p-2.5 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-800/40 transition">
+            <div class="text-[11px] font-bold text-amber-400">步驟 2 (35%)</div>
+            <div class="text-xs font-semibold text-white mt-0.5">📐 施加對數張力</div>
+            <div class="text-[11px] text-slate-400 mt-1 leading-snug">引入 -log(ŷ)，邊緣翹起建立強烈下滑坡度</div>
+          </button>
+
+          <button onclick="jumpToMorphStep(2)" id="stepBtn2" class="morph-step-btn text-left p-2.5 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-800/40 transition">
+            <div class="text-[11px] font-bold text-teal-400">步驟 3 (70%)</div>
+            <div class="text-xs font-semibold text-white mt-0.5">⚡ 消除波紋漣漪</div>
+            <div class="text-[11px] text-slate-400 mt-1 leading-snug">微積分抵消 ŷ(1-ŷ)，偽坑洞與死胡同被抹平</div>
+          </button>
+
+          <button onclick="jumpToMorphStep(3)" id="stepBtn3" class="morph-step-btn text-left p-2.5 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-800/40 transition">
+            <div class="text-[11px] font-bold text-emerald-400">步驟 4 (100%)</div>
+            <div class="text-xs font-semibold text-white mt-0.5">🥣 蛻變平滑碗公</div>
+            <div class="text-[11px] text-slate-400 mt-1 leading-snug">凸函數（Convex）達成！小球順暢直達谷底</div>
+          </button>
+        </div>
+
+        <!-- Morph Manual Scrub Slider -->
+        <div class="mt-3 pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row items-center gap-3">
+          <span class="text-xs font-medium text-slate-400 shrink-0">自由手動拖曳變形進度：</span>
+          <div class="flex-1 w-full flex items-center gap-2.5">
+            <span class="text-xs text-rose-400 font-mono">0% (MSE)</span>
+            <input id="morphSlider" type="range" min="0" max="1" step="0.01" value="1.0" class="flex-1 h-2 accent-amber-400 bg-slate-800 rounded-lg cursor-pointer">
+            <span class="text-xs text-teal-400 font-mono">100% (CE)</span>
+          </div>
+          <span id="morphPercentageLabel" class="text-xs font-mono font-bold text-amber-300 px-2 py-0.5 rounded bg-slate-950 border border-slate-800 shrink-0">
+            100% (碗公)
+          </span>
+        </div>
+      </div>
+
+      <!-- Canvas Area + Floating HUD -->
+      <div class="relative w-full h-[460px] sm:h-[540px] rounded-2xl overflow-hidden bg-slate-950 my-6 border border-slate-800/80">
+        <!-- Three.js Canvas Container -->
+        <div id="threeContainer" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+
+        <!-- Top-Left Floating Status Overlay -->
+        <div class="absolute top-4 left-4 bg-slate-900/85 backdrop-blur-md border border-slate-700/60 rounded-xl p-3 sm:p-4 text-xs sm:text-sm max-w-[260px] sm:max-w-xs pointer-events-none shadow-xl">
+          <div class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">即時狀態監控</div>
+          <div class="flex justify-between items-center py-0.5">
+            <span class="text-slate-400">當前地形：</span>
+            <span id="hudTerrainName" class="font-bold text-teal-400">平滑碗公 (Convex)</span>
+          </div>
+          <div class="flex justify-between items-center py-0.5">
+            <span class="text-slate-400">形變拉平進度：</span>
+            <span id="hudMorphVal" class="font-mono font-bold text-amber-400">100% (完全拉平)</span>
+          </div>
+          <div class="flex justify-between items-center py-0.5">
+            <span class="text-slate-400">當前 Loss (高度)：</span>
+            <span id="hudLossVal" class="font-mono font-bold text-amber-300">0.00</span>
+          </div>
+          <div class="flex justify-between items-center py-0.5">
+            <span class="text-slate-400">梯度強度 |∇L|：</span>
+            <span id="hudGradVal" class="font-mono font-bold text-slate-200">0.00</span>
+          </div>
+          <div class="flex justify-between items-center py-0.5">
+            <span class="text-slate-400">小球狀態：</span>
+            <span id="hudStatus" class="font-medium text-emerald-400">準備就緒</span>
+          </div>
+        </div>
+
+        <!-- Bottom Legend -->
+        <div class="absolute bottom-4 left-4 right-4 sm:right-auto flex flex-wrap gap-2 pointer-events-none">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs bg-slate-900/80 border border-slate-700/60 backdrop-blur-sm text-slate-300">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm"></span> 🌟 全域最佳解 (Global Minimum)
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs bg-slate-900/80 border border-slate-700/60 backdrop-blur-sm text-slate-300">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm"></span> ⚠️ 局部死胡同 (Local Minima)
+          </span>
+        </div>
+      </div>
+
+      <!-- Interactive Buttons and Sliders -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+        <button id="btnDropBall" class="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-bold text-sm shadow-lg shadow-teal-500/20 active:scale-95 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          隨機投放小球並滾動
+        </button>
+
+        <button id="btnReset" class="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm border border-slate-700 active:scale-95 transition">
+          <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.03 8.03 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          重置小球軌跡
+        </button>
+
+        <div class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 flex flex-col justify-center">
+          <div class="flex justify-between text-xs text-slate-400 mb-1">
+            <span>學習率 (Learning Rate η)</span>
+            <span id="lrDisplay" class="font-mono text-teal-400 font-bold">0.05</span>
+          </div>
+          <input id="lrSlider" type="range" min="0.01" max="0.15" step="0.01" value="0.05" class="accent-teal-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg">
+        </div>
+
+        <div class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 flex flex-col justify-center">
+          <div class="flex justify-between text-xs text-slate-400 mb-1">
+            <span>地形崎嶇度 (Ruggedness)</span>
+            <span id="roughDisplay" class="font-mono text-amber-400 font-bold">1.0x</span>
+          </div>
+          <input id="roughSlider" type="range" min="0.5" max="2.0" step="0.1" value="1.0" class="accent-amber-400 cursor-pointer h-1.5 bg-slate-800 rounded-lg">
+        </div>
+      </div>
+
+      <!-- Explanatory Alert Box based on current mode -->
+      <div id="terrainExplanation" class="mt-6 p-4 rounded-2xl bg-teal-950/40 border border-teal-800/40 flex items-start gap-3.5">
+        <div class="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-300 flex items-center justify-center shrink-0 mt-0.5">
+          💡
+        </div>
+        <div class="text-sm text-slate-300 leading-relaxed">
+          <strong class="text-teal-300">為什麼碗公地形最好優化？</strong><br>
+          Cross-Entropy 與 Softmax/Sigmoid 組合後，在數學上保有<strong>凸函數（Convex）</strong>的良好性質。整個曲面只有一個全域最低點（金色星星處），不管小球隨機從哪個山坡起跑，沿著斜率往下滾都會100%安全抵達最優解！
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Mathematical Intuition Section -->
+  <section id="math-intuition" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="text-center max-w-3xl mx-auto mb-10">
+      <span class="text-xs uppercase tracking-widest text-teal-400 font-bold">Deep Dive Into Math</span>
+      <h2 class="text-2xl sm:text-4xl font-extrabold text-white mt-1">為什麼 MSE 會導致「雞蛋盒」與「梯度卡死」？</h2>
+      <p class="text-slate-400 mt-3 text-sm sm:text-base">
+        分類任務輸出的是 0 到 1 的機率值（經過 Sigmoid / Softmax）。當你把這個機率硬塞進 MSE，微分時的致命陷阱就出現了。
+      </p>
+    </div>
+
+    <!-- 2 Column Formula & Interactive Slider Card -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+      
+      <!-- Left: Formula Breakdown -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between space-y-6">
+        <div>
+          <h3 class="text-lg font-bold text-white flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> 方案 A：MSE + Sigmoid（災難製造者）
+          </h3>
+          <p class="text-sm text-slate-400 mt-2">
+            損失函數：<code class="text-rose-300 bg-rose-950/60 px-2 py-0.5 rounded">L = ½(ŷ - y)²</code>，其中 <code class="text-teal-300 bg-slate-950 px-2 py-0.5 rounded">ŷ = σ(z)</code>
+          </p>
+          <div class="mt-4 p-4 rounded-xl bg-slate-950 border border-slate-800 text-sm font-mono text-slate-200 space-y-2">
+            <div class="text-slate-400 text-xs">// 透過鏈鎖律（Chain Rule）求權重梯度：</div>
+            <div class="text-rose-400 font-semibold">∂L/∂w = (ŷ - y) · σ'(z) · x</div>
+            <div class="text-amber-300">∂L/∂w = (ŷ - y) · <span class="underline decoration-wavy decoration-red-500">ŷ(1 - ŷ)</span> · x</div>
+          </div>
+          <div class="mt-4 text-xs sm:text-sm text-slate-400 leading-relaxed">
+            ⚠️ <strong>致命缺點：</strong>當 AI 猜得「大錯特錯」（例如真實標籤 <code class="text-teal-400">y = 1</code>，但模型剛好預測 <code class="text-rose-400">ŷ ≈ 0.001</code>），項次 <code class="text-amber-300">ŷ(1 - ŷ) ≈ 0</code>！導致<strong>梯度直接趨近於 0（梯度飽和/消失）</strong>。斜率平坦，AI 根本不知道該往哪裡修正！
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-slate-800">
+          <h3 class="text-lg font-bold text-white flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-teal-400"></span> 方案 B：Cross-Entropy（天生一對）
+          </h3>
+          <div class="mt-3 p-4 rounded-xl bg-slate-950 border border-slate-800 text-sm font-mono text-slate-200">
+            <div class="text-teal-400 font-semibold">∂L/∂w = (ŷ - y) · x</div>
+          </div>
+          <p class="mt-3 text-xs sm:text-sm text-slate-400 leading-relaxed">
+            ✨ <strong>完美拉平：</strong>Cross-Entropy 的導數完美抵銷了 Sigmoid 的微小斜率！誤差越大（<code class="text-teal-400">|ŷ - y|</code> 越大），推動力道越大，訓練快速且不會卡死在平原。
+          </p>
+        </div>
+      </div>
+
+      <!-- Right: Interactive Dynamic Gradient Comparison Tester -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-bold text-white">梯度強度即時試驗台</h3>
+            <span class="text-xs bg-slate-800 px-2 py-1 rounded text-slate-300">設定真實值 y = 1 (正樣本)</span>
+          </div>
+          <p class="text-sm text-slate-400 mt-1">
+            拖曳滑桿改變 AI 當前預測的機率 ŷ，觀察兩者梯度推動力的劇烈差距！
+          </p>
+
+          <!-- Probability Slider -->
+          <div class="mt-6 p-4 rounded-xl bg-slate-950 border border-slate-800">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-xs text-slate-400 font-medium">模型預測機率 (ŷ)</span>
+              <span id="predProbDisplay" class="font-mono text-base font-extrabold text-teal-400">0.05 (嚴重猜錯)</span>
+            </div>
+            <input id="probSlider" type="range" min="0.01" max="0.99" step="0.01" value="0.05" class="w-full accent-teal-400 cursor-pointer h-2 bg-slate-800 rounded-lg">
+            <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+              <span>0.01 (猜錯)</span>
+              <span>0.50 (模糊)</span>
+              <span>0.99 (猜對)</span>
+            </div>
+          </div>
+
+          <!-- Real-time Comparison Gauges -->
+          <div class="mt-6 space-y-4">
+            <!-- MSE Gradient Bar -->
+            <div class="p-4 rounded-xl bg-rose-950/20 border border-rose-900/40">
+              <div class="flex justify-between items-center text-xs mb-1.5">
+                <span class="font-bold text-rose-300 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-rose-500"></span> MSE 梯度推動力 |∂L/∂w|
+                </span>
+                <span id="mseGradValue" class="font-mono font-bold text-rose-400 text-sm">0.045</span>
+              </div>
+              <div class="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800">
+                <div id="mseGradBar" class="h-full bg-gradient-to-r from-rose-600 to-rose-400 transition-all duration-150" style="width: 4.5%"></div>
+              </div>
+              <p id="mseWarningText" class="text-[11px] text-rose-300/80 mt-1.5">
+                ⚠️ 預測大錯特錯，但梯度卻近乎歸零！更新完全凍結。
+              </p>
+            </div>
+
+            <!-- Cross-Entropy Gradient Bar -->
+            <div class="p-4 rounded-xl bg-teal-950/20 border border-teal-900/40">
+              <div class="flex justify-between items-center text-xs mb-1.5">
+                <span class="font-bold text-teal-300 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-teal-400"></span> Cross-Entropy 梯度推動力 |∂L/∂w|
+                </span>
+                <span id="ceGradValue" class="font-mono font-bold text-teal-400 text-sm">0.950</span>
+              </div>
+              <div class="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800">
+                <div id="ceGradBar" class="h-full bg-gradient-to-r from-teal-500 to-emerald-400 transition-all duration-150" style="width: 95%"></div>
+              </div>
+              <p id="ceGoodText" class="text-[11px] text-teal-300/80 mt-1.5">
+                ✅ 誤差極大時產生極強推進梯度，球飛速向正確方向滾動！
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 text-xs text-slate-400 text-center bg-slate-950/60 py-2.5 px-3 rounded-xl border border-slate-800/80">
+          💡 這就是為什麼在深度神經網路中，分類任務必須搭配 Cross-Entropy！
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Comparison Matrix Table -->
+  <section id="comparison" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8">
+      <h2 class="text-xl sm:text-2xl font-bold text-white mb-6 flex items-center gap-2.5">
+        <span>📊</span> 核心特性對決：MSE vs. 交叉熵 (Cross-Entropy)
+      </h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-slate-800 text-slate-400">
+              <th class="py-3 px-4 font-semibold">比較維度</th>
+              <th class="py-3 px-4 font-semibold text-rose-300">MSE (均方誤差)</th>
+              <th class="py-3 px-4 font-semibold text-teal-300">Cross-Entropy (交叉熵)</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/60 text-slate-300">
+            <tr class="hover:bg-slate-800/30 transition">
+              <td class="py-3.5 px-4 font-medium text-white">適用場景</td>
+              <td class="py-3.5 px-4">迴歸問題（預測房價、溫度等連續數值）</td>
+              <td class="py-3.5 px-4 text-teal-300 font-semibold">分類問題（垃圾郵件、圖片辨識、NLP）</td>
+            </tr>
+            <tr class="hover:bg-slate-800/30 transition">
+              <td class="py-3.5 px-4 font-medium text-white">損失函數地形</td>
+              <td class="py-3.5 px-4">
+                <span class="inline-flex items-center gap-1 text-rose-400">
+                  <span class="w-2 h-2 rounded-full bg-rose-500"></span> 坑坑洞洞的雞蛋盒 (Non-Convex)
+                </span>
+              </td>
+              <td class="py-3.5 px-4">
+                <span class="inline-flex items-center gap-1 text-emerald-400">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400"></span> 唯一下坡的平滑碗公 (Convex)
+                </span>
+              </td>
+            </tr>
+            <tr class="hover:bg-slate-800/30 transition">
+              <td class="py-3.5 px-4 font-medium text-white">最佳化難度</td>
+              <td class="py-3.5 px-4 text-slate-400">極易被困在多個局部極小值（Local Minima），靠運氣收斂</td>
+              <td class="py-3.5 px-4 text-emerald-300 font-medium">保證每次訓練都能滾到相同的全域最佳解</td>
+            </tr>
+            <tr class="hover:bg-slate-800/30 transition">
+              <td class="py-3.5 px-4 font-medium text-white">當模型嚴重猜錯時</td>
+              <td class="py-3.5 px-4 text-rose-400 font-mono text-xs">梯度消失 (Gradient Vanishing) 卡在平原</td>
+              <td class="py-3.5 px-4 text-teal-400 font-mono text-xs">梯度極大，給予強烈懲罰並快速修正</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Quiz Section -->
+  <section id="quiz" class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pb-20">
+    <div class="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <span class="text-xs font-bold text-teal-400 tracking-wider uppercase">自我檢測</span>
+          <h2 class="text-xl sm:text-2xl font-bold text-white">觀念挑戰：你真的搞懂了嗎？</h2>
+        </div>
+        <div id="quizScoreBadge" class="text-xs px-3 py-1 rounded-full bg-slate-800 text-slate-300 font-semibold border border-slate-700">
+          完成度：<span id="quizScore">0</span> / 3
+        </div>
+      </div>
+
+      <div class="space-y-6">
+        <!-- Question 1 -->
+        <div class="p-5 rounded-2xl bg-slate-900/60 border border-slate-800">
+          <p class="font-semibold text-white text-sm sm:text-base">
+            1. 影片中比喻的「雞蛋盒地形」在數學上被稱為什麼？
+          </p>
+          <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs sm:text-sm">
+            <button onclick="handleQuiz(1, 'A', false, this)" class="quiz-btn text-left p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 transition">
+              A. 凸函數 (Convex Function)
+            </button>
+            <button onclick="handleQuiz(1, 'B', true, this)" class="quiz-btn text-left p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 transition">
+              B. 非凸函數 (Non-Convex Function)
+            </button>
+            <button onclick="handleQuiz(1, 'C', false, this)" class="quiz-btn text-left p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 transition">
+              C. 線性函數 (Linear Function)
+            </button>
+            <button onclick="handleQuiz(1, 'D', false, this)" class="quiz-btn text-left p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 transition">
+              D. 二次函數 (Quadratic Function)
+            </button>
+          </div>
+          <div id="quizFeedback1" class="hidden mt-3 text-xs p-3 rounded-lg"></div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="p-5 rounded-2xl bg-slate-900/60 border border-slate-800">
+          <p class="font-semibold text-white text-sm sm:text-base">
+            2. 當我們在分類模型中使用 MSE，模型嚴重猜錯時會發生什麼災難？
+          </p>
+          <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs sm:text-sm">
+            <button onclick="handleQuiz(2, 'A', false, this)" class="quiz-btn text-left p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 transition">
+              A. 梯度爆炸，數值變成 NaN
+            </button>
+            <button onclick="handleQuiz(2, 'B', true, this)" class="quiz-btn text-left p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 transition">
+              B. 梯度近乎為零，更新完全停滯 (飽和消失)
+            </button>
+            <button onclick="handleQuiz(2, 'C', false, this)" class="quiz-btn text-left p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 transition">
+              C. 模型會瞬間收斂到全域最佳解
+            </button>
+            <button onclick="handleQuiz(2, 'D', false, this)" class="quiz-btn text-left p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 transition">
+              D. 預測機率自動變成負數
+            </button>
+          </div>
+          <div id="quizFeedback2" class="hidden mt-3 text-xs p-3 rounded-lg"></div>
+        </div>
+
+        <!-- Question 3 -->
+        <div class="p-5 rounded-2xl bg-slate-900/60 border border-slate-800">
+          <p class="font-semibold text-white text-sm sm:text-base">
+            3. 哪一種損失函數可以將「雞蛋盒拉平為平滑碗公」，確保 AI 每次訓練都能收斂至最佳結果？
+          </p>
+          <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs sm:text-sm">
+            <button onclick="handleQuiz(3, 'A', false, this)" class="quiz-btn text-left p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 transition">
+              A. MAE (平均絕對誤差)
+            </button>
+            <button onclick="handleQuiz(3, 'B', false, this)" class="quiz-btn text-left p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 transition">
+              C. MSE (均方誤差)
+            </button>
+            <button onclick="handleQuiz(3, 'C', true, this)" class="quiz-btn text-left p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 transition">
+              C. Cross-Entropy Loss (交叉熵損失)
+            </button>
+            <button onclick="handleQuiz(3, 'D', false, this)" class="quiz-btn text-left p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 transition">
+              D. Hinge Loss (合頁損失)
+            </button>
+          </div>
+          <div id="quizFeedback3" class="hidden mt-3 text-xs p-3 rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 py-8 text-center text-xs text-slate-500">
+    根據 stanCode《為什麼做分類訓練不能用 MSE？》教學內容製作 • 互動式 AI 深度學習教材
+  </footer>
+
+  <script>
+    // --- 3D Scene Global Variables ---
+    let scene, camera, renderer, controls;
+    let surfaceMesh, wireframeMesh, ballMesh, targetStar, pathLine;
+    let currentMode = 'CE'; // 'CE' or 'MSE'
+    let isRolling = false;
+    let ballPos = { x: 2.2, y: 2.2 };
+    let pathPoints = [];
+    let learningRate = 0.05;
+    let ruggedness = 1.0;
+
+    // Morphing State: 0.0 = Pure MSE (Egg Carton), 1.0 = Pure CE (Smooth Bowl)
+    let morphT = 1.0;
+    let isAutoMorphing = false;
+    let morphAnimId = null;
+
+    // DOM Elements Cache
+    const container = document.getElementById('threeContainer');
+    const btnCE = document.getElementById('btnCrossEntropy');
+    const btnMSE = document.getElementById('btnMSE');
+    const btnAutoMorph = document.getElementById('btnAutoMorph');
+    const morphSlider = document.getElementById('morphSlider');
+    const morphPercentageLabel = document.getElementById('morphPercentageLabel');
+    const terrainBadge = document.getElementById('terrainBadge');
+    const hudTerrainName = document.getElementById('hudTerrainName');
+    const hudMorphVal = document.getElementById('hudMorphVal');
+    const hudLossVal = document.getElementById('hudLossVal');
+    const hudGradVal = document.getElementById('hudGradVal');
+    const hudStatus = document.getElementById('hudStatus');
+    const terrainExplanation = document.getElementById('terrainExplanation');
+
+    // Bowl (Cross-Entropy Convex Surface)
+    function lossCE(x, y) {
+      return 0.35 * (x * x + y * y);
+    }
+    function gradCE(x, y) {
+      return { dx: 0.7 * x, dy: 0.7 * y };
+    }
+
+    // Egg Carton (MSE + Sigmoid Non-Convex Surface with Ripples & Local Minima)
+    function lossMSE(x, y, r = 1.0) {
+      const base = 0.22 * (x * x + y * y);
+      const ripples = 0.45 * r * (Math.sin(2.4 * x) * Math.sin(2.4 * y));
+      const subRipples = 0.2 * r * Math.cos(3.2 * x + 1.0);
+      return base + ripples + subRipples + 0.4;
+    }
+    function gradMSE(x, y, r = 1.0) {
+      const baseDx = 0.44 * x;
+      const baseDy = 0.44 * y;
+      const rippleDx = 0.45 * r * 2.4 * Math.cos(2.4 * x) * Math.sin(2.4 * y);
+      const rippleDy = 0.45 * r * 2.4 * Math.sin(2.4 * x) * Math.cos(2.4 * y);
+      const subDx = -0.2 * r * 3.2 * Math.sin(3.2 * x + 1.0);
+      return { dx: baseDx + rippleDx + subDx, dy: baseDy + rippleDy };
+    }
+
+    // Continuous Morph Loss and Gradient:
+    // Loss(x, y, t) = (1 - t) * Loss_MSE + t * Loss_CE
+    function getInterpolatedLoss(x, y, t) {
+      const yMSE = lossMSE(x, y, ruggedness);
+      const yCE = lossCE(x, y);
+      return (1.0 - t) * yMSE + t * yCE;
+    }
+
+    function getInterpolatedGrad(x, y, t) {
+      const gMSE = gradMSE(x, y, ruggedness);
+      const gCE = gradCE(x, y);
+      return {
+        dx: (1.0 - t) * gMSE.dx + t * gCE.dx,
+        dy: (1.0 - t) * gMSE.dy + t * gCE.dy
+      };
+    }
+
+    function getLoss(x, y) {
+      return getInterpolatedLoss(x, y, morphT);
+    }
+    function getGrad(x, y) {
+      return getInterpolatedGrad(x, y, morphT);
+    }
+
+    function initThree() {
+      if (!container) return;
+      const width = container.clientWidth || 320;
+      const height = container.clientHeight || 460;
+
+      // 1. Scene
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x050814);
+
+      // 2. Camera: adjust for mobile narrow screens
+      camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+      if (width < 640) {
+        camera.position.set(7.2, 7.5, 8.2);
+      } else {
+        camera.position.set(6, 6, 7);
+      }
+
+      // 3. Renderer
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      container.innerHTML = ''; // Clear previous canvas if any
+      container.appendChild(renderer.domElement);
+
+      // 4. Controls
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxPolarAngle = Math.PI / 2 - 0.05; // Don't go under terrain
+      controls.target.set(0, 0.6, 0);
+
+      // 5. Lighting
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.55);
+      scene.add(ambientLight);
+
+      const dirLight = new THREE.DirectionalLight(0x5eead4, 0.85);
+      dirLight.position.set(5, 12, 5);
+      scene.add(dirLight);
+
+      const spotLight = new THREE.PointLight(0xf59e0b, 1.4, 25);
+      spotLight.position.set(0, 5, 0);
+      scene.add(spotLight);
+
+      // 6. Generate Landscape Terrain Mesh
+      createTerrain();
+
+      // 7. Global Minimum Star Marker
+      const starGeo = new THREE.OctahedronGeometry(0.22, 0);
+      const starMat = new THREE.MeshStandardMaterial({
+        color: 0xfbbf24,
+        emissive: 0xf59e0b,
+        emissiveIntensity: 0.8,
+        metalness: 0.8,
+        roughness: 0.2
+      });
+      targetStar = new THREE.Mesh(starGeo, starMat);
+      targetStar.position.set(0, 0.25, 0);
+      scene.add(targetStar);
+
+      // 8. Gradient Descent Rolling Ball
+      const ballGeo = new THREE.SphereGeometry(0.2, 32, 32);
+      const ballMat = new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.7,
+        roughness: 0.1,
+        metalness: 0.8
+      });
+      ballMesh = new THREE.Mesh(ballGeo, ballMat);
+      scene.add(ballMesh);
+
+      // 9. Trajectory Line
+      const lineMat = new THREE.LineBasicMaterial({ color: 0x22d3ee, linewidth: 2 });
+      const lineGeo = new THREE.BufferGeometry();
+      pathLine = new THREE.Line(lineGeo, lineMat);
+      scene.add(pathLine);
+
+      // Position Ball Initially
+      resetBall(2.2, 2.2);
+
+      // Resize Listener
+      window.addEventListener('resize', onWindowResize);
+
+      // Initial morph apply to set correct colors and text
+      applyMorphValue(1.0, 3);
+
+      // Start Animation Loop
+      animate();
+    }
+
+    function createTerrain() {
+      if (surfaceMesh) scene.remove(surfaceMesh);
+      if (wireframeMesh) scene.remove(wireframeMesh);
+
+      const size = 6.4;
+      const segments = 70;
+      const geometry = new THREE.PlaneGeometry(size, size, segments, segments);
+      geometry.rotateX(-Math.PI / 2);
+
+      const pos = geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const z = pos.getZ(i);
+        const y = getLoss(x, z);
+        pos.setY(i, y);
+      }
+      geometry.computeVertexNormals();
+
+      // Surface Material
+      const surfaceMat = new THREE.MeshStandardMaterial({
+        color: 0x0f766e,
+        roughness: 0.35,
+        metalness: 0.4,
+        flatShading: false,
+        side: THREE.DoubleSide
+      });
+      surfaceMesh = new THREE.Mesh(geometry, surfaceMat);
+      scene.add(surfaceMesh);
+
+      // Wireframe overlay for visual clarity
+      const wireMat = new THREE.MeshBasicMaterial({
+        color: 0x2dd4bf,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.22
+      });
+      wireframeMesh = new THREE.Mesh(geometry, wireMat);
+      scene.add(wireframeMesh);
+    }
+
+    // Fast real-time mesh vertex morphing without rebuilding geometries
+    function updateTerrainMeshMorph(t) {
+      if (!surfaceMesh || !wireframeMesh) return;
+      const geom = surfaceMesh.geometry;
+      const pos = geom.attributes.position;
+
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const z = pos.getZ(i);
+        const y = getInterpolatedLoss(x, z, t);
+        pos.setY(i, y);
+      }
+      pos.needsUpdate = true;
+      geom.computeVertexNormals();
+
+      // Dynamic color interpolation: Rose (MSE) -> Teal (CE)
+      const colorMSE = new THREE.Color(0x881337);
+      const colorCE = new THREE.Color(0x0f766e);
+      const currentColor = colorMSE.clone().lerp(colorCE, t);
+      surfaceMesh.material.color.copy(currentColor);
+
+      const wireColorMSE = new THREE.Color(0xf43f5e);
+      const wireColorCE = new THREE.Color(0x2dd4bf);
+      wireframeMesh.material.color.copy(wireColorMSE.clone().lerp(wireColorCE, t));
+
+      // Update ball Y position according to new terrain height
+      const ballHeight = getLoss(ballPos.x, ballPos.y);
+      ballMesh.position.y = ballHeight + 0.2;
+    }
+
+    const morphStepsData = [
+      {
+        t: 0.0,
+        name: '非凸函數 (雞蛋盒陷阱)',
+        colorClass: 'text-rose-400',
+        badge: '非凸函數 (Non-Convex)',
+        badgeClass: 'text-rose-400 bg-rose-500/10 border-rose-500/30',
+        explanationTitle: '步驟 1：雞蛋盒地形的困境 (MSE + Sigmoid)',
+        explanationText: '此時地形佈滿微小波動。這是因為在求導時存在項次 <code>ŷ(1 - ŷ)</code>，當模型猜錯時該項趨近於 0，產生大量平原與假死胡同（局部極小值）。小球隨便一滾就卡在半山腰！'
+      },
+      {
+        t: 0.35,
+        name: '對數張力施加中 (35% 拉平)',
+        colorClass: 'text-amber-400',
+        badge: '正在撫平波動 (35%)',
+        badgeClass: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
+        explanationTitle: '步驟 2：引入 -log(ŷ) 對數懲罰',
+        explanationText: 'Cross-Entropy 引進了對數函數。當預測越偏離真實值時，-log 產生的斜率極速陡增，形成一股強大的張力，將邊界迅速拉高，迫使深陷坑洞的小球開始獲得向下的推動力。'
+      },
+      {
+        t: 0.70,
+        name: '消除微積分漣漪 (70% 拉平)',
+        colorClass: 'text-teal-300',
+        badge: '微積分相消 (70%)',
+        badgeClass: 'text-teal-300 bg-teal-500/10 border-teal-500/30',
+        explanationTitle: '步驟 3：鏈鎖律完美相消 (Canceling)',
+        explanationText: '數學魔法生效！Cross-Entropy 的導數剛好除以了 <code>ŷ(1 - ŷ)</code>，兩者完全抵消！造成雞蛋盒坑坑洞洞的微小波動被完全抹除，偽極小值開始潰散消失！'
+      },
+      {
+        t: 1.0,
+        name: '平滑碗公 (Convex Bowl)',
+        colorClass: 'text-emerald-400',
+        badge: '凸函數 (Convex)',
+        badgeClass: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+        explanationTitle: '步驟 4：完美碗公達成！100% 收斂至全域最優',
+        explanationText: '整個曲面現在只有唯一下坡方向與單一谷底（金色星星）。無論小球從哪個角度出發，都不再有陷阱阻擋，梯度下降保證 100% 順暢滑入最佳解！'
+      }
+    ];
+
+    function applyMorphValue(t, activeStepIndex = -1) {
+      morphT = Math.max(0.0, Math.min(1.0, t));
+      updateTerrainMeshMorph(morphT);
+
+      // Update Slider & Labels
+      if (morphSlider) morphSlider.value = morphT;
+
+      const percent = Math.round(morphT * 100);
+      if (morphPercentageLabel) {
+        morphPercentageLabel.innerText = `${percent}% (${percent > 65 ? '碗公' : percent < 30 ? '雞蛋盒' : '過渡態'})`;
+      }
+      if (hudMorphVal) {
+        hudMorphVal.innerText = `${percent}% (${morphT >= 0.95 ? '完全平滑' : morphT <= 0.05 ? '全崎嶇' : '形變中'})`;
+      }
+
+      // Active state on 4 step buttons
+      for (let i = 0; i < 4; i++) {
+        const btn = document.getElementById(`stepBtn${i}`);
+        if (!btn) continue;
+        if (activeStepIndex === i) {
+          btn.classList.add('ring-2', 'ring-amber-400', 'bg-amber-950/40');
+        } else {
+          btn.classList.remove('ring-2', 'ring-amber-400', 'bg-amber-950/40');
+        }
+      }
+
+      // Update Mode button styling
+      if (btnCE && btnMSE) {
+        if (morphT >= 0.5) {
+          currentMode = 'CE';
+          btnCE.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 bg-teal-500 text-slate-950 shadow-md';
+          btnMSE.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 text-slate-400 hover:text-white';
+        } else {
+          currentMode = 'MSE';
+          btnMSE.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 bg-rose-500 text-white shadow-md';
+          btnCE.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 text-slate-400 hover:text-white';
+        }
+      }
+
+      // Determine appropriate feedback text
+      let stepData = morphStepsData[3];
+      if (morphT < 0.2) stepData = morphStepsData[0];
+      else if (morphT < 0.55) stepData = morphStepsData[1];
+      else if (morphT < 0.85) stepData = morphStepsData[2];
+
+      if (terrainBadge) {
+        terrainBadge.className = `text-xs px-2.5 py-1 rounded-md font-semibold border ${stepData.badgeClass}`;
+        terrainBadge.innerText = stepData.badge;
+      }
+      if (hudTerrainName) {
+        hudTerrainName.innerText = stepData.name;
+        hudTerrainName.className = `font-bold ${stepData.colorClass}`;
+      }
+
+      if (terrainExplanation) {
+        terrainExplanation.className = `mt-6 p-4 rounded-2xl bg-slate-900/90 border border-slate-700/60 flex items-start gap-3.5`;
+        terrainExplanation.innerHTML = `
+          <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center shrink-0 mt-0.5">💡</div>
+          <div class="text-sm text-slate-300 leading-relaxed">
+            <strong class="${stepData.colorClass}">${stepData.explanationTitle}</strong><br>
+            ${stepData.explanationText}
+          </div>
+        `;
+      }
+
+      updateHUD(ballPos.x, ballPos.y, isRolling ? '滾動搜尋中...' : '已更新地形');
+    }
+
+    window.jumpToMorphStep = function(stepIndex) {
+      if (isAutoMorphing) stopAutoMorph();
+      const targetT = morphStepsData[stepIndex].t;
+
+      animateMorphTransition(morphT, targetT, 600, () => {
+        applyMorphValue(targetT, stepIndex);
+        if (stepIndex === 0) {
+          resetBall(1.3, 1.3); // illustrative trap spot
+          isRolling = true;
+        } else if (stepIndex === 3) {
+          isRolling = true; // let it slide to global minimum
+        }
+      });
+    };
+
+    function animateMorphTransition(startT, endT, duration, onComplete) {
+      const startTime = performance.now();
+      function step(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(1.0, elapsed / duration);
+        // EaseInOutQuad
+        const ease = progress < 0.5 ? 2 * progress * progress : -1 + (4 - 2 * progress) * progress;
+        const currentVal = startT + (endT - startT) * ease;
+        applyMorphValue(currentVal);
+
+        if (progress < 1.0) {
+          requestAnimationFrame(step);
+        } else {
+          applyMorphValue(endT);
+          if (onComplete) onComplete();
+        }
+      }
+      requestAnimationFrame(step);
+    }
+
+    function startAutoMorph() {
+      isAutoMorphing = true;
+      if (btnAutoMorph) {
+        btnAutoMorph.innerHTML = `
+          <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+          <span>⏸ 暫停動態演繹</span>
+        `;
+        btnAutoMorph.classList.remove('from-amber-500', 'to-orange-500');
+        btnAutoMorph.classList.add('from-rose-600', 'to-rose-500', 'text-white');
+      }
+
+      // Start from 0% (MSE) with ball at local minimum
+      resetBall(1.35, 1.35);
+      isRolling = true;
+      let currentT = 0.0;
+      let speed = 0.0035;
+
+      function morphLoop() {
+        if (!isAutoMorphing) return;
+        currentT += speed;
+        if (currentT >= 1.0) {
+          currentT = 1.0;
+          applyMorphValue(1.0, 3);
+          stopAutoMorph();
+          return;
+        }
+        applyMorphValue(currentT);
+        morphAnimId = requestAnimationFrame(morphLoop);
+      }
+      morphAnimId = requestAnimationFrame(morphLoop);
+    }
+
+    function stopAutoMorph() {
+      isAutoMorphing = false;
+      if (morphAnimId) cancelAnimationFrame(morphAnimId);
+      if (btnAutoMorph) {
+        btnAutoMorph.innerHTML = `
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+          <span>▶ 連續播放拉平動畫</span>
+        `;
+        btnAutoMorph.classList.remove('from-rose-600', 'to-rose-500', 'text-white');
+        btnAutoMorph.classList.add('from-amber-500', 'to-orange-500');
+      }
+    }
+
+    function onWindowResize() {
+      if (!container || !camera || !renderer) return;
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      camera.aspect = w / h;
+      if (w < 640) {
+        camera.position.set(7.2, 7.5, 8.2);
+      }
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    }
+
+    function resetBall(x, y) {
+      isRolling = false;
+      ballPos.x = x;
+      ballPos.y = y;
+      const z = getLoss(x, y);
+      if (ballMesh) ballMesh.position.set(x, z + 0.2, y);
+
+      pathPoints = [new THREE.Vector3(x, z + 0.2, y)];
+      updatePathLine();
+
+      updateHUD(x, y, '準備就緒');
+    }
+
+    function updatePathLine() {
+      if (pathLine) pathLine.geometry.setFromPoints(pathPoints);
+    }
+
+    function updateHUD(x, y, status) {
+      const loss = getLoss(x, y);
+      const grad = getGrad(x, y);
+      const gradMag = Math.sqrt(grad.dx * grad.dx + grad.dy * grad.dy);
+
+      if (hudLossVal) hudLossVal.innerText = loss.toFixed(4);
+      if (hudGradVal) hudGradVal.innerText = gradMag.toFixed(4);
+      if (hudStatus) {
+        hudStatus.innerText = status;
+        if (status.includes('局部') || status.includes('陷阱')) {
+          hudStatus.className = 'font-bold text-rose-400';
+        } else if (status.includes('抵達') || status.includes('最優解')) {
+          hudStatus.className = 'font-bold text-emerald-400';
+        } else {
+          hudStatus.className = 'font-medium text-amber-300';
+        }
+      }
+    }
+
+    function stepGradientDescent() {
+      if (!isRolling || !ballMesh) return;
+
+      const grad = getGrad(ballPos.x, ballPos.y);
+      const gradMag = Math.sqrt(grad.dx * grad.dx + grad.dy * grad.dy);
+
+      // Stopped conditions
+      if (gradMag < 0.04) {
+        isRolling = false;
+        const distToCenter = Math.sqrt(ballPos.x * ballPos.x + ballPos.y * ballPos.y);
+        if (distToCenter < 0.45) {
+          updateHUD(ballPos.x, ballPos.y, '🌟 成功抵達全域最佳解！');
+        } else {
+          updateHUD(ballPos.x, ballPos.y, '⚠️ 陷入局部極小值 (卡死在雞蛋盒)');
+        }
+        return;
+      }
+
+      // Step update
+      ballPos.x -= learningRate * grad.dx;
+      ballPos.y -= learningRate * grad.dy;
+
+      // Keep within bounds
+      ballPos.x = Math.max(-3.0, Math.min(3.0, ballPos.x));
+      ballPos.y = Math.max(-3.0, Math.min(3.0, ballPos.y));
+
+      const currentZ = getLoss(ballPos.x, ballPos.y);
+      ballMesh.position.set(ballPos.x, currentZ + 0.2, ballPos.y);
+
+      pathPoints.push(new THREE.Vector3(ballPos.x, currentZ + 0.2, ballPos.y));
+      if (pathPoints.length > 200) pathPoints.shift();
+      updatePathLine();
+
+      updateHUD(ballPos.x, ballPos.y, '滾動搜尋中 (Gradient Descent)...');
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (targetStar) {
+        targetStar.rotation.y += 0.02;
+        targetStar.rotation.x += 0.01;
+      }
+
+      stepGradientDescent();
+      if (controls) controls.update();
+      if (renderer && scene && camera) renderer.render(scene, camera);
+    }
+
+    if (btnAutoMorph) {
+      btnAutoMorph.addEventListener('click', () => {
+        if (isAutoMorphing) {
+          stopAutoMorph();
+        } else {
+          startAutoMorph();
+        }
+      });
+    }
+
+    if (morphSlider) {
+      morphSlider.addEventListener('input', (e) => {
+        if (isAutoMorphing) stopAutoMorph();
+        const val = parseFloat(e.target.value);
+        applyMorphValue(val);
+      });
+    }
+
+    if (btnCE) {
+      btnCE.addEventListener('click', () => {
+        if (isAutoMorphing) stopAutoMorph();
+        animateMorphTransition(morphT, 1.0, 400, () => {
+          applyMorphValue(1.0, 3);
+          resetBall(2.0, 2.0);
+        });
+      });
+    }
+
+    if (btnMSE) {
+      btnMSE.addEventListener('click', () => {
+        if (isAutoMorphing) stopAutoMorph();
+        animateMorphTransition(morphT, 0.0, 400, () => {
+          applyMorphValue(0.0, 0);
+          resetBall(1.35, 1.35);
+        });
+      });
+    }
+
+    const btnDropBall = document.getElementById('btnDropBall');
+    if (btnDropBall) {
+      btnDropBall.addEventListener('click', () => {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 2.0 + Math.random() * 0.8;
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        resetBall(x, y);
+        isRolling = true;
+      });
+    }
+
+    const btnReset = document.getElementById('btnReset');
+    if (btnReset) {
+      btnReset.addEventListener('click', () => {
+        resetBall(2.0, 2.0);
+      });
+    }
+
+    const lrSlider = document.getElementById('lrSlider');
+    const lrDisplay = document.getElementById('lrDisplay');
+    if (lrSlider) {
+      lrSlider.addEventListener('input', (e) => {
+        learningRate = parseFloat(e.target.value);
+        if (lrDisplay) lrDisplay.innerText = learningRate.toFixed(2);
+      });
+    }
+
+    const roughSlider = document.getElementById('roughSlider');
+    const roughDisplay = document.getElementById('roughDisplay');
+    if (roughSlider) {
+      roughSlider.addEventListener('input', (e) => {
+        ruggedness = parseFloat(e.target.value);
+        if (roughDisplay) roughDisplay.innerText = ruggedness.toFixed(1) + 'x';
+        updateTerrainMeshMorph(morphT);
+      });
+    }
+
+    const probSlider = document.getElementById('probSlider');
+    const predProbDisplay = document.getElementById('predProbDisplay');
+    const mseGradValue = document.getElementById('mseGradValue');
+    const mseGradBar = document.getElementById('mseGradBar');
+    const ceGradValue = document.getElementById('ceGradValue');
+    const ceGradBar = document.getElementById('ceGradBar');
+    const mseWarningText = document.getElementById('mseWarningText');
+
+    if (probSlider) {
+      probSlider.addEventListener('input', (e) => {
+        const yHat = parseFloat(e.target.value);
+        let note = '';
+        if (yHat < 0.2) note = '(嚴重猜錯！)';
+        else if (yHat < 0.7) note = '(模稜兩可)';
+        else note = '(預測接近正確)';
+        if (predProbDisplay) predProbDisplay.innerText = `${yHat.toFixed(2)} ${note}`;
+
+        const mseG = Math.abs((yHat - 1.0) * yHat * (1.0 - yHat));
+        const ceG = Math.abs(yHat - 1.0);
+
+        if (mseGradValue) mseGradValue.innerText = mseG.toFixed(4);
+        if (mseGradBar) mseGradBar.style.width = Math.min(100, (mseG / 0.5) * 100) + '%';
+
+        if (ceGradValue) ceGradValue.innerText = ceG.toFixed(4);
+        if (ceGradBar) ceGradBar.style.width = Math.min(100, (ceG / 1.0) * 100) + '%';
+
+        if (mseWarningText) {
+          if (yHat < 0.15) {
+            mseWarningText.innerHTML = `<span class="text-rose-400 font-bold">⚠️ 嚴重梯度消失！</span> 雖然誤差高達 ${(1 - yHat).toFixed(2)}，但 MSE 梯度只有 ${mseG.toFixed(4)}，模型幾乎完全不更新！`;
+          } else {
+            mseWarningText.innerHTML = `隨著預測靠近正確值，MSE 與 CE 梯度都逐步縮小至收斂。`;
+          }
+        }
+      });
+    }
+
+    const answered = { 1: false, 2: false, 3: false };
+    let score = 0;
+
+    window.handleQuiz = function(qNum, choice, isCorrect, btnElement) {
+      const parent = btnElement.parentElement;
+      const feedback = document.getElementById(`quizFeedback${qNum}`);
+      const allBtns = parent.querySelectorAll('.quiz-btn');
+
+      allBtns.forEach(b => b.disabled = true);
+      if (feedback) feedback.classList.remove('hidden');
+
+      if (isCorrect) {
+        btnElement.classList.add('bg-emerald-950', 'border-emerald-500', 'text-emerald-300');
+        if (feedback) {
+          feedback.className = 'mt-3 text-xs p-3 rounded-xl bg-emerald-950/60 border border-emerald-800/80 text-emerald-300';
+          feedback.innerHTML = '🎉 <strong>答對了！</strong> ' + getExplanation(qNum, true);
+        }
+        if (!answered[qNum]) {
+          score++;
+          answered[qNum] = true;
+        }
+      } else {
+        btnElement.classList.add('bg-rose-950', 'border-rose-500', 'text-rose-300');
+        if (feedback) {
+          feedback.className = 'mt-3 text-xs p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300';
+          feedback.innerHTML = '❌ <strong>再想想看：</strong> ' + getExplanation(qNum, false);
+        }
+      }
+
+      const scoreElem = document.getElementById('quizScore');
+      if (scoreElem) scoreElem.innerText = score;
+      if (score === 3) {
+        const badge = document.getElementById('quizScoreBadge');
+        if (badge) {
+          badge.className = 'text-xs px-3 py-1 rounded-full bg-teal-500 text-slate-950 font-extrabold shadow-md';
+          badge.innerText = '🏆 全數過關！掌握深度學習核心！';
+        }
+      }
+    };
+
+    function getExplanation(qNum, correct) {
+      if (qNum === 1) {
+        return '在數學上，具有多個局部極小值的坑洞曲面稱為「非凸函數 (Non-Convex)」，而唯一下凹無坑洞的形狀稱為「凸函數 (Convex)」。';
+      } else if (qNum === 2) {
+        return '當 ŷ 趨近 0 時，Sigmoid 微分項 ŷ(1 - ŷ) 會變成 0，導致整體梯度歸零，這就是惡名昭彰的梯度飽和（消失）。';
+      } else if (qNum === 3) {
+        return 'Cross-Entropy（交叉熵）的導數恰好能抵銷 Sigmoid 飽和產生的極小項，形成平滑的碗公曲面，保證每次訓練結果一致。';
+      }
+      return '';
+    }
+
+    // Initialize 3D Engine on page load
+    window.onload = () => {
+      initThree();
+    };
+  </script>
+</body>
+</html>
