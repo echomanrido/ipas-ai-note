@@ -1,0 +1,1579 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cross-Entropy 交叉熵互動教學實驗室</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- KaTeX for rendering crisp LaTeX math -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+        onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+    <style>
+        /* Custom scrollbar and animations */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .gradient-border {
+            background: linear-gradient(60deg, #6366f1, #a855f7, #ec4899);
+        }
+        .code-font {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-indigo-500 selection:text-white">
+
+    <!-- Navigation Bar -->
+    <nav class="sticky top-0 z-50 backdrop-blur-md bg-slate-950/80 border-b border-slate-800/80 px-4 sm:px-8 py-3.5 transition-all">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-fuchsia-500 flex items-center justify-center font-black text-white text-lg shadow-lg shadow-indigo-500/30">
+                    H
+                </div>
+                <div>
+                    <span class="font-bold tracking-tight text-white sm:text-lg">Cross-Entropy</span>
+                    <span class="text-xs ml-1.5 px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium">交叉熵視覺化</span>
+                </div>
+            </div>
+            <div class="hidden lg:flex items-center space-x-1 text-sm font-medium text-slate-300">
+                <a href="#summary" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-slate-800 transition">簡介與比喻</a>
+                <a href="#applications" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-slate-800 transition">工業應用</a>
+                <a href="#theory" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-slate-800 transition">理論架構</a>
+                <a href="#math-derivation" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-slate-800 transition">互動推導</a>
+                <a href="#ml-interactive" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-slate-800 transition">ML 損失曲線</a>
+                <a href="#llm-section" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-slate-800 transition">LLM Token 機制</a>
+                <a href="#pytorch-impl" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-slate-800 transition">PyTorch 實作</a>
+                <a href="#simulator" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition">訓練模擬器</a>
+            </div>
+            <a href="#simulator" class="lg:hidden text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white">模擬器</a>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
+        <!-- Hero & One-Sentence Summary -->
+        <section id="summary" class="relative rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 p-6 sm:p-12 overflow-hidden shadow-2xl">
+            <div class="absolute -top-24 -right-24 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-fuchsia-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div class="relative z-10 max-w-4xl space-y-6">
+                <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-800/80 border border-slate-700 text-xs font-semibold text-indigo-400">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    現代機器學習與大語言模型的心臟
+                </div>
+                <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
+                    Cross-Entropy <span class="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400">交叉熵</span> 互動教學
+                </h1>
+                
+                <!-- 一句話簡介 -->
+                <div class="p-5 sm:p-6 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 backdrop-blur-sm">
+                    <div class="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-1">一句話核心定義</div>
+                    <p class="text-lg sm:text-xl font-medium text-indigo-100 leading-relaxed">
+                        「交叉熵是用來度量<span class="text-amber-300 font-semibold underline decoration-amber-400/50 underline-offset-4">『AI 模型預測的機率分佈』</span>與<span class="text-emerald-300 font-semibold underline decoration-emerald-400/50 underline-offset-4">『真實標籤分佈』</span>之間差距的尺標；模型預測越自信且越正確，交叉熵就越接近理論極限，一旦預測錯誤且過度自信，將承受無限大的懲罰代價。」
+                    </p>
+                </div>
+
+                <!-- 生活化例子：氣象預報員盲盒比喻 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                    <div class="p-5 rounded-2xl bg-slate-800/60 border border-slate-700/80 space-y-3">
+                        <div class="flex items-center space-x-2 text-amber-400 font-semibold text-base">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            <span>生活化比喻：氣象預報員與降雨懲罰</span>
+                        </div>
+                        <p class="text-slate-300 text-sm leading-relaxed">
+                            想像今天真實情況是「必定會下雨」（真實機率 $y=1$）。兩位氣象專家給出預報：
+                        </p>
+                        <ul class="text-xs space-y-2 text-slate-300">
+                            <li class="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 flex justify-between items-center">
+                                <span>專家 A 說：「今天下雨機率 <strong>99%</strong>」</span>
+                                <span class="text-emerald-400 font-mono font-bold">損失 $-\ln(0.99) \approx 0.01$ (極低懲罰)</span>
+                            </li>
+                            <li class="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 flex justify-between items-center">
+                                <span>專家 B 拍胸脯：「今天下雨機率只有 <strong>1%</strong>」</span>
+                                <span class="text-rose-400 font-mono font-bold">損失 $-\ln(0.01) \approx 4.61$ (暴增 460 倍!)</span>
+                            </li>
+                        </ul>
+                        <p class="text-xs text-slate-400 italic">
+                            若預報員給出 0% 卻下了雨，損失值趨近於 $\infty$。這促使模型誠實、精確地朝向真實分佈校準。
+                        </p>
+                    </div>
+
+                    <!-- 互動式直覺體驗器 -->
+                    <div class="p-5 rounded-2xl bg-slate-800/60 border border-slate-700/80 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between text-indigo-400 font-semibold text-base mb-2">
+                                <span class="flex items-center gap-1.5">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                    直覺小實驗：感受 Log 懲罰的威力
+                                </span>
+                                <span id="analogyLossDisplay" class="text-rose-400 font-mono font-bold text-sm bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">損失: 0.105</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mb-3">假設真實答案為「是 (Label = 1)」，拖動滑桿調整模型的預測信心：</p>
+                            
+                            <div class="space-y-2">
+                                <div class="flex justify-between text-xs font-medium">
+                                    <span class="text-slate-400">模型預測機率 $\hat{p}$:</span>
+                                    <span id="analogyProbDisplay" class="text-indigo-300 font-mono font-bold text-sm">90.0%</span>
+                                </div>
+                                <input id="analogySlider" type="range" min="0.001" max="0.999" step="0.001" value="0.900" 
+                                    aria-label="模型預測機率滑桿"
+                                    class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between text-xs">
+                            <span id="analogyVerdict" class="text-emerald-400 font-medium">✓ 預測良好，只有微小處罰</span>
+                            <span class="text-slate-500 font-mono">Formula: $-\ln(\hat{p})$</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 工業上應用 -->
+        <section id="applications" class="space-y-6">
+            <div class="flex items-center space-x-3">
+                <div class="w-2.5 h-7 rounded-full bg-indigo-500"></div>
+                <div>
+                    <h2 class="text-2xl font-bold text-white">工業與工程應用場景</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Cross-Entropy 為何是當代 AI 系統中最不可替代的損失函數？</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <!-- Card 1 -->
+                <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 transition duration-300 group">
+                    <div class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center mb-4 group-hover:scale-110 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    </div>
+                    <h3 class="font-bold text-white text-base mb-1">大語言模型 (LLM)</h3>
+                    <p class="text-xs font-semibold text-blue-400 mb-2">Next-Token Prediction</p>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        ChatGPT、Claude、Llama 等千億模型訓練中，在詞表（常見 32,000 ~ 128,000 個 Token）上計算 Cross-Entropy，評估每個預測詞的負對數似然。
+                    </p>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-purple-500/50 transition duration-300 group">
+                    <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center mb-4 group-hover:scale-110 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    </div>
+                    <h3 class="font-bold text-white text-base mb-1">自動駕駛視覺辨識</h3>
+                    <p class="text-xs font-semibold text-purple-400 mb-2">語意分割與物件偵測</p>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        針對車載相機畫面中的每個像素點（車道線、行人、障礙物、紅綠燈），利用多類別交叉熵進行稠密像素分類，確保安全性。
+                    </p>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/50 transition duration-300 group">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-4 group-hover:scale-110 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    </div>
+                    <h3 class="font-bold text-white text-base mb-1">金融風控與詐欺偵測</h3>
+                    <p class="text-xs font-semibold text-emerald-400 mb-2">二元極度不平衡分類</p>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        信用卡交易盜刷偵測通常搭配加權交叉熵 (Weighted BCE) 或 Focal Loss（改進版 CE），強化模型對極少數異常交易的靈敏度。
+                    </p>
+                </div>
+
+                <!-- Card 4 -->
+                <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-pink-500/50 transition duration-300 group">
+                    <div class="w-10 h-10 rounded-xl bg-pink-500/10 text-pink-400 flex items-center justify-center mb-4 group-hover:scale-110 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                    </div>
+                    <h3 class="font-bold text-white text-base mb-1">電商推薦系統 (CTR)</h3>
+                    <p class="text-xs font-semibold text-pink-400 mb-2">點擊率預估 (Click-Through)</p>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        ByteDance、Meta 等廣告系統估算使用者是否會點擊特定商品，以 BCE 作為目標函數進行即時線上流式梯度更新。
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 理論簡介 (資訊理論脈絡) -->
+        <section id="theory" class="p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 space-y-6">
+            <div class="flex items-center space-x-3">
+                <div class="w-2.5 h-7 rounded-full bg-purple-500"></div>
+                <div>
+                    <h2 class="text-2xl font-bold text-white">理論簡介：從夏農資訊論看交叉熵</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">探索資訊量、夏農熵、KL 散度與交叉熵的數學連帶關係</p>
+                </div>
+            </div>
+
+            <!-- Theory Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div class="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-3">
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">1. 自資訊量 (Information)</div>
+                    <div class="text-lg font-bold text-indigo-300">$I(x) = -\log_2 P(x)$</div>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        事件發生的機率越小，一旦發生所帶來的「震驚度/資訊量」就越大。例如「明天太陽升起」毫無驚喜，「明天彗星撞地球」帶來極高資訊。
+                    </p>
+                </div>
+
+                <div class="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-3">
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">2. 夏農熵 (Shannon Entropy)</div>
+                    <div class="text-lg font-bold text-purple-300">$H(P) = -\sum_{x} P(x) \log P(x)$</div>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        真實系統本身不可消除的「平均不確定性」。如果已知一個硬幣公正，其夏農熵最大（1 bit）；若硬幣兩面皆為正面，夏農熵為 0。
+                    </p>
+                </div>
+
+                <div class="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-3">
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">3. KL 散度 (相對熵)</div>
+                    <div class="text-lg font-bold text-pink-300">$D_{KL}(P \parallel Q) = \sum_{x} P(x) \log \frac{P(x)}{Q(x)}$</div>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        衡量用預測分佈 $Q$ 去逼近真實分佈 $P$ 時所產生的「額外浪費位元數」。恆有 $D_{KL}(P \parallel Q) \ge 0$。
+                    </p>
+                </div>
+            </div>
+
+            <!-- The Golden Equation Banner -->
+            <div class="p-5 rounded-2xl bg-gradient-to-r from-indigo-900/40 via-purple-900/40 to-slate-900 border border-indigo-500/30 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                    <div class="text-xs font-bold text-indigo-300 uppercase tracking-wider">核心黃金等式 (The Golden Equivalence)</div>
+                    <div class="text-xl sm:text-2xl font-black text-white font-mono mt-1">
+                        $H(P, Q) = H(P) + D_{KL}(P \parallel Q)$
+                    </div>
+                </div>
+                <div class="text-xs sm:text-sm text-slate-300 max-w-lg leading-relaxed">
+                    在機器學習中，真實標籤分佈 $P$ 是固定的常數，因此它的夏農熵 $H(P)$ 是不可變的常數。因此：<strong class="text-amber-300">最小化交叉熵 $H(P, Q) \iff$ 最小化預測與真實的 KL 散度 $D_{KL}(P \parallel Q)$！</strong>
+                </div>
+            </div>
+        </section>
+
+        <!-- 數學推導（互動式 5 步驟） -->
+        <section id="math-derivation" class="p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-2.5 h-7 rounded-full bg-emerald-500"></div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-white">數學推導（互動式探索）</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">點擊步驟深入檢視從「極大似然估計 (MLE)」到「優雅的梯度反向傳播」</p>
+                    </div>
+                </div>
+
+                <!-- Step Navigator Buttons -->
+                <div class="flex flex-wrap gap-1.5 p-1 rounded-xl bg-slate-950 border border-slate-800" role="tablist">
+                    <button onclick="switchMathStep(1)" id="mathBtn1" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition">Step 1: MLE 出發</button>
+                    <button onclick="switchMathStep(2)" id="mathBtn2" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">Step 2: 取負對數 NLL</button>
+                    <button onclick="switchMathStep(3)" id="mathBtn3" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">Step 3: 二元分類 BCE</button>
+                    <button onclick="switchMathStep(4)" id="mathBtn4" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">Step 4: 多類別 CCE</button>
+                    <button onclick="switchMathStep(5)" id="mathBtn5" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">Step 5: 梯度之美</button>
+                </div>
+            </div>
+
+            <!-- Dynamic Derivation Content Box -->
+            <div class="p-6 rounded-2xl bg-slate-950 border border-slate-800 min-h-[300px] flex flex-col justify-between" id="mathContentArea">
+                <!-- Content injected via JS -->
+            </div>
+        </section>
+
+        <!-- 機器學習應用（互動式損失檢視器） -->
+        <section id="ml-interactive" class="p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 space-y-6">
+            <div class="flex items-center space-x-3">
+                <div class="w-2.5 h-7 rounded-full bg-blue-500"></div>
+                <div>
+                    <h2 class="text-2xl font-bold text-white">機器學習應用：二元與多類別損失互動探索</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">調整預測機率，即時觀察損失值、懲罰梯度與動態損失圖形</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Control Panel -->
+                <div class="lg:col-span-5 p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-6">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">真實類別標籤 (Ground Truth $y$)</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button onclick="setMLTarget(0)" id="mlBtn0" class="py-2 text-xs font-bold rounded-xl border border-indigo-500 bg-indigo-500/20 text-indigo-300">Class 0 (貓)</button>
+                            <button onclick="setMLTarget(1)" id="mlBtn1" class="py-2 text-xs font-bold rounded-xl border border-slate-800 bg-slate-900 text-slate-400">Class 1 (狗)</button>
+                            <button onclick="setMLTarget(2)" id="mlBtn2" class="py-2 text-xs font-bold rounded-xl border border-slate-800 bg-slate-900 text-slate-400">Class 2 (鳥)</button>
+                        </div>
+                    </div>
+
+                    <!-- Sliders for logits -->
+                    <div class="space-y-4">
+                        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">調整模型輸出 Logits ($z$)</div>
+                        
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-indigo-300 font-medium">貓 $z_0$: <span id="zVal0">2.00</span></span>
+                                <span class="text-slate-400">Softmax $p_0$: <span id="pVal0" class="font-bold text-white">0.70</span></span>
+                            </div>
+                            <input type="range" id="zSlider0" min="-5" max="5" step="0.1" value="2.0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" aria-label="貓的 Logit 值 (z0)">
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-indigo-300 font-medium">狗 $z_1$: <span id="zVal1">0.50</span></span>
+                                <span class="text-slate-400">Softmax $p_1$: <span id="pVal1" class="font-bold text-white">0.16</span></span>
+                            </div>
+                            <input type="range" id="zSlider1" min="-5" max="5" step="0.1" value="0.5" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" aria-label="狗的 Logit 值 (z1)">
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-indigo-300 font-medium">鳥 $z_2$: <span id="zVal2">0.70</span></span>
+                                <span class="text-slate-400">Softmax $p_2$: <span id="pVal2" class="font-bold text-white">0.14</span></span>
+                            </div>
+                            <input type="range" id="zSlider2" min="-5" max="5" step="0.1" value="0.7" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" aria-label="鳥的 Logit 值 (z2)">
+                        </div>
+                    </div>
+
+                    <!-- Calculated Loss Stats -->
+                    <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                        <div>
+                            <div class="text-xs text-slate-400">當前交叉熵損失 $\mathcal{L}_{CE}$</div>
+                            <div id="mlCurrentLoss" class="text-3xl font-black font-mono text-amber-400">0.357</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-slate-400">真實類別之機率</div>
+                            <div id="mlTargetProb" class="text-xl font-bold font-mono text-emerald-400">70.0%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Canvas Visualizer -->
+                <div class="lg:col-span-7 p-6 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">即時機率分佈 vs 損失曲線</span>
+                        <span class="text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded">實時繪製</span>
+                    </div>
+                    <div class="relative flex-1 min-h-[260px] w-full">
+                        <canvas id="mlCanvas" class="w-full h-full rounded-xl bg-slate-900/50 border border-slate-800/80"></canvas>
+                    </div>
+                    <div class="flex items-center justify-around text-xs text-slate-400 mt-4 pt-3 border-t border-slate-800/80">
+                        <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-indigo-500 inline-block"></span> 預測機率分佈</div>
+                        <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-emerald-400 inline-block"></span> 真實標籤 (One-Hot)</div>
+                        <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-rose-500 inline-block"></span> $-\ln(p)$ 曲線</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- LLM 應用細節（互動式） -->
+        <section id="llm-section" class="p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 space-y-6">
+            <div class="flex items-center space-x-3">
+                <div class="w-2.5 h-7 rounded-full bg-pink-500"></div>
+                <div>
+                    <h2 class="text-2xl font-bold text-white">LLM 應用細節：Next-Token Prediction 與溫度係數</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">大語言模型如何利用 Cross-Entropy 進行訓練？從詞表 Logits 到困惑度 (Perplexity)</p>
+                </div>
+            </div>
+
+            <div class="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-6">
+                <!-- Prompt Context Box -->
+                <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+                    <div class="text-xs font-bold text-slate-400">輸入文本脈絡 (Context Prompt):</div>
+                    <div class="text-sm sm:text-base font-medium text-slate-200">
+                        "The quick brown fox jumps over the lazy <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40">[ TARGET: "dog" ]</span>"
+                    </div>
+                </div>
+
+                <!-- Temperature & Preset Controls -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-xs font-medium">
+                            <span class="text-slate-300">採樣溫度係數 (Temperature $T$):</span>
+                            <span id="tempValue" class="text-pink-400 font-mono font-bold">1.0</span>
+                        </div>
+                        <input type="range" id="tempSlider" min="0.2" max="3.0" step="0.1" value="1.0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-pink-500" aria-label="採樣溫度係數滑桿 (Temperature T)">
+                        <div class="text-[11px] text-slate-500 flex justify-between">
+                            <span>$T \to 0$ (極端自信/尖銳)</span>
+                            <span>$T \to \infty$ (均勻隨機/平緩)</span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2 justify-end">
+                        <button onclick="setLLMPreset('untrained')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300">模擬剛初始化 (混亂)</button>
+                        <button onclick="setLLMPreset('training')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300">訓練中 (探索)</button>
+                        <button onclick="setLLMPreset('converged')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600/30 border border-indigo-500 text-indigo-200">訓練收斂 (高自信)</button>
+                    </div>
+                </div>
+
+                <!-- Vocabulary Candidates Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-400 uppercase tracking-wider">
+                                <th class="py-2.5 px-3">Token 候選詞</th>
+                                <th class="py-2.5 px-3">原始 Logit ($z$)</th>
+                                <th class="py-2.5 px-3">帶溫度縮放 ($z / T$)</th>
+                                <th class="py-2.5 px-3">Softmax 機率 ($P$)</th>
+                                <th class="py-2.5 px-3">真實標籤 ($y$)</th>
+                                <th class="py-2.5 px-3">負對數貢獻</th>
+                            </tr>
+                        </thead>
+                        <tbody id="llmTableBody" class="divide-y divide-slate-800/60 font-mono">
+                            <!-- Injected by script -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- LLM Metrics Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                    <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+                        <div class="text-xs text-slate-400">當前 Token Cross-Entropy Loss</div>
+                        <div id="llmLossVal" class="text-2xl font-bold text-pink-400 font-mono mt-1">0.452</div>
+                        <div class="text-[10px] text-slate-500 mt-1">越低越好 (0 為完美)</div>
+                    </div>
+                    <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+                        <div class="text-xs text-slate-400">困惑度 (Perplexity, PPL = $e^{\mathcal{L}}$)</div>
+                        <div id="llmPplVal" class="text-2xl font-bold text-amber-400 font-mono mt-1">1.571</div>
+                        <div class="text-[10px] text-slate-500 mt-1">相當於在挑選幾個均勻詞</div>
+                    </div>
+                    <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+                        <div class="text-xs text-slate-400">反向傳播回傳梯度 ($\nabla_{z_{dog}}$)</div>
+                        <div id="llmGradVal" class="text-2xl font-bold text-emerald-400 font-mono mt-1">-0.364</div>
+                        <div class="text-[10px] text-slate-500 mt-1">$p_{dog} - 1$ 推動權重增大</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Python / PyTorch 實作 -->
+        <section id="pytorch-impl" class="p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 space-y-6">
+            <div class="flex items-center space-x-3">
+                <div class="w-2.5 h-7 rounded-full bg-amber-500"></div>
+                <div>
+                    <h2 class="text-2xl font-bold text-white">Python / PyTorch 實作對照</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">學會手刻公式與工程級 `torch.nn.CrossEntropyLoss()` 的數值穩定秘密</p>
+                </div>
+            </div>
+
+            <!-- Code Tabs -->
+            <div class="rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden shadow-xl">
+                <div class="flex border-b border-slate-800 bg-slate-900/70 px-4 pt-2 gap-2 text-xs font-semibold" role="tablist">
+                    <button onclick="switchCodeTab('standard')" id="codeTabStandard" class="px-4 py-2 border-b-2 border-indigo-500 text-white transition">PyTorch 官方標準寫法</button>
+                    <button onclick="switchCodeTab('manual')" id="codeTabManual" class="px-4 py-2 border-b-2 border-transparent text-slate-400 hover:text-white transition">NumPy / 純手刻公式對比</button>
+                    <button onclick="switchCodeTab('llm')" id="codeTabLLM" class="px-4 py-2 border-b-2 border-transparent text-slate-400 hover:text-white transition">LLM 自回歸批次訓練寫法</button>
+                </div>
+
+                <div class="p-5 relative bg-slate-950">
+                    <button onclick="copyCurrentCode()" class="absolute top-4 right-4 text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5 z-10 shadow-sm">
+                        <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                        <span id="copyBtnText">複製程式碼</span>
+                    </button>
+                    <pre class="code-font text-xs sm:text-sm text-slate-200 overflow-x-auto p-3 leading-relaxed rounded-xl bg-slate-900/60 border border-slate-800/80" id="codeDisplayArea"># PyTorch 官方標準最佳實踐
+import torch
+import torch.nn as nn
+
+# 1. 模擬神經網路未經 Softmax 的原始輸出 Logits (批次大小 2, 類別數 3)
+logits = torch.tensor([[2.0, 0.5, 0.7], 
+                       [0.2, 3.1, 0.1]], dtype=torch.float32, requires_grad=True)
+
+# 2. 真實標籤 (類別索引，非 One-Hot): 第0筆為 Class 0，第1筆為 Class 1
+targets = torch.tensor([0, 1], dtype=torch.long)
+
+# 3. 實例化損失函數 (底層自動整合 LogSoftmax + NLLLoss，具備數值穩定優化)
+criterion = nn.CrossEntropyLoss()
+
+# 4. 計算損失
+loss = criterion(logits, targets)
+print(f"標準 CrossEntropy 損失: {loss.item():.4f}")
+
+# 5. 反向傳播計算梯度
+loss.backward()
+print("Logits 梯度 (p - y):\n", logits.grad)</pre>
+                </div>
+            </div>
+            
+            <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 flex items-start gap-2.5">
+                <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <span><strong>工程避坑重點：</strong> 千萬不要在 PyTorch 網路的最後一層加上 <code>nn.Softmax()</code> 後再去接 <code>nn.CrossEntropyLoss()</code>！因為 PyTorch 的 <code>CrossEntropyLoss</code> 內部已經把 <code>LogSoftmax</code> 與 <code>NLLLoss</code> 合併，採用了 Log-Sum-Exp 技巧來杜絕數值溢位 (Numerical Overflow / Underflow)。</span>
+            </div>
+        </section>
+
+        <!-- 模擬器：顯微鏡級 Step-by-Step 與一鍵自動模擬 -->
+        <section id="simulator" class="p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 space-y-6">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-2.5 h-7 rounded-full bg-indigo-500"></div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-2xl font-bold text-white">模型訓練動態模擬器 (顯微鏡級 Step-by-Step)</h2>
+                            <span class="text-[11px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">四階段微觀拆解</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-0.5">單步拆解「前向預測 $\to$ 交叉熵損失 $\to$ 殘差求導 $\to$ 參數更新」每一個具體數學步驟</p>
+                    </div>
+                </div>
+
+                <!-- Simulation Multi-level Stepper Buttons -->
+                <div class="flex items-center flex-wrap gap-2">
+                    <button id="simMicroStepBtn" onclick="simulatorMicroStep()" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 transition flex items-center gap-1.5 active:scale-95">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+                        微步前進 (Next Sub-Step)
+                    </button>
+                    <button id="simSampleStepBtn" onclick="simulatorNextSample()" class="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5 active:scale-95">
+                        完成本樣本 (Next Sample)
+                    </button>
+                    <button id="simEpochStepBtn" onclick="simulatorNextEpoch()" class="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition active:scale-95">
+                        完成一世代 (Next Epoch)
+                    </button>
+                    <button id="simAutoBtn" onclick="toggleAutoTrain()" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-600/90 hover:bg-emerald-500 text-white shadow-sm transition flex items-center gap-1.5 active:scale-95">
+                        <svg id="simPlayIcon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span id="simPlayText">自動連續演練</span>
+                    </button>
+                    <button onclick="resetSimulator()" class="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition active:scale-95">
+                        重置 (Reset)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sub-Step Progress Indicator Bar -->
+            <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                    <div id="stepCard0" class="p-2.5 rounded-xl border border-indigo-500/40 bg-indigo-950/40 text-indigo-200 flex items-center gap-2 transition-all">
+                        <span class="w-5 h-5 rounded-full bg-indigo-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">1</span>
+                        <div class="truncate">
+                            <div class="font-bold">前向傳播 (Forward)</div>
+                            <div class="text-[10px] text-slate-400 truncate">計算加權和 $z$ 與預測 $\hat{p}$</div>
+                        </div>
+                    </div>
+                    <div id="stepCard1" class="p-2.5 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 flex items-center gap-2 transition-all">
+                        <span class="w-5 h-5 rounded-full bg-slate-700 text-slate-300 text-[10px] font-black flex items-center justify-center shrink-0">2</span>
+                        <div class="truncate">
+                            <div class="font-bold">計算交叉熵 (Loss)</div>
+                            <div class="text-[10px] text-slate-400 truncate">評估目標負對數懲罰</div>
+                        </div>
+                    </div>
+                    <div id="stepCard2" class="p-2.5 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 flex items-center gap-2 transition-all">
+                        <span class="w-5 h-5 rounded-full bg-slate-700 text-slate-300 text-[10px] font-black flex items-center justify-center shrink-0">3</span>
+                        <div class="truncate">
+                            <div class="font-bold">反向求導 (Backward)</div>
+                            <div class="text-[10px] text-slate-400 truncate">誤差殘差 $\delta = \hat{p} - y$</div>
+                        </div>
+                    </div>
+                    <div id="stepCard3" class="p-2.5 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 flex items-center gap-2 transition-all">
+                        <span class="w-5 h-5 rounded-full bg-slate-700 text-slate-300 text-[10px] font-black flex items-center justify-center shrink-0">4</span>
+                        <div class="truncate">
+                            <div class="font-bold">參數更新 (Update)</div>
+                            <div class="text-[10px] text-slate-400 truncate">$w \leftarrow w - \eta \cdot \nabla$</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Workspace: Visual Boundary + Live Math Inspector -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Left: 2D Feature Space Canvas -->
+                <div class="lg:col-span-5 p-4 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col items-center shadow-inner justify-between">
+                    <div class="w-full flex justify-between items-center text-xs text-slate-400 mb-2">
+                        <span class="font-bold uppercase tracking-wider text-indigo-300">2D 空間與當前鎖定樣本</span>
+                        <div class="flex items-center gap-3">
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> 類別 0 (紅)</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-sky-400 inline-block"></span> 類別 1 (藍)</span>
+                        </div>
+                    </div>
+                    <div class="relative w-full aspect-square max-w-[380px] rounded-xl overflow-hidden border border-slate-800 bg-slate-900 shadow-md">
+                        <canvas id="simBoundaryCanvas" width="380" height="380" class="w-full h-full block"></canvas>
+                    </div>
+                    <div class="w-full mt-3 pt-2 border-t border-slate-800 text-[11px] text-slate-400 flex justify-between items-center">
+                        <span id="activeSampleBadge" class="text-amber-300 font-mono font-medium">鎖定樣本: #0</span>
+                        <span class="text-slate-500 font-mono">金色光環即為微觀計算樣本</span>
+                    </div>
+                </div>
+
+                <!-- Right: Step-by-Step Mathematical Formula & Values Inspector -->
+                <div class="lg:col-span-7 flex flex-col justify-between space-y-4">
+                    <!-- Dynamic Step Detail Panel -->
+                    <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 relative overflow-hidden">
+                        <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+                            <div class="flex items-center gap-2">
+                                <span id="currentStepPhaseBadge" class="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                    階段 1 / 4：前向傳播
+                                </span>
+                                <span class="text-xs text-slate-400 font-mono" id="sampleCoordText">Point: x=0.21, y=0.35</span>
+                            </div>
+                            <span id="sampleTargetBadge" class="text-xs font-bold font-mono px-2 py-0.5 rounded bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                                真實標籤 $y = 1$ (藍)
+                            </span>
+                        </div>
+
+                        <!-- Live Mathematical Breakdown Card -->
+                        <div id="stepMathBox" class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 font-mono text-xs sm:text-sm space-y-2 text-slate-200">
+                            <!-- Injected dynamically based on sub-step -->
+                        </div>
+
+                        <!-- Step explanation message -->
+                        <div id="stepExplanation" class="text-xs text-slate-300 leading-relaxed bg-indigo-950/20 border border-indigo-500/20 p-3 rounded-xl">
+                            <!-- Dynamic text -->
+                        </div>
+                    </div>
+
+                    <!-- Metrics & Loss History Canvas -->
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase">世代 (Epoch)</div>
+                            <div id="simEpochVal" class="text-xl font-black font-mono text-white mt-0.5">0</div>
+                        </div>
+                        <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase">全體平均 CE Loss</div>
+                            <div id="simLossVal" class="text-xl font-black font-mono text-indigo-400 mt-0.5">0.693</div>
+                        </div>
+                        <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase">當前樣本 Loss</div>
+                            <div id="simSampleLossVal" class="text-xl font-black font-mono text-amber-400 mt-0.5">0.712</div>
+                        </div>
+                    </div>
+
+                    <!-- Mini Loss Chart & Sliders -->
+                    <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col gap-3">
+                        <div class="flex justify-between items-center text-xs text-slate-400">
+                            <span class="font-bold uppercase tracking-wider text-indigo-300">世代損失收斂曲線 (Loss Curve)</span>
+                            <span class="text-[10px] text-emerald-400 font-mono">更新中</span>
+                        </div>
+                        <div class="relative w-full h-[95px]">
+                            <canvas id="simLossChartCanvas" width="400" height="95" class="w-full h-full block rounded-lg bg-slate-900/50 border border-slate-800/80"></canvas>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                            <div class="space-y-1">
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-slate-400">學習率 (Learning Rate $\eta$):</span>
+                                    <span id="simLrVal" class="text-indigo-400 font-mono font-bold">0.25</span>
+                                </div>
+                                <input type="range" id="simLrSlider" min="0.05" max="0.8" step="0.05" value="0.25" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" aria-label="學習率滑桿 (Learning Rate)">
+                            </div>
+                            <div class="space-y-1">
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-slate-400">自動播放速度:</span>
+                                    <span id="simSpeedVal" class="text-emerald-400 font-mono font-bold">一般 (300ms)</span>
+                                </div>
+                                <input type="range" id="simSpeedSlider" min="50" max="800" step="50" value="300" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500" aria-label="播放間隔滑桿">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/80 bg-slate-950 py-8 px-4 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto space-y-2">
+            <p class="text-slate-400 font-medium">Cross-Entropy 交叉熵互動教學實驗室 2026</p>
+            <p>融合夏農資訊論、統計學習與現代深度學習架構</p>
+        </div>
+    </footer>
+
+    <!-- Interactive Logic -->
+    <script>
+        // --- 1. 生活化直覺比喻控制器 ---
+        const analogySlider = document.getElementById('analogySlider');
+        const analogyProbDisplay = document.getElementById('analogyProbDisplay');
+        const analogyLossDisplay = document.getElementById('analogyLossDisplay');
+        const analogyVerdict = document.getElementById('analogyVerdict');
+
+        function updateAnalogy() {
+            const p = parseFloat(analogySlider.value);
+            analogyProbDisplay.textContent = (p * 100).toFixed(1) + '%';
+            const loss = -Math.log(p);
+            analogyLossDisplay.textContent = `損失: ${loss.toFixed(3)}`;
+
+            if (p >= 0.85) {
+                analogyVerdict.className = 'text-emerald-400 font-medium';
+                analogyVerdict.textContent = '✓ 預測非常自信且正確，僅受微小懲罰';
+            } else if (p >= 0.5) {
+                analogyVerdict.className = 'text-amber-400 font-medium';
+                analogyVerdict.textContent = '△ 稍微猶豫不決，損失溫和增加';
+            } else if (p >= 0.1) {
+                analogyVerdict.className = 'text-rose-400 font-medium';
+                analogyVerdict.textContent = '✕ 預測嚴重偏離真實答案，承受巨大懲罰';
+            } else {
+                analogyVerdict.className = 'text-rose-500 font-black animate-pulse';
+                analogyVerdict.textContent = '⚠ 災難性錯誤！過度自信的錯誤預測，損失暴衝向無限大';
+            }
+        }
+        analogySlider.addEventListener('input', updateAnalogy);
+        updateAnalogy();
+
+        // --- 2. 互動式數學推導五步驟 ---
+        const mathSteps = [
+            {
+                title: "Step 1: 從極大似然估計 (Maximum Likelihood Estimation, MLE) 出發",
+                math: `$$\\mathcal{L}_{MLE}(\\theta) = \\prod_{i=1}^{N} P(y_i \\mid x_i; \\theta)$$`,
+                desc: "在統計學中，我們希望找到一組模型參數 $\\theta$，使得在給定輸入 $x_i$ 時，模型預測出正確樣本真實標籤 $y_i$ 的聯合機率最大化。由於各樣本彼此獨立同分佈 (i.i.d.)，總機率等於各樣本機率之連乘積。"
+            },
+            {
+                title: "Step 2: 取對數並加負號 $\\to$ 負對數似然 (Negative Log-Likelihood, NLL)",
+                math: `$$\\mathcal{L}_{NLL}(\\theta) = -\\ln \\mathcal{L}_{MLE}(\\theta) = -\\sum_{i=1}^{N} \\ln P(y_i \\mid x_i; \\theta)$$`,
+                desc: "連乘積在電腦中計算極易遭遇浮點數下溢 (Floating-point Underflow)，且連乘求導極為複雜。取自然對數後將乘法轉為加法；加負號則將『最大化問題』轉換為符合最佳化慣例的『最小化問題』。"
+            },
+            {
+                title: "Step 3: 伯努利分佈到二元交叉熵 (Binary Cross-Entropy, BCE)",
+                math: `$$\\mathcal{L}_{BCE} = - \\Big[ y \\ln(\\hat{p}) + (1 - y) \\ln(1 - \\hat{p}) \\ Big]$$`,
+                desc: "當目標只有兩種狀態 $y \\in \\{0, 1\\}$ 時，單個樣本的伯努利機率可寫作 $P(y) = \\hat{p}^y (1-\\hat{p})^{1-y}$。取負對數後，便誕生了著名的二元交叉熵公式。當 $y=1$ 時，後項消失；當 $y=0$ 時，前項消失。"
+            },
+            {
+                title: "Step 4: 多項分佈到多類別交叉熵 (Categorical Cross-Entropy, CCE)",
+                math: `$$\\mathcal{L}_{CCE} = - \\sum_{k=1}^{K} y_k \\ln(p_k)$$`,
+                desc: "當分類類別數 $K > 2$ 時，標籤 $y$ 採 One-Hot 編碼（僅正確類別為 1，其餘皆為 0）。因此多類別交叉熵在計算上極其簡潔：它本質上就是『取出模型對真實目標類別預測出的機率，並計算其負自然對數』。"
+            },
+            {
+                title: "Step 5: 梯度之美 —— Softmax 與 Cross-Entropy 的奇蹟結合",
+                math: `$$\\frac{\\partial \\mathcal{L}_{CE}}{\\partial z_i} = p_i - y_i$$`,
+                desc: "這是深度學習史上最優雅的公式之一！Softmax 的商法則導數與交叉熵的對數導數在鏈式法則中精準相互抵消，最終神經網路未激活輸出 $z_i$ 的梯度竟然單純就是『預測機率 $p_i$ 減去真實標籤 $y_i$』！誤差越大，梯度推動力越強，且徹底避免了 Sigmoid 造成的梯度消失 (Vanishing Gradient)。"
+            }
+        ];
+
+        function switchMathStep(stepNum) {
+            for (let i = 1; i <= 5; i++) {
+                const btn = document.getElementById(`mathBtn${i}`);
+                if (i === stepNum) {
+                    btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition';
+                } else {
+                    btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
+                }
+            }
+            const s = mathSteps[stepNum - 1];
+            const container = document.getElementById('mathContentArea');
+            container.innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex items-center gap-2 text-indigo-400 font-bold text-sm">
+                        <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+                        ${s.title}
+                    </div>
+                    <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 text-center overflow-x-auto text-lg sm:text-xl font-mono text-emerald-300">
+                        ${s.math}
+                    </div>
+                    <p class="text-sm text-slate-300 leading-relaxed">${s.desc}</p>
+                </div>
+                <div class="mt-4 pt-3 border-t border-slate-800/80 flex justify-between items-center text-xs text-slate-500">
+                    <span>推導步驟 ${stepNum} / 5</span>
+                    <span>${stepNum === 5 ? '反向傳播閉環完成' : '點擊切換下一步驟'}</span>
+                </div>
+            `;
+            if (window.renderMathInElement) {
+                renderMathInElement(container, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false}
+                    ]
+                });
+            }
+        }
+        switchMathStep(1);
+
+        // --- 3. 機器學習應用：多類別損失互動與畫布 ---
+        let currentTargetClass = 0;
+        const zSliders = [document.getElementById('zSlider0'), document.getElementById('zSlider1'), document.getElementById('zSlider2')];
+        const zVals = [document.getElementById('zVal0'), document.getElementById('zVal1'), document.getElementById('zVal2')];
+        const pVals = [document.getElementById('pVal0'), document.getElementById('pVal1'), document.getElementById('pVal2')];
+        const mlCurrentLoss = document.getElementById('mlCurrentLoss');
+        const mlTargetProb = document.getElementById('mlTargetProb');
+        const mlCanvas = document.getElementById('mlCanvas');
+        const mlCtx = mlCanvas.getContext('2d');
+
+        function setMLTarget(cls) {
+            currentTargetClass = cls;
+            for (let i = 0; i < 3; i++) {
+                const btn = document.getElementById(`mlBtn${i}`);
+                if (i === cls) {
+                    btn.className = 'py-2 text-xs font-bold rounded-xl border border-indigo-500 bg-indigo-500/20 text-indigo-300';
+                } else {
+                    btn.className = 'py-2 text-xs font-bold rounded-xl border border-slate-800 bg-slate-900 text-slate-400';
+                }
+            }
+            updateMLSim();
+        }
+
+        function softmax(arr) {
+            const max = Math.max(...arr);
+            const exps = arr.map(v => Math.exp(v - max));
+            const sum = exps.reduce((a, b) => a + b, 0);
+            return exps.map(v => v / sum);
+        }
+
+        function updateMLSim() {
+            const z = zSliders.map(s => parseFloat(s.value));
+            z.forEach((val, i) => zVals[i].textContent = val.toFixed(2));
+            const probs = softmax(z);
+            probs.forEach((p, i) => pVals[i].textContent = p.toFixed(3));
+
+            const targetP = probs[currentTargetClass];
+            const loss = -Math.log(Math.max(targetP, 1e-7));
+            mlCurrentLoss.textContent = loss.toFixed(3);
+            mlTargetProb.textContent = (targetP * 100).toFixed(1) + '%';
+
+            drawMLCanvas(probs, currentTargetClass, loss);
+        }
+
+        function drawMLCanvas(probs, target, loss) {
+            const rect = mlCanvas.parentElement.getBoundingClientRect();
+            mlCanvas.width = rect.width;
+            mlCanvas.height = rect.height;
+            const w = mlCanvas.width;
+            const h = mlCanvas.height;
+
+            mlCtx.clearRect(0, 0, w, h);
+
+            const barAreaWidth = w * 0.45;
+            const barMargin = 16;
+            const barWidth = (barAreaWidth - (4 * barMargin)) / 3;
+            const labels = ['貓', '狗', '鳥'];
+
+            for (let i = 0; i < 3; i++) {
+                const x = barMargin + i * (barWidth + barMargin);
+                const barH = probs[i] * (h - 80);
+                const y = h - 40 - barH;
+
+                mlCtx.fillStyle = '#1e293b';
+                mlCtx.fillRect(x, 30, barWidth, h - 70);
+
+                mlCtx.fillStyle = (i === target) ? '#6366f1' : '#334155';
+                mlCtx.fillRect(x, y, barWidth, barH);
+
+                if (i === target) {
+                    mlCtx.strokeStyle = '#34d399';
+                    mlCtx.lineWidth = 2.5;
+                    mlCtx.strokeRect(x - 2, 28, barWidth + 4, h - 66);
+                }
+
+                mlCtx.fillStyle = '#94a3b8';
+                mlCtx.font = '11px sans-serif';
+                mlCtx.textAlign = 'center';
+                mlCtx.fillText(labels[i], x + barWidth / 2, h - 20);
+                mlCtx.fillStyle = '#ffffff';
+                mlCtx.fillText((probs[i] * 100).toFixed(0) + '%', x + barWidth / 2, y - 6);
+            }
+
+            const curveXStart = w * 0.52;
+            const curveWidth = w * 0.42;
+            const curveYBase = h - 40;
+            const curveHeight = h - 70;
+
+            mlCtx.strokeStyle = '#334155';
+            mlCtx.lineWidth = 1;
+            mlCtx.beginPath();
+            mlCtx.moveTo(curveXStart, 30);
+            mlCtx.lineTo(curveXStart, curveYBase);
+            mlCtx.lineTo(curveXStart + curveWidth, curveYBase);
+            mlCtx.stroke();
+
+            mlCtx.fillStyle = '#64748b';
+            mlCtx.font = '10px sans-serif';
+            mlCtx.textAlign = 'right';
+            mlCtx.fillText('Loss: -ln(p)', curveXStart + curveWidth, 24);
+
+            mlCtx.beginPath();
+            mlCtx.strokeStyle = '#f43f5e';
+            mlCtx.lineWidth = 2;
+            const steps = 50;
+            for (let s = 1; s <= steps; s++) {
+                const p = s / steps;
+                const plotX = curveXStart + p * curveWidth;
+                const plotLoss = -Math.log(p);
+                const plotY = curveYBase - Math.min(plotLoss / 3.0, 1.0) * curveHeight;
+                if (s === 1) mlCtx.moveTo(plotX, plotY);
+                else mlCtx.lineTo(plotX, plotY);
+            }
+            mlCtx.stroke();
+
+            const curP = probs[target];
+            const dotX = curveXStart + curP * curveWidth;
+            const dotY = curveYBase - Math.min(loss / 3.0, 1.0) * curveHeight;
+
+            mlCtx.fillStyle = '#f43f5e';
+            mlCtx.beginPath();
+            mlCtx.arc(dotX, dotY, 5, 0, Math.PI * 2);
+            mlCtx.fill();
+            mlCtx.strokeStyle = '#ffffff';
+            mlCtx.lineWidth = 2;
+            mlCtx.stroke();
+        }
+
+        zSliders.forEach(s => s.addEventListener('input', updateMLSim));
+        window.addEventListener('resize', updateMLSim);
+        updateMLSim();
+
+        // --- 4. LLM Next-Token 預測機制模擬器 ---
+        const llmTokens = [
+            { token: "dog", baseZ: 4.2, target: true },
+            { token: "cat", baseZ: 2.1, target: false },
+            { token: "horse", baseZ: 0.8, target: false },
+            { token: "fox", baseZ: -0.5, target: false },
+            { token: "car", baseZ: -2.3, target: false },
+        ];
+
+        const tempSlider = document.getElementById('tempSlider');
+        const tempValue = document.getElementById('tempValue');
+        const llmTableBody = document.getElementById('llmTableBody');
+        const llmLossVal = document.getElementById('llmLossVal');
+        const llmPplVal = document.getElementById('llmPplVal');
+        const llmGradVal = document.getElementById('llmGradVal');
+
+        function updateLLM() {
+            const T = parseFloat(tempSlider.value);
+            tempValue.textContent = T.toFixed(1);
+
+            const scaledZ = llmTokens.map(t => t.baseZ / T);
+            const probs = softmax(scaledZ);
+
+            let targetProb = 0;
+            let targetIdx = 0;
+
+            llmTableBody.innerHTML = '';
+            llmTokens.forEach((item, idx) => {
+                const p = probs[idx];
+                const isTarget = item.target;
+                if (isTarget) {
+                    targetProb = p;
+                    targetIdx = idx;
+                }
+                const nll = isTarget ? -Math.log(p) : 0;
+
+                const tr = document.createElement('tr');
+                tr.className = isTarget ? 'bg-indigo-950/40 font-bold text-indigo-200' : 'text-slate-300';
+                tr.innerHTML = `
+                    <td class="py-2.5 px-3">
+                        <span class="${isTarget ? 'text-emerald-400 font-bold' : ''}">"${item.token}"</span>
+                        ${isTarget ? '<span class="ml-1.5 text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30">Target</span>' : ''}
+                    </td>
+                    <td class="py-2.5 px-3 text-slate-400">${item.baseZ.toFixed(2)}</td>
+                    <td class="py-2.5 px-3">${scaledZ[idx].toFixed(2)}</td>
+                    <td class="py-2.5 px-3">
+                        <div class="flex items-center gap-2">
+                            <span class="w-12">${(p * 100).toFixed(1)}%</span>
+                            <div class="flex-1 max-w-[80px] h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                <div class="h-full ${isTarget ? 'bg-emerald-400' : 'bg-indigo-500'}" style="width: ${p * 100}%"></div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-2.5 px-3">${isTarget ? '1.0' : '0.0'}</td>
+                    <td class="py-2.5 px-3 ${isTarget ? 'text-pink-400 font-bold' : 'text-slate-500'}">
+                        ${isTarget ? nll.toFixed(3) : '-'}
+                    </td>
+                `;
+                llmTableBody.appendChild(tr);
+            });
+
+            const loss = -Math.log(Math.max(targetProb, 1e-7));
+            const ppl = Math.exp(loss);
+            const grad = targetProb - 1.0;
+
+            llmLossVal.textContent = loss.toFixed(3);
+            llmPplVal.textContent = ppl.toFixed(3);
+            llmGradVal.textContent = grad.toFixed(3);
+        }
+
+        function setLLMPreset(preset) {
+            if (preset === 'untrained') {
+                llmTokens[0].baseZ = 0.2;
+                llmTokens[1].baseZ = 0.3;
+                llmTokens[2].baseZ = -0.1;
+                llmTokens[3].baseZ = 0.1;
+                llmTokens[4].baseZ = -0.2;
+            } else if (preset === 'training') {
+                llmTokens[0].baseZ = 2.0;
+                llmTokens[1].baseZ = 1.4;
+                llmTokens[2].baseZ = 0.5;
+                llmTokens[3].baseZ = -0.4;
+                llmTokens[4].baseZ = -1.5;
+            } else if (preset === 'converged') {
+                llmTokens[0].baseZ = 5.2;
+                llmTokens[1].baseZ = 1.1;
+                llmTokens[2].baseZ = -0.8;
+                llmTokens[3].baseZ = -2.0;
+                llmTokens[4].baseZ = -3.5;
+            }
+            updateLLM();
+        }
+
+        tempSlider.addEventListener('input', updateLLM);
+        updateLLM();
+
+        // --- 5. Python / PyTorch 程式碼展示器 ---
+        const codeSnippets = {
+            standard: `# PyTorch 官方標準最佳實踐
+import torch
+import torch.nn as nn
+
+# 1. 模擬神經網路未經 Softmax 的原始輸出 Logits (批次大小 2, 類別數 3)
+logits = torch.tensor([[2.0, 0.5, 0.7], 
+                       [0.2, 3.1, 0.1]], dtype=torch.float32, requires_grad=True)
+
+# 2. 真實標籤 (類別索引，非 One-Hot): 第0筆為 Class 0，第1筆為 Class 1
+targets = torch.tensor([0, 1], dtype=torch.long)
+
+# 3. 實例化損失函數 (底層自動整合 LogSoftmax + NLLLoss，具備數值穩定優化)
+criterion = nn.CrossEntropyLoss()
+
+# 4. 計算損失
+loss = criterion(logits, targets)
+print(f"標準 CrossEntropy 損失: {loss.item():.4f}")
+
+# 5. 反向傳播計算梯度
+loss.backward()
+print("Logits 梯度 (p - y):\\n", logits.grad)`,
+
+            manual: `# 純手刻 Softmax 與 Cross-Entropy (對比數值穩定版本)
+import numpy as np
+
+def cross_entropy_stable(logits, targets_one_hot):
+    # 數值穩定 Softmax：減去最大值防止 exp 溢位 (Numerical Overflow)
+    shifted_logits = logits - np.max(logits, axis=-1, keepdims=True)
+    exp_z = np.exp(shifted_logits)
+    probs = exp_z / np.sum(exp_z, axis=-1, keepdims=True)
+    
+    # 避免 log(0) 加入 epsilon 緩衝
+    eps = 1e-15
+    clipped_probs = np.clip(probs, eps, 1 - eps)
+    
+    # 計算交叉熵公式：- sum(y * log(p))
+    loss = -np.sum(targets_one_hot * np.log(clipped_probs)) / logits.shape[0]
+    return loss, probs
+
+# 測試資料
+logits_np = np.array([[2.0, 0.5, 0.7]])
+one_hot_y = np.array([[1.0, 0.0, 0.0]])
+
+loss_val, p_val = cross_entropy_stable(logits_np, one_hot_y)
+print(f"手刻計算損失: {loss_val:.4f}, 機率分佈: {p_val}")`,
+
+            llm: `# LLM 因果語言模型 (Autoregressive Next-Token Loss) 計算範式
+import torch
+import torch.nn as nn
+
+# 假設 Batch Size = 2, 序列長度 Sequence Length = 4, 詞表大小 Vocab Size = 1000
+batch_size, seq_len, vocab_size = 2, 4, 1000
+logits = torch.randn(batch_size, seq_len, vocab_size, requires_grad=True)
+
+# 輸入標籤 Token IDs (形狀: [batch_size, seq_len])
+input_ids = torch.randint(0, vocab_size, (batch_size, seq_len))
+
+# 在自回歸生成中：
+# 模型在位置 t 的 logits 用於預測位置 t+1 的 token
+# 因此需要 Shift: logits 切除最後一個，targets 切除第一個
+shift_logits = logits[:, :-1, :].contiguous()
+shift_labels = input_ids[:, 1:].contiguous()
+
+# 展平以便傳入標準 CrossEntropyLoss
+loss_fct = nn.CrossEntropyLoss()
+loss = loss_fct(shift_logits.view(-1, vocab_size), shift_labels.view(-1))
+
+print(f"LLM 序列預測損失: {loss.item():.4f}")
+print(f"當前模型困惑度 (Perplexity): {torch.exp(loss).item():.4f}")`
+        };
+
+        let currentCodeKey = 'standard';
+        const codeDisplayArea = document.getElementById('codeDisplayArea');
+
+        function switchCodeTab(key) {
+            currentCodeKey = key;
+            ['standard', 'manual', 'llm'].forEach(k => {
+                const tab = document.getElementById(`codeTab${k.charAt(0).toUpperCase() + k.slice(1)}`);
+                if (tab) {
+                    if (k === key) {
+                        tab.className = 'px-4 py-2 border-b-2 border-indigo-500 text-white transition';
+                    } else {
+                        tab.className = 'px-4 py-2 border-b-2 border-transparent text-slate-400 hover:text-white transition';
+                    }
+                }
+            });
+            if (codeDisplayArea && codeSnippets[key]) {
+                codeDisplayArea.textContent = codeSnippets[key];
+            }
+        }
+
+        function copyCurrentCode() {
+            const text = codeSnippets[currentCodeKey];
+            const btnText = document.getElementById('copyBtnText');
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                btnText.textContent = '已複製！';
+                setTimeout(() => { btnText.textContent = '複製程式碼'; }, 2000);
+            } catch (err) {
+                btnText.textContent = '複製失敗';
+            }
+            document.body.removeChild(textArea);
+        }
+
+        // --- 6. 升級版顯微鏡訓練模擬器 (Step-by-Step 4階段微觀拆解) ---
+        const boundaryCanvas = document.getElementById('simBoundaryCanvas');
+        const bCtx = boundaryCanvas ? boundaryCanvas.getContext('2d') : null;
+        const lossChartCanvas = document.getElementById('simLossChartCanvas');
+        const lCtx = lossChartCanvas ? lossChartCanvas.getContext('2d') : null;
+
+        const simEpochVal = document.getElementById('simEpochVal');
+        const simLossVal = document.getElementById('simLossVal');
+        const simSampleLossVal = document.getElementById('simSampleLossVal');
+        const simLrSlider = document.getElementById('simLrSlider');
+        const simLrVal = document.getElementById('simLrVal');
+        const simSpeedSlider = document.getElementById('simSpeedSlider');
+        const simSpeedVal = document.getElementById('simSpeedVal');
+        const simPlayText = document.getElementById('simPlayText');
+        const activeSampleBadge = document.getElementById('activeSampleBadge');
+        const currentStepPhaseBadge = document.getElementById('currentStepPhaseBadge');
+        const sampleCoordText = document.getElementById('sampleCoordText');
+        const sampleTargetBadge = document.getElementById('sampleTargetBadge');
+        const stepMathBox = document.getElementById('stepMathBox');
+        const stepExplanation = document.getElementById('stepExplanation');
+
+        if (simLrSlider) {
+            simLrSlider.addEventListener('input', () => {
+                simLrVal.textContent = parseFloat(simLrSlider.value).toFixed(2);
+            });
+        }
+        if (simSpeedSlider) {
+            simSpeedSlider.addEventListener('input', () => {
+                const ms = parseInt(simSpeedSlider.value);
+                simSpeedVal.textContent = ms < 150 ? `極速 (${ms}ms)` : (ms > 500 ? `慢速演示 (${ms}ms)` : `一般 (${ms}ms)`);
+                if (autoTrainTimer) {
+                    clearInterval(autoTrainTimer);
+                    autoTrainTimer = setInterval(simulatorMicroStep, ms);
+                }
+            });
+        }
+
+        // 資料集定義 (圓環分類問題)
+        let simData = [];
+        function generateDataset() {
+            simData = [];
+            // Class 0 (紅色核心集群: 內圈)
+            for (let i = 0; i < 24; i++) {
+                const angle = (i / 24) * Math.PI * 2 + (Math.random() * 0.2 - 0.1);
+                const r = 0.18 + Math.random() * 0.28;
+                simData.push({ x: r * Math.cos(angle), y: r * Math.sin(angle), label: 0, id: i });
+            }
+            // Class 1 (藍色外圈)
+            for (let i = 0; i < 32; i++) {
+                const angle = (i / 32) * Math.PI * 2 + (Math.random() * 0.2 - 0.1);
+                const r = 0.68 + Math.random() * 0.25;
+                simData.push({ x: r * Math.cos(angle), y: r * Math.sin(angle), label: 1, id: 24 + i });
+            }
+        }
+
+        // 非線性特徵模型: z = w1*x + w2*y + w3*x^2 + w4*y^2 + b
+        let weights = { w1: 0, w2: 0, w3: 0, w4: 0, b: 0 };
+        let simEpoch = 0;
+        let lossHistory = [];
+        let autoTrainTimer = null;
+
+        // 微步控制狀態
+        let currentSampleIdx = 0;
+        let currentSubStep = 0; // 0: Forward, 1: Loss, 2: Backward, 3: Update
+        let cacheStep = {
+            x: 0, y: 0, label: 0,
+            x2: 0, y2: 0,
+            z: 0, p: 0.5, loss: 0,
+            residual: 0,
+            grad: { w1: 0, w2: 0, w3: 0, w4: 0, b: 0 }
+        };
+
+        function sigmoid(z) {
+            return 1 / (1 + Math.exp(-Math.max(Math.min(z, 15), -15)));
+        }
+
+        function forwardSingle(d) {
+            const x2 = d.x * d.x;
+            const y2 = d.y * d.y;
+            const z = weights.w1 * d.x + weights.w2 * d.y + weights.w3 * x2 + weights.w4 * y2 + weights.b;
+            const p = sigmoid(z);
+            return { x2, y2, z, p };
+        }
+
+        function computeGlobalMeanLoss() {
+            if (!simData.length) return 0;
+            let total = 0;
+            simData.forEach(d => {
+                const { p } = forwardSingle(d);
+                const eps = 1e-7;
+                const cp = Math.max(Math.min(p, 1 - eps), eps);
+                total += d.label === 1 ? -Math.log(cp) : -Math.log(1 - cp);
+            });
+            return total / simData.length;
+        }
+
+        function resetSimulator() {
+            if (autoTrainTimer) {
+                clearInterval(autoTrainTimer);
+                autoTrainTimer = null;
+                if (simPlayText) simPlayText.textContent = '自動連續演練';
+            }
+            generateDataset();
+            weights = {
+                w1: (Math.random() - 0.5) * 0.4,
+                w2: (Math.random() - 0.5) * 0.4,
+                w3: (Math.random() - 0.5) * 0.4,
+                w4: (Math.random() - 0.5) * 0.4,
+                b: 0.05
+            };
+            simEpoch = 0;
+            currentSampleIdx = 0;
+            currentSubStep = 0;
+            lossHistory = [];
+            const initLoss = computeGlobalMeanLoss();
+            lossHistory.push(initLoss);
+            if (simEpochVal) simEpochVal.textContent = '0';
+            if (simLossVal) simLossVal.textContent = initLoss.toFixed(3);
+
+            prepareActiveSample();
+            renderSubStepInspector();
+            drawSimulator();
+        }
+
+        function prepareActiveSample() {
+            const d = simData[currentSampleIdx];
+            const { x2, y2, z, p } = forwardSingle(d);
+            const eps = 1e-7;
+            const cp = Math.max(Math.min(p, 1 - eps), eps);
+            const sampleLoss = d.label === 1 ? -Math.log(cp) : -Math.log(1 - cp);
+            const residual = p - d.label; // dL/dz = p - y
+
+            cacheStep = {
+                x: d.x, y: d.y, label: d.label,
+                x2, y2, z, p,
+                loss: sampleLoss,
+                residual: residual,
+                grad: {
+                    w1: residual * d.x,
+                    w2: residual * d.y,
+                    w3: residual * x2,
+                    w4: residual * y2,
+                    b: residual
+                }
+            };
+
+            if (simSampleLossVal) simSampleLossVal.textContent = sampleLoss.toFixed(3);
+            if (activeSampleBadge) activeSampleBadge.textContent = `鎖定樣本: #${d.id} (${currentSampleIdx + 1}/${simData.length})`;
+            if (sampleCoordText) sampleCoordText.textContent = `座標: (${d.x.toFixed(2)}, ${d.y.toFixed(2)})`;
+            if (sampleTargetBadge) {
+                sampleTargetBadge.className = d.label === 1 ?
+                    'text-xs font-bold font-mono px-2 py-0.5 rounded bg-sky-500/20 text-sky-400 border border-sky-500/30' :
+                    'text-xs font-bold font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30';
+                sampleTargetBadge.textContent = d.label === 1 ? '真實標籤 y = 1 (藍圈)' : '真實標籤 y = 0 (紅心)';
+            }
+        }
+
+        // --- 核心微步狀態機 (Micro Step Execution) ---
+        function simulatorMicroStep() {
+            if (!simData.length) resetSimulator();
+
+            // 執行當前階段動作
+            if (currentSubStep === 3) {
+                // 階段 4: 執行參數更新
+                const lr = simLrSlider ? parseFloat(simLrSlider.value) : 0.25;
+                weights.w1 -= lr * cacheStep.grad.w1;
+                weights.w2 -= lr * cacheStep.grad.w2;
+                weights.w3 -= lr * cacheStep.grad.w3;
+                weights.w4 -= lr * cacheStep.grad.w4;
+                weights.b -= lr * cacheStep.grad.b;
+
+                // 推進至下一個樣本
+                currentSampleIdx++;
+                if (currentSampleIdx >= simData.length) {
+                    currentSampleIdx = 0;
+                    simEpoch++;
+                    if (simEpochVal) simEpochVal.textContent = simEpoch;
+
+                    const meanL = computeGlobalMeanLoss();
+                    lossHistory.push(meanL);
+                    if (lossHistory.length > 60) lossHistory.shift();
+                    if (simLossVal) simLossVal.textContent = meanL.toFixed(3);
+                }
+                currentSubStep = 0; // 重置為階段 1
+                prepareActiveSample();
+            } else {
+                currentSubStep++;
+            }
+
+            renderSubStepInspector();
+            drawSimulator();
+        }
+
+        // 完成當前樣本 (走完 4 步)
+        function simulatorNextSample() {
+            while (currentSubStep !== 3) {
+                simulatorMicroStep();
+            }
+            simulatorMicroStep(); // 觸發更新並邁入下個樣本
+        }
+
+        // 完成一整世代 (遍歷所有樣本)
+        function simulatorNextEpoch() {
+            const startEpoch = simEpoch;
+            while (simEpoch === startEpoch) {
+                simulatorMicroStep();
+            }
+        }
+
+        // 動態渲染四階段儀表板與數學公式帶入
+        function renderSubStepInspector() {
+            // 更新步驟指示徽章樣式
+            for (let i = 0; i < 4; i++) {
+                const card = document.getElementById(`stepCard${i}`);
+                if (!card) continue;
+                if (i === currentSubStep) {
+                    card.className = 'p-2.5 rounded-xl border border-indigo-500 bg-indigo-950/60 text-white shadow-lg shadow-indigo-500/20 ring-1 ring-indigo-500 transition-all';
+                    card.querySelector('span').className = 'w-5 h-5 rounded-full bg-indigo-500 text-white text-[10px] font-black flex items-center justify-center shrink-0 animate-pulse';
+                } else if (i < currentSubStep) {
+                    card.className = 'p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-950/20 text-emerald-300 transition-all';
+                    card.querySelector('span').className = 'w-5 h-5 rounded-full bg-emerald-600 text-white text-[10px] font-black flex items-center justify-center shrink-0';
+                } else {
+                    card.className = 'p-2.5 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 transition-all';
+                    card.querySelector('span').className = 'w-5 h-5 rounded-full bg-slate-700 text-slate-300 text-[10px] font-black flex items-center justify-center shrink-0';
+                }
+            }
+
+            const lr = simLrSlider ? parseFloat(simLrSlider.value) : 0.25;
+            const { x, y, x2, y2, z, p, loss, residual, grad, label } = cacheStep;
+
+            if (currentSubStep === 0) {
+                currentStepPhaseBadge.textContent = '階段 1 / 4：前向傳播 (Forward Pass)';
+                stepMathBox.innerHTML = `
+                    <div class="text-indigo-300 font-bold text-xs pb-1">① 特徵映射與加權和計算 (Logit):</div>
+                    <div class="text-slate-300">
+                        $z = w_1 x + w_2 y + w_3 x^2 + w_4 y^2 + b$
+                    </div>
+                    <div class="text-slate-400 text-xs">
+                        $= (${weights.w1.toFixed(2)})(${x.toFixed(2)}) + (${weights.w2.toFixed(2)})(${y.toFixed(2)}) + (${weights.w3.toFixed(2)})(${x2.toFixed(2)}) + (${weights.w4.toFixed(2)})(${y2.toFixed(2)}) + ${weights.b.toFixed(2)}$
+                    </div>
+                    <div class="text-emerald-400 font-bold mt-1 text-sm">
+                        $\\implies z = ${z.toFixed(3)}$
+                    </div>
+                    <div class="text-indigo-300 font-bold text-xs pt-2 pb-1">② Sigmoid 激活產生預測機率:</div>
+                    <div class="text-amber-300 font-bold text-sm">
+                        $\\hat{p} = \\sigma(z) = \\frac{1}{1 + e^{-(${z.toFixed(2)})}} = ${(p * 100).toFixed(1)}\\%$ ($p = ${p.toFixed(4)}$)
+                    </div>
+                `;
+                stepExplanation.innerHTML = `
+                    <span class="text-indigo-300 font-bold">解說：</span>模型在特徵空間中將輸入點映射為 Logit $z$，隨後通過 Sigmoid 壓縮至 $[0, 1]$ 區間，預測該點屬於「藍色類別 (1)」的機率為 <strong>${(p * 100).toFixed(1)}%</strong>。
+                `;
+            } else if (currentSubStep === 1) {
+                currentStepPhaseBadge.textContent = '階段 2 / 4：計算交叉熵損失 (Loss Calculation)';
+                const formulaStr = label === 1 ?
+                    `\\mathcal{L} = -\\ln(\\hat{p}) = -\\ln(${p.toFixed(4)}) = ${loss.toFixed(4)}` :
+                    `\\mathcal{L} = -\\ln(1 - \\hat{p}) = -\\ln(${(1 - p).toFixed(4)}) = ${loss.toFixed(4)}`;
+                stepMathBox.innerHTML = `
+                    <div class="text-indigo-300 font-bold text-xs pb-1">二元交叉熵公式 (BCE Formula):</div>
+                    <div class="text-slate-300">
+                        $\\mathcal{L}_{BCE} = - \\Big[ y \\ln(\\hat{p}) + (1 - y) \\ln(1 - \\hat{p}) \\Big]$
+                    </div>
+                    <div class="text-slate-400 text-xs mt-1">
+                        真實標籤為 $y = ${label}$，因此只需計算真實目標對應的負對數：
+                    </div>
+                    <div class="text-rose-400 font-bold text-base mt-1.5 p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-center">
+                        $$${formulaStr}$$
+                    </div>
+                `;
+                stepExplanation.innerHTML = `
+                    <span class="text-indigo-300 font-bold">解說：</span>Cross-Entropy 的本質就是「對正確答案預測機率的負自然對數」。若模型給出接近 $1.0$ 的自信預測，懲罰趨近 $0$；若信心偏離，負對數將呈現暴增懲罰。當前單點懲罰值為 <strong>${loss.toFixed(4)}</strong>。
+                `;
+            } else if (currentSubStep === 2) {
+                currentStepPhaseBadge.textContent = '階段 3 / 4：反向傳播求導 (Backward Pass)';
+                stepMathBox.innerHTML = `
+                    <div class="text-indigo-300 font-bold text-xs pb-1">① 交叉熵核心殘差 (The Magic Residual):</div>
+                    <div class="text-emerald-300 font-bold text-sm">
+                        $$\\delta = \\frac{\\partial \\mathcal{L}}{\\partial z} = \\hat{p} - y = ${p.toFixed(3)} - ${label} = ${residual > 0 ? '+' : ''}${residual.toFixed(3)}$$
+                    </div>
+                    <div class="text-indigo-300 font-bold text-xs pt-2 pb-1">② 鏈式法則求得權重梯度 (Gradients):</div>
+                    <div class="grid grid-cols-2 gap-1 text-[11px] text-slate-300 font-mono">
+                        <div>$\\nabla w_1 = \\delta \\cdot x = ${(grad.w1).toFixed(4)}$</div>
+                        <div>$\\nabla w_2 = \\delta \\cdot y = ${(grad.w2).toFixed(4)}$</div>
+                        <div>$\\nabla w_3 = \\delta \\cdot x^2 = ${(grad.w3).toFixed(4)}$</div>
+                        <div>$\\nabla w_4 = \\delta \\cdot y^2 = ${(grad.w4).toFixed(4)}$</div>
+                    </div>
+                    <div class="text-slate-400 text-[11px] mt-1">$\\nabla b = \\delta = ${residual.toFixed(4)}$</div>
+                `;
+                stepExplanation.innerHTML = `
+                    <span class="text-indigo-300 font-bold">解說：</span>注意看！求導結果極度簡潔：<strong>$\\delta = \\hat{p} - y$</strong>！不需要繁複乘積，只要用「預測機率減去真實標籤」，符號方向自動指引參數該調大還是調小，數值大小決定更新強度。
+                `;
+            } else if (currentSubStep === 3) {
+                currentStepPhaseBadge.textContent = '階段 4 / 4：參數梯度下降更新 (Parameter Update)';
+                stepMathBox.innerHTML = `
+                    <div class="text-indigo-300 font-bold text-xs pb-1">隨機梯度下降公式 (SGD Update, $\\eta = ${lr}$):</div>
+                    <div class="text-slate-300 text-xs">
+                        $$w_{k}^{(\\text{new})} = w_{k}^{(\\text{old})} - \\eta \\cdot \\nabla w_k$$
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5 text-xs font-mono text-emerald-300 mt-1">
+                        <div>$w_1 \\leftarrow ${(weights.w1 - lr * grad.w1).toFixed(3)}$ <span class="text-[10px] text-slate-500">($\\Delta: ${(-lr * grad.w1).toFixed(3)}$)</span></div>
+                        <div>$w_2 \\leftarrow ${(weights.w2 - lr * grad.w2).toFixed(3)}$ <span class="text-[10px] text-slate-500">($\\Delta: ${(-lr * grad.w2).toFixed(3)}$)</span></div>
+                        <div>$w_3 \\leftarrow ${(weights.w3 - lr * grad.w3).toFixed(3)}$ <span class="text-[10px] text-slate-500">($\\Delta: ${(-lr * grad.w3).toFixed(3)}$)</span></div>
+                        <div>$w_4 \\leftarrow ${(weights.w4 - lr * grad.w4).toFixed(3)}$ <span class="text-[10px] text-slate-500">($\\Delta: ${(-lr * grad.w4).toFixed(3)}$)</span></div>
+                    </div>
+                    <div class="text-xs text-indigo-300 mt-1">$b \\leftarrow ${(weights.b - lr * grad.b).toFixed(3)}$</div>
+                `;
+                stepExplanation.innerHTML = `
+                    <span class="text-indigo-300 font-bold">解說：</span>沿著負梯度方向前進一小步 $\\eta \\cdot \\nabla$，當前樣本的預測誤差即刻被修正！點擊「微步前進」將正式寫入更新並移動到下一個樣本。
+                `;
+            }
+
+            if (window.renderMathInElement) {
+                renderMathInElement(stepMathBox, {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '$', right: '$', display: false }
+                    ]
+                });
+            }
+        }
+
+        // 一鍵自動連續模擬開關
+        function toggleAutoTrain() {
+            if (autoTrainTimer) {
+                clearInterval(autoTrainTimer);
+                autoTrainTimer = null;
+                if (simPlayText) simPlayText.textContent = '自動連續演練';
+            } else {
+                if (simPlayText) simPlayText.textContent = '暫停演示 (Pause)';
+                const ms = simSpeedSlider ? parseInt(simSpeedSlider.value) : 300;
+                autoTrainTimer = setInterval(() => {
+                    simulatorMicroStep();
+                }, ms);
+            }
+        }
+
+        // 繪製 2D 決策邊界與鎖定發光樣本點
+        function drawSimulator() {
+            if (!bCtx || !boundaryCanvas) return;
+
+            const w = boundaryCanvas.width;
+            const h = boundaryCanvas.height;
+            const imgData = bCtx.createImageData(w, h);
+            const data = imgData.data;
+
+            const gridStep = 4;
+            for (let py = 0; py < h; py += gridStep) {
+                const y = -((py / h) * 2.2 - 1.1);
+                for (let px = 0; px < w; px += gridStep) {
+                    const x = (px / w) * 2.2 - 1.1;
+                    const { p } = forwardSingle({ x, y });
+
+                    const r = Math.round(244 * (1 - p) + 56 * p);
+                    const g = Math.round(63 * (1 - p) + 189 * p);
+                    const b = Math.round(94 * (1 - p) + 248 * p);
+
+                    for (let dy = 0; dy < gridStep && py + dy < h; dy++) {
+                        for (let dx = 0; dx < gridStep && px + dx < w; dx++) {
+                            const idx = ((py + dy) * w + (px + dx)) * 4;
+                            data[idx] = r;
+                            data[idx + 1] = g;
+                            data[idx + 2] = b;
+                            data[idx + 3] = 95;
+                        }
+                    }
+                }
+            }
+            bCtx.putImageData(imgData, 0, 0);
+
+            // 繪製所有資料點
+            simData.forEach((pt, idx) => {
+                const screenX = ((pt.x + 1.1) / 2.2) * w;
+                const screenY = ((-pt.y + 1.1) / 2.2) * h;
+
+                bCtx.beginPath();
+                bCtx.arc(screenX, screenY, 4, 0, Math.PI * 2);
+                bCtx.fillStyle = pt.label === 1 ? '#38bdf8' : '#f43f5e';
+                bCtx.fill();
+                bCtx.strokeStyle = '#ffffff';
+                bCtx.lineWidth = 1.2;
+                bCtx.stroke();
+            });
+
+            // 標註當前微步鎖定的焦點樣本 (金色發光環)
+            if (simData.length && currentSampleIdx < simData.length) {
+                const activePt = simData[currentSampleIdx];
+                const ax = ((activePt.x + 1.1) / 2.2) * w;
+                const ay = ((-activePt.y + 1.1) / 2.2) * h;
+
+                // 發光光環
+                bCtx.beginPath();
+                bCtx.arc(ax, ay, 11, 0, Math.PI * 2);
+                bCtx.strokeStyle = '#fbbf24';
+                bCtx.lineWidth = 3;
+                bCtx.stroke();
+
+                bCtx.beginPath();
+                bCtx.arc(ax, ay, 16, 0, Math.PI * 2);
+                bCtx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
+                bCtx.lineWidth = 2;
+                bCtx.stroke();
+            }
+
+            // 繪製損失收斂歷史圖
+            if (!lCtx || !lossChartCanvas) return;
+            const parentW = lossChartCanvas.parentElement ? lossChartCanvas.parentElement.clientWidth : 400;
+            const lw = lossChartCanvas.width = Math.max(parentW || 400, 260);
+            const lh = lossChartCanvas.height = 95;
+            lCtx.clearRect(0, 0, lw, lh);
+
+            // 背景水平參考線
+            lCtx.strokeStyle = '#1e293b';
+            lCtx.lineWidth = 1;
+            for (let i = 1; i <= 2; i++) {
+                const y = (lh / 3) * i;
+                lCtx.beginPath();
+                lCtx.moveTo(0, y);
+                lCtx.lineTo(lw, y);
+                lCtx.stroke();
+            }
+
+            if (lossHistory.length < 2) return;
+
+            lCtx.beginPath();
+            lCtx.strokeStyle = '#6366f1';
+            lCtx.lineWidth = 2.2;
+
+            const maxLoss = Math.max(1.0, Math.max(...lossHistory));
+            lossHistory.forEach((loss, i) => {
+                const x = (i / (lossHistory.length - 1)) * (lw - 24) + 12;
+                const y = lh - 12 - (loss / maxLoss) * (lh - 24);
+                if (i === 0) lCtx.moveTo(x, y);
+                else lCtx.lineTo(x, y);
+            });
+            lCtx.stroke();
+
+            // 最新一點高亮
+            const lastLoss = lossHistory[lossHistory.length - 1];
+            const lx = lw - 12;
+            const ly = lh - 12 - (lastLoss / maxLoss) * (lh - 24);
+            lCtx.fillStyle = '#a855f7';
+            lCtx.beginPath();
+            lCtx.arc(lx, ly, 3.5, 0, Math.PI * 2);
+            lCtx.fill();
+            lCtx.strokeStyle = '#ffffff';
+            lCtx.lineWidth = 1.2;
+            lCtx.stroke();
+        }
+
+        // 立即初始化
+        switchCodeTab('standard');
+        resetSimulator();
+
+        window.addEventListener('resize', () => {
+            updateMLSim();
+            drawSimulator();
+        });
+        setTimeout(drawSimulator, 80);
+    </script>
+</body>
+</html>

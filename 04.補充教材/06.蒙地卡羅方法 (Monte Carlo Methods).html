@@ -1,0 +1,1946 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>蒙地卡羅方法 (Monte Carlo Method) 全方位互動手冊與模擬實驗室</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- KaTeX for LaTeX Math Rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+          onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true},{left: '$', right: '$', display: false}]});"></script>
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    .code-font { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center font-bold text-xl shadow-lg shadow-indigo-500/20">
+          🎲
+        </div>
+        <div>
+          <h1 class="text-lg font-bold bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 bg-clip-text text-transparent">
+            蒙地卡羅方法 (Monte Carlo Methods)
+          </h1>
+          <p class="text-xs text-slate-400">理論、前沿 AI 應用與即時互動模擬系統</p>
+        </div>
+      </div>
+      <nav class="hidden md:flex space-x-1 text-xs font-medium">
+        <a href="#section-00" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition">00-01 緣起</a>
+        <a href="#section-concept" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition">基本概念</a>
+        <a href="#section-02" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition">02-03 實例應用</a>
+        <a href="#section-04" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition">04-05 數學推導</a>
+        <a href="#section-06" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition">06 AI 領域範疇</a>
+        <a href="#section-07" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition">07 程式實作</a>
+        <a href="#section-08" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-sm">08 互動實驗室 (4組)</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-x-0 space-y-12">
+
+    <!-- 00 & 01: 一句話簡介與由來 -->
+    <section id="section-00" class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <!-- 00 -->
+      <div class="lg:col-span-5 bg-gradient-to-br from-slate-900 to-slate-900/60 border border-slate-800 rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between shadow-xl">
+        <div class="absolute -right-8 -top-8 w-36 h-36 bg-indigo-500/10 rounded-full blur-2xl"></div>
+        <div>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 mb-3">
+            00. 核心定義
+          </span>
+          <h2 class="text-2xl font-bold text-white mb-4">一句話簡介</h2>
+          <blockquote class="border-l-4 border-indigo-500 pl-4 py-2 text-lg text-slate-200 leading-relaxed font-medium bg-slate-800/40 rounded-r-lg mb-4">
+            「以<span class="text-indigo-400 font-semibold">隨機抽樣（賭場輪盤）</span>的統計實驗，去逼近與解決過度複雜、甚至無法解析求解的<span class="text-pink-400 font-semibold">確定性數學、物理與最佳化問題</span>。」
+          </blockquote>
+          <div class="p-3.5 bg-slate-950/70 border border-slate-800/80 rounded-xl text-xs text-slate-300 leading-relaxed">
+            <span class="text-amber-400 font-semibold flex items-center gap-1.5 mb-1">
+              <span>💡</span> 核心原理：
+            </span>
+            不尋找單一絕對答案，而是透過電腦進行大量（如數千次至數百萬次）的隨機模擬，找出各種可能結果的<strong class="text-indigo-300 font-medium">機率分佈與趨勢</strong>。
+          </div>
+        </div>
+        <div class="mt-6 pt-4 border-t border-slate-800 text-xs text-slate-400 flex items-center justify-between">
+          <span>核心哲學：計算不行，抽樣來湊</span>
+          <span class="text-indigo-400">大數法則與弱隨機性</span>
+        </div>
+      </div>
+
+      <!-- 01 -->
+      <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20 mb-3">
+          01. 歷史傳奇
+        </span>
+        <h2 class="text-xl font-bold text-white mb-3">名稱與方法的由來</h2>
+        <div class="space-y-3 text-slate-300 text-sm leading-relaxed">
+          <p>
+            蒙地卡羅方法誕生於 1940 年代二次世界大戰的<strong class="text-white">曼哈頓計畫（Manhattan Project）</strong>期間。數學家<strong class="text-purple-300">斯塔尼斯瓦夫·烏拉姆（Stanislaw Ulam）</strong>在生病休養時，獨自玩西洋接龍撲克牌（Solitaire）。他試圖計算「一副牌能順利理順排完的機率」，但純組合數學計算繁複到幾乎不可能。
+          </p>
+          <p>
+            烏拉姆靈機一動：「如果我直接玩 100 次並記錄成功次數，不就能直接估算出機率嗎？」他將此想法告訴了電腦科學之父<strong class="text-purple-300">約翰·馮·紐曼（John von Neumann）</strong>。當時馮·紐曼正在協助洛斯阿拉莫斯國家實驗室研發核武器，面臨中子擴散與重原子核連鎖碰撞極難透過微分方程解析計算的難題。
+          </p>
+          <p class="text-xs text-slate-400 bg-slate-950 p-3 rounded-xl border border-slate-800">
+            🎲 <span class="font-semibold text-slate-200">命名秘辛：</span>物理學家尼古拉斯·梅特羅波利斯（Nicholas Metropolis）建議以摩納哥著名的賭都<strong class="text-pink-400">「蒙地卡羅（Monte Carlo）」</strong>作為該機密代號，因烏拉姆的叔叔經常去那裡賭錢借貸，完美契合了「擲骰賭博即計算」的本質。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 基本概念：兩大分類體系 -->
+    <section id="section-concept" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 lg:p-8 shadow-xl space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+        <div>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 mb-2">
+            理論架構核心
+          </span>
+          <h2 class="text-2xl font-bold text-white">基本概念：蒙地卡羅方法的兩大分類</h2>
+        </div>
+        <p class="text-xs text-slate-400 max-w-md">
+          通常蒙地卡羅方法可粗略分成兩類：直接類比內在隨機過程，或是將確定性問題轉化為隨機分佈特徵數。
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 類別一：內在隨機性問題 -->
+        <div class="bg-gradient-to-br from-slate-950 to-slate-900/90 border border-slate-800 rounded-xl p-5 flex flex-col justify-between relative overflow-hidden group hover:border-cyan-500/40 transition">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                類別一
+              </span>
+              <span class="text-2xl">⚛️ 💥</span>
+            </div>
+            <h3 class="text-lg font-bold text-white group-hover:text-cyan-300 transition">
+              問題本身具有內在的隨機性（直接類比隨機過程）
+            </h3>
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              所求解的問題本身具有內在的隨機性，藉助電腦的運算能力可以直接類比這種隨機過程。
+            </p>
+            <div class="p-3.5 bg-slate-950/80 rounded-lg border border-slate-800/80 text-xs text-slate-300 space-y-2">
+              <span class="text-cyan-400 font-semibold block">🔬 典型範例：核物理中子傳輸</span>
+              <p class="text-slate-400 leading-relaxed">
+                在核物理研究中，分析中子在反應爐中的傳輸過程。中子與原子核作用受到量子力學規律的制約，人們只能知道它們相互作用發生的機率，卻無法準確獲得中子與原子核作用時的位置以及裂變產生的新中子的行進速率和方向。
+              </p>
+              <p class="text-slate-300">
+                科學家依據其機率進行隨機抽樣得到裂變位置、速度和方向，這樣類比大量中子的行為後，經過統計就能獲得中子傳輸的範圍，作為反應爐設計的依據。
+              </p>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
+            <span>核心哲學：世界本隨機，計算即仿真</span>
+            <span class="text-cyan-400 font-mono">微觀機率 ➜ 巨觀統計</span>
+          </div>
+        </div>
+
+        <!-- 類別二：轉化為特徵數與期望值 -->
+        <div class="bg-gradient-to-br from-slate-950 to-slate-900/90 border border-slate-800 rounded-xl p-5 flex flex-col justify-between relative overflow-hidden group hover:border-indigo-500/40 transition">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                類別二
+              </span>
+              <span class="text-2xl">📐 🎯</span>
+            </div>
+            <h3 class="text-lg font-bold text-white group-hover:text-indigo-300 transition">
+              問題轉化為隨機分布的特徵數（期望值與多維積分）
+            </h3>
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              所求解問題可以轉化為某種隨機分布的特徵數，比如隨機事件出現的機率，或者隨機變數的期望值。
+            </p>
+            <div class="p-3.5 bg-slate-950/80 rounded-lg border border-slate-800/80 text-xs text-slate-300 space-y-2">
+              <span class="text-indigo-400 font-semibold block">📊 解題機制與大數法則</span>
+              <p class="text-slate-400 leading-relaxed">
+                通過隨機抽樣的方法，以隨機事件出現的頻率估計其機率，或者以抽樣的數字特徵估算隨機變數的數字特徵，並將其作為問題的解。
+              </p>
+              <div class="p-2 bg-slate-900 rounded border border-slate-800 text-center font-mono text-emerald-400 text-xs">
+                $$\mathbb{E}[f(X)] \approx \frac{1}{N}\sum_{i=1}^N f(X_i) \quad (X_i \sim p(x))$$
+              </div>
+              <p class="text-slate-300">
+                這種方法多用於求解複雜的多維積分、偏微分方程數值解、以及無解析解的幾何邊界與最佳化問題。
+              </p>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
+            <span>核心哲學：問題確定，構建隨機變數求之</span>
+            <span class="text-indigo-400 font-mono">頻率估計機率 ➜ 均值估算期望</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02 & 03: 生活化例子與工業應用 -->
+    <section id="section-02" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <!-- 02 生活化例子 -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        <div class="flex items-center justify-between mb-4">
+          <span class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            02. 生活化例子
+          </span>
+          <span class="text-2xl">🌧️ 🏞️</span>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-3">如何測量形狀極不規則的天然湖泊面積？</h3>
+        <ul class="space-y-4 text-sm text-slate-300">
+          <li class="flex items-start gap-3">
+            <div class="w-6 h-6 rounded-full bg-slate-800 text-emerald-400 font-bold flex items-center justify-center shrink-0 text-xs">1</div>
+            <div>
+              <strong class="text-white">建立矩形邊界：</strong> 在衛星地圖上，畫一個面積已知的方形圍籬 $A_{box}$（如 $1000\text{m} \times 1000\text{m} = 10^6 \text{ m}^2$），完全包住整座湖泊。
+            </div>
+          </li>
+          <li class="flex items-start gap-3">
+            <div class="w-6 h-6 rounded-full bg-slate-800 text-emerald-400 font-bold flex items-center justify-center shrink-0 text-xs">2</div>
+            <div>
+              <strong class="text-white">暴雨隨機撒點：</strong> 天空均勻落下 10,000 顆雨滴（隨機均勻抽樣點 $N$）。
+            </div>
+          </li>
+          <li class="flex items-start gap-3">
+            <div class="w-6 h-6 rounded-full bg-slate-800 text-emerald-400 font-bold flex items-center justify-center shrink-0 text-xs">3</div>
+            <div>
+              <strong class="text-white">計算比例逼近：</strong> 觀察有多少雨滴濺落在水裡（記為 $M$ 顆）。若有 3,250 顆入水，則湖泊面積估算為：
+              <div class="mt-2 bg-slate-950 p-2 rounded text-center text-emerald-400 font-mono">
+                $$A_{lake} \approx A_{box} \times \frac{M}{N} = 10^6 \times \frac{3250}{10000} = 325,000 \text{ m}^2$$
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 03 工業上應用 -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        <div class="flex items-center justify-between mb-4">
+          <span class="px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            03. 工業上應用
+          </span>
+          <span class="text-2xl">🏭 💻</span>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-3">現代頂尖工業支柱</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div class="p-3 bg-slate-800/60 rounded-xl border border-slate-700/50">
+            <span class="font-bold text-blue-300 block mb-1">🎮 電腦圖學與電影渲染</span>
+            <p class="text-slate-400">Path Tracing（路徑追蹤）：每像素射出成千上萬條隨機光線與物體表面散射折射，逼近渲染方程（Rendering Equation），生成如皮克斯、虛幻引擎真實光影。</p>
+          </div>
+          <div class="p-3 bg-slate-800/60 rounded-xl border border-slate-700/50">
+            <span class="font-bold text-blue-300 block mb-1">📈 金融量化衍生品定價</span>
+            <p class="text-slate-400">針對亞式期權、障礙期權等複雜奇異衍生品，解析解不存在。透過幾何布朗運動模擬百萬次標的資產未來路徑，折現求期望值以實施風控（VaR）。</p>
+          </div>
+          <div class="p-3 bg-slate-800/60 rounded-xl border border-slate-700/50">
+            <span class="font-bold text-blue-300 block mb-1">🔬 半導體微影良率模擬</span>
+            <p class="text-slate-400">先進製程極紫外光（EUV）隨機光子雜訊（Stochastics）與化學抗蝕劑分子擴散，藉由蒙地卡羅模擬評估晶片缺陷率（Yield Analysis）。</p>
+          </div>
+          <div class="p-3 bg-slate-800/60 rounded-xl border border-slate-700/50">
+            <span class="font-bold text-blue-300 block mb-1">☢️ 核子工程與輻射防護</span>
+            <p class="text-slate-400">模擬數十億個中子在反應爐棒、防護鉛壁中的散射、吸收與裂變反應鏈，計算輻射吸收劑量分佈。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 & 05: 理論簡介與數學推導 -->
+    <section id="section-04" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 lg:p-8">
+      <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div>
+          <span class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            04 & 05. 理論簡介與嚴密數學推導
+          </span>
+          <h2 class="text-2xl font-bold text-white mt-2">為什麼蒙地卡羅能戰勝「維度詛咒」？</h2>
+        </div>
+        <div class="text-xs text-slate-400 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800 font-mono">
+          收斂階數：$\mathcal{O}(N^{-1/2})$，與維度 $d$ 無關！
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 text-sm text-slate-300 leading-relaxed">
+        <!-- 積分轉期望值 -->
+        <div class="space-y-4">
+          <h4 class="text-base font-semibold text-amber-300 flex items-center gap-2">
+            <span>步驟 1.</span> 積分問題轉換為數學期望值 (Expectation)
+          </h4>
+          <p>
+            考慮計算函數 $g(x)$ 在高維體積區域 $\Omega$ 上的定積分 $I$：
+          </p>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+            $$I = \int_{\Omega} g(x) \, dx$$
+          </div>
+          <p>
+            引入在 $\Omega$ 上均勻分佈或滿足特定機率密度 $p(x)$ 的隨機變數 $X \sim p(x)$，只要滿足 $p(x) > 0$（當 $g(x) \neq 0$）：
+          </p>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+            $$I = \int_{\Omega} \left[ \frac{g(x)}{p(x)} \right] p(x) \, dx = \mathbb{E}_{X \sim p}\left[ \frac{g(X)}{p(X)} \right]$$
+          </div>
+          <p>
+            令 $f(x) = \frac{g(x)}{p(x)}$，則積分轉化為隨機變數函數的期望值 $\mathbb{E}[f(X)]$。
+          </p>
+
+          <h4 class="text-base font-semibold text-amber-300 flex items-center gap-2 pt-2">
+            <span>步驟 2.</span> 大數法則 (Law of Large Numbers)
+          </h4>
+          <p>
+            若我們獨立同分佈（i.i.d.）抽取 $N$ 個樣本 $X_1, X_2, \dots, X_N \sim p(x)$，根據強大數法則（SLLN）：
+          </p>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center text-indigo-300">
+            $$\hat{I}_N = \frac{1}{N}\sum_{i=1}^{N} f(X_i) \xrightarrow{\text{a.s.}} \mathbb{E}[f(X)] = I \quad (\text{當 } N \to \infty)$$
+          </div>
+          <p>
+            樣本均值 $\hat{I}_N$ 是母體期望值 $I$ 的<strong class="text-white">無偏估計量（Unbiased Estimator）</strong>，即 $\mathbb{E}[\hat{I}_N] = I$。
+          </p>
+        </div>
+
+        <!-- 誤差分析與 CLT -->
+        <div class="space-y-4">
+          <h4 class="text-base font-semibold text-amber-300 flex items-center gap-2">
+            <span>步驟 3.</span> 誤差分析與中央極限定理 (CLT)
+          </h4>
+          <p>
+            設 $f(X)$ 的變異數為 $\sigma^2 = \operatorname{Var}(f(X)) < \infty$。估計量 $\hat{I}_N$ 的變異數為：
+          </p>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+            $$\operatorname{Var}(\hat{I}_N) = \operatorname{Var}\left( \frac{1}{N} \sum_{i=1}^N f(X_i) \right) = \frac{1}{N^2} \sum_{i=1}^N \operatorname{Var}(f(X_i)) = \frac{\sigma^2}{N}$$
+          </div>
+          <p>
+            根據中央極限定理（Central Limit Theorem）：
+          </p>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center text-pink-300">
+            $$\frac{\hat{I}_N - I}{\sigma / \sqrt{N}} \xrightarrow{d} \mathcal{N}(0, 1)$$
+          </div>
+          <p>
+            標準誤差（Standard Error）嚴格為：
+          </p>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center font-mono text-emerald-400">
+            $$\text{SE} = \frac{\sigma}{\sqrt{N}} \implies \text{誤差收斂率為 } \mathcal{O}\left( \frac{1}{\sqrt{N}} \right)$$
+          </div>
+
+          <!-- 維度詛咒對比卡片 -->
+          <div class="mt-4 p-4 rounded-xl bg-slate-950 border border-slate-800">
+            <h5 class="font-bold text-slate-200 mb-2 flex items-center justify-between">
+              <span>⚡ 傳統數值積分 vs 蒙地卡羅</span>
+            </h5>
+            <div class="space-y-2 text-xs">
+              <div class="flex justify-between pb-1 border-b border-slate-800">
+                <span class="text-slate-400">網格梯形法 (Trapezoidal Rule)：</span>
+                <span class="text-red-400 font-mono">$\mathcal{O}(N^{-2/d})$</span>
+              </div>
+              <div class="flex justify-between pb-1 border-b border-slate-800">
+                <span class="text-slate-400">辛普森法 (Simpson's Rule)：</span>
+                <span class="text-red-400 font-mono">$\mathcal{O}(N^{-4/d})$</span>
+              </div>
+              <div class="flex justify-between text-emerald-400 font-semibold">
+                <span>蒙地卡羅積分 (Monte Carlo)：</span>
+                <span class="font-mono">$\mathcal{O}(N^{-1/2}) \quad (\text{完全無關 } d !)$</span>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-2">
+              當維度 $d \ge 8$（例如金融 50 種資產定價或 100 維量子系統），傳統網格法運算量呈指數爆炸，蒙地卡羅是唯一可在多項式時間內求解的通用方法！
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06: 屬於哪個範疇？生成相關互動網頁展示（ML / DL / RL / LLM） -->
+    <section id="section-06" class="space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <span class="px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+            06. 前沿 AI 範疇全景圖
+          </span>
+          <h2 class="text-2xl font-bold text-white mt-1">現代人工智慧中的蒙地卡羅血統</h2>
+        </div>
+        <p class="text-xs text-slate-400">點選標籤探索不同架構中的核心算法機制</p>
+      </div>
+
+      <!-- Category Tabs -->
+      <div class="flex space-x-2 border-b border-slate-800 pb-2 overflow-x-auto text-sm" id="ai-tabs">
+        <button onclick="switchAITab('ml')" id="tab-btn-ml" class="px-4 py-2 rounded-xl font-medium transition bg-indigo-600 text-white shadow">
+          機器學習 (ML)
+        </button>
+        <button onclick="switchAITab('dl')" id="tab-btn-dl" class="px-4 py-2 rounded-xl font-medium transition bg-slate-900 text-slate-400 hover:text-white">
+          深度學習 (DL)
+        </button>
+        <button onclick="switchAITab('rl')" id="tab-btn-rl" class="px-4 py-2 rounded-xl font-medium transition bg-slate-900 text-slate-400 hover:text-white">
+          強化學習 (RL)
+        </button>
+        <button onclick="switchAITab('llm')" id="tab-btn-llm" class="px-4 py-2 rounded-xl font-medium transition bg-slate-900 text-slate-400 hover:text-white">
+          LLM 推理搜尋 (o1/ToT)
+        </button>
+      </div>
+
+      <!-- Tab Content Cards -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 relative min-h-[320px]">
+        <!-- ML Pane -->
+        <div id="ai-pane-ml" class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xl font-bold text-cyan-400">機器學習：馬可夫鏈蒙地卡羅 (MCMC) 與貝氏推論</h3>
+            <span class="text-xs bg-slate-800 px-2.5 py-1 rounded border border-slate-700 text-slate-300">Bayesian Machine Learning</span>
+          </div>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            在貝氏機器學習中，我們希望計算後驗機率 $p(\theta | \mathcal{D}) = \frac{p(\mathcal{D}|\theta)p(\theta)}{\int p(\mathcal{D}|\theta)p(\theta)d\theta}$。分母的邊際似然（證據 Evidence）通常是無法解析計算的高維積分。
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-2">
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <span class="font-bold text-indigo-300 block mb-1">Metropolis-Hastings (MH) 演算法</span>
+              <p class="text-slate-400 mb-2">構建平穩分佈為目標後驗分佈的馬可夫鏈，提出候選狀態 $\theta'$ 並以接受率 $\alpha = \min(1, \frac{p(\theta'|\mathcal{D})q(\theta|\theta')}{p(\theta|\mathcal{D})q(\theta'|\theta)})$ 決定是否跳轉。</p>
+              <div class="text-amber-400 font-mono text-[11px]">$X_{t+1} \sim \text{Acceptance Probability } \alpha$</div>
+            </div>
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <span class="font-bold text-indigo-300 block mb-1">吉布斯抽樣 (Gibbs Sampling)</span>
+              <p class="text-slate-400 mb-2">適用於多維變數。在每次迭代中固定其餘變數，僅從單一變數的條件機率分佈 $p(\theta_j | \theta_{-j}, \mathcal{D})$ 進行輪流取樣。</p>
+              <div class="text-emerald-400 font-mono text-[11px]">常用於 LDA 主題模型、限制玻爾茲曼機 (RBM)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DL Pane -->
+        <div id="ai-pane-dl" class="hidden space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xl font-bold text-pink-400">深度學習：MC Dropout 與變分自編碼器 (VAE)</h3>
+            <span class="text-xs bg-slate-800 px-2.5 py-1 rounded border border-slate-700 text-slate-300">Deep Probabilistic Modeling</span>
+          </div>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            神經網路通常輸出過度自信的確定性預測。蒙地卡羅技術賦予了深度模型「衡量自身不確定性（Epistemic Uncertainty）」以及訓練隱變數生成模型的能力。
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-2">
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <span class="font-bold text-pink-300 block mb-1">Monte Carlo Dropout (不確定性評估)</span>
+              <p class="text-slate-400 mb-2">Gal & Ghahramani 證明，推論時「不關閉 Dropout」並進行 $T$ 次前向傳播（Forward Pass），等價於深層高斯過程（Deep Gaussian Process）的蒙地卡羅取樣！</p>
+              <div class="text-pink-400 font-mono text-[11px] font-semibold">$$\mu = \frac{1}{T}\sum \hat{y}_t, \quad \sigma^2 = \frac{1}{T}\sum (\hat{y}_t - \mu)^2$$</div>
+            </div>
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <span class="font-bold text-pink-300 block mb-1">VAE 重參數化技巧 (Reparameterization Trick)</span>
+              <p class="text-slate-400 mb-2">在 VAE 中，隱變數 $z \sim q_\phi(z|x)$ 無法直接反向傳播。透過採樣標準正態雜訊 $\epsilon \sim \mathcal{N}(0, I)$，令 $z = \mu + \sigma \odot \epsilon$，使得蒙地卡羅梯度估計具備可微分性。</p>
+              <div class="text-emerald-400 font-mono text-[11px]">$$\nabla_\phi \mathbb{E}_{q_\phi}[f(z)] = \mathbb{E}_{\epsilon}[\nabla_\phi f(g_\phi(\epsilon, x))]$$</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RL Pane -->
+        <div id="ai-pane-rl" class="hidden space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xl font-bold text-emerald-400">強化學習：蒙地卡羅策略評估 & 蒙地卡羅樹搜尋 (MCTS)</h3>
+            <span class="text-xs bg-slate-800 px-2.5 py-1 rounded border border-slate-700 text-slate-300">Reinforcement Learning & Games</span>
+          </div>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            不同於動態規劃依賴已知的轉移機率矩陣 $P(s'|s,a)$，無模型（Model-free）強化學習透過蒙地卡羅從頭玩到尾，取回合總回報 $G_t$ 的平均來估計狀態價值函數 $V(s)$。
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-2">
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <span class="font-bold text-emerald-300 block mb-1">AlphaGo 的靈魂：MCTS 四大步驟</span>
+              <ul class="space-y-1 text-slate-400 list-disc list-inside">
+                <li><strong class="text-slate-200">選擇 (Selection)：</strong> 用 UCB1 公式兼顧利用 (Exploitation) 與探索 (Exploration)。</li>
+                <li><strong class="text-slate-200">擴展 (Expansion)：</strong> 遇到未展開節點時生成新走步。</li>
+                <li><strong class="text-slate-200">模擬 (Simulation/Rollout)：</strong> 用隨機策略快速模擬下至終局。</li>
+                <li><strong class="text-slate-200">回傳 (Backpropagation)：</strong> 將勝負回報反向更新路徑上節點價值。</li>
+              </ul>
+            </div>
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <span class="font-bold text-emerald-300 block mb-1">REINFORCE Policy Gradient</span>
+              <p class="text-slate-400 mb-2">直接最佳化策略網路 $\pi_\theta(a|s)$，使用單一完整軌跡的蒙地卡羅累積獎勵 $G_t$ 作為梯度估計值：</p>
+              <div class="text-emerald-400 font-mono text-[11px]">$$\nabla_\theta J(\theta) = \mathbb{E}_{\tau}\left[ \sum_{t=0}^{T} \nabla_\theta \log \pi_\theta(a_t|s_t) \cdot G_t \right]$$</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- LLM Pane -->
+        <div id="ai-pane-llm" class="hidden space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xl font-bold text-amber-400">大語言模型 (LLM)：測試期運算（Test-Time Compute）與推理擴展</h3>
+            <span class="text-xs bg-slate-800 px-2.5 py-1 rounded border border-slate-700 text-slate-300">OpenAI o1 / o3, ToT, Self-Consistency</span>
+          </div>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            在推理模型時代（如 OpenAI o1），解題能力不再只依賴參數規模，而是透過推論期（Test-Time）利用蒙地卡羅搜索與評估大幅躍升。
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs pt-1">
+            <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+              <span class="font-bold text-amber-300 block mb-1">1. 自洽性多路採樣 (Self-Consistency)</span>
+              <p class="text-slate-400">設定溫度的隨機性（如 $T=0.7$），平行採樣 $N$ 條不同的思維鏈（CoT），對最終答案進行多數決投票（Majority Voting），消除單一幻覺。</p>
+            </div>
+            <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+              <span class="font-bold text-amber-300 block mb-1">2. Best-of-N (Re-ranking)</span>
+              <p class="text-slate-400">透過蒙地卡羅隨機生成 $N$ 篇完整回答，再交由獎勵模型（Reward Model / PRM）評分，只選取最優解輸出。</p>
+            </div>
+            <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+              <span class="font-bold text-amber-300 block mb-1">3. MCTS + Process Reward (PRM)</span>
+              <p class="text-slate-400">將問題拆解為多步驟推理樹（Tree of Thoughts）。在每個推理節點進行蒙地卡羅展開與回溯評估，實現深度自我糾錯。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07: Python / PyTorch 實作 -->
+    <section id="section-07" class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <span class="px-3 py-1 rounded-full text-xs font-semibold bg-violet-500/10 text-violet-400 border border-violet-500/20">
+            07. 程式碼實作
+          </span>
+          <h2 class="text-xl font-bold text-white mt-1">Python & PyTorch 蒙地卡羅經典實現</h2>
+        </div>
+        <div class="flex space-x-2">
+          <button onclick="switchCodeSnippet('py-torch')" id="btn-code-pytorch" class="px-3 py-1 text-xs rounded-lg bg-indigo-600 text-white font-medium">
+            PyTorch GPU 金融期權定價
+          </button>
+          <button onclick="switchCodeSnippet('mcdropout')" id="btn-code-mcdropout" class="px-3 py-1 text-xs rounded-lg bg-slate-800 text-slate-400 hover:text-white font-medium">
+            PyTorch MC-Dropout 不確定性
+          </button>
+        </div>
+      </div>
+
+      <!-- PyTorch Option Pricing -->
+      <div id="code-block-pytorch" class="bg-slate-950 rounded-xl p-4 border border-slate-800 text-xs overflow-x-auto">
+        <pre class="code-font text-slate-300 leading-relaxed"><code><span class="text-purple-400">import</span> torch
+
+<span class="text-emerald-400"># 歐式看漲期權 (European Call Option) 蒙地卡羅定價 (幾何布朗運動 GBM)</span>
+<span class="text-purple-400">def</span> <span class="text-blue-400">monte_carlo_option_pricing_gpu</span>(S0, K, T, r, sigma, num_simulations=<span class="text-amber-300">10_000_000</span>, device=<span class="text-green-300">'cuda'</span>):
+    device = torch.device(device <span class="text-purple-400">if</span> torch.cuda.is_available() <span class="text-purple-400">else</span> <span class="text-green-300">'cpu'</span>)
+    
+    <span class="text-slate-500"># 1. 於 GPU 上一次性生成千萬個標準常態隨機數 Z ~ N(0, 1)</span>
+    Z = torch.randn(num_simulations, device=device)
+    
+    <span class="text-slate-500"># 2. 幾何布朗運動閉式解析解: S_T = S_0 * exp((r - 0.5 * sigma^2)*T + sigma * sqrt(T) * Z)</span>
+    drift = (r - <span class="text-amber-300">0.5</span> * sigma**<span class="text-amber-300">2</span>) * T
+    diffusion = sigma * torch.sqrt(torch.tensor(T, device=device)) * Z
+    ST = S0 * torch.exp(drift + diffusion)
+    
+    <span class="text-slate-500"># 3. 計算期權回報 (Payoff): max(ST - K, 0)</span>
+    payoffs = torch.clamp(ST - K, min=<span class="text-amber-300">0.0</span>)
+    
+    <span class="text-slate-500"># 4. 折現回現在並取樣本期望值 (平均)</span>
+    discount_factor = torch.exp(torch.tensor(-r * T, device=device))
+    option_price = discount_factor * torch.mean(payoffs)
+    std_err = discount_factor * (torch.std(payoffs) / torch.sqrt(torch.tensor(num_simulations, dtype=torch.float32)))
+    
+    <span class="text-purple-400">return</span> option_price.item(), std_err.item()
+
+<span class="text-slate-500"># 參數範例: 現價 100, 履約價 105, 到期時間 1 年, 無風險利率 5%, 波動率 20%</span>
+price, se = monte_carlo_option_pricing_gpu(S0=<span class="text-amber-300">100.0</span>, K=<span class="text-amber-300">105.0</span>, T=<span class="text-amber-300">1.0</span>, r=<span class="text-amber-300">0.05</span>, sigma=<span class="text-amber-300">0.2</span>)
+<span class="text-blue-400">print</span>(<span class="text-green-300">f"期權蒙地卡羅估價: {price:.4f} ± {se * 1.96:.4f} (95% 置信區間)"</span>)</code></pre>
+      </div>
+
+      <!-- PyTorch MC Dropout -->
+      <div id="code-block-mcdropout" class="hidden bg-slate-950 rounded-xl p-4 border border-slate-800 text-xs overflow-x-auto">
+        <pre class="code-font text-slate-300 leading-relaxed"><code><span class="text-purple-400">import</span> torch
+<span class="text-purple-400">import</span> torch.nn <span class="text-purple-400">as</span> nn
+
+<span class="text-purple-400">class</span> <span class="text-yellow-300">MCDropoutModel</span>(nn.Module):
+    <span class="text-purple-400">def</span> <span class="text-blue-400">__init__</span>(self):
+        super().__init__()
+        self.fc = nn.Sequential(
+            nn.Linear(<span class="text-amber-300">10</span>, <span class="text-amber-300">64</span>),
+            nn.ReLU(),
+            nn.Dropout(p=<span class="text-amber-300">0.3</span>),  <span class="text-slate-500"># 啟用 Dropout 機率 0.3</span>
+            nn.Linear(<span class="text-amber-300">64</span>, <span class="text-amber-300">1</span>)
+        )
+    <span class="text-purple-400">def</span> <span class="text-blue-400">forward</span>(self, x):
+        <span class="text-purple-400">return</span> self.fc(x)
+
+<span class="text-purple-400">def</span> <span class="text-blue-400">predict_uncertainty_mc</span>(model, x_input, num_mc_samples=<span class="text-amber-300">100</span>):
+    model.train()  <span class="text-slate-500"># 關鍵！保持 Train 模式，強制在推論時啟用 Dropout 隨機遮罩</span>
+    predictions = []
+    
+    <span class="text-purple-400">with</span> torch.no_grad():
+        <span class="text-purple-400">for</span> _ <span class="text-purple-400">in</span> range(num_mc_samples):
+            predictions.append(model(x_input))
+            
+    <span class="text-slate-500"># 形狀: [num_mc_samples, batch_size, 1]</span>
+    stacked = torch.stack(predictions)
+    mean_prediction = torch.mean(stacked, dim=<span class="text-amber-300">0</span>)      <span class="text-slate-500"># 預測均值</span>
+    epistemic_variance = torch.var(stacked, dim=<span class="text-amber-300">0</span>)     <span class="text-slate-500"># 認知不確定性</span>
+    <span class="text-purple-400">return</span> mean_prediction, epistemic_variance</code></pre>
+      </div>
+    </section>
+
+    <!-- 08: 模擬：step by step，一鍵自動模擬實驗室 -->
+    <section id="section-08" class="bg-slate-900 border border-slate-800 rounded-3xl p-6 lg:p-8 shadow-2xl space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+        <div>
+          <span class="px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-emerald-500/20 to-indigo-500/20 text-emerald-400 border border-emerald-500/30">
+            08. 核心互動模擬器
+          </span>
+          <h2 class="text-2xl font-extrabold text-white mt-1">蒙地卡羅圓周率 $\pi$ 投擲實驗室</h2>
+          <p class="text-xs text-slate-400 mt-0.5">觀察隨機撒點如何透過大數法則逼近 $\pi = 3.14159265...$</p>
+        </div>
+
+        <!-- Mode Select -->
+        <div class="flex items-center gap-2">
+          <label class="text-xs text-slate-400 font-medium">模擬維度：</label>
+          <span class="px-3 py-1 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-semibold">
+            2D 單位正方形與內切 1/4 圓 ($x^2 + y^2 \le 1$)
+          </span>
+        </div>
+      </div>
+
+      <!-- 蒙地卡羅三大核心模擬應用領域 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- 金融投資 -->
+        <div class="bg-gradient-to-br from-slate-950 to-slate-900/90 border border-amber-500/30 rounded-2xl p-4 shadow-lg flex flex-col justify-between hover:border-amber-500/60 transition group">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                模擬情境 01
+              </span>
+              <span class="text-2xl group-hover:scale-110 transition-transform">📈 💹</span>
+            </div>
+            <h3 class="text-base font-bold text-white group-hover:text-amber-300 transition mb-2">
+              金融投資
+            </h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              分析歷史數據，模擬未來資產價格與報酬的風險範圍，如 <strong class="text-amber-300">FinGuider</strong> 提供的股價走勢預測試算。
+            </p>
+          </div>
+          <div class="mt-3 pt-2 border-t border-slate-800 text-[11px] text-slate-400">
+            📌 應用：幾何布朗運動路徑模擬、VaR 風險值、資產配置壓力測試
+          </div>
+        </div>
+
+        <!-- 人工智慧 -->
+        <div class="bg-gradient-to-br from-slate-950 to-slate-900/90 border border-indigo-500/30 rounded-2xl p-4 shadow-lg flex flex-col justify-between hover:border-indigo-500/60 transition group">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                模擬情境 02
+              </span>
+              <span class="text-2xl group-hover:scale-110 transition-transform">🤖 ♟️</span>
+            </div>
+            <h3 class="text-base font-bold text-white group-hover:text-indigo-300 transition mb-2">
+              人工智慧
+            </h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              用於機器學習的最佳化訓練，或在棋類遊戲中預測下一步的最佳走勢（<strong class="text-indigo-300">蒙地卡羅樹搜尋 MCTS</strong>）。
+            </p>
+          </div>
+          <div class="mt-3 pt-2 border-t border-slate-800 text-[11px] text-slate-400">
+            📌 應用：AlphaGo 圍棋決策、LLM 思考鏈 (CoT) 推理路徑採樣評估
+          </div>
+        </div>
+
+        <!-- 科學工程 -->
+        <div class="bg-gradient-to-br from-slate-950 to-slate-900/90 border border-cyan-500/30 rounded-2xl p-4 shadow-lg flex flex-col justify-between hover:border-cyan-500/60 transition group">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                模擬情境 03
+              </span>
+              <span class="text-2xl group-hover:scale-110 transition-transform">🔬 ⚛️</span>
+            </div>
+            <h3 class="text-base font-bold text-white group-hover:text-cyan-300 transition mb-2">
+              科學工程
+            </h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              用來計算高維度的複雜數值積分與物理系統模擬。
+            </p>
+          </div>
+          <div class="mt-3 pt-2 border-t border-slate-800 text-[11px] text-slate-400">
+            📌 應用：中子擴散與核反應爐設計、分子動力學、量子多體計算
+          </div>
+        </div>
+      </div>
+
+      <!-- 直觀物理原理解說：撒豆子估算面積 -->
+      <div class="bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950/40 border border-indigo-500/30 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div class="flex items-start gap-4">
+          <div class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 flex items-center justify-center text-xl shrink-0">
+            🫘
+          </div>
+          <div class="space-y-2 text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <h4 class="font-bold text-white text-base flex items-center gap-2">
+              <span>核心直覺解說：撒豆子與不規則面積測量</span>
+              <span class="text-[11px] px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-normal">直觀思想</span>
+            </h4>
+            <p>
+              假設我們要計算一個不規則圖形的面積，那麼圖形的不規則程度和分析性計算（比如微積分）的複雜程度是成正比的。
+            </p>
+            <p>
+              蒙地卡羅方法基於這樣的想法：<strong class="text-indigo-300">假設你有一袋豆子，把豆子均勻地朝這個圖形上撒，然後數這個圖形之中有多少顆豆子，這個豆子的數目就反映了圖形的面積。</strong> 當你的豆子越小、撒得越多的時候，估算結果就越精確。
+            </p>
+            <div class="pt-1 text-slate-400 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs border-t border-slate-800/80">
+              <span class="text-emerald-400 font-medium">💻 電腦實作映射：</span>
+              <span>藉助電腦程式生成大量均勻分布的隨機坐標點（虛擬豆子）</span>
+              <span>➜ 統計落在圖形內的點數佔總點數的比例</span>
+              <span>➜ 乘上坐標點生成範圍的已知矩形面積，即可求出目標圖形面積。</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Simulator Layout -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
+        <!-- Left: Canvas Area -->
+        <div class="lg:col-span-6 flex flex-col items-center">
+          <div class="relative w-full aspect-square max-w-[420px] bg-slate-950 rounded-2xl border-2 border-slate-800 overflow-hidden shadow-inner p-2 flex items-center justify-center">
+            <canvas id="mcCanvas" width="400" height="400" class="w-full h-full rounded-xl"></canvas>
+            <div class="absolute bottom-4 left-4 bg-slate-900/90 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-700/60 text-[11px] font-mono text-slate-300 flex items-center gap-3">
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span> 圓內 ($M$)</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> 圓外</span>
+            </div>
+          </div>
+          <div class="w-full max-w-[420px] mt-3 flex items-center justify-between text-xs text-slate-400">
+            <span>公式：$\pi \approx 4 \times \frac{M}{N}$</span>
+            <span id="speedLabel" class="font-mono text-indigo-400">自動速度: 50 點/幀</span>
+          </div>
+        </div>
+
+        <!-- Right: Control Panel & Live Stats -->
+        <div class="lg:col-span-6 space-y-5">
+          
+          <!-- Live Stats Display -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+              <span class="text-[11px] text-slate-400 block font-medium">總取樣數 $N$</span>
+              <span id="statN" class="text-xl font-bold font-mono text-white">0</span>
+            </div>
+            <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+              <span class="text-[11px] text-slate-400 block font-medium">落在圓內 $M$</span>
+              <span id="statM" class="text-xl font-bold font-mono text-emerald-400">0</span>
+            </div>
+            <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+              <span class="text-[11px] text-slate-400 block font-medium">估算 $\pi$ 值</span>
+              <span id="statPi" class="text-xl font-bold font-mono text-amber-400">0.000000</span>
+            </div>
+            <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+              <span class="text-[11px] text-slate-400 block font-medium">絕對誤差 $|\Delta\pi|$</span>
+              <span id="statError" class="text-xl font-bold font-mono text-rose-400">0.000000</span>
+            </div>
+          </div>
+
+          <!-- Theoretical Convergence Box -->
+          <div class="bg-slate-950/80 p-4 rounded-xl border border-slate-800/80 text-xs space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-400 font-medium">理論標準誤差界限：</span>
+              <span id="statSE" class="font-mono text-indigo-400">SE = $\frac{\sigma}{\sqrt{N}} \approx$ ---</span>
+            </div>
+            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div id="errorProgressBar" class="bg-gradient-to-r from-emerald-500 to-indigo-500 h-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <p class="text-[11px] text-slate-400">隨著樣本數 $N$ 增加 100 倍，精度平均提升 10 倍（$\frac{1}{\sqrt{N}}$ 原理）。</p>
+          </div>
+
+          <!-- Interactive Controls -->
+          <div class="space-y-3 pt-2">
+            <div class="flex flex-wrap items-center gap-3">
+              <!-- Step by Step -->
+              <button onclick="stepSim(1)" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs border border-slate-700 flex items-center gap-2 transition active:scale-95 shadow">
+                <span>➕ 單步步進 (+1)</span>
+              </button>
+              <button onclick="stepSim(100)" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 font-medium text-xs border border-slate-700 flex items-center gap-2 transition active:scale-95 shadow">
+                <span>⚡ 批次 (+100)</span>
+              </button>
+              
+              <!-- Auto Toggle -->
+              <button id="btnAutoToggle" onclick="toggleAutoSim()" class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition active:scale-95">
+                <span id="autoIcon">▶</span>
+                <span id="autoBtnText">一鍵自動模擬</span>
+              </button>
+
+              <!-- Reset -->
+              <button onclick="resetSim()" class="px-4 py-2.5 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-medium text-xs border border-rose-800/40 transition active:scale-95">
+                重置清空
+              </button>
+            </div>
+
+            <!-- Speed Slider -->
+            <div class="pt-2">
+              <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+                <span>連續模擬速度調節 (取樣密度)</span>
+                <span class="font-mono text-slate-300" id="speedValueText">每幀 50 點</span>
+              </div>
+              <input type="range" id="speedSlider" min="1" max="1000" value="50" class="w-full accent-indigo-500 bg-slate-800 h-2 rounded-lg cursor-pointer" oninput="updateSpeed(this.value)" />
+            </div>
+          </div>
+
+          <!-- Convergence Mini Plot Canvas -->
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+              <span>歷史 $\pi$ 估算收斂軌跡（即時繪製）</span>
+              <span class="font-mono text-emerald-400">真實 $\pi \approx 3.14159$</span>
+            </div>
+            <canvas id="chartCanvas" width="450" height="90" class="w-full h-20 rounded-lg"></canvas>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 08-B: 金融投資模擬實驗室 (幾何布朗運動 GBM & 股價路徑預測) -->
+    <section id="section-sim-finance" class="bg-slate-900 border border-slate-800 rounded-3xl p-6 lg:p-8 shadow-2xl space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+        <div>
+          <span class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+            模擬實驗室 02 ｜ 金融投資
+          </span>
+          <h2 class="text-2xl font-extrabold text-white mt-1">股價未來走勢與風險範圍模擬 (GBM 模型)</h2>
+          <p class="text-xs text-slate-400 mt-0.5">以幾何布朗運動（如 FinGuider 股價試算），模擬上百種未來走勢，計算報酬分佈與 95% 置信區間</p>
+        </div>
+        <div class="text-xs text-slate-400 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800 font-mono">
+          模型：$dS_t = \mu S_t dt + \sigma S_t dW_t$
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <!-- Canvas Viewport -->
+        <div class="lg:col-span-7 flex flex-col items-center">
+          <div class="relative w-full aspect-[16/10] bg-slate-950 rounded-2xl border-2 border-slate-800 overflow-hidden shadow-inner p-2">
+            <canvas id="financeCanvas" width="600" height="360" class="w-full h-full rounded-xl"></canvas>
+            <div class="absolute top-4 right-4 bg-slate-900/90 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-700/60 text-[11px] font-mono text-slate-300 flex flex-wrap gap-3">
+              <span class="flex items-center gap-1.5"><span class="w-3 h-1 bg-amber-400 inline-block"></span> 期望路徑均值</span>
+              <span class="flex items-center gap-1.5"><span class="w-3 h-1 bg-indigo-400/80 inline-block border-t border-dashed"></span> 95% 置信區間通道</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span> 獲利路徑</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> 虧損路徑</span>
+            </div>
+          </div>
+          <div class="w-full mt-3 flex items-center justify-between text-xs text-slate-400">
+            <span>模擬期限：252 個交易日（1 年）</span>
+            <span id="financeSimSpeedText" class="font-mono text-amber-400">批次速度: 10 條/次</span>
+          </div>
+        </div>
+
+        <!-- Controls and Live Financial Stats -->
+        <div class="lg:col-span-5 space-y-4">
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <span class="text-[11px] text-slate-400 block font-medium">已模擬路徑數</span>
+              <span id="finStatPaths" class="text-xl font-bold font-mono text-white">0</span>
+            </div>
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <span class="text-[11px] text-slate-400 block font-medium">期末預期均價</span>
+              <span id="finStatMean" class="text-xl font-bold font-mono text-amber-300">$100.00</span>
+            </div>
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <span class="text-[11px] text-slate-400 block font-medium">獲利機率 ($S_T > S_0$)</span>
+              <span id="finStatWinRate" class="text-xl font-bold font-mono text-emerald-400">0.0%</span>
+            </div>
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <span class="text-[11px] text-slate-400 block font-medium">95% 風險價值 (VaR)</span>
+              <span id="finStatVaR" class="text-xl font-bold font-mono text-rose-400">$0.00</span>
+            </div>
+          </div>
+
+          <!-- Parameter Controls -->
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3 text-xs">
+            <div class="font-semibold text-slate-200">市場模型參數微調：</div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-slate-400 block mb-1">起始股價 $S_0$：<span id="labelS0" class="text-amber-300">100</span></label>
+                <input type="range" id="inputS0" min="50" max="200" value="100" class="w-full accent-amber-400 bg-slate-800 h-1.5 rounded cursor-pointer" oninput="document.getElementById('labelS0').innerText=this.value; resetFinanceSim();" />
+              </div>
+              <div>
+                <label class="text-slate-400 block mb-1">年化預期報酬率 $\mu$：<span id="labelMu" class="text-amber-300">10%</span></label>
+                <input type="range" id="inputMu" min="-20" max="40" value="10" class="w-full accent-amber-400 bg-slate-800 h-1.5 rounded cursor-pointer" oninput="document.getElementById('labelMu').innerText=this.value+'%'; resetFinanceSim();" />
+              </div>
+              <div class="col-span-2">
+                <label class="text-slate-400 block mb-1">年化波動率 $\sigma$ (風險程度)：<span id="labelSigma" class="text-amber-300">25%</span></label>
+                <input type="range" id="inputSigma" min="5" max="60" value="25" class="w-full accent-amber-400 bg-slate-800 h-1.5 rounded cursor-pointer" oninput="document.getElementById('labelSigma').innerText=this.value+'%'; resetFinanceSim();" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Buttons -->
+          <div class="flex flex-wrap items-center gap-3 pt-1">
+            <button onclick="stepFinanceSim(1)" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs border border-slate-700 flex items-center gap-1.5 transition active:scale-95 shadow">
+              <span>➕ 單步步進 (+1條)</span>
+            </button>
+            <button onclick="stepFinanceSim(10)" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-medium text-xs border border-slate-700 flex items-center gap-1.5 transition active:scale-95 shadow">
+              <span>⚡ 批次 (+10條)</span>
+            </button>
+            <button id="btnAutoFinance" onclick="toggleAutoFinance()" class="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-lg shadow-amber-600/30 flex items-center gap-2 transition active:scale-95">
+              <span id="financeAutoIcon">▶</span>
+              <span id="financeAutoText">一鍵自動模擬</span>
+            </button>
+            <button onclick="resetFinanceSim()" class="px-4 py-2.5 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-medium text-xs border border-rose-800/40 transition active:scale-95">
+              重置清空
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 08-C: 人工智慧模擬實驗室 (蒙地卡羅樹搜尋 MCTS 決策視覺化) -->
+    <section id="section-sim-ai" class="bg-slate-900 border border-slate-800 rounded-3xl p-6 lg:p-8 shadow-2xl space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+        <div>
+          <span class="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+            模擬實驗室 03 ｜ 人工智慧
+          </span>
+          <h2 class="text-2xl font-extrabold text-white mt-1">蒙地卡羅樹搜尋 (MCTS) 決策模擬器</h2>
+          <p class="text-xs text-slate-400 mt-0.5">直觀透視 AlphaGo 與 LLM o1 核心：選擇 (Selection)、擴展 (Expansion)、模擬 (Simulation)、回傳 (Backpropagation)</p>
+        </div>
+        <div class="text-xs text-indigo-300 bg-indigo-950/50 px-3 py-1.5 rounded-lg border border-indigo-800/50 font-mono">
+          UCB1: $Q + C \sqrt{\frac{\ln N_p}{n}}$
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <!-- Tree Canvas Viewport -->
+        <div class="lg:col-span-7 flex flex-col items-center">
+          <div class="relative w-full aspect-[16/11] bg-slate-950 rounded-2xl border-2 border-slate-800 overflow-hidden shadow-inner p-2">
+            <canvas id="mctsCanvas" width="600" height="390" class="w-full h-full rounded-xl"></canvas>
+            <div class="absolute bottom-3 left-4 bg-slate-900/90 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-700/60 text-[11px] font-mono text-slate-300 flex items-center gap-3">
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-indigo-400 inline-block"></span> 狀態節點</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span> 當前推薦最佳決策</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span> 正在展開/模擬中</span>
+            </div>
+          </div>
+          <div class="w-full mt-3 flex items-center justify-between text-xs text-slate-400">
+            <span>探索常數 $C = 1.414$（兼顧高勝率利用與冷門分支探索）</span>
+            <span id="mctsCurrentActionText" class="font-mono text-indigo-400 font-medium">當前狀態: 待命</span>
+          </div>
+        </div>
+
+        <!-- MCTS Stages & Controls -->
+        <div class="lg:col-span-5 space-y-4">
+          <!-- Live Decision State -->
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-400">總蒙地卡羅迭代數 (Rollouts)：</span>
+              <span id="mctsTotalIters" class="text-lg font-bold font-mono text-indigo-300">0</span>
+            </div>
+            <div class="flex items-center justify-between border-t border-slate-800/80 pt-2">
+              <span class="text-slate-400">AI 評估最優走法 (Action)：</span>
+              <span id="mctsBestMove" class="text-sm font-bold font-mono text-emerald-400">等待探索...</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-slate-400">最優走法勝率估計：</span>
+              <span id="mctsBestWinRate" class="text-sm font-bold font-mono text-emerald-300">--%</span>
+            </div>
+          </div>
+
+          <!-- The Four Steps Flow Box -->
+          <div class="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 text-xs space-y-2">
+            <div class="font-semibold text-slate-200 flex items-center gap-1.5">
+              <span>🔄</span> 樹搜尋四大循環階段：
+            </div>
+            <div class="space-y-1.5 text-[11px] text-slate-400">
+              <div id="step-desc-1" class="p-1.5 rounded bg-slate-900 border border-slate-800 text-slate-300 transition">
+                <strong class="text-indigo-300">1. Selection (選擇)：</strong>利用 UCB1 公式自根部遞迴選擇最佳平衡探索度節點。
+              </div>
+              <div id="step-desc-2" class="p-1.5 rounded bg-slate-900 border border-slate-800 text-slate-300 transition">
+                <strong class="text-indigo-300">2. Expansion (擴展)：</strong>遇到未完全展開的合法走步時新增子節點。
+              </div>
+              <div id="step-desc-3" class="p-1.5 rounded bg-slate-900 border border-slate-800 text-slate-300 transition">
+                <strong class="text-indigo-300">3. Simulation (模擬)：</strong>執行隨機 Rollout 模擬直至棋局/任務終止獲得勝負回報 $R$。
+              </div>
+              <div id="step-desc-4" class="p-1.5 rounded bg-slate-900 border border-slate-800 text-slate-300 transition">
+                <strong class="text-indigo-300">4. Backpropagation (回傳)：</strong>將勝負結果反向傳遞，更新路徑所有節點的造訪數 $N$ 與勝場 $W$。
+              </div>
+            </div>
+          </div>
+
+          <!-- Buttons -->
+          <div class="flex flex-wrap items-center gap-3 pt-1">
+            <button onclick="stepMctsSim(1)" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs border border-slate-700 flex items-center gap-1.5 transition active:scale-95 shadow">
+              <span>➕ 單步探索 (+1次)</span>
+            </button>
+            <button onclick="stepMctsSim(10)" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 font-medium text-xs border border-slate-700 flex items-center gap-1.5 transition active:scale-95 shadow">
+              <span>⚡ 快速批次 (+10次)</span>
+            </button>
+            <button id="btnAutoMcts" onclick="toggleAutoMcts()" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition active:scale-95">
+              <span id="mctsAutoIcon">▶</span>
+              <span id="mctsAutoText">一鍵自動模擬</span>
+            </button>
+            <button onclick="resetMctsSim()" class="px-4 py-2.5 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-medium text-xs border border-rose-800/40 transition active:scale-95">
+              重置樹狀態
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 08-D: 科學工程模擬實驗室 (核物理中子傳輸與輻射防護屏蔽) -->
+    <section id="section-sim-physics" class="bg-slate-900 border border-slate-800 rounded-3xl p-6 lg:p-8 shadow-2xl space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+        <div>
+          <span class="px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+            模擬實驗室 04 ｜ 科學工程
+          </span>
+          <h2 class="text-2xl font-extrabold text-white mt-1">核物理中子傳輸與輻射防護屏蔽模擬</h2>
+          <p class="text-xs text-slate-400 mt-0.5">模擬曼哈頓計畫經典課題：中子粒子穿入屏蔽層後的隨機游走 (Random Walk)、散射碰撞、核吸收與穿透防護率</p>
+        </div>
+        <div class="text-xs text-cyan-300 bg-cyan-950/50 px-3 py-1.5 rounded-lg border border-cyan-800/50 font-mono">
+          自由程抽樣：$\ell = -\lambda \ln(U)$
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <!-- Physics Canvas Viewport -->
+        <div class="lg:col-span-7 flex flex-col items-center">
+          <div class="relative w-full aspect-[16/10] bg-slate-950 rounded-2xl border-2 border-slate-800 overflow-hidden shadow-inner p-2">
+            <canvas id="physicsCanvas" width="600" height="360" class="w-full h-full rounded-xl"></canvas>
+            <div class="absolute top-4 right-4 bg-slate-900/90 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-700/60 text-[11px] font-mono text-slate-300 flex flex-wrap gap-3">
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block"></span> 穿透 (透射)</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> 被吸收 (安全)</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span> 反射回源</span>
+            </div>
+          </div>
+          <div class="w-full mt-3 flex items-center justify-between text-xs text-slate-400">
+            <span>左側：中子源射入 ｜ 中央灰色：鉛防護屏蔽層 ｜ 右側：環境探測區</span>
+            <span id="physicsStatusText" class="font-mono text-cyan-400 font-medium">防護率: 100%</span>
+          </div>
+        </div>
+
+        <!-- Controls and Live Physics Stats -->
+        <div class="lg:col-span-5 space-y-4">
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <span class="text-[11px] text-slate-400 block font-medium">射入中子總數</span>
+              <span id="phyStatTotal" class="text-xl font-bold font-mono text-white">0</span>
+            </div>
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <span class="text-[11px] text-slate-400 block font-medium">穿透率 (洩漏風險)</span>
+              <span id="phyStatTransRate" class="text-xl font-bold font-mono text-rose-400">0.0%</span>
+            </div>
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <span class="text-[11px] text-slate-400 block font-medium">材料吸收數 (Captures)</span>
+              <span id="phyStatAbsorbed" class="text-xl font-bold font-mono text-cyan-300">0</span>
+            </div>
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <span class="text-[11px] text-slate-400 block font-medium">反射退回數</span>
+              <span id="phyStatReflected" class="text-xl font-bold font-mono text-amber-300">0</span>
+            </div>
+          </div>
+
+          <!-- Parameter Slider for Shield Thickness -->
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3 text-xs">
+            <div class="font-semibold text-slate-200">防護屏蔽工程參數調節：</div>
+            <div>
+              <div class="flex items-center justify-between text-slate-400 mb-1">
+                <span>屏蔽層厚度 (Thickness)：</span>
+                <span id="labelShieldThick" class="text-cyan-300 font-mono">180 mm</span>
+              </div>
+              <input type="range" id="inputShieldThick" min="60" max="300" value="180" class="w-full accent-cyan-400 bg-slate-800 h-1.5 rounded cursor-pointer" oninput="document.getElementById('labelShieldThick').innerText=this.value+' mm'; resetPhysicsSim();" />
+            </div>
+            <div>
+              <div class="flex items-center justify-between text-slate-400 mb-1">
+                <span>材料核捕獲吸收率 (Absorption Cross Section)：</span>
+                <span id="labelShieldAbsorb" class="text-cyan-300 font-mono">35%</span>
+              </div>
+              <input type="range" id="inputShieldAbsorb" min="5" max="80" value="35" class="w-full accent-cyan-400 bg-slate-800 h-1.5 rounded cursor-pointer" oninput="document.getElementById('labelShieldAbsorb').innerText=this.value+'%'; resetPhysicsSim();" />
+            </div>
+          </div>
+
+          <!-- Buttons -->
+          <div class="flex flex-wrap items-center gap-3 pt-1">
+            <button onclick="stepPhysicsSim(1)" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs border border-slate-700 flex items-center gap-1.5 transition active:scale-95 shadow">
+              <span>➕ 單步發射 (+1顆)</span>
+            </button>
+            <button onclick="stepPhysicsSim(20)" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 font-medium text-xs border border-slate-700 flex items-center gap-1.5 transition active:scale-95 shadow">
+              <span>⚡ 批次中子束 (+20顆)</span>
+            </button>
+            <button id="btnAutoPhysics" onclick="toggleAutoPhysics()" class="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow-lg shadow-cyan-600/30 flex items-center gap-2 transition active:scale-95">
+              <span id="physicsAutoIcon">▶</span>
+              <span id="physicsAutoText">一鍵自動連續射入</span>
+            </button>
+            <button onclick="resetPhysicsSim()" class="px-4 py-2.5 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-medium text-xs border border-rose-800/40 transition active:scale-95">
+              重置屏蔽
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="border-t border-slate-800 py-8 text-center text-xs text-slate-400">
+    <p>蒙地卡羅方法 (Monte Carlo Methods) 深度教學與互動體驗手冊</p>
+    <p class="mt-1 text-slate-400">結合大數法則、統計物理學、機率程式設計與深度推理技術</p>
+  </footer>
+
+  <!-- Interactive Scripts -->
+  <script>
+    // Tab switching for 06 AI Applications
+    function switchAITab(type) {
+      const tabs = ['ml', 'dl', 'rl', 'llm'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tab-btn-${t}`);
+        const pane = document.getElementById(`ai-pane-${t}`);
+        if (t === type) {
+          btn.className = "px-4 py-2 rounded-xl font-medium transition bg-indigo-600 text-white shadow";
+          pane.classList.remove('hidden');
+        } else {
+          btn.className = "px-4 py-2 rounded-xl font-medium transition bg-slate-900 text-slate-400 hover:text-white";
+          pane.classList.add('hidden');
+        }
+      });
+    }
+
+    // Code block switcher for 07
+    function switchCodeSnippet(type) {
+      const btnPyTorch = document.getElementById('btn-code-pytorch');
+      const btnMCDropout = document.getElementById('btn-code-mcdropout');
+      const blockPyTorch = document.getElementById('code-block-pytorch');
+      const blockMCDropout = document.getElementById('code-block-mcdropout');
+
+      if (type === 'py-torch') {
+        btnPyTorch.className = "px-3 py-1 text-xs rounded-lg bg-indigo-600 text-white font-medium";
+        btnMCDropout.className = "px-3 py-1 text-xs rounded-lg bg-slate-800 text-slate-400 hover:text-white font-medium";
+        blockPyTorch.classList.remove('hidden');
+        blockMCDropout.classList.add('hidden');
+      } else {
+        btnPyTorch.className = "px-3 py-1 text-xs rounded-lg bg-slate-800 text-slate-400 hover:text-white font-medium";
+        btnMCDropout.className = "px-3 py-1 text-xs rounded-lg bg-indigo-600 text-white font-medium";
+        blockPyTorch.classList.add('hidden');
+        blockMCDropout.classList.remove('hidden');
+      }
+    }
+
+    // ==========================================
+    // 08 Interactive Simulation Engine
+    // ==========================================
+    const canvas = document.getElementById('mcCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const chartCanvas = document.getElementById('chartCanvas');
+    const chartCtx = chartCanvas.getContext('2d');
+
+    let totalPoints = 0;
+    let insidePoints = 0;
+    let isAutoRunning = false;
+    let animationFrameId = null;
+    let pointsPerFrame = 50;
+
+    // History for convergence plot (downsampled)
+    let historyPi = [];
+
+    // Initialize Canvas
+    function initCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw background
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw Quarter Circle boundary
+      ctx.beginPath();
+      ctx.arc(0, canvas.height, canvas.width, -Math.PI / 2, 0, false);
+      ctx.strokeStyle = 'rgba(99, 102, 241, 0.4)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Subtle grid
+      ctx.strokeStyle = 'rgba(51, 65, 85, 0.2)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height / 2);
+      ctx.lineTo(canvas.width, canvas.height / 2);
+      ctx.moveTo(canvas.width / 2, 0);
+      ctx.lineTo(canvas.width / 2, canvas.height);
+      ctx.stroke();
+    }
+
+    function addPoint() {
+      const x = Math.random();
+      const y = Math.random();
+      const isInside = (x * x + y * y) <= 1.0;
+
+      totalPoints++;
+      if (isInside) insidePoints++;
+
+      // Canvas coordinates (origin at bottom-left)
+      const px = x * canvas.width;
+      const py = canvas.height - (y * canvas.height);
+
+      ctx.beginPath();
+      ctx.arc(px, py, 1.4, 0, Math.PI * 2);
+      ctx.fillStyle = isInside ? 'rgba(52, 211, 153, 0.75)' : 'rgba(244, 63, 94, 0.65)';
+      ctx.fill();
+    }
+
+    function updateStats() {
+      document.getElementById('statN').innerText = totalPoints.toLocaleString();
+      document.getElementById('statM').innerText = insidePoints.toLocaleString();
+      
+      if (totalPoints > 0) {
+        const estimatedPi = 4 * (insidePoints / totalPoints);
+        const error = Math.abs(estimatedPi - Math.PI);
+        document.getElementById('statPi').innerText = estimatedPi.toFixed(6);
+        document.getElementById('statError').innerText = error.toFixed(6);
+
+        // Theoretical Standard Error: sigma / sqrt(N) where p = pi/4
+        const p = Math.PI / 4;
+        const se = (4 * Math.sqrt(p * (1 - p))) / Math.sqrt(totalPoints);
+        document.getElementById('statSE').innerText = `± ${se.toFixed(5)}`;
+
+        // Error progress bar (relative to max initial error 1.0)
+        const accuracy = Math.max(0, Math.min(100, (1 - (error / 0.5)) * 100));
+        document.getElementById('errorProgressBar').style.width = `${accuracy}%`;
+
+        // Record history for chart
+        if (totalPoints % Math.max(1, Math.floor(pointsPerFrame / 2)) === 0 || totalPoints < 50) {
+          if (historyPi.length > 200) historyPi.shift();
+          historyPi.push(estimatedPi);
+          drawConvergenceChart();
+        }
+      } else {
+        document.getElementById('statPi').innerText = "0.000000";
+        document.getElementById('statError').innerText = "0.000000";
+        document.getElementById('statSE').innerText = "SE = ---";
+        document.getElementById('errorProgressBar').style.width = "0%";
+      }
+    }
+
+    function drawConvergenceChart() {
+      chartCtx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
+
+      // Background
+      chartCtx.fillStyle = '#020617';
+      chartCtx.fillRect(0, 0, chartCanvas.width, chartCanvas.height);
+
+      // Reference true PI line
+      const trueY = chartCanvas.height / 2;
+      chartCtx.strokeStyle = 'rgba(52, 211, 153, 0.6)';
+      chartCtx.setLineDash([4, 4]);
+      chartCtx.lineWidth = 1;
+      chartCtx.beginPath();
+      chartCtx.moveTo(0, trueY);
+      chartCtx.lineTo(chartCanvas.width, trueY);
+      chartCtx.stroke();
+      chartCtx.setLineDash([]);
+
+      if (historyPi.length < 2) return;
+
+      // Scale between 2.5 and 3.8
+      const minY = 2.7;
+      const maxY = 3.6;
+      const range = maxY - minY;
+
+      chartCtx.beginPath();
+      chartCtx.strokeStyle = '#818cf8';
+      chartCtx.lineWidth = 1.8;
+
+      const stepX = chartCanvas.width / (historyPi.length - 1);
+      historyPi.forEach((val, idx) => {
+        const clamped = Math.max(minY, Math.min(maxY, val));
+        const y = chartCanvas.height - ((clamped - minY) / range) * chartCanvas.height;
+        const x = idx * stepX;
+        if (idx === 0) chartCtx.moveTo(x, y);
+        else chartCtx.lineTo(x, y);
+      });
+      chartCtx.stroke();
+    }
+
+    // Step by step
+    function stepSim(count) {
+      for (let i = 0; i < count; i++) {
+        addPoint();
+      }
+      updateStats();
+    }
+
+    // Auto loop
+    function autoLoop() {
+      if (!isAutoRunning) return;
+      for (let i = 0; i < pointsPerFrame; i++) {
+        addPoint();
+      }
+      updateStats();
+      animationFrameId = requestAnimationFrame(autoLoop);
+    }
+
+    function toggleAutoSim() {
+      isAutoRunning = !isAutoRunning;
+      const btn = document.getElementById('btnAutoToggle');
+      const icon = document.getElementById('autoIcon');
+      const text = document.getElementById('autoBtnText');
+
+      if (isAutoRunning) {
+        btn.className = "px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-lg shadow-amber-600/30 flex items-center gap-2 transition active:scale-95";
+        icon.innerText = "⏸";
+        text.innerText = "暫停自動模擬";
+        autoLoop();
+      } else {
+        btn.className = "px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition active:scale-95";
+        icon.innerText = "▶";
+        text.innerText = "一鍵自動模擬";
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      }
+    }
+
+    function updateSpeed(val) {
+      pointsPerFrame = parseInt(val, 10);
+      document.getElementById('speedValueText').innerText = `每幀 ${pointsPerFrame} 點`;
+      document.getElementById('speedLabel').innerText = `自動速度: ${pointsPerFrame} 點/幀`;
+    }
+
+    function resetSim() {
+      if (isAutoRunning) toggleAutoSim();
+      totalPoints = 0;
+      insidePoints = 0;
+      historyPi = [];
+      initCanvas();
+      drawConvergenceChart();
+      updateStats();
+    }
+
+    // Initialize on load
+    window.addEventListener('load', () => {
+      initCanvas();
+      drawConvergenceChart();
+      updateStats();
+      // Initialize new domain simulators
+      initFinanceSim();
+      initMctsSim();
+      initPhysicsSim();
+    });
+
+    // ==========================================
+    // 08-B Financial Monte Carlo Simulator (GBM)
+    // ==========================================
+    const finCanvas = document.getElementById('financeCanvas');
+    const finCtx = finCanvas.getContext('2d');
+    let finPaths = [];
+    let finAutoRunning = false;
+    let finAnimId = null;
+
+    function initFinanceSim() {
+      drawFinanceBackground();
+    }
+
+    function drawFinanceBackground() {
+      finCtx.clearRect(0, 0, finCanvas.width, finCanvas.height);
+      finCtx.fillStyle = '#020617';
+      finCtx.fillRect(0, 0, finCanvas.width, finCanvas.height);
+
+      // Grid
+      finCtx.strokeStyle = 'rgba(51, 65, 85, 0.25)';
+      finCtx.lineWidth = 1;
+      for (let y = 40; y < finCanvas.height; y += 40) {
+        finCtx.beginPath();
+        finCtx.moveTo(0, y);
+        finCtx.lineTo(finCanvas.width, y);
+        finCtx.stroke();
+      }
+      for (let x = 60; x < finCanvas.width; x += 60) {
+        finCtx.beginPath();
+        finCtx.moveTo(x, 0);
+        finCtx.lineTo(x, finCanvas.height);
+        finCtx.stroke();
+      }
+
+      // Draw baseline initial S0
+      const S0 = parseFloat(document.getElementById('inputS0').value);
+      const baselineY = priceToY(S0);
+      finCtx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+      finCtx.setLineDash([4, 4]);
+      finCtx.beginPath();
+      finCtx.moveTo(0, baselineY);
+      finCtx.lineTo(finCanvas.width, baselineY);
+      finCtx.stroke();
+      finCtx.setLineDash([]);
+    }
+
+    function priceToY(price) {
+      const minP = 20;
+      const maxP = 260;
+      const clamped = Math.max(minP, Math.min(maxP, price));
+      return finCanvas.height - ((clamped - minP) / (maxP - minP)) * finCanvas.height;
+    }
+
+    function generateSingleGBMPath() {
+      const S0 = parseFloat(document.getElementById('inputS0').value);
+      const mu = parseFloat(document.getElementById('inputMu').value) / 100.0;
+      const sigma = parseFloat(document.getElementById('inputSigma').value) / 100.0;
+      const days = 252;
+      const dt = 1.0 / days;
+      const drift = (mu - 0.5 * sigma * sigma) * dt;
+      const vol = sigma * Math.sqrt(dt);
+
+      let currentS = S0;
+      const path = [currentS];
+
+      for (let d = 1; d <= days; d++) {
+        // Box-Muller standard normal Z
+        const u1 = Math.random() || 1e-8;
+        const u2 = Math.random() || 1e-8;
+        const z = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+        currentS = currentS * Math.exp(drift + vol * z);
+        path.push(currentS);
+      }
+      return path;
+    }
+
+    function stepFinanceSim(count) {
+      const S0 = parseFloat(document.getElementById('inputS0').value);
+      for (let i = 0; i < count; i++) {
+        const path = generateSingleGBMPath();
+        finPaths.push(path);
+        renderSinglePath(path, S0);
+      }
+      updateFinanceStats();
+    }
+
+    function renderSinglePath(path, S0) {
+      const len = path.length;
+      const stepX = finCanvas.width / (len - 1);
+      const finalPrice = path[len - 1];
+      const isProfit = finalPrice >= S0;
+
+      finCtx.beginPath();
+      finCtx.strokeStyle = isProfit ? 'rgba(52, 211, 153, 0.22)' : 'rgba(244, 63, 94, 0.20)';
+      finCtx.lineWidth = 1.1;
+
+      for (let i = 0; i < len; i++) {
+        const x = i * stepX;
+        const y = priceToY(path[i]);
+        if (i === 0) finCtx.moveTo(x, y);
+        else finCtx.lineTo(x, y);
+      }
+      finCtx.stroke();
+    }
+
+    function updateFinanceStats() {
+      const N = finPaths.length;
+      document.getElementById('finStatPaths').innerText = N.toLocaleString();
+      if (N === 0) return;
+
+      const S0 = parseFloat(document.getElementById('inputS0').value);
+      const finalPrices = finPaths.map(p => p[p.length - 1]).sort((a, b) => a - b);
+      const sum = finalPrices.reduce((a, b) => a + b, 0);
+      const mean = sum / N;
+
+      const wins = finalPrices.filter(p => p >= S0).length;
+      const winRate = (wins / N) * 100.0;
+
+      // 5th percentile for VaR
+      const p5Index = Math.floor(0.05 * N);
+      const var95Price = finalPrices[p5Index];
+      const varLoss = Math.max(0, S0 - var95Price);
+
+      document.getElementById('finStatMean').innerText = `$${mean.toFixed(2)}`;
+      document.getElementById('finStatWinRate').innerText = `${winRate.toFixed(1)}%`;
+      document.getElementById('finStatVaR').innerText = `-$${varLoss.toFixed(2)} (${(varLoss/S0*100).toFixed(1)}%)`;
+
+      // Redraw expected path and bands if N >= 5
+      if (N >= 5) {
+        drawBandsAndMean(S0);
+      }
+    }
+
+    function drawBandsAndMean(S0) {
+      const days = 252;
+      const stepX = finCanvas.width / days;
+
+      // Expected analytical mean trajectory: E[S_t] = S_0 * exp(mu * t)
+      const mu = parseFloat(document.getElementById('inputMu').value) / 100.0;
+      finCtx.beginPath();
+      finCtx.strokeStyle = '#fbbf24';
+      finCtx.lineWidth = 2.4;
+      for (let d = 0; d <= days; d++) {
+        const t = d / days;
+        const expectedSt = S0 * Math.exp(mu * t);
+        const x = d * stepX;
+        const y = priceToY(expectedSt);
+        if (d === 0) finCtx.moveTo(x, y);
+        else finCtx.lineTo(x, y);
+      }
+      finCtx.stroke();
+    }
+
+    function toggleAutoFinance() {
+      finAutoRunning = !finAutoRunning;
+      const btn = document.getElementById('btnAutoFinance');
+      const icon = document.getElementById('financeAutoIcon');
+      const text = document.getElementById('financeAutoText');
+
+      if (finAutoRunning) {
+        btn.className = "px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-lg shadow-amber-600/30 flex items-center gap-2 transition active:scale-95";
+        icon.innerText = "⏸";
+        text.innerText = "暫停模擬";
+        autoFinanceLoop();
+      } else {
+        btn.className = "px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-medium text-xs border border-slate-700 flex items-center gap-2 transition active:scale-95";
+        icon.innerText = "▶";
+        text.innerText = "一鍵自動模擬";
+        if (finAnimId) cancelAnimationFrame(finAnimId);
+      }
+    }
+
+    function autoFinanceLoop() {
+      if (!finAutoRunning) return;
+      stepFinanceSim(5);
+      if (finPaths.length > 300) {
+        toggleAutoFinance();
+        return;
+      }
+      finAnimId = requestAnimationFrame(autoFinanceLoop);
+    }
+
+    function resetFinanceSim() {
+      if (finAutoRunning) toggleAutoFinance();
+      finPaths = [];
+      initFinanceSim();
+      document.getElementById('finStatPaths').innerText = "0";
+      document.getElementById('finStatMean').innerText = `$${parseFloat(document.getElementById('inputS0').value).toFixed(2)}`;
+      document.getElementById('finStatWinRate').innerText = "0.0%";
+      document.getElementById('finStatVaR').innerText = "$0.00";
+    }
+
+    // ==========================================
+    // 08-C AI MCTS Simulator
+    // ==========================================
+    const mctsCanvas = document.getElementById('mctsCanvas');
+    const mctsCtx = mctsCanvas.getContext('2d');
+    let mctsTotalRollouts = 0;
+    let mctsAutoRunning = false;
+    let mctsAnimId = null;
+
+    // Tree structure with root and 3 main action branches (e.g. Center, Corner, Edge)
+    const mctsTree = {
+      name: "Root",
+      x: 300,
+      y: 65,
+      visits: 0,
+      wins: 0,
+      children: [
+        {
+          name: "走法 A (天元)",
+          baseP: 0.65, // Hidden environment win probability
+          x: 130,
+          y: 200,
+          visits: 0,
+          wins: 0,
+          children: [
+            { name: "A-1", baseP: 0.70, x: 80, y: 315, visits: 0, wins: 0 },
+            { name: "A-2", baseP: 0.58, x: 180, y: 315, visits: 0, wins: 0 }
+          ]
+        },
+        {
+          name: "走法 B (星位)",
+          baseP: 0.52,
+          x: 300,
+          y: 200,
+          visits: 0,
+          wins: 0,
+          children: [
+            { name: "B-1", baseP: 0.55, x: 260, y: 315, visits: 0, wins: 0 },
+            { name: "B-2", baseP: 0.49, x: 340, y: 315, visits: 0, wins: 0 }
+          ]
+        },
+        {
+          name: "走法 C (邊角)",
+          baseP: 0.38,
+          x: 470,
+          y: 200,
+          visits: 0,
+          wins: 0,
+          children: [
+            { name: "C-1", baseP: 0.42, x: 430, y: 315, visits: 0, wins: 0 },
+            { name: "C-2", baseP: 0.35, x: 520, y: 315, visits: 0, wins: 0 }
+          ]
+        }
+      ]
+    };
+
+    function initMctsSim() {
+      drawMctsTree();
+    }
+
+    function drawMctsTree(activeNode = null, highlightColor = null) {
+      mctsCtx.clearRect(0, 0, mctsCanvas.width, mctsCanvas.height);
+      mctsCtx.fillStyle = '#020617';
+      mctsCtx.fillRect(0, 0, mctsCanvas.width, mctsCanvas.height);
+
+      // Draw branches
+      mctsTree.children.forEach(c => {
+        drawEdge(mctsTree, c);
+        c.children.forEach(gc => {
+          drawEdge(c, gc);
+        });
+      });
+
+      // Find current best action
+      let bestChild = null;
+      let maxVisits = -1;
+      mctsTree.children.forEach(c => {
+        if (c.visits > maxVisits && c.visits > 0) {
+          maxVisits = c.visits;
+          bestChild = c;
+        }
+      });
+
+      // Draw all nodes
+      drawNode(mctsTree, false, activeNode === mctsTree ? highlightColor : null);
+      mctsTree.children.forEach(c => {
+        const isBest = (c === bestChild && mctsTotalRollouts >= 3);
+        drawNode(c, isBest, activeNode === c ? highlightColor : null);
+        c.children.forEach(gc => {
+          drawNode(gc, false, activeNode === gc ? highlightColor : null);
+        });
+      });
+    }
+
+    function drawEdge(parent, child) {
+      mctsCtx.beginPath();
+      mctsCtx.moveTo(parent.x, parent.y);
+      mctsCtx.lineTo(child.x, child.y);
+      mctsCtx.strokeStyle = 'rgba(100, 116, 139, 0.45)';
+      mctsCtx.lineWidth = 2;
+      mctsCtx.stroke();
+    }
+
+    function drawNode(node, isBest = false, overrideColor = null) {
+      const radius = node === mctsTree ? 26 : 22;
+      mctsCtx.beginPath();
+      mctsCtx.arc(node.x, node.y, radius, 0, Math.PI * 2);
+
+      if (overrideColor) {
+        mctsCtx.fillStyle = overrideColor;
+      } else if (isBest) {
+        mctsCtx.fillStyle = '#059669'; // Emerald
+      } else if (node.visits > 0) {
+        mctsCtx.fillStyle = '#4338ca'; // Indigo
+      } else {
+        mctsCtx.fillStyle = '#1e293b'; // Slate
+      }
+      mctsCtx.fill();
+      mctsCtx.lineWidth = isBest ? 2.5 : 1.5;
+      mctsCtx.strokeStyle = isBest ? '#34d399' : '#64748b';
+      mctsCtx.stroke();
+
+      // Text inside node
+      mctsCtx.fillStyle = '#ffffff';
+      mctsCtx.font = 'bold 10px monospace';
+      mctsCtx.textAlign = 'center';
+      mctsCtx.textBaseline = 'middle';
+      const winRate = node.visits > 0 ? Math.round((node.wins / node.visits) * 100) : 0;
+      mctsCtx.fillText(`${node.wins}/${node.visits}`, node.x, node.y - 3);
+      mctsCtx.font = '9px monospace';
+      mctsCtx.fillStyle = '#cbd5e1';
+      mctsCtx.fillText(`${winRate}%`, node.x, node.y + 8);
+
+      // Node Name Label
+      mctsCtx.font = '10px sans-serif';
+      mctsCtx.fillStyle = isBest ? '#34d399' : '#94a3b8';
+      mctsCtx.fillText(node.name, node.x, node.y + radius + 13);
+    }
+
+    function calcUCB(node, parentVisits, C = 1.414) {
+      if (node.visits === 0) return 9999; // Infinite exploration incentive
+      const exploitation = node.wins / node.visits;
+      const exploration = C * Math.sqrt(Math.log(parentVisits) / node.visits);
+      return exploitation + exploration;
+    }
+
+    function runSingleMctsRollout() {
+      // 1. Selection: Pick best child of root via UCB
+      let selectedChild = mctsTree.children[0];
+      let bestUCB = -Infinity;
+      mctsTree.children.forEach(c => {
+        const ucb = calcUCB(c, Math.max(1, mctsTree.visits));
+        if (ucb > bestUCB) {
+          bestUCB = ucb;
+          selectedChild = c;
+        }
+      });
+
+      // Selection sub-step to grandchild
+      let selectedLeaf = selectedChild.children[0];
+      let bestLeafUCB = -Infinity;
+      selectedChild.children.forEach(gc => {
+        const ucb = calcUCB(gc, Math.max(1, selectedChild.visits));
+        if (ucb > bestLeafUCB) {
+          bestLeafUCB = ucb;
+          selectedLeaf = gc;
+        }
+      });
+
+      // 2. Simulation (Rollout): Random roll according to leaf base probability
+      const isWin = Math.random() < selectedLeaf.baseP ? 1 : 0;
+
+      // 3. Backpropagation: Update path from leaf up to root
+      selectedLeaf.visits++;
+      selectedLeaf.wins += isWin;
+
+      selectedChild.visits++;
+      selectedChild.wins += isWin;
+
+      mctsTree.visits++;
+      mctsTree.wins += isWin;
+      mctsTotalRollouts++;
+
+      return { child: selectedChild, leaf: selectedLeaf, isWin: isWin };
+    }
+
+    function stepMctsSim(count) {
+      for (let i = 0; i < count; i++) {
+        runSingleMctsRollout();
+      }
+      drawMctsTree();
+      updateMctsStats();
+    }
+
+    function updateMctsStats() {
+      document.getElementById('mctsTotalIters').innerText = mctsTotalRollouts.toLocaleString();
+
+      let bestChild = null;
+      let maxVisits = -1;
+      mctsTree.children.forEach(c => {
+        if (c.visits > maxVisits && c.visits > 0) {
+          maxVisits = c.visits;
+          bestChild = c;
+        }
+      });
+
+      if (bestChild) {
+        const winRate = ((bestChild.wins / bestChild.visits) * 100).toFixed(1);
+        document.getElementById('mctsBestMove').innerText = `${bestChild.name} (訪問 ${bestChild.visits} 次)`;
+        document.getElementById('mctsBestWinRate').innerText = `${winRate}%`;
+        document.getElementById('mctsCurrentActionText').innerText = `推薦: ${bestChild.name} (探索率穩定)`;
+      }
+    }
+
+    function toggleAutoMcts() {
+      mctsAutoRunning = !mctsAutoRunning;
+      const btn = document.getElementById('btnAutoMcts');
+      const icon = document.getElementById('mctsAutoIcon');
+      const text = document.getElementById('mctsAutoText');
+
+      if (mctsAutoRunning) {
+        btn.className = "px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-lg shadow-amber-600/30 flex items-center gap-2 transition active:scale-95";
+        icon.innerText = "⏸";
+        text.innerText = "暫停探索";
+        autoMctsLoop();
+      } else {
+        btn.className = "px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition active:scale-95";
+        icon.innerText = "▶";
+        text.innerText = "一鍵自動模擬";
+        if (mctsAnimId) cancelAnimationFrame(mctsAnimId);
+      }
+    }
+
+    function autoMctsLoop() {
+      if (!mctsAutoRunning) return;
+      stepMctsSim(2);
+      if (mctsTotalRollouts >= 300) {
+        toggleAutoMcts();
+        return;
+      }
+      mctsAnimId = requestAnimationFrame(autoMctsLoop);
+    }
+
+    function resetMctsSim() {
+      if (mctsAutoRunning) toggleAutoMcts();
+      mctsTotalRollouts = 0;
+      mctsTree.visits = 0;
+      mctsTree.wins = 0;
+      mctsTree.children.forEach(c => {
+        c.visits = 0;
+        c.wins = 0;
+        c.children.forEach(gc => {
+          gc.visits = 0;
+          gc.wins = 0;
+        });
+      });
+      initMctsSim();
+      document.getElementById('mctsTotalIters').innerText = "0";
+      document.getElementById('mctsBestMove').innerText = "等待探索...";
+      document.getElementById('mctsBestWinRate').innerText = "--%";
+      document.getElementById('mctsCurrentActionText').innerText = "當前狀態: 待命";
+    }
+
+    // ==========================================
+    // 08-D Scientific Physics Neutron Transport
+    // ==========================================
+    const phyCanvas = document.getElementById('physicsCanvas');
+    const phyCtx = phyCanvas.getContext('2d');
+
+    let phyTotalNeutrons = 0;
+    let phyTransmitted = 0;
+    let phyAbsorbed = 0;
+    let phyReflected = 0;
+    let phyAutoRunning = false;
+    let phyAnimId = null;
+
+    function initPhysicsSim() {
+      drawPhysicsBackground();
+    }
+
+    function drawPhysicsBackground() {
+      phyCtx.clearRect(0, 0, phyCanvas.width, phyCanvas.height);
+      phyCtx.fillStyle = '#020617';
+      phyCtx.fillRect(0, 0, phyCanvas.width, phyCanvas.height);
+
+      const thick = parseInt(document.getElementById('inputShieldThick').value, 10);
+      const shieldStartX = 160;
+      const shieldEndX = shieldStartX + thick;
+
+      // Draw Shield Wall (Lead block)
+      phyCtx.fillStyle = 'rgba(51, 65, 85, 0.45)';
+      phyCtx.fillRect(shieldStartX, 20, thick, phyCanvas.height - 40);
+      phyCtx.strokeStyle = 'rgba(99, 102, 241, 0.4)';
+      phyCtx.lineWidth = 1.5;
+      phyCtx.strokeRect(shieldStartX, 20, thick, phyCanvas.height - 40);
+
+      // Label Lead Shield
+      phyCtx.fillStyle = '#94a3b8';
+      phyCtx.font = '11px monospace';
+      phyCtx.textAlign = 'center';
+      phyCtx.fillText(`鉛防護層 (${thick}mm)`, shieldStartX + thick / 2, 45);
+
+      // Source label
+      phyCtx.fillStyle = '#38bdf8';
+      phyCtx.fillText("中子源發射口 ▶", 80, phyCanvas.height / 2);
+
+      // Detector region label
+      phyCtx.fillStyle = '#34d399';
+      phyCtx.fillText("環境探測器 🏁", Math.min(phyCanvas.width - 60, shieldEndX + 70), phyCanvas.height / 2);
+    }
+
+    function simulateNeutronPath() {
+      const thick = parseInt(document.getElementById('inputShieldThick').value, 10);
+      const absorbProb = parseInt(document.getElementById('inputShieldAbsorb').value, 10) / 100.0;
+      const shieldStartX = 160;
+      const shieldEndX = shieldStartX + thick;
+
+      // Start at left source
+      let x = 60;
+      let y = phyCanvas.height / 2 + (Math.random() * 80 - 40);
+      let angle = (Math.random() * 0.4 - 0.2); // Directed roughly to the right
+      const pathPoints = [{ x, y }];
+
+      // Step until entering shield
+      x = shieldStartX;
+      y += Math.tan(angle) * (shieldStartX - 60);
+      pathPoints.push({ x, y });
+
+      const meanFreePath = 22; // Average distance between nuclear collisions
+      let status = 'in_shield';
+
+      for (let step = 0; step < 60; step++) {
+        // Random free flight step: -lambda * ln(U)
+        const stepDist = -meanFreePath * Math.log(Math.random() || 1e-6);
+        x += Math.cos(angle) * stepDist;
+        y += Math.sin(angle) * stepDist;
+        y = Math.max(25, Math.min(phyCanvas.height - 25, y));
+        pathPoints.push({ x, y });
+
+        // Check if penetrated (transmitted to right)
+        if (x >= shieldEndX) {
+          status = 'transmitted';
+          break;
+        }
+        // Check if reflected back to left
+        if (x < shieldStartX) {
+          status = 'reflected';
+          break;
+        }
+
+        // Inside shield collision: Absorbed by nucleus or scattered?
+        if (Math.random() < absorbProb) {
+          status = 'absorbed';
+          break;
+        } else {
+          // Isotropic scattering in all directions (0 to 2pi)
+          angle = Math.random() * 2 * Math.PI;
+        }
+      }
+
+      if (status === 'in_shield') status = 'absorbed'; // Exhausted energy trapped inside
+      return { path: pathPoints, status: status };
+    }
+
+    function stepPhysicsSim(count) {
+      for (let i = 0; i < count; i++) {
+        const result = simulateNeutronPath();
+        phyTotalNeutrons++;
+        if (result.status === 'transmitted') phyTransmitted++;
+        else if (result.status === 'absorbed') phyAbsorbed++;
+        else if (result.status === 'reflected') phyReflected++;
+        renderNeutronPath(result.path, result.status);
+      }
+      updatePhysicsStats();
+    }
+
+    function renderNeutronPath(points, status) {
+      phyCtx.beginPath();
+      if (status === 'transmitted') phyCtx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
+      else if (status === 'absorbed') phyCtx.strokeStyle = 'rgba(244, 63, 94, 0.4)';
+      else phyCtx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
+
+      phyCtx.lineWidth = status === 'transmitted' ? 1.6 : 1.1;
+
+      for (let i = 0; i < points.length; i++) {
+        if (i === 0) phyCtx.moveTo(points[i].x, points[i].y);
+        else phyCtx.lineTo(points[i].x, points[i].y);
+      }
+      phyCtx.stroke();
+
+      // End particle marker
+      const end = points[points.length - 1];
+      phyCtx.beginPath();
+      phyCtx.arc(end.x, end.y, 2.5, 0, Math.PI * 2);
+      if (status === 'transmitted') phyCtx.fillStyle = '#38bdf8';
+      else if (status === 'absorbed') phyCtx.fillStyle = '#f43f5e';
+      else phyCtx.fillStyle = '#fbbf24';
+      phyCtx.fill();
+    }
+
+    function updatePhysicsStats() {
+      document.getElementById('phyStatTotal').innerText = phyTotalNeutrons.toLocaleString();
+      document.getElementById('phyStatAbsorbed').innerText = phyAbsorbed.toLocaleString();
+      document.getElementById('phyStatReflected').innerText = phyReflected.toLocaleString();
+
+      if (phyTotalNeutrons > 0) {
+        const transRate = (phyTransmitted / phyTotalNeutrons) * 100.0;
+        document.getElementById('phyStatTransRate').innerText = `${transRate.toFixed(2)}%`;
+        const shieldEfficiency = (100 - transRate).toFixed(1);
+        document.getElementById('physicsStatusText').innerText = `防護屏蔽效能: ${shieldEfficiency}%`;
+      } else {
+        document.getElementById('phyStatTransRate').innerText = "0.0%";
+        document.getElementById('physicsStatusText').innerText = "防護率: 100%";
+      }
+    }
+
+    function toggleAutoPhysics() {
+      phyAutoRunning = !phyAutoRunning;
+      const btn = document.getElementById('btnAutoPhysics');
+      const icon = document.getElementById('physicsAutoIcon');
+      const text = document.getElementById('physicsAutoText');
+
+      if (phyAutoRunning) {
+        btn.className = "px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-lg shadow-amber-600/30 flex items-center gap-2 transition active:scale-95";
+        icon.innerText = "⏸";
+        text.innerText = "暫停射入";
+        autoPhysicsLoop();
+      } else {
+        btn.className = "px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow-lg shadow-cyan-600/30 flex items-center gap-2 transition active:scale-95";
+        icon.innerText = "▶";
+        text.innerText = "一鍵自動連續射入";
+        if (phyAnimId) cancelAnimationFrame(phyAnimId);
+      }
+    }
+
+    function autoPhysicsLoop() {
+      if (!phyAutoRunning) return;
+      stepPhysicsSim(4);
+      if (phyTotalNeutrons >= 400) {
+        toggleAutoPhysics();
+        return;
+      }
+      phyAnimId = requestAnimationFrame(autoPhysicsLoop);
+    }
+
+    function resetPhysicsSim() {
+      if (phyAutoRunning) toggleAutoPhysics();
+      phyTotalNeutrons = 0;
+      phyTransmitted = 0;
+      phyAbsorbed = 0;
+      phyReflected = 0;
+      initPhysicsSim();
+      document.getElementById('phyStatTotal').innerText = "0";
+      document.getElementById('phyStatTransRate').innerText = "0.0%";
+      document.getElementById('phyStatAbsorbed').innerText = "0";
+      document.getElementById('phyStatReflected').innerText = "0";
+      document.getElementById('physicsStatusText').innerText = "防護率: 100%";
+    }
+  </script>
+</body>
+</html>

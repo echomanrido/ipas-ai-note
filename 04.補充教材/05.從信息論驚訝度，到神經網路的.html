@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cross-Entropy 與 Softmax 終極互動探索全書與數學深析實驗室</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfeff',
+              100: '#cffafe',
+              400: '#22d3ee',
+              500: '#06b6d4',
+              600: '#0891b2',
+              900: '#164e63',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Fira Code', 'Menlo', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <!-- KaTeX for High-Fidelity Math Typography -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+  <!-- Chart.js for Dynamic Curves -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Custom Scrollbars & Glassmorphism */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090d16;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.78);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glow-cyan {
+      box-shadow: 0 0 35px -8px rgba(6, 182, 212, 0.22);
+    }
+    .glow-purple {
+      box-shadow: 0 0 35px -8px rgba(168, 85, 247, 0.22);
+    }
+    .glow-emerald {
+      box-shadow: 0 0 35px -8px rgba(16, 185, 129, 0.22);
+    }
+    .cancel-strike {
+      position: relative;
+      display: inline-block;
+    }
+    .cancel-strike::after {
+      content: '';
+      position: absolute;
+      left: -2px;
+      right: -2px;
+      top: 50%;
+      height: 2px;
+      background: #f43f5e;
+      transform: rotate(-12deg);
+      animation: strikeAnim 0.35s ease-out forwards;
+    }
+    @keyframes strikeAnim {
+      0% { width: 0%; }
+      100% { width: 105%; }
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+
+  <!-- Top Persistent Navigation -->
+  <header class="border-b border-slate-800/80 sticky top-0 z-50 bg-slate-950/85 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-600 to-purple-600 flex items-center justify-center font-mono font-black text-white shadow-lg shadow-cyan-500/25">
+          ∇
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            Cross-Entropy × Softmax
+            <span class="text-[11px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono border border-cyan-500/30">Master Lab</span>
+          </h1>
+          <p class="text-[11px] text-slate-400">信息論直觀 &bull; 梯度動力學 &bull; 奇蹟相消數學深析 &bull; LLM 與 PyTorch 工程</p>
+        </div>
+      </div>
+      <nav class="flex items-center space-x-1 sm:space-x-2 text-xs font-medium overflow-x-auto py-1">
+        <a href="#sec-intuition" class="px-2.5 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition whitespace-nowrap">1. 直觀與機率</a>
+        <a href="#sec-multiclass" class="px-2.5 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition whitespace-nowrap">2. 多類別與 KL</a>
+        <a href="#sec-backprop" class="px-2.5 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition whitespace-nowrap">3. 反向傳播模擬</a>
+        <a href="#sec-llm" class="px-2.5 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition whitespace-nowrap">4. LLM 困惑度</a>
+        <a href="#sec-sat-deadlock" class="px-2.5 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition whitespace-nowrap">5. 分類 vs 回歸</a>
+        <a href="#sec-proofs" class="px-2.5 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/30 transition whitespace-nowrap">6. 奇蹟相消深析</a>
+        <a href="#sec-pytorch" class="px-2.5 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition whitespace-nowrap">7. PyTorch 實作</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-12">
+    <!-- HERO SHOWCASE BANNER: Deep Geometry Synthesis -->
+    <section class="p-6 sm:p-10 rounded-3xl glass-panel glow-cyan relative overflow-hidden border border-cyan-500/30">
+      <div class="absolute -right-24 -bottom-24 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -left-24 -top-24 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      
+      <div class="max-w-4xl space-y-4 relative z-10">
+        <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-cyan-400 text-xs font-mono">
+          <span>全景探索全書</span>
+          <span>•</span>
+          <span>Zero Dead-Zone Convergence</span>
+          <span>•</span>
+          <span>Dual Manifold Invariance</span>
+        </div>
+        <h2 class="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
+          從信息論驚訝度，到神經網路的<br>
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400">
+            Softmax × 交叉熵「奇蹟相消」深層幾何
+          </span>
+        </h2>
+        <p class="text-slate-300 text-sm sm:text-base leading-relaxed max-w-3xl">
+          為什麼 Softmax 致命的飽和死區 $q_i(1 - q_i)$，在乘上交叉熵求導 $-\frac{1}{q_i}$ 後，能瞬間蒸發為極其純粹的線性殘差差值 $\mathbf{q} - \mathbf{y}$？
+          本全書整合直觀實驗、梯度自動模擬、LLM 困惑度推演與微積分/矩陣/統計力學四層證明。
+        </p>
+        <div class="pt-2 flex flex-wrap gap-3">
+          <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 font-mono text-cyan-300 text-sm flex items-center gap-2">
+            <span>核心梯度：</span>
+            <span class="text-base font-bold text-white">$$\nabla_{\mathbf{z}} L = \mathbf{q} - \mathbf{y}$$</span>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 font-mono text-purple-300 text-sm flex items-center gap-2">
+            <span>困惑度公式：</span>
+            <span class="text-base font-bold text-white">$$\text{PPL} = \exp(L)$$</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- QUICK INTRO & ONE-SENTENCE SUMMARY -->
+    <section class="p-6 sm:p-7 rounded-3xl glass-panel border border-cyan-500/30 bg-gradient-to-r from-slate-900/90 via-slate-900/70 to-slate-950 shadow-xl space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-semibold">
+          <span>⚡ 一句話精華</span>
+          <span>•</span>
+          <span>Core Concept in a Nutshell</span>
+        </div>
+        <span class="text-[11px] font-mono text-slate-400">Loss = −∑ y_k · ln(q_k)</span>
+      </div>
+
+      <div class="space-y-2">
+        <h2 class="text-lg sm:text-2xl font-black text-white tracking-tight leading-snug">
+          交叉熵（Cross-Entropy）是什麼？
+        </h2>
+        <div class="p-4 rounded-2xl bg-cyan-950/30 border border-cyan-500/35 text-slate-200 text-sm sm:text-base leading-relaxed">
+          <p>
+            <strong class="text-cyan-300 font-bold">一句話簡介：</strong>
+            交叉熵是衡量<strong>「模型預測機率」</strong>與<strong>「真實事實」</strong>之間差距的尺規——模型越是<strong class="text-rose-400">自信地犯錯</strong>，受到的驚訝度懲罰就呈<strong class="text-amber-300">對數級暴增</strong>；而當它與 Softmax 配合時，又能奇蹟般地<strong class="text-emerald-400">蒸發飽和死區</strong>，化為最純粹的線性修正推力 <span class="font-mono text-cyan-300 font-bold">(q − y)</span>。
+          </p>
+        </div>
+
+        <!-- PROBABILITY INTERPRETATION BLOCK -->
+        <div class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-indigo-500/30 space-y-3">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <span class="text-xs font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
+              <span>🎲</span> 機率論視角的核心解釋（Probabilistic Interpretation）
+            </span>
+            <span class="text-[11px] font-mono text-indigo-400 bg-indigo-950/80 px-2 py-0.5 rounded border border-indigo-800/60">
+              Loss = NLL = −ln P(真實樣本 | 模型)
+            </span>
+          </div>
+
+          <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            在統計學與機率論中，交叉熵並不是憑空發明的懲罰函數，而是<strong>負對數似然（Negative Log-Likelihood, NLL）</strong>的天然形式。它在機率世界中有三層核心詮釋：
+          </p>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 text-xs">
+            <div class="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/90 space-y-1.5">
+              <div class="font-bold text-cyan-300 flex items-center gap-1">
+                <span>① 最大化真實發生率 (MLE)</span>
+              </div>
+              <p class="text-slate-400 leading-relaxed text-[11px]">
+                若真實類別為 $c$，模型的預測機率是 $q_c$。為了讓歷史觀測到的資料「聯合發生機率 $\prod q_c$」達到最大，對其取負對數轉化為加法 $-\sum \ln q_c$。<strong>最小化交叉熵就是極大化真實事件的觀測似然</strong>。
+              </p>
+            </div>
+
+            <div class="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/90 space-y-1.5">
+              <div class="font-bold text-indigo-300 flex items-center gap-1">
+                <span>② 客觀抽樣下的「數學期望值」</span>
+              </div>
+              <p class="text-slate-400 leading-relaxed text-[11px]">
+                $H(p, q) = \mathbb{E}_{X \sim p}[-\ln q(X)]$。上帝以客觀真實分佈 $p$ 不斷抽樣隨機事件，而你用猜測分佈 $q$ 支付驚訝度。交叉熵衡量的是<strong>長期抽樣下，模型平均承受的機率衝擊期望值</strong>。
+              </p>
+            </div>
+
+            <div class="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/90 space-y-1.5">
+              <div class="font-bold text-purple-300 flex items-center gap-1">
+                <span>③ 機率分佈的重合幾何 (KL)</span>
+              </div>
+              <p class="text-slate-400 leading-relaxed text-[11px]">
+                $H(p, q) = H(p) + D_{\text{KL}}(p \parallel q)$。在監督學習中標籤分佈 $p$ 固定，自身熵 $H(p)$ 為常數；因此<strong>優化交叉熵就是在幾何上將預測機率分佈 $q$ 嚴絲合縫地拉近真實分佈 $p$</strong>。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick 3-Pillar Takeaways -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs">
+        <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center space-x-3">
+          <span class="text-xl">📡</span>
+          <div>
+            <div class="font-bold text-cyan-300">資訊論本質</div>
+            <div class="text-[11px] text-slate-400">面對真實事件時的「平均驚訝度」</div>
+          </div>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center space-x-3">
+          <span class="text-xl">🚀</span>
+          <div>
+            <div class="font-bold text-emerald-300">梯度不窒息</div>
+            <div class="text-[11px] text-slate-400">錯得越離譜，反向傳播修正力道越強</div>
+          </div>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center space-x-3">
+          <span class="text-xl">🤖</span>
+          <div>
+            <div class="font-bold text-purple-300">現代 AI 基石</div>
+            <div class="text-[11px] text-slate-400">LLM 次詞預測與各類分類器核心指標</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 1: Intuition, Surprisal & Probability Meaning -->
+    <section id="sec-intuition" class="space-y-6">
+      <div class="flex items-center space-x-3">
+        <span class="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 flex items-center justify-center font-bold text-sm">1</span>
+        <div>
+          <h3 class="text-xl font-bold text-white">直觀本質篇：氣象主播「驚訝度」與「利用機率」的深層意涵</h3>
+          <p class="text-xs text-slate-400">什麼是負對數懲罰？交叉熵到底是如何把「機率」拿來運算的？</p>
+        </div>
+      </div>
+
+      <!-- Surprisal Weather Experiment -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="p-6 rounded-2xl glass-panel space-y-4">
+          <div class="flex justify-between items-center">
+            <h4 class="font-bold text-slate-200 text-sm flex items-center gap-2">
+              <span>氣象主播驚訝度（Surprisal）模擬器</span>
+              <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-mono">I = -ln(p)</span>
+            </h4>
+            <span id="weather-status-badge" class="text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">真實結果：下雨 🌧️</span>
+          </div>
+          
+          <p class="text-xs text-slate-400 leading-relaxed">
+            設定氣象主播預報「下雨」的機率 $q$。當真實結果發生時，如果主播之前給的機率很低，觀眾的「驚訝度」（負對數代價）就會暴增：
+          </p>
+
+          <div class="space-y-2 pt-2">
+            <div class="flex justify-between text-xs font-mono">
+              <span class="text-slate-400">預報下雨機率 (q):</span>
+              <span id="weather-prob-val" class="text-cyan-300 font-bold">10% (0.100)</span>
+            </div>
+            <input id="weather-prob-slider" type="range" min="0.001" max="0.999" step="0.005" value="0.10"
+                   class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                   oninput="updateWeatherSimulation()">
+            <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+              <span>0.1% (斬釘截鐵猜不會下雨)</span>
+              <span>50% (猶豫中)</span>
+              <span>99.9% (幾乎確定下雨)</span>
+            </div>
+          </div>
+
+          <div class="flex gap-2 pt-1">
+            <button onclick="setWeatherActual('rain')" class="flex-1 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-semibold text-cyan-300 border border-slate-700 transition">
+              設定真實：下雨 🌧️
+            </button>
+            <button onclick="setWeatherActual('sun')" class="flex-1 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-semibold text-amber-300 border border-slate-700 transition">
+              設定真實：晴天 ☀️
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 pt-2">
+            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 text-center">
+              <div class="text-[11px] text-slate-400">驚訝度 (Surprisal)</div>
+              <div id="weather-surprisal-val" class="text-xl font-mono font-bold text-rose-400 mt-1">2.302 nat</div>
+              <div class="text-[10px] text-slate-500">負對數 $-\ln(q)$</div>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 text-center">
+              <div class="text-[11px] text-slate-400">交叉熵損失 (Loss)</div>
+              <div id="weather-loss-val" class="text-xl font-mono font-bold text-cyan-400 mt-1">2.302</div>
+              <div class="text-[10px] text-slate-500">真實標籤之代價</div>
+            </div>
+          </div>
+          <div id="weather-commentary" class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-300 font-mono">
+            主播說只有 10% 機率會下雨，結果下了！觀眾感到相當驚訝，懲罰值顯著上升。
+          </div>
+        </div>
+
+        <!-- 3 Perspectives of "Using Probability" -->
+        <div class="p-6 rounded-2xl glass-panel space-y-4">
+          <h4 class="font-bold text-slate-200 text-sm flex items-center justify-between">
+            <span>「交叉熵利用機率」的三層深層意涵</span>
+            <span class="text-xs font-mono text-cyan-400">Probability Philosophy</span>
+          </h4>
+          
+          <div class="space-y-3 text-xs">
+            <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1">
+              <div class="font-bold text-cyan-300 flex items-center gap-1.5">
+                <span>① 期望驚訝度（Expected Surprisal）</span>
+              </div>
+              <p class="text-slate-300 leading-relaxed">
+                $H(p, q) = \sum p(x) [-\ln q(x)]$：真實世界以機率 $p(x)$ 抽樣事件，模型用 $-\ln q(x)$ 支付驚訝度。交叉熵就是你在這個世界長期生存的<strong>平均心理衝擊</strong>。
+              </p>
+            </div>
+
+            <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1">
+              <div class="font-bold text-indigo-300 flex items-center gap-1.5">
+                <span>② 最大似然估計（MLE）的負對數形式</span>
+              </div>
+              <p class="text-slate-300 leading-relaxed">
+                欲讓觀察到的訓練資料發生機率最大化 $\max \prod q(x_i)$。對其取負對數，連乘化為連加 $-\sum \ln q(x_i)$。<strong>最小化交叉熵等價於極大化歷史資料發生的機率</strong>。
+              </p>
+            </div>
+
+            <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1">
+              <div class="font-bold text-purple-300 flex items-center gap-1.5">
+                <span>③ 最優通訊編碼長度（Coding Theory）</span>
+              </div>
+              <p class="text-slate-300 leading-relaxed">
+                若根據你的猜測 $q$ 來設計摩斯密碼（高頻事件分配短碼 $-\log_2 q$），傳輸真正來自上帝分佈 $p$ 的訊息時，<strong>每條訊息所需的平均傳輸位元數</strong>。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: Multiclass Classification, Softmax & KL Divergence -->
+    <section id="sec-multiclass" class="space-y-6">
+      <div class="flex items-center space-x-3">
+        <span class="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center font-bold text-sm">2</span>
+        <div>
+          <h3 class="text-xl font-bold text-white">多類別分類篇：Softmax 機率單純形與 KL 散度解耦實驗室</h3>
+          <p class="text-xs text-slate-400">動態調整 Logits，驗證 $H(p, q) = H(p) + D_{\text{KL}}(p \parallel q)$ 的守恆與解耦</p>
+        </div>
+      </div>
+
+      <div class="p-6 sm:p-8 rounded-3xl glass-panel space-y-6 border border-indigo-500/30">
+        <!-- Interactive 3-Class Sliders -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Class 1: Cat -->
+          <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-bold text-white flex items-center gap-1.5">🐱 類別 1: 貓 (Cat)</span>
+              <span id="mc-prob-0" class="font-mono text-cyan-300 font-bold">q₁: 0.700</span>
+            </div>
+            <div class="space-y-1">
+              <div class="flex justify-between text-[11px] text-slate-400 font-mono">
+                <span>未歸一化 Logit z₁</span>
+                <span id="mc-logit-val-0">2.0</span>
+              </div>
+              <input id="mc-z0" type="range" min="-4" max="5" step="0.1" value="2.0" class="w-full accent-cyan-400" oninput="updateMultiClassSim()">
+            </div>
+            <div class="pt-1 flex justify-between items-center text-[11px]">
+              <span class="text-slate-400">真實標籤 p₁:</span>
+              <span class="font-mono text-emerald-400 font-bold">1.0 (目標類別)</span>
+            </div>
+          </div>
+
+          <!-- Class 2: Dog -->
+          <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-bold text-white flex items-center gap-1.5">🐶 類別 2: 狗 (Dog)</span>
+              <span id="mc-prob-1" class="font-mono text-cyan-300 font-bold">q₂: 0.200</span>
+            </div>
+            <div class="space-y-1">
+              <div class="flex justify-between text-[11px] text-slate-400 font-mono">
+                <span>未歸一化 Logit z₂</span>
+                <span id="mc-logit-val-1">0.5</span>
+              </div>
+              <input id="mc-z1" type="range" min="-4" max="5" step="0.1" value="0.5" class="w-full accent-indigo-400" oninput="updateMultiClassSim()">
+            </div>
+            <div class="pt-1 flex justify-between items-center text-[11px]">
+              <span class="text-slate-400">真實標籤 p₂:</span>
+              <span class="font-mono text-slate-500">0.0</span>
+            </div>
+          </div>
+
+          <!-- Class 3: Rabbit -->
+          <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-bold text-white flex items-center gap-1.5">🐰 類別 3: 兔 (Rabbit)</span>
+              <span id="mc-prob-2" class="font-mono text-cyan-300 font-bold">q₃: 0.100</span>
+            </div>
+            <div class="space-y-1">
+              <div class="flex justify-between text-[11px] text-slate-400 font-mono">
+                <span>未歸一化 Logit z₃</span>
+                <span id="mc-logit-val-2">-0.5</span>
+              </div>
+              <input id="mc-z2" type="range" min="-4" max="5" step="0.1" value="-0.5" class="w-full accent-purple-400" oninput="updateMultiClassSim()">
+            </div>
+            <div class="pt-1 flex justify-between items-center text-[11px]">
+              <span class="text-slate-400">真實標籤 p₃:</span>
+              <span class="font-mono text-slate-500">0.0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metric Output Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+          <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800">
+            <div class="text-xs text-slate-400 font-mono">真實自信息熵 H(p)</div>
+            <div id="mc-entropy-val" class="text-xl font-mono font-bold text-emerald-400 mt-1">0.000 nat</div>
+            <div class="text-[10px] text-slate-500">One-hot 標籤無不確定性</div>
+          </div>
+          <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800">
+            <div class="text-xs text-slate-400 font-mono">KL 散度 D_KL(p || q)</div>
+            <div id="mc-kl-val" class="text-xl font-mono font-bold text-purple-400 mt-1">0.357 nat</div>
+            <div class="text-[10px] text-slate-500">分佈預測偏離額外損耗</div>
+          </div>
+          <div class="p-4 rounded-2xl bg-cyan-950/30 border border-cyan-500/30">
+            <div class="text-xs text-cyan-300 font-bold font-mono">交叉熵 H(p, q) = H + KL</div>
+            <div id="mc-ce-val" class="text-2xl font-mono font-extrabold text-cyan-400 mt-1">0.357 nat</div>
+            <div class="text-[10px] text-emerald-400 font-mono">−ln(q_cat) 即時損失</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: Backpropagation & One-Click Auto Training Simulation -->
+    <section id="sec-backprop" class="space-y-6">
+      <div class="flex items-center space-x-3">
+        <span class="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-bold text-sm">3</span>
+        <div>
+          <h3 class="text-xl font-bold text-white">神經網路反向傳播篇：梯度更新與「一鍵連續自動訓練」</h3>
+          <p class="text-xs text-slate-400">親眼見證 $\frac{\partial L}{\partial z_i} = q_i - y_i$ 如何平滑更新 Logits 並壓制預測誤差</p>
+        </div>
+      </div>
+
+      <div class="p-6 sm:p-8 rounded-3xl glass-panel space-y-6 border border-emerald-500/30">
+        <div class="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-slate-800">
+          <div class="space-y-1">
+            <div class="text-xs font-mono text-emerald-400 font-bold uppercase tracking-wider">梯度下降在線實驗室</div>
+            <p class="text-xs text-slate-300">目標為「類別 1: 貓」（$y = [1, 0, 0]$），學習率 $\eta = 0.25$。</p>
+          </div>
+          <!-- Buttons -->
+          <div class="flex items-center gap-2">
+            <button onclick="stepGradientDescent()" class="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-semibold text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+              <span>👣 單步梯度下降</span>
+            </button>
+            <button id="btn-auto-train" onclick="toggleAutoTraining()" class="px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/20 transition flex items-center gap-1.5">
+              <span id="train-icon">▶️</span>
+              <span id="train-text">一鍵自動模擬訓練</span>
+            </button>
+            <button onclick="resetTrainingState()" class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-medium text-slate-400 border border-slate-800 transition">
+              重設
+            </button>
+          </div>
+        </div>
+
+        <!-- Live Parameters Display -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Class 1 State -->
+          <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2">
+            <div class="flex justify-between text-xs font-bold">
+              <span class="text-cyan-400">貓 (Cat, y₁=1)</span>
+              <span id="bp-prob-0" class="font-mono text-white">70.0%</span>
+            </div>
+            <div class="text-xs font-mono text-slate-400 flex justify-between">
+              <span>Logit z₁:</span>
+              <span id="bp-z-0" class="text-cyan-300 font-bold">2.000</span>
+            </div>
+            <div class="text-xs font-mono text-rose-400 flex justify-between">
+              <span>梯度 ∂L/∂z₁ (q₁ - 1):</span>
+              <span id="bp-grad-0" class="font-bold">-0.3000</span>
+            </div>
+            <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <div id="bp-bar-0" class="bg-cyan-400 h-full transition-all duration-150" style="width: 70%;"></div>
+            </div>
+          </div>
+
+          <!-- Class 2 State -->
+          <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2">
+            <div class="flex justify-between text-xs font-bold">
+              <span class="text-indigo-400">狗 (Dog, y₂=0)</span>
+              <span id="bp-prob-1" class="font-mono text-white">20.0%</span>
+            </div>
+            <div class="text-xs font-mono text-slate-400 flex justify-between">
+              <span>Logit z₂:</span>
+              <span id="bp-z-1" class="text-indigo-300 font-bold">0.500</span>
+            </div>
+            <div class="text-xs font-mono text-amber-400 flex justify-between">
+              <span>梯度 ∂L/∂z₂ (q₂ - 0):</span>
+              <span id="bp-grad-1" class="font-bold">+0.2000</span>
+            </div>
+            <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <div id="bp-bar-1" class="bg-indigo-400 h-full transition-all duration-150" style="width: 20%;"></div>
+            </div>
+          </div>
+
+          <!-- Class 3 State -->
+          <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2">
+            <div class="flex justify-between text-xs font-bold">
+              <span class="text-purple-400">兔 (Rabbit, y₃=0)</span>
+              <span id="bp-prob-2" class="font-mono text-white">10.0%</span>
+            </div>
+            <div class="text-xs font-mono text-slate-400 flex justify-between">
+              <span>Logit z₃:</span>
+              <span id="bp-z-2" class="text-purple-300 font-bold">-0.500</span>
+            </div>
+            <div class="text-xs font-mono text-amber-400 flex justify-between">
+              <span>梯度 ∂L/∂z₃ (q₃ - 0):</span>
+              <span id="bp-grad-2" class="font-bold">+0.1000</span>
+            </div>
+            <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <div id="bp-bar-2" class="bg-purple-400 h-full transition-all duration-150" style="width: 10%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Training Diagnostics Bar -->
+        <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex flex-wrap items-center justify-between gap-4 text-xs font-mono">
+          <div class="flex items-center gap-3">
+            <span class="text-slate-400">目前迭代輪次:</span>
+            <span id="bp-epoch" class="text-base font-bold text-emerald-400">Epoch 0</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-slate-400">目前損失 Loss (-ln q₁):</span>
+            <span id="bp-loss" class="text-base font-bold text-cyan-300">0.3567</span>
+          </div>
+          <div id="bp-status-hint" class="text-slate-400 italic">
+            點擊「一鍵自動模擬訓練」，觀察負梯度如何拉升貓的 Logit 並壓低狗與兔。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: LLM Next-Token Prediction & Perplexity (PPL) -->
+    <section id="sec-llm" class="space-y-6">
+      <div class="flex items-center space-x-3">
+        <span class="w-8 h-8 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-400 flex items-center justify-center font-bold text-sm">4</span>
+        <div>
+          <h3 class="text-xl font-bold text-white">大語言模型（LLM）篇：次詞預測與困惑度（Perplexity）互動解析</h3>
+          <p class="text-xs text-slate-400">自回歸生成時，Token Cross-Entropy 序列平均與「等效隨機骰子難度」</p>
+        </div>
+      </div>
+
+      <div class="p-6 sm:p-8 rounded-3xl glass-panel space-y-6 border border-purple-500/30">
+        <div class="space-y-2">
+          <h4 class="text-sm font-bold text-purple-300 flex items-center justify-between">
+            <span>自回歸次詞預測實驗：輸入序列「我 &rarr; 愛 &rarr; 你」</span>
+            <span class="text-xs font-mono text-slate-400">Sequence Length T = 3</span>
+          </h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            LLM 在每個位置計算目標 Token 的交叉熵損失 $L_t = -\ln P(w_t \mid w_{<t})$。序列總體平均損失即為 $\bar{L} = \frac{1}{T}\sum_{t=1}^T L_t$。
+            <strong>困惑度（Perplexity, PPL）$= \exp(\bar{L})$</strong> 代表模型在猜下一個詞時，平均如同在幾顆等機率的骰子中猶豫不決。
+          </p>
+        </div>
+
+        <!-- 3 Interactive Token Sliders -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Token 1 -->
+          <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-bold text-white">&lt;BOS&gt; &rarr; 猜「我」</span>
+              <span id="tok-p-val-0" class="font-mono text-purple-300 font-bold">p: 0.60 (60%)</span>
+            </div>
+            <input id="tok-slider-0" type="range" min="0.01" max="0.99" step="0.01" value="0.60" class="w-full accent-purple-400" oninput="updateLLMSim()">
+            <div class="text-[11px] font-mono text-slate-400 flex justify-between">
+              <span>Token Loss:</span>
+              <span id="tok-loss-0" class="text-cyan-300 font-bold">0.5108</span>
+            </div>
+          </div>
+
+          <!-- Token 2 -->
+          <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-bold text-white">「我」&rarr; 猜「愛」</span>
+              <span id="tok-p-val-1" class="font-mono text-purple-300 font-bold">p: 0.85 (85%)</span>
+            </div>
+            <input id="tok-slider-1" type="range" min="0.01" max="0.99" step="0.01" value="0.85" class="w-full accent-purple-400" oninput="updateLLMSim()">
+            <div class="text-[11px] font-mono text-slate-400 flex justify-between">
+              <span>Token Loss:</span>
+              <span id="tok-loss-1" class="text-cyan-300 font-bold">0.1625</span>
+            </div>
+          </div>
+
+          <!-- Token 3 -->
+          <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-bold text-white">「我愛」&rarr; 猜「你」</span>
+              <span id="tok-p-val-2" class="font-mono text-purple-300 font-bold">p: 0.90 (90%)</span>
+            </div>
+            <input id="tok-slider-2" type="range" min="0.01" max="0.99" step="0.01" value="0.90" class="w-full accent-purple-400" oninput="updateLLMSim()">
+            <div class="text-[11px] font-mono text-slate-400 flex justify-between">
+              <span>Token Loss:</span>
+              <span id="tok-loss-2" class="text-cyan-300 font-bold">0.1054</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Presets Buttons -->
+        <div class="flex flex-wrap gap-2 text-xs">
+          <span class="text-slate-400 py-1 font-mono">快速預設情境：</span>
+          <button onclick="setLLMPreset(0.001, 0.001, 0.001)" class="px-3 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-rose-400 border border-slate-800">未訓練隨機模型 (PPL &gt; 1000)</button>
+          <button onclick="setLLMPreset(0.2, 0.25, 0.3)" class="px-3 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-800">初步收斂模型 (PPL ≈ 4.1)</button>
+          <button onclick="setLLMPreset(0.75, 0.90, 0.95)" class="px-3 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-slate-800">成熟大模型 (PPL ≈ 1.15)</button>
+        </div>
+
+        <!-- PPL Output Banner -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-center space-y-1">
+            <div class="text-xs text-slate-400 font-mono">序列平均交叉熵損失 L_avg</div>
+            <div id="llm-avg-loss" class="text-2xl font-mono font-extrabold text-cyan-300">0.2596</div>
+            <div class="text-[10px] text-slate-500">Cross Entropy = -1/T Σ ln(p_t)</div>
+          </div>
+          <div class="p-4 rounded-2xl bg-purple-950/30 border border-purple-500/40 text-center space-y-1">
+            <div class="text-xs text-purple-300 font-bold font-mono">序列困惑度 PPL = exp(L_avg)</div>
+            <div id="llm-ppl" class="text-3xl font-mono font-black text-purple-300">1.296</div>
+            <div id="llm-ppl-desc" class="text-[11px] text-emerald-400 font-mono">✨ 等效於在 1.3 個詞中做選擇（非常確定）</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5: Classification vs Regression (Why Not MSE?) -->
+    <section id="sec-sat-deadlock" class="space-y-6">
+      <div class="flex items-center space-x-3">
+        <span class="w-8 h-8 rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-400 flex items-center justify-center font-bold text-sm">5</span>
+        <div>
+          <h3 class="text-xl font-bold text-white">深層根源篇：分類 vs 回歸大對決 — 為什麼分類不用 MSE？</h3>
+          <p class="text-xs text-slate-400">高斯分佈 vs 類別分佈的最大似然本質，以及極端錯誤時的「飽和死區」窒息實驗</p>
+        </div>
+      </div>
+
+      <div class="p-6 sm:p-8 rounded-3xl glass-panel space-y-6 border border-rose-500/30">
+        <!-- Sliders & Contrast Cards -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+          <div class="lg:col-span-1 space-y-3">
+            <div class="flex justify-between items-center">
+              <label class="text-xs font-bold text-white">設定真實目標預測機率 $\hat{y}$：</label>
+              <span id="deadlock-yhat-val" class="font-mono text-xs px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">0.015</span>
+            </div>
+            <input id="deadlock-slider" type="range" min="0.001" max="0.999" step="0.001" value="0.015"
+                   class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                   oninput="updateDeadlockSim()">
+            <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+              <span>0.001 (極端誤判)</span>
+              <span>0.50 (模糊猜測)</span>
+              <span>0.999 (幾乎正確)</span>
+            </div>
+            <div class="flex gap-2 pt-2">
+              <button onclick="setDeadlockVal(0.003)" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-[11px] text-rose-400 border border-slate-800">荒謬猜錯 (0.003)</button>
+              <button onclick="setDeadlockVal(0.5)" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-[11px] text-amber-400 border border-slate-800">搖擺不定 (0.5)</button>
+              <button onclick="setDeadlockVal(0.98)" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-[11px] text-emerald-400 border border-slate-800">高確信度 (0.98)</button>
+            </div>
+          </div>
+
+          <!-- Dynamic Comparison Cards -->
+          <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- MSE Card -->
+            <div class="p-4 rounded-2xl bg-slate-900/90 border border-rose-500/40 space-y-2">
+              <div class="flex justify-between items-center text-xs">
+                <span class="font-bold text-rose-400 uppercase tracking-wider">均方誤差 (MSE) 梯度</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 font-mono">∂L/∂z = (ŷ - 1) ŷ(1 - ŷ)</span>
+              </div>
+              <div id="deadlock-mse-val" class="text-2xl font-mono font-extrabold text-rose-400">-0.0146</div>
+              <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div id="deadlock-mse-bar" class="bg-rose-500 h-full transition-all duration-150" style="width: 2%;"></div>
+              </div>
+              <p id="deadlock-mse-comment" class="text-[11px] text-rose-300 leading-relaxed pt-1">
+                ⚠️ 陷入致命飽和死區！模型錯得一塌糊塗，修正梯度卻衰減為趨近於零！
+              </p>
+            </div>
+
+            <!-- Cross-Entropy Card -->
+            <div class="p-4 rounded-2xl bg-slate-900/90 border border-cyan-500/40 space-y-2">
+              <div class="flex justify-between items-center text-xs">
+                <span class="font-bold text-cyan-400 uppercase tracking-wider">交叉熵 (Cross-Entropy) 梯度</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 font-mono">∂L/∂z = ŷ - 1</span>
+              </div>
+              <div id="deadlock-ce-val" class="text-2xl font-mono font-extrabold text-cyan-400">-0.9850</div>
+              <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div id="deadlock-ce-bar" class="bg-cyan-400 h-full transition-all duration-150" style="width: 98.5%;"></div>
+              </div>
+              <p id="deadlock-ce-comment" class="text-[11px] text-cyan-300 leading-relaxed pt-1">
+                ⚡ 滿額動力推進！負對數奇點蒸發了飽和阻力，維持高昂修正推力！
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Global Response Curve Chart -->
+        <div class="pt-4">
+          <div class="flex justify-between items-center mb-2">
+            <h5 class="text-xs font-bold text-slate-300 font-mono uppercase tracking-wider">全域梯度響應響應曲線對照（目標 y = 1）</h5>
+            <div class="flex items-center gap-4 text-xs font-mono">
+              <span class="flex items-center gap-1 text-cyan-400"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block"></span> 交叉熵梯度 (線性 |ŷ - 1|)</span>
+              <span class="flex items-center gap-1 text-rose-400"><span class="w-2.5 h-2.5 rounded-full bg-rose-400 inline-block"></span> MSE 梯度 (雙端衰減鈴鐺曲線)</span>
+            </div>
+          </div>
+          <div class="h-64 w-full bg-slate-900/60 rounded-2xl p-3 border border-slate-800">
+            <canvas id="deadlockComparisonChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 6: Advanced Proofs & Cancellation Math Lab -->
+    <section id="sec-proofs" class="space-y-6">
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <div class="flex items-center space-x-3">
+          <span class="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 flex items-center justify-center font-bold text-sm">6</span>
+          <div>
+            <h3 class="text-xl font-bold text-white">核心數學深析：四位一體「奇蹟相消」完全解密</h3>
+            <p class="text-xs text-slate-400">代數約分、雅可比矩陣、GLM 指數族正則連結、黑塞矩陣凸性證明</p>
+          </div>
+        </div>
+        <!-- Proof Layer Switch Tabs -->
+        <div class="flex items-center gap-1.5 p-1 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+          <button onclick="switchMasterProof('algebraic')" id="tab-p-algebraic" class="px-3 py-1.5 rounded-lg font-semibold transition bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">1. 代數約分</button>
+          <button onclick="switchMasterProof('jacobian')" id="tab-p-jacobian" class="px-3 py-1.5 rounded-lg font-semibold transition text-slate-400 hover:text-white">2. 雅可比矩陣</button>
+          <button onclick="switchMasterProof('glm')" id="tab-p-glm" class="px-3 py-1.5 rounded-lg font-semibold transition text-slate-400 hover:text-white">3. GLM 對偶性</button>
+          <button onclick="switchMasterProof('hessian')" id="tab-p-hessian" class="px-3 py-1.5 rounded-lg font-semibold transition text-slate-400 hover:text-white">4. 黑塞凸性</button>
+        </div>
+      </div>
+
+      <!-- Proof Layer 1: Algebraic Chain Rule & Dynamic Strike -->
+      <div id="pane-proof-algebraic" class="p-6 sm:p-8 rounded-3xl glass-panel space-y-6 border border-cyan-500/30">
+        <div class="flex justify-between items-center flex-wrap gap-2">
+          <div>
+            <h4 class="text-base font-bold text-white flex items-center gap-2">
+              第一層解密：鏈式法則中的「分母與分子對消」代數奇蹟
+              <span class="text-xs font-mono text-cyan-400">Kronecker Delta &amp; Sum Normalization</span>
+            </h4>
+            <p class="text-xs text-slate-400">觀察負對數求導產生的一階分母 $\frac{1}{q}$ 如何精準斬斷 Softmax 商法則中的二次項</p>
+          </div>
+          <button id="btn-toggle-strike" onclick="toggleCancellationStrike()" 
+                  class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white text-xs font-semibold shadow-md transition flex items-center gap-1.5">
+            <span>⚡ 切換分子分母約分動畫</span>
+          </button>
+        </div>
+
+        <div class="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 font-mono text-sm leading-loose space-y-4">
+          <div class="text-slate-400">
+            $$\frac{\partial L}{\partial z_i} = \sum_{k=1}^K \frac{\partial L}{\partial q_k} \frac{\partial q_k}{\partial z_i} = \underbrace{\frac{\partial L}{\partial q_i} \frac{\partial q_i}{\partial z_i}}_{k = i \text{ (目標類別自身)}} + \sum_{k \neq i} \underbrace{\frac{\partial L}{\partial q_k} \frac{\partial q_k}{\partial z_i}}_{k \neq i \text{ (所有非目標類別)}}$$
+          </div>
+
+          <div class="border-t border-slate-800 pt-4 text-slate-300">
+            代入偏導 $\frac{\partial L}{\partial q_k} = -\frac{y_k}{q_k}$ 與 Softmax 偏導 $\frac{\partial q_k}{\partial z_i} = q_k(\delta_{ki} - q_i)$：
+            $$\frac{\partial L}{\partial z_i} = \left(-\frac{y_i}{q_i}\right) \cdot \left[ q_i(1 - q_i) \right] + \sum_{k \neq i} \left(-\frac{y_k}{q_k}\right) \cdot \left[ -q_k q_i \right]$$
+          </div>
+
+          <!-- Dynamic Strike-Through Area -->
+          <div id="cancellation-step-box" class="p-4 rounded-xl bg-slate-950 border border-cyan-500/40 text-cyan-200 transition-all duration-300">
+            <div class="text-xs text-cyan-400 font-bold mb-2 uppercase tracking-wider flex items-center justify-between">
+              <span>分子分母約分即時檢視</span>
+              <span id="cancel-badge" class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">未相消狀態</span>
+            </div>
+            <div id="cancellation-formula" class="overflow-x-auto text-sm sm:text-base">
+              $$\frac{\partial L}{\partial z_i} = -y_i \cdot \frac{q_i}{q_i}(1 - q_i) + \sum_{k \neq i} y_k \cdot \frac{q_k}{q_k} q_i$$
+            </div>
+          </div>
+
+          <div class="text-slate-300">
+            約分消去 $\frac{q_i}{q_i} = 1$ 與 $\frac{q_k}{q_k} = 1$ 後乘開：
+            $$\frac{\partial L}{\partial z_i} = -y_i(1 - q_i) + \sum_{k \neq i} y_k q_i = -y_i + y_i q_i + q_i \sum_{k \neq i} y_k$$
+          </div>
+
+          <div class="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/40 text-emerald-300">
+            提取公因式 $q_i$，利用全體機率歸一性 $\sum_{k=1}^K y_k = y_i + \sum_{k \neq i} y_k = 1$：
+            $$\frac{\partial L}{\partial z_i} = -y_i + q_i \underbrace{\left(y_i + \sum_{k \neq i} y_k\right)}_{= \sum_{k=1}^K y_k = 1} = \mathbf{q_i - y_i}$$
+          </div>
+        </div>
+      </div>
+
+      <!-- Proof Layer 2: Jacobian Matrix & Metric Inversion -->
+      <div id="pane-proof-jacobian" class="hidden p-6 sm:p-8 rounded-3xl glass-panel space-y-6 border border-indigo-500/30">
+        <div class="space-y-1">
+          <h4 class="text-base font-bold text-white flex items-center gap-2">
+            第二層解密：雅可比矩陣（Jacobian）與對偶空間逆度量拉直
+            <span class="text-xs font-mono text-indigo-400">J = diag(q) - qqᵀ</span>
+          </h4>
+          <p class="text-xs text-slate-400">在 Triton / AutoGrad 張量底層，度量縮放與對數梯度如何直接相乘退化為單位矩陣</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-1 p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 text-xs text-slate-300 leading-relaxed">
+            <div class="font-bold text-indigo-300 uppercase tracking-wider">張量代數形式</div>
+            <p>
+              Softmax 變換的雅可比矩陣為：
+              $$\mathbf{J} = \text{diag}(\mathbf{q}) - \mathbf{q}\mathbf{q}^\top$$
+            </p>
+            <p>
+              交叉熵損失梯度向量為：
+              $$\nabla_{\mathbf{q}} L = -\frac{\mathbf{y}}{\mathbf{q}} = -\text{diag}(\mathbf{q})^{-1} \mathbf{y}$$
+            </p>
+            <div class="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-indigo-200">
+              <strong>幾何本質：</strong><br>
+              $\text{diag}(\mathbf{q}) \cdot \text{diag}(\mathbf{q})^{-1} = \mathbf{I}$。<br>
+              局部流形扭曲與對數梯度恰為逆度量，直接將曲率「拉直」為線性差值！
+            </div>
+          </div>
+
+          <!-- Interactive Jacobian Matrix Calculation -->
+          <div class="lg:col-span-2 p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-4">
+            <div class="flex items-center justify-between">
+              <h5 class="font-bold text-white text-xs">即時調整 Logits 觀察 $3 \times 3$ 雅可比矩陣 $\mathbf{J}$</h5>
+              <span class="text-[11px] font-mono text-emerald-400">目標 y = [1, 0, 0]</span>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-3">
+              <div>
+                <label class="text-[11px] text-slate-400 font-mono">z₁ (貓)</label>
+                <input id="jac-z1" type="range" min="-3" max="5" step="0.1" value="2.0" class="w-full accent-indigo-400" oninput="updateJacobianInteractive()">
+                <span id="jac-val-z1" class="text-xs font-mono text-indigo-300">2.0</span>
+              </div>
+              <div>
+                <label class="text-[11px] text-slate-400 font-mono">z₂ (狗)</label>
+                <input id="jac-z2" type="range" min="-3" max="5" step="0.1" value="0.5" class="w-full accent-indigo-400" oninput="updateJacobianInteractive()">
+                <span id="jac-val-z2" class="text-xs font-mono text-indigo-300">0.5</span>
+              </div>
+              <div>
+                <label class="text-[11px] text-slate-400 font-mono">z₃ (兔)</label>
+                <input id="jac-z3" type="range" min="-3" max="5" step="0.1" value="-1.0" class="w-full accent-indigo-400" oninput="updateJacobianInteractive()">
+                <span id="jac-val-z3" class="text-xs font-mono text-indigo-300">-1.0</span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                <div class="text-[10px] font-mono font-bold text-slate-400">雅可比矩陣 J (對角線為 q_i(1-q_i))</div>
+                <div id="jac-matrix-render" class="font-mono text-[11px] text-slate-300 grid grid-cols-3 gap-1 text-center"></div>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                <div class="text-[10px] font-mono font-bold text-emerald-400">矩陣乘積 Jᵀ ∇_q L = q - y</div>
+                <div id="jac-grad-render" class="font-mono text-xs text-emerald-300 space-y-1"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Proof Layer 3: Exponential Family & GLM Canonical Link -->
+      <div id="pane-proof-glm" class="hidden p-6 sm:p-8 rounded-3xl glass-panel space-y-6 border border-purple-500/30">
+        <div class="space-y-1">
+          <h4 class="text-base font-bold text-white flex items-center gap-2">
+            第三層解密：指數族分佈與廣義線性模型（GLM）正則連結函數
+            <span class="text-xs font-mono text-purple-400">A(z) = LogSumExp(z)</span>
+          </h4>
+          <p class="text-xs text-slate-400">統計力學與信息論核心定理：對數配分函數對自然參數的一階導數，恆等於期望值</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+            <h5 class="font-bold text-purple-300 text-xs uppercase tracking-wider">多項式類別分佈的自然標準形</h5>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              任何指數族分佈均可寫作 $P(\mathbf{y} \mid \boldsymbol{\theta}) = \exp\left(\boldsymbol{\theta}^\top \mathbf{y} - A(\boldsymbol{\theta})\right)$。
+            </p>
+            <ul class="text-xs text-slate-400 space-y-1.5 font-mono list-disc list-inside">
+              <li>自然參數：$\boldsymbol{\theta} = \mathbf{z}$（未歸一化 Logits）</li>
+              <li>充分統計量：$T(\mathbf{y}) = \mathbf{y}$（One-hot 標籤）</li>
+              <li>對數配分函數（Log-Partition Function / 自由能）：
+                <div class="p-2 rounded bg-slate-950 border border-purple-900/60 text-purple-300 mt-1">
+                  $$A(\mathbf{z}) = \ln\left(\sum_{k=1}^K e^{z_k}\right) = \text{LogSumExp}(\mathbf{z})$$
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <div class="p-5 rounded-2xl bg-purple-950/25 border border-purple-800/50 space-y-3">
+            <h5 class="text-xs font-bold text-purple-300 uppercase tracking-wider">★ 自由能的一階梯度定理</h5>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              對數配分函數 $A(\mathbf{z})$ 對自然參數的一階導，在統計物理中<strong>恆等於充分統計量的期望值（即 Softmax 機率分佈）</strong>：
+            </p>
+            <div class="p-3 rounded-xl bg-slate-900 border border-purple-900/60 font-mono text-purple-300 text-center text-sm">
+              $$\nabla_{\mathbf{z}} A(\mathbf{z}) = \mathbb{E}_{P(\mathbf{y}\mid\mathbf{z})}[\mathbf{y}] = \mathbf{q}$$
+            </div>
+            <p class="text-[11px] text-slate-400">
+              直接手動驗證：$\frac{\partial}{\partial z_i} \ln\left(\sum_k e^{z_k}\right) = \frac{e^{z_i}}{\sum e^{z_k}} = q_i$。
+            </p>
+          </div>
+        </div>
+
+        <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+          <div class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <span>✨ 完全繞過鏈式法則與商法則的直接求導</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-mono">Direct NLL Derivative</span>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            交叉熵損失即為單個樣本的負對數似然（NLL）：
+            $$L(\mathbf{z}) = -\ln P(\mathbf{y} \mid \mathbf{z}) = A(\mathbf{z}) - \mathbf{z}^\top \mathbf{y}$$
+            直接對自然參數 $\mathbf{z}$ 求導，立馬得出：
+            $$\nabla_{\mathbf{z}} L(\mathbf{z}) = \nabla_{\mathbf{z}} A(\mathbf{z}) - \nabla_{\mathbf{z}}(\mathbf{z}^\top \mathbf{y}) = \mathbf{q} - \mathbf{y}$$
+          </p>
+          <div class="text-xs text-emerald-400 font-semibold pt-1">
+            結論：在 GLM 視角下，飽和指數根本不曾獨立存在過，兩者的殘差差值是機率幾何對偶的天然必然。
+          </div>
+        </div>
+      </div>
+
+      <!-- Proof Layer 4: Hessian Matrix & Convex Optimization -->
+      <div id="pane-proof-hessian" class="hidden p-6 sm:p-8 rounded-3xl glass-panel space-y-6 border border-emerald-500/30">
+        <div class="space-y-1">
+          <h4 class="text-base font-bold text-white flex items-center gap-2">
+            第四層解密：黑塞矩陣（Hessian）與二次型方差凸優化保證
+            <span class="text-xs font-mono text-emerald-400">vᵀ H v = Var_q(V) ≥ 0</span>
+          </h4>
+          <p class="text-xs text-slate-400">二階曲率如何奇蹟般退化為隨機變數的方差，保證損失曲面全域凸性、毫無局部鞍點</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+            <h5 class="font-bold text-emerald-300 text-xs">二階導數推導與半正定性證明</h5>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              對一階梯度 $\nabla_{\mathbf{z}} L = \mathbf{q} - \mathbf{y}$ 再度對 $\mathbf{z}$ 求導（真實標籤 $\mathbf{y}$ 為常數向量，其導為 $0$）：
+            </p>
+            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-emerald-300">
+              $$\mathbf{H} = \nabla_{\mathbf{z}}^2 L = \frac{\partial \mathbf{q}}{\partial \mathbf{z}} = \text{diag}(\mathbf{q}) - \mathbf{q}\mathbf{q}^\top$$
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              對任意擾動向量 $\mathbf{v} \in \mathbb{R}^K$，計算二次型：
+            </p>
+            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-slate-200">
+              $$\mathbf{v}^\top \mathbf{H} \mathbf{v} = \sum_{i=1}^K q_i v_i^2 - \left(\sum_{i=1}^K q_i v_i\right)^2 = \mathbb{E}_{\mathbf{q}}[V^2] - (\mathbb{E}_{\mathbf{q}}[V])^2 = \text{Var}_{\mathbf{q}}(V) \ge 0$$
+            </div>
+            <div class="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-xs text-emerald-300">
+              <strong>凸性保證：</strong>二次型恆等於隨機變數 $V$ 的<strong>方差</strong>！因為方差非負，所以 $\mathbf{H} \succeq 0$ 恆為<strong>半正定矩陣</strong>。這意味著交叉熵損失曲面是<strong>全域凸函數（Convex）</strong>，絕無多重鞍點陷阱。
+            </div>
+          </div>
+
+          <!-- Interactive Hessian Variance Lab -->
+          <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <h5 class="font-bold text-white text-xs">動態驗證：二次型 $\mathbf{v}^\top \mathbf{H} \mathbf{v} \ge 0$ 方差計算器</h5>
+              <span class="text-[11px] font-mono text-emerald-400">Semi-Definite Test</span>
+            </div>
+            <p class="text-xs text-slate-400">
+              設定任意非零擾動向量 $\mathbf{v} = [v_1, v_2, v_3]^\top$，觀察對應機率下二次型是否恆大於等於 0：
+            </p>
+
+            <div class="grid grid-cols-3 gap-3">
+              <div>
+                <label class="text-[10px] text-slate-400 font-mono">v₁ 分量</label>
+                <input id="h-v1" type="number" step="0.5" value="2.0" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs font-mono text-white" oninput="updateHessianInteractive()">
+              </div>
+              <div>
+                <label class="text-[10px] text-slate-400 font-mono">v₂ 分量</label>
+                <input id="h-v2" type="number" step="0.5" value="-1.0" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs font-mono text-white" oninput="updateHessianInteractive()">
+              </div>
+              <div>
+                <label class="text-[10px] text-slate-400 font-mono">v₃ 分量</label>
+                <input id="h-v3" type="number" step="0.5" value="0.5" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs font-mono text-white" oninput="updateHessianInteractive()">
+              </div>
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 text-xs font-mono">
+              <div class="flex justify-between">
+                <span class="text-slate-400">目前機率分佈 q:</span>
+                <span id="h-prob-str" class="text-cyan-300">[0.659, 0.242, 0.099]</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">期望值 E[V] = Σ qᵢ vᵢ:</span>
+                <span id="h-ev" class="text-slate-200">1.125</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">二階矩 E[V²] = Σ qᵢ vᵢ²:</span>
+                <span id="h-ev2" class="text-slate-200">2.903</span>
+              </div>
+              <div class="border-t border-slate-800 pt-2 flex justify-between text-sm font-bold">
+                <span class="text-emerald-400">二次型曲率 (Var[V]):</span>
+                <span id="h-quad" class="text-emerald-300">1.637 &gt; 0 (嚴格凸)</span>
+              </div>
+            </div>
+            <p class="text-[10px] text-slate-500 italic">
+              * 提示：只有當 $v_1 = v_2 = v_3$（沿著全等方向 $\mathbf{1}$，即 Logits 平移不變維度）時，方差才會剛好為 0。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 7: Python / PyTorch Engineering Lab -->
+    <section id="sec-pytorch" class="space-y-6">
+      <div class="flex items-center space-x-3">
+        <span class="w-8 h-8 rounded-lg bg-teal-500/20 border border-teal-500/30 text-teal-400 flex items-center justify-center font-bold text-sm">7</span>
+        <div>
+          <h3 class="text-xl font-bold text-white">工程實戰篇：Python / PyTorch 實作與數值防護 Playground</h3>
+          <p class="text-xs text-slate-400">揭密為什麼不能自己寫 Softmax 後再接 log：Log-Sum-Exp 融合算子的防溢出機制</p>
+        </div>
+      </div>
+
+      <div class="p-6 sm:p-8 rounded-3xl glass-panel space-y-6 border border-teal-500/30">
+        <!-- Interactive Numerical Overflow Comparison -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+            <div class="flex justify-between items-center">
+              <h4 class="text-xs font-bold text-slate-200 uppercase tracking-wider">數值穩定性測試儀</h4>
+              <div class="flex gap-1.5 text-[11px]">
+                <button onclick="setPyTorchTestLogits([2.0, 1.0, 0.1])" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">常規數值</button>
+                <button onclick="setPyTorchTestLogits([1000.0, 999.0, 800.0])" class="px-2 py-0.5 rounded bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800">極端大數 (1000)</button>
+              </div>
+            </div>
+
+            <p class="text-xs text-slate-400">
+              輸入未歸一化的得分 Logits（目標類別為第 0 個類別）：
+            </p>
+
+            <div class="grid grid-cols-3 gap-2 text-xs font-mono">
+              <div>
+                <label class="text-[10px] text-slate-400">z₀ (目標)</label>
+                <input id="py-z0" type="number" step="1" value="2.0" class="w-full bg-slate-950 border border-slate-800 rounded p-1.5 text-white" oninput="runPyTorchSimulation()">
+              </div>
+              <div>
+                <label class="text-[10px] text-slate-400">z₁</label>
+                <input id="py-z1" type="number" step="1" value="1.0" class="w-full bg-slate-950 border border-slate-800 rounded p-1.5 text-white" oninput="runPyTorchSimulation()">
+              </div>
+              <div>
+                <label class="text-[10px] text-slate-400">z₂</label>
+                <input id="py-z2" type="number" step="1" value="0.1" class="w-full bg-slate-950 border border-slate-800 rounded p-1.5 text-white" oninput="runPyTorchSimulation()">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 pt-2">
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 text-center">
+                <div class="text-[10px] text-slate-400">天真寫法 (Naive Softmax &rarr; Log)</div>
+                <div id="py-naive-loss" class="text-base font-mono font-bold text-rose-400 mt-1">0.4076</div>
+                <div class="text-[9px] text-slate-500">exp(z) 面臨上溢崩潰</div>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 text-center">
+                <div class="text-[10px] text-slate-400">官方 nn.CrossEntropyLoss</div>
+                <div id="py-stable-loss" class="text-base font-mono font-bold text-emerald-400 mt-1">0.4076</div>
+                <div class="text-[9px] text-slate-500">Log-Sum-Exp 融合算子安全</div>
+              </div>
+            </div>
+            <div id="py-sim-commentary" class="text-xs font-mono text-slate-300 p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+              數值正常，兩種方式均可正常運算。
+            </div>
+          </div>
+
+          <!-- Code Snippet Display -->
+          <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold text-teal-300 font-mono">PyTorch 標準工程腳本</span>
+              <button onclick="copyCodeSnippet()" id="btn-copy-code" class="text-[11px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+                📋 複製代碼
+              </button>
+            </div>
+            <pre class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-slate-300 overflow-x-auto leading-relaxed">
+<span class="text-indigo-400">import</span> torch
+<span class="text-indigo-400">import</span> torch.nn <span class="text-indigo-400">as</span> nn
+
+<span class="text-slate-500"># 1. 定義 Logits (未歸一化得分) 與真實標籤索引</span>
+logits = torch.tensor([[<span class="text-amber-300">2.0</span>, <span class="text-amber-300">1.0</span>, <span class="text-amber-300">0.1</span>]], requires_grad=<span class="text-emerald-400">True</span>)
+target = torch.tensor([<span class="text-amber-300">0</span>])  <span class="text-slate-500"># 目標為類別 0</span>
+
+<span class="text-slate-500"># 2. 官方高數值穩定度融合算子 (內部整合 LogSoftmax + NLLLoss)</span>
+criterion = nn.CrossEntropyLoss()
+loss = criterion(logits, target)
+
+<span class="text-slate-500"># 3. 反向傳播驗證相消梯度：∂L/∂z = q - y</span>
+loss.backward()
+print(<span class="text-amber-300">"Loss:"</span>, loss.item())
+print(<span class="text-amber-300">"Grad (q - y):"</span>, logits.grad)  <span class="text-slate-500"># [q0 - 1, q1, q2]</span></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Summary Architecture Section -->
+    <section class="p-6 sm:p-8 rounded-3xl glass-panel border border-slate-800 text-center space-y-4">
+      <h3 class="text-xl font-bold text-white">終極歸納：Cross-Entropy 與 Softmax 的共生哲學</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
+          <span class="text-cyan-400 font-bold text-xs font-mono">01. 避免梯度窒息</span>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            負對數求導產生的分母 $\frac{1}{q_i}$，精準斬斷了 Softmax 自身微分的非線性二次項 $q_i(1-q_i)$。
+          </p>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
+          <span class="text-indigo-400 font-bold text-xs font-mono">02. 幾何流形拉直</span>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            雅可比矩陣度量變換 $\text{diag}(\mathbf{q})$ 與梯度逆度量互乘為單位陣 $\mathbf{I}$，空間完美投影。
+          </p>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
+          <span class="text-purple-400 font-bold text-xs font-mono">03. 統計物理對偶</span>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            LogSumExp 自由能的一階梯度天生就是期望值 $\mathbf{q}$，在正則連結下無須鏈式法則直達殘差。
+          </p>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
+          <span class="text-emerald-400 font-bold text-xs font-mono">04. 全域凸性無鞍點</span>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            二階 Hessian 矩陣恰好退化為機率加權方差 $\text{Var}(V) \ge 0$，徹底杜絕任何次優局部陷阱。
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-slate-900 py-6 text-center text-xs text-slate-500 font-mono">
+    Cross-Entropy &amp; Softmax Master Interactive Laboratory &bull; Modern Deep Learning Optimization Theory
+  </footer>
+
+  <script>
+    // KaTeX Auto-Render Helper
+    function renderMath() {
+      if (typeof renderMathInElement !== 'undefined') {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    /* -------------------------------------------------------------
+       SECTION 1: Surprisal Weather Simulator
+       ------------------------------------------------------------- */
+    let currentWeatherActual = 'rain'; // 'rain' or 'sun'
+
+    function updateWeatherSimulation() {
+      const qRain = parseFloat(document.getElementById('weather-prob-slider').value);
+      document.getElementById('weather-prob-val').textContent = `${(qRain * 100).toFixed(1)}% (${qRain.toFixed(3)})`;
+
+      const qActual = (currentWeatherActual === 'rain') ? qRain : (1 - qRain);
+      const safeQ = Math.max(1e-7, qActual);
+      const surprisal = -Math.log(safeQ);
+      const loss = surprisal; // One-hot target
+
+      document.getElementById('weather-surprisal-val').textContent = `${surprisal.toFixed(3)} nat`;
+      document.getElementById('weather-loss-val').textContent = loss.toFixed(3);
+
+      const commentary = document.getElementById('weather-commentary');
+      if (currentWeatherActual === 'rain') {
+        if (qRain < 0.05) {
+          commentary.innerHTML = `🚨 <strong>極端驚訝！</strong>主播鐵口直斷不會下雨（僅 ${(qRain*100).toFixed(1)}%），結果傾盆大雨！驚訝度與損失高達 <strong>${loss.toFixed(2)}</strong>！`;
+        } else if (qRain > 0.8) {
+          commentary.innerHTML = `✅ <strong>意料之中！</strong>預報很準確（${(qRain*100).toFixed(1)}%），觀眾毫無意外，損失低至 <strong>${loss.toFixed(2)}</strong>。`;
+        } else {
+          commentary.innerHTML = `☁️ 猶豫不決的預報，損失適中。`;
+        }
+      } else {
+        const qSun = 1 - qRain;
+        if (qSun < 0.05) {
+          commentary.innerHTML = `🚨 <strong>極端驚訝！</strong>主播說會下大雨，結果豔陽高照！晴天驚訝度高達 <strong>${loss.toFixed(2)}</strong>！`;
+        } else if (qSun > 0.8) {
+          commentary.innerHTML = `☀️ 晴天預報準確，損失僅 <strong>${loss.toFixed(2)}</strong>。`;
+        } else {
+          commentary.innerHTML = `🌤️ 晴天結果發生，損失適中。`;
+        }
+      }
+    }
+
+    function setWeatherActual(type) {
+      currentWeatherActual = type;
+      const badge = document.getElementById('weather-status-badge');
+      if (type === 'rain') {
+        badge.textContent = '真實結果：下雨 🌧️';
+        badge.className = 'text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+      } else {
+        badge.textContent = '真實結果：晴天 ☀️';
+        badge.className = 'text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30';
+      }
+      updateWeatherSimulation();
+    }
+
+    /* -------------------------------------------------------------
+       SECTION 2: Multiclass Classification & KL Divergence
+       ------------------------------------------------------------- */
+    function softmax(arr) {
+      const maxVal = Math.max(...arr);
+      const exps = arr.map(v => Math.exp(v - maxVal));
+      const sum = exps.reduce((a, b) => a + b, 0);
+      return exps.map(e => e / sum);
+    }
+
+    function updateMultiClassSim() {
+      const z0 = parseFloat(document.getElementById('mc-z0').value);
+      const z1 = parseFloat(document.getElementById('mc-z1').value);
+      const z2 = parseFloat(document.getElementById('mc-z2').value);
+
+      document.getElementById('mc-logit-val-0').textContent = z0.toFixed(1);
+      document.getElementById('mc-logit-val-1').textContent = z1.toFixed(1);
+      document.getElementById('mc-logit-val-2').textContent = z2.toFixed(1);
+
+      const q = softmax([z0, z1, z2]);
+      document.getElementById('mc-prob-0').textContent = `q₁: ${q[0].toFixed(3)}`;
+      document.getElementById('mc-prob-1').textContent = `q₂: ${q[1].toFixed(3)}`;
+      document.getElementById('mc-prob-2').textContent = `q₃: ${q[2].toFixed(3)}`;
+
+      // One-hot target p = [1, 0, 0]
+      const entropy = 0.0;
+      const ce = -Math.log(Math.max(1e-9, q[0]));
+      const kl = ce - entropy;
+
+      document.getElementById('mc-entropy-val').textContent = `${entropy.toFixed(3)} nat`;
+      document.getElementById('mc-kl-val').textContent = `${kl.toFixed(3)} nat`;
+      document.getElementById('mc-ce-val').textContent = `${ce.toFixed(3)} nat`;
+    }
+
+    /* -------------------------------------------------------------
+       SECTION 3: Backprop & Auto Training Simulation
+       ------------------------------------------------------------- */
+    let trainZ = [2.0, 0.5, -0.5];
+    let trainEpoch = 0;
+    let isAutoTraining = false;
+    let autoTrainTimer = null;
+    const learningRate = 0.25;
+
+    function renderBackpropState() {
+      const q = softmax(trainZ);
+      const grads = [q[0] - 1.0, q[1] - 0.0, q[2] - 0.0];
+      const loss = -Math.log(Math.max(1e-9, q[0]));
+
+      document.getElementById('bp-z-0').textContent = trainZ[0].toFixed(3);
+      document.getElementById('bp-z-1').textContent = trainZ[1].toFixed(3);
+      document.getElementById('bp-z-2').textContent = trainZ[2].toFixed(3);
+
+      document.getElementById('bp-prob-0').textContent = `${(q[0] * 100).toFixed(1)}%`;
+      document.getElementById('bp-prob-1').textContent = `${(q[1] * 100).toFixed(1)}%`;
+      document.getElementById('bp-prob-2').textContent = `${(q[2] * 100).toFixed(1)}%`;
+
+      document.getElementById('bp-grad-0').textContent = (grads[0] >= 0 ? '+' : '') + grads[0].toFixed(4);
+      document.getElementById('bp-grad-1').textContent = (grads[1] >= 0 ? '+' : '') + grads[1].toFixed(4);
+      document.getElementById('bp-grad-2').textContent = (grads[2] >= 0 ? '+' : '') + grads[2].toFixed(4);
+
+      document.getElementById('bp-bar-0').style.width = `${q[0] * 100}%`;
+      document.getElementById('bp-bar-1').style.width = `${q[1] * 100}%`;
+      document.getElementById('bp-bar-2').style.width = `${q[2] * 100}%`;
+
+      document.getElementById('bp-epoch').textContent = `Epoch ${trainEpoch}`;
+      document.getElementById('bp-loss').textContent = loss.toFixed(4);
+
+      const hint = document.getElementById('bp-status-hint');
+      if (q[0] > 0.98) {
+        hint.innerHTML = `<span class="text-emerald-400 font-bold">🎉 模型已完美收斂！貓的預測機率已超過 98%！</span>`;
+      } else if (isAutoTraining) {
+        hint.innerHTML = `<span class="text-cyan-400 animate-pulse">⚙️ 正在動態執行梯度下降迭代更新中...</span>`;
+      } else {
+        hint.innerHTML = `已就緒。隨時可手動單步或自動模擬連續收斂。`;
+      }
+    }
+
+    function stepGradientDescent() {
+      const q = softmax(trainZ);
+      const grads = [q[0] - 1.0, q[1] - 0.0, q[2] - 0.0];
+      trainZ[0] -= learningRate * grads[0];
+      trainZ[1] -= learningRate * grads[1];
+      trainZ[2] -= learningRate * grads[2];
+      trainEpoch++;
+      renderBackpropState();
+    }
+
+    function toggleAutoTraining() {
+      isAutoTraining = !isAutoTraining;
+      const btnText = document.getElementById('train-text');
+      const btnIcon = document.getElementById('train-icon');
+
+      if (isAutoTraining) {
+        btnText.textContent = '暫停模擬訓練';
+        btnIcon.textContent = '⏸️';
+        autoTrainTimer = setInterval(() => {
+          stepGradientDescent();
+          const q = softmax(trainZ);
+          if (q[0] > 0.995) {
+            toggleAutoTraining();
+          }
+        }, 120);
+      } else {
+        btnText.textContent = '一鍵自動模擬訓練';
+        btnIcon.textContent = '▶️';
+        clearInterval(autoTrainTimer);
+      }
+      renderBackpropState();
+    }
+
+    function resetTrainingState() {
+      if (isAutoTraining) toggleAutoTraining();
+      trainZ = [2.0, 0.5, -0.5];
+      trainEpoch = 0;
+      renderBackpropState();
+    }
+
+    /* -------------------------------------------------------------
+       SECTION 4: LLM Next-Token Prediction & Perplexity
+       ------------------------------------------------------------- */
+    function updateLLMSim() {
+      const p0 = parseFloat(document.getElementById('tok-slider-0').value);
+      const p1 = parseFloat(document.getElementById('tok-slider-1').value);
+      const p2 = parseFloat(document.getElementById('tok-slider-2').value);
+
+      document.getElementById('tok-p-val-0').textContent = `p: ${p0.toFixed(2)} (${(p0*100).toFixed(0)}%)`;
+      document.getElementById('tok-p-val-1').textContent = `p: ${p1.toFixed(2)} (${(p1*100).toFixed(0)}%)`;
+      document.getElementById('tok-p-val-2').textContent = `p: ${p2.toFixed(2)} (${(p2*100).toFixed(0)}%)`;
+
+      const l0 = -Math.log(p0);
+      const l1 = -Math.log(p1);
+      const l2 = -Math.log(p2);
+
+      document.getElementById('tok-loss-0').textContent = l0.toFixed(4);
+      document.getElementById('tok-loss-1').textContent = l1.toFixed(4);
+      document.getElementById('tok-loss-2').textContent = l2.toFixed(4);
+
+      const avgLoss = (l0 + l1 + l2) / 3;
+      const ppl = Math.exp(avgLoss);
+
+      document.getElementById('llm-avg-loss').textContent = avgLoss.toFixed(4);
+      document.getElementById('llm-ppl').textContent = ppl.toFixed(3);
+
+      const desc = document.getElementById('llm-ppl-desc');
+      if (ppl < 2.0) {
+        desc.textContent = `✨ 等效在 ${ppl.toFixed(1)} 個候選詞中做選擇（高度自信確定）`;
+        desc.className = 'text-[11px] text-emerald-400 font-mono';
+      } else if (ppl < 10.0) {
+        desc.textContent = `⚡ 等效在 ${ppl.toFixed(1)} 個候選詞中猜測（中等不確定性）`;
+        desc.className = 'text-[11px] text-amber-400 font-mono';
+      } else {
+        desc.textContent = `⚠️ 等效在 ${ppl.toFixed(1)} 個候選詞中猶豫（模型困惑度極高）`;
+        desc.className = 'text-[11px] text-rose-400 font-mono';
+      }
+    }
+
+    function setLLMPreset(p0, p1, p2) {
+      document.getElementById('tok-slider-0').value = p0;
+      document.getElementById('tok-slider-1').value = p1;
+      document.getElementById('tok-slider-2').value = p2;
+      updateLLMSim();
+    }
+
+    /* -------------------------------------------------------------
+       SECTION 5: Classification vs Regression Deadlock & Chart
+       ------------------------------------------------------------- */
+    let deadlockChart;
+
+    function initDeadlockChart() {
+      const ctx = document.getElementById('deadlockComparisonChart').getContext('2d');
+      const labels = [];
+      const ceData = [];
+      const mseData = [];
+
+      for (let yhat = 0.001; yhat <= 0.999; yhat += 0.01) {
+        labels.push(yhat.toFixed(2));
+        ceData.push(1 - yhat);
+        mseData.push((1 - yhat) ** 2 * yhat);
+      }
+
+      deadlockChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Cross-Entropy 梯度絕對值 |q - 1|',
+              data: ceData,
+              borderColor: '#22d3ee',
+              backgroundColor: 'rgba(34, 211, 238, 0.1)',
+              borderWidth: 2.5,
+              tension: 0.1,
+              fill: true,
+              pointRadius: 0
+            },
+            {
+              label: 'MSE 梯度絕對值 |(q - 1) q (1 - q)|',
+              data: mseData,
+              borderColor: '#f43f5e',
+              backgroundColor: 'rgba(244, 63, 94, 0.1)',
+              borderWidth: 2.5,
+              tension: 0.1,
+              fill: true,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              title: { display: true, text: '預測機率 q (目標 y = 1)', color: '#94a3b8', font: { size: 11 } },
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#64748b', maxTicksLimit: 11 }
+            },
+            y: {
+              title: { display: true, text: '反向傳播修正梯度大小', color: '#94a3b8', font: { size: 11 } },
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#64748b' },
+              min: 0,
+              max: 1.05
+            }
+          }
+        }
+      });
+    }
+
+    function setDeadlockVal(v) {
+      document.getElementById('deadlock-slider').value = v;
+      updateDeadlockSim();
+    }
+
+    function updateDeadlockSim() {
+      const yhat = parseFloat(document.getElementById('deadlock-slider').value);
+      document.getElementById('deadlock-yhat-val').textContent = yhat.toFixed(3);
+
+      const mseGrad = (yhat - 1) * yhat * (1 - yhat);
+      const ceGrad = yhat - 1;
+
+      document.getElementById('deadlock-mse-val').textContent = mseGrad.toFixed(4);
+      document.getElementById('deadlock-ce-val').textContent = ceGrad.toFixed(4);
+
+      document.getElementById('deadlock-mse-bar').style.width = `${Math.min(100, Math.abs(mseGrad) * 100 * 3.5)}%`;
+      document.getElementById('deadlock-ce-bar').style.width = `${Math.abs(ceGrad) * 100}%`;
+
+      const mseComm = document.getElementById('deadlock-mse-comment');
+      if (yhat < 0.1) {
+        mseComm.innerHTML = `⚠️ <strong>極度危險的飽和死區！</strong>預測機率極低（${yhat.toFixed(3)}），但 MSE 梯度僅剩 <strong>${mseGrad.toFixed(4)}</strong>，神經網路幾乎無法更新！`;
+      } else if (yhat > 0.8) {
+        mseComm.innerHTML = `✅ 預測接近正確，兩者梯度皆平穩收斂。`;
+      } else {
+        mseComm.innerHTML = `⚡ 猜測不確定，MSE 修正效率遠低於交叉熵。`;
+      }
+    }
+
+    /* -------------------------------------------------------------
+       SECTION 6: Four Layers of Miracle Cancellation
+       ------------------------------------------------------------- */
+    function switchMasterProof(layer) {
+      const layers = ['algebraic', 'jacobian', 'glm', 'hessian'];
+      layers.forEach(l => {
+        const pane = document.getElementById(`pane-proof-${l}`);
+        const btn = document.getElementById(`tab-p-${l}`);
+        if (l === layer) {
+          if (pane) pane.classList.remove('hidden');
+          if (btn) {
+            btn.className = 'px-3 py-1.5 rounded-lg font-semibold transition bg-cyan-500/20 text-cyan-300 border border-cyan-500/30';
+          }
+        } else {
+          if (pane) pane.classList.add('hidden');
+          if (btn) {
+            btn.className = 'px-3 py-1.5 rounded-lg font-semibold transition text-slate-400 hover:text-white';
+          }
+        }
+      });
+      renderMath();
+    }
+
+    let isCanceledStrike = false;
+    function toggleCancellationStrike() {
+      isCanceledStrike = !isCanceledStrike;
+      const formula = document.getElementById('cancellation-formula');
+      const badge = document.getElementById('cancel-badge');
+
+      if (isCanceledStrike) {
+        formula.innerHTML = `$$\\frac{\\partial L}{\\partial z_i} = -y_i \\cdot \\underbrace{\\frac{\\cancel{q_i}}{\\cancel{q_i}}}_{=1} (1 - q_i) + \\sum_{k \\neq i} y_k \\cdot \\underbrace{\\frac{\\cancel{q_k}}{\\cancel{q_k}}}_{=1} q_i$$`;
+        badge.textContent = '分子分母相消完成 (Cancelled)';
+        badge.className = 'text-[10px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold';
+      } else {
+        formula.innerHTML = `$$\\frac{\\partial L}{\\partial z_i} = -y_i \\cdot \\frac{q_i}{q_i}(1 - q_i) + \\sum_{k \\neq i} y_k \\cdot \\frac{q_k}{q_k} q_i$$`;
+        badge.textContent = '未相消狀態';
+        badge.className = 'text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300';
+      }
+      renderMath();
+    }
+
+    function updateJacobianInteractive() {
+      const z1 = parseFloat(document.getElementById('jac-z1').value);
+      const z2 = parseFloat(document.getElementById('jac-z2').value);
+      const z3 = parseFloat(document.getElementById('jac-z3').value);
+
+      document.getElementById('jac-val-z1').textContent = z1.toFixed(1);
+      document.getElementById('jac-val-z2').textContent = z2.toFixed(1);
+      document.getElementById('jac-val-z3').textContent = z3.toFixed(1);
+
+      const q = softmax([z1, z2, z3]);
+      const J = [];
+      for (let i = 0; i < 3; i++) {
+        J[i] = [];
+        for (let j = 0; j < 3; j++) {
+          J[i][j] = (i === j ? q[i] * (1 - q[i]) : -q[i] * q[j]);
+        }
+      }
+
+      const matDisp = document.getElementById('jac-matrix-render');
+      matDisp.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          const cell = document.createElement('div');
+          cell.className = `p-1 rounded ${i === j ? 'bg-indigo-950 text-indigo-300 font-bold' : 'bg-slate-950 text-slate-400'}`;
+          cell.textContent = J[i][j].toFixed(3);
+          matDisp.appendChild(cell);
+        }
+      }
+
+      const grads = [q[0] - 1.0, q[1] - 0.0, q[2] - 0.0];
+      const gDisp = document.getElementById('jac-grad-render');
+      gDisp.innerHTML = `
+        <div class="flex justify-between"><span>∂L/∂z₁:</span><span class="font-bold">${grads[0].toFixed(4)}</span></div>
+        <div class="flex justify-between"><span>∂L/∂z₂:</span><span class="font-bold">${grads[1].toFixed(4)}</span></div>
+        <div class="flex justify-between"><span>∂L/∂z₃:</span><span class="font-bold">${grads[2].toFixed(4)}</span></div>
+      `;
+
+      updateHessianInteractive(q);
+    }
+
+    function updateHessianInteractive(qIn) {
+      const z1 = parseFloat(document.getElementById('jac-z1').value);
+      const z2 = parseFloat(document.getElementById('jac-z2').value);
+      const z3 = parseFloat(document.getElementById('jac-z3').value);
+      const q = qIn || softmax([z1, z2, z3]);
+
+      const v1 = parseFloat(document.getElementById('h-v1').value) || 0;
+      const v2 = parseFloat(document.getElementById('h-v2').value) || 0;
+      const v3 = parseFloat(document.getElementById('h-v3').value) || 0;
+      const v = [v1, v2, v3];
+
+      const ev = q[0] * v[0] + q[1] * v[1] + q[2] * v[2];
+      const ev2 = q[0] * (v[0] ** 2) + q[1] * (v[1] ** 2) + q[2] * (v[2] ** 2);
+      const variance = Math.max(0, ev2 - (ev ** 2));
+
+      document.getElementById('h-prob-str').textContent = `[${q[0].toFixed(3)}, ${q[1].toFixed(3)}, ${q[2].toFixed(3)}]`;
+      document.getElementById('h-ev').textContent = ev.toFixed(4);
+      document.getElementById('h-ev2').textContent = ev2.toFixed(4);
+      document.getElementById('h-quad').textContent = `${variance.toFixed(4)} ≥ 0 (嚴格凸性)`;
+    }
+
+    /* -------------------------------------------------------------
+       SECTION 7: PyTorch Numerical Safety Simulation
+       ------------------------------------------------------------- */
+    function setPyTorchTestLogits(arr) {
+      document.getElementById('py-z0').value = arr[0];
+      document.getElementById('py-z1').value = arr[1];
+      document.getElementById('py-z2').value = arr[2];
+      runPyTorchSimulation();
+    }
+
+    function runPyTorchSimulation() {
+      const z0 = parseFloat(document.getElementById('py-z0').value) || 0;
+      const z1 = parseFloat(document.getElementById('py-z1').value) || 0;
+      const z2 = parseFloat(document.getElementById('py-z2').value) || 0;
+      const logits = [z0, z1, z2];
+
+      const maxL = Math.max(...logits);
+      const expSum = Math.exp(logits[0] - maxL) + Math.exp(logits[1] - maxL) + Math.exp(logits[2] - maxL);
+      const stableLoss = -(logits[0] - maxL) + Math.log(expSum);
+
+      const naiveExps = logits.map(v => Math.exp(v));
+      const naiveSum = naiveExps.reduce((a, b) => a + b, 0);
+      const naiveQ0 = naiveExps[0] / naiveSum;
+      const naiveLoss = -Math.log(naiveQ0);
+
+      const naiveElem = document.getElementById('py-naive-loss');
+      const stableElem = document.getElementById('py-stable-loss');
+      const comm = document.getElementById('py-sim-commentary');
+
+      if (!isFinite(naiveLoss) || isNaN(naiveLoss)) {
+        naiveElem.innerHTML = `<span class="text-rose-500 font-black">NaN / Inf (崩潰)</span>`;
+        comm.innerHTML = `⚠️ <strong>天真寫法崩潰！</strong> $\\exp(${maxL})$ 造成 IEEE-754 浮點上溢。而官方 Log-Sum-Exp 依然精確平穩輸出 <strong>${stableLoss.toFixed(4)}</strong>！`;
+      } else {
+        naiveElem.textContent = naiveLoss.toFixed(4);
+        comm.textContent = '數值正常，兩種方式均可正常運算。';
+      }
+      stableElem.textContent = stableLoss.toFixed(4);
+    }
+
+    function copyCodeSnippet() {
+      const code = `import torch
+import torch.nn as nn
+
+# 1. 定義 Logits (未歸一化得分) 與真實標籤索引
+logits = torch.tensor([[2.0, 1.0, 0.1]], requires_grad=True)
+target = torch.tensor([0])  # 目標為類別 0
+
+# 2. 官方高數值穩定度融合算子 (內部整合 LogSoftmax + NLLLoss)
+criterion = nn.CrossEntropyLoss()
+loss = criterion(logits, target)
+
+# 3. 反向傳播驗證相消梯度：∂L/∂z = q - y
+loss.backward()
+print("Loss:", loss.item())
+print("Grad (q - y):", logits.grad)`;
+
+      const textarea = document.createElement('textarea');
+      textarea.value = code;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+
+      const btn = document.getElementById('btn-copy-code');
+      btn.textContent = '✅ 已複製！';
+      setTimeout(() => { btn.textContent = '📋 複製代碼'; }, 2000);
+    }
+
+    /* -------------------------------------------------------------
+       Window Lifecycle Initializer
+       ------------------------------------------------------------- */
+    window.onload = function() {
+      renderMath();
+      updateWeatherSimulation();
+      updateMultiClassSim();
+      renderBackpropState();
+      updateLLMSim();
+      initDeadlockChart();
+      updateDeadlockSim();
+      updateJacobianInteractive();
+      runPyTorchSimulation();
+    };
+  </script>
+</body>
+</html>
