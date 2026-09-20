@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>馬可夫鏈 (Markov Chain) 全景探索與互動模擬實驗室</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+                    }
+                }
+            }
+        };
+    </script>
+    <!-- KaTeX for crisp LaTeX Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+        onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true},{left: '$', right: '$', display: false}]});"></script>
+    <!-- Chart.js for Live Empirical vs Theoretical Probability Visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .dark .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(51, 65, 85, 0.8);
+        }
+        pre code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.86rem;
+            line-height: 1.55;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-indigo-500 selection:text-white transition-colors duration-200">
+
+    <nav class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-slate-200 px-4 lg:px-8 py-3 shadow-xs">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold shadow-md shadow-indigo-200">
+                    M
+                </div>
+                <div>
+                    <h1 class="font-bold text-slate-900 leading-none">Markov Lab</h1>
+                    <span class="text-xs text-slate-500 font-medium">馬可夫鏈全景互動知識庫</span>
+                </div>
+            </div>
+            <div class="hidden md:flex items-center space-x-1 text-sm font-medium text-slate-600">
+                <a href="#sec-intro" class="px-3 py-1.5 rounded-lg hover:text-indigo-600 hover:bg-indigo-50 transition">一句話與 IPAS 核心解構</a>
+                <a href="#sec-history" class="px-3 py-1.5 rounded-lg hover:text-indigo-600 hover:bg-indigo-50 transition">起源與典故</a>
+                <a href="#sec-independence" class="px-3 py-1.5 rounded-lg hover:text-indigo-600 hover:bg-indigo-50 transition font-semibold text-indigo-700 bg-indigo-50/70">獨立性之謎與破局</a>
+                <a href="#sec-examples" class="px-3 py-1.5 rounded-lg hover:text-indigo-600 hover:bg-indigo-50 transition">生活與工業</a>
+                <a href="#sec-math" class="px-3 py-1.5 rounded-lg hover:text-indigo-600 hover:bg-indigo-50 transition">數學推導</a>
+                <a href="#sec-ai-domains" class="px-3 py-1.5 rounded-lg hover:text-indigo-600 hover:bg-indigo-50 transition">AI跨領域應用</a>
+                <a href="#sec-code" class="px-3 py-1.5 rounded-lg hover:text-indigo-600 hover:bg-indigo-50 transition">程式實作</a>
+                <a href="#sec-simulator" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition">即時模擬器</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 lg:px-8 py-8 space-y-16">
+
+        <!-- 00. 一句話簡介 + 核心原理 + IPAS AI 考題特徵 + 實務特徵 -->
+        <section id="sec-intro" class="space-y-6">
+            <!-- 一句話簡介橫幅 -->
+            <div class="p-6 md:p-8 bg-gradient-to-r from-indigo-950 via-indigo-900 to-slate-900 text-white rounded-3xl shadow-xl relative overflow-hidden border border-indigo-800/40">
+                <div class="absolute -right-12 -bottom-12 w-72 h-72 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 mb-4">
+                    <span>📌 00. 一句話總結定義</span>
+                </div>
+                <h2 class="text-2xl md:text-3xl font-extrabold tracking-tight mb-3">什麼是馬可夫鏈？</h2>
+                <p class="text-lg md:text-xl text-indigo-100 font-light leading-relaxed">
+                    「<strong class="font-semibold text-white">未來只取決於當前狀態，與過去歷史無關</strong>（無記憶性）——它是將系統時序演化解構為『狀態空間』與『條件躍遷機率矩陣』的隨機動態模型，更是強化學習 MDP 與生成式序列模型的核心基石。」
+                </p>
+            </div>
+
+            <!-- 三聯卡片：核心原理、IPAS AI 考題特徵、實務特徵 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- 1. 核心原理 -->
+                <div class="glass-panel p-6 rounded-3xl border-t-4 border-t-indigo-500 space-y-3 shadow-xs">
+                    <div class="flex items-center gap-2 text-indigo-600 font-bold text-sm">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        <span>核心原理 (Core Principle)</span>
+                    </div>
+                    <ul class="space-y-2.5 text-xs text-slate-600 leading-relaxed">
+                        <li>
+                            <strong class="text-slate-800 block text-[13px]">1. 馬可夫性（條件獨立／無記憶性）：</strong>
+                            給定當前狀態 $X_t$，未來 $X_{t+1}$ 的分佈與過去軌跡 $\{X_0, \dots, X_{t-1}\}$ 條件獨立。歷史被完整編碼入「現態」。
+                        </li>
+                        <li>
+                            <strong class="text-slate-800 block text-[13px]">2. 隨機躍遷矩陣與線性運算：</strong>
+                            以列隨機矩陣 $P$ 表徵跳轉機率（每列和為 1），機率向量演化遵循 $v_{t+1} = v_t P$，$n$ 步機率即為矩陣乘方 $P^n$。
+                        </li>
+                        <li>
+                            <strong class="text-slate-800 block text-[13px]">3. 遍歷收斂（動態定點）：</strong>
+                            滿足「不可約」且「非週期」之鏈，必存在唯一平穩分佈 $\pi = \pi P$，系統長程分佈收斂且消除初態敏感性。
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- 2. IPAS AI 考題特徵 -->
+                <div class="glass-panel p-6 rounded-3xl border-t-4 border-t-amber-500 space-y-3 shadow-xs">
+                    <div class="flex items-center gap-2 text-amber-600 font-bold text-sm">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <span>IPAS AI 考題特徵 (Certification Focus)</span>
+                    </div>
+                    <ul class="space-y-2.5 text-xs text-slate-600 leading-relaxed">
+                        <li>
+                            <strong class="text-slate-800 block text-[13px]">1. 強化學習 MDP 五元組與 Bellman 方程：</strong>
+                            IPAS 考題極常考查強化學習基礎：$\langle S, A, P, R, \gamma \rangle$，詢問「狀態轉移機率 $P(s' \mid s, a)$ 是否滿足馬可夫性」及折現因子 $\gamma$ 對決策長短期的影響。
+                        </li>
+                        <li>
+                            <strong class="text-slate-800 block text-[13px]">2. NLP 序列模型演進（N-gram $\to$ HMM $\to$ Transformer）：</strong>
+                            學習指引評量重點：比較統計機率模型（隱馬可夫模型 HMM、CRF 於詞性標註/語音辨識之應用與局限）與現代自注意力機制的長程依賴差異。
+                        </li>
+                        <li>
+                            <strong class="text-slate-800 block text-[13px]">3. 轉移矩陣運算與狀態辨別：</strong>
+                            單選題常出現「給定轉移機率矩陣 $P$ 計算 2 步後的機率分佈」或辨識何謂「無記憶性（Memoryless Property）」觀念題。
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- 3. 實務特徵 -->
+                <div class="glass-panel p-6 rounded-3xl border-t-4 border-t-emerald-500 space-y-3 shadow-xs">
+                    <div class="flex items-center gap-2 text-emerald-600 font-bold text-sm">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        <span>實務特徵 (Production & Systems)</span>
+                    </div>
+                    <ul class="space-y-2.5 text-xs text-slate-600 leading-relaxed">
+                        <li>
+                            <strong class="text-slate-800 block text-[13px]">1. 稀疏性與大規模圖計算 (PageRank)：</strong>
+                            超大規模狀態（如巨量網頁或用戶行為圖）轉移矩陣達十億維度，實務使用稀疏矩陣儲存並搭配冪迭代法 (Power Iteration)。
+                        </li>
+                        <li>
+                            <strong class="text-slate-800 block text-[13px]">2. 狀態特徵化 (State Featurization)：</strong>
+                            真實世界資料常非嚴格一階馬可夫，工程上透過「滑動視窗拼接」或「RNN 隱藏狀態 $h_t$」將時序歷史強行壓縮入單一狀態向量。
+                        </li>
+                        <li>
+                            <strong class="text-slate-800 block text-[13px]">3. 採樣技術 (MCMC & 投機解碼)：</strong>
+                            高維積分無法封閉求解時仰賴馬可夫鏈蒙地卡羅採樣；在 GenAI 端側推理時，則用輕量馬可夫草稿模型加速 Transformer 解碼。
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- 01. 由來 -->
+        <section id="sec-history" class="glass-panel p-6 md:p-8 rounded-3xl space-y-4">
+            <div class="flex items-center gap-2 text-indigo-600 font-bold text-sm tracking-wider uppercase">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                01. 誕生背景與歷史典故
+            </div>
+            <h3 class="text-xl font-bold text-slate-900">學術論戰下的產物：打破「大數法則必然依賴獨立性」的神話</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-600 text-sm leading-relaxed">
+                <div class="border-l-2 border-indigo-400 pl-4 space-y-1">
+                    <span class="font-bold text-slate-800 block">神學與數學的交鋒</span>
+                    <p>20世紀初，俄國數學家帕維爾·涅克拉索夫 (Pavel Nekrasov) 聲稱：大數法則只適用於相互獨立的事件，並以此論證人類「自由意志」在統計規律中的神聖性。</p>
+                </div>
+                <div class="border-l-2 border-indigo-400 pl-4 space-y-1">
+                    <span class="font-bold text-slate-800 block">馬可夫的有力反擊</span>
+                    <p>安德烈·馬可夫 (Andrey Markov, 1856–1922) 為了駁斥此論調，於 1906 年構造了一種「強烈依賴前一個狀態、但依然遵守大數法則與中央極限定理」的鏈狀隨機變數序列。</p>
+                </div>
+                <div class="border-l-2 border-indigo-400 pl-4 space-y-1">
+                    <span class="font-bold text-slate-800 block">普希金詩集的統計實驗</span>
+                    <p>1913年，馬可夫親手統計了普希金著名長詩《尤金·奧涅金》前兩萬個字母，計算出俄語中「母音接子音」與「子音接母音」的轉移機率，成為歷史上第一個實際文字的馬可夫模型！</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 01-B. 深度專題：什麼是大數據獨立性？馬可夫如何突破獨立性限制？ -->
+        <section id="sec-independence" class="glass-panel p-6 md:p-8 rounded-3xl space-y-8 border-2 border-indigo-100/80 shadow-md">
+            <div class="flex items-center gap-2 text-indigo-600 font-bold text-sm tracking-wider uppercase">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                01-B. 深度探索：什麼是大數據獨立性？如何打破獨立性枷鎖？
+            </div>
+
+            <div class="space-y-3">
+                <h3 class="text-2xl font-bold text-slate-900">從「獨立同分佈 (i.i.d.)」到「時序相依」：統計學與 AI 的範式轉移</h3>
+                <p class="text-sm text-slate-600 leading-relaxed">
+                    在馬可夫之前，古典機率統計學主要奠基於**獨立性假設（Independence Assumption, i.i.d.）**。然而在 AI 領域的大數據（文本串流、金融高頻交易、機器人感測軌跡）中，相鄰觀測數據幾乎必然高度相關。
+                </p>
+            </div>
+
+            <!-- 兩大核心對比卡片 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- 什麼是大數據獨立性 -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 space-y-4">
+                    <div class="flex items-center gap-2 text-rose-600 font-bold text-base">
+                        <span class="w-7 h-7 rounded-lg bg-rose-100 flex items-center justify-center text-rose-700 text-sm">✕</span>
+                        什麼是傳統的「獨立性假說」？為何在大數據與 AI 中失效？
+                    </div>
+                    <div class="text-xs text-slate-600 space-y-2 leading-relaxed">
+                        <p>
+                            <strong class="text-slate-800">1. 數學本質（i.i.d.）：</strong> 
+                            變數間互不干涉，聯合機率等於邊際機率的乘積：
+                            $$P(X_1, X_2, \dots, X_n) = \prod_{i=1}^n P(X_i)$$
+                            這意味著過去發生的任何事，對未來的機率分佈毫無任何影響。
+                        </p>
+                        <p>
+                            <strong class="text-slate-800">2. 現實大數據與 AI 任務的真實樣貌：</strong>
+                            在 NLP、物聯網感測器、強化學習序列決策中，<span class="text-rose-600 font-semibold">「純粹獨立」幾乎不存在</span>！
+                        </p>
+                        <ul class="list-disc list-inside space-y-1 text-slate-500 pl-1">
+                            <li><strong>語意大數據：</strong> 「卷積」後面接「神經網路」的機率極高，文字前後高度相依。</li>
+                            <li><strong>強化學習決策：</strong> 機器人當前關節角度直接受前一微秒動作影響。</li>
+                            <li><strong>若盲目誤用獨立假設：</strong> 模型會嚴重低估連續偏差的累積風險，導致預測全面失準。</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 如何突破獨立性限制 -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 space-y-4">
+                    <div class="flex items-center gap-2 text-emerald-600 font-bold text-base">
+                        <span class="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700 text-sm">✓</span>
+                        馬可夫如何突破獨立性限制？
+                    </div>
+                    <div class="text-xs text-slate-600 space-y-2 leading-relaxed">
+                        <p>
+                            <strong class="text-slate-800">1. 結構化相依（一階條件獨立）：</strong> 
+                            馬可夫提出革命性的精簡約束：<span class="text-indigo-600 font-semibold">允許變數間強烈相依，但相依性僅透過當前狀態單步傳遞</span>，既打破了獨立性束縛，又避免了全歷史建模導致的維度爆炸。
+                        </p>
+                        <p>
+                            <strong class="text-slate-800">2. 馬可夫大數定理 (Markov's LLN)：</strong>
+                            馬可夫嚴格證明：<strong>只要鏈的記憶衰減滿足混合條件，即使樣本高度時序自相關，其樣本平均仍依機率收斂於全域期望值</strong>！
+                            $$\lim_{n \to \infty} P\left( \left| \frac{1}{n} \sum_{t=1}^n f(X_t) - \mathbb{E}_\pi[f] \right| > \epsilon \right) = 0$$
+                        </p>
+                        <p>
+                            <strong class="text-slate-800">3. 遍歷性定理（Ergodicity）：</strong>
+                            允許以「單一系統長時間軌跡的平均」替代「百萬個獨立平行試驗的均值」，為強化學習體驗回放（Replay Buffer）與 MCMC 採樣提供堅實理論支撐。
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 互動式實驗：獨立採樣 vs 馬可夫強相關鏈的收斂對比 -->
+            <div class="bg-slate-900 text-slate-100 p-5 md:p-6 rounded-2xl space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                    <div>
+                        <span class="text-xs uppercase tracking-widest text-indigo-400 font-bold block">實證實驗室</span>
+                        <h4 class="text-base font-bold text-white">直觀驗證：強相依性下，大數法則依然神聖成立！</h4>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="runIndependenceComparison()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs text-white font-semibold rounded-xl shadow transition">
+                            🎲 重新抽樣 1,000 步軌跡
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                    <div class="lg:col-span-4 space-y-3 text-xs">
+                        <label class="block font-semibold text-slate-300">
+                            調節馬可夫狀態「相依性強度 / 慣性」($\rho$)：
+                            <span id="label-correlation" class="text-indigo-400 font-mono font-bold text-sm">0.85</span>
+                        </label>
+                        <input type="range" id="input-correlation" min="0.00" max="0.95" step="0.05" value="0.85" oninput="onCorrelationChange(this.value)" class="w-full accent-indigo-500">
+                        <div class="text-[11px] text-slate-400 leading-relaxed bg-slate-950 p-3 rounded-xl border border-slate-800">
+                            • <strong>$\rho = 0$：</strong> 退化為標準獨立隨機拋硬幣（i.i.d.）。<br>
+                            • <strong>$\rho > 0$：</strong> 馬可夫強相依鏈（系統有極強傾向維持原狀態）。<br>
+                            • <strong>觀察重點：</strong> 觀察右方曲線，即使在強相依（曲線震盪劇烈、連續停滯）下，累積平均值（黃線）最終依然如奇蹟般精確收斂至理論值 0.50！
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-8 bg-slate-950 p-3 rounded-xl border border-slate-800">
+                        <div class="flex justify-between items-center text-[11px] text-slate-400 mb-1 px-1">
+                            <span>1,000 步累積平均值收斂曲線 ($\frac{1}{n}\sum X_t$)</span>
+                            <div class="flex items-center gap-3">
+                                <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span> 獨立 i.i.d.</span>
+                                <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span> 馬可夫強相依鏈</span>
+                                <span class="inline-flex items-center gap-1"><span class="w-2.5 h-0.5 bg-rose-400 inline-block"></span> 理論均值 (0.50)</span>
+                            </div>
+                        </div>
+                        <div class="h-44 w-full">
+                            <canvas id="independenceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 02 & 03. 生活化例子與工業應用 -->
+        <section id="sec-examples" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- 02 生活化例子 -->
+                <div class="glass-panel p-6 md:p-8 rounded-3xl space-y-4">
+                    <div class="flex items-center gap-2 text-indigo-600 font-bold text-sm tracking-wider uppercase">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                        02. 生活化直觀例子
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900">明天天氣如何？晴天、陰天、雨天</h3>
+                    <p class="text-slate-600 text-sm leading-relaxed">
+                        氣象預報如果簡化為：今天的天氣決定明天的機率。即使一週前是大暴雨，只要「今天出大太陽」，明天是晴天的機率就高達 80%、陰天 15%、雨天 5%。
+                    </p>
+                    <div class="bg-indigo-50/60 rounded-2xl p-4 border border-indigo-100 text-xs text-slate-700 space-y-2">
+                        <div class="font-semibold text-indigo-900">其他生動生活案例：</div>
+                        <ul class="list-disc list-inside space-y-1 text-slate-600">
+                            <li><strong class="text-slate-800">大富翁 (Monopoly) 擲骰走步：</strong> 你下一步會踩到哪一格，只取決於當前所在格子與骰子點數，與你在五回合前坐牢毫無關係。</li>
+                            <li><strong class="text-slate-800">串流平台用戶流失與留存：</strong> 訂閱者下個月是「續費、暫停還是退訂」，主要取決於本月的活躍狀態。</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 03 工業應用 -->
+                <div class="glass-panel p-6 md:p-8 rounded-3xl space-y-4">
+                    <div class="flex items-center gap-2 text-indigo-600 font-bold text-sm tracking-wider uppercase">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                        03. 工業與工程中的關鍵應用
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900">從搜尋引擎到智慧晶圓製造</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-600">
+                        <div class="p-3 bg-white rounded-xl border border-slate-200">
+                            <span class="font-bold text-slate-900 block mb-1">🌐 Google PageRank 演算法</span>
+                            將全網網頁視為狀態，超連結為跳轉機率，建立巨大轉移矩陣，計算隨機衝浪者的平穩分佈即為網頁權重。
+                        </div>
+                        <div class="p-3 bg-white rounded-xl border border-slate-200">
+                            <span class="font-bold text-slate-900 block mb-1">🏭 半導體設備預測性維護</span>
+                            機台健康狀況分階：正常 → 輕微磨損 → 警告 → 故障。藉由馬可夫轉移模型預估平均故障前時間 (MTTF)。
+                        </div>
+                        <div class="p-3 bg-white rounded-xl border border-slate-200">
+                            <span class="font-bold text-slate-900 block mb-1">📦 供應鏈庫存與排隊論</span>
+                            伺服器請求佇列 (M/M/1 排隊系統) 滿足連續時間馬可夫鏈，精準預估封包延遲、工廠倉儲備料最佳警戒線。
+                        </div>
+                        <div class="p-3 bg-white rounded-xl border border-slate-200">
+                            <span class="font-bold text-slate-900 block mb-1">📈 金融信用評等遷移</span>
+                            評級機構（S&P、Moody's）使用轉移矩陣評估企業債券從 AAA 降級為 AA、BBB 乃至違約 Default 的機率。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 04. 理論簡介 -->
+        <section class="glass-panel p-6 md:p-8 rounded-3xl space-y-6">
+            <div class="flex items-center gap-2 text-indigo-600 font-bold text-sm tracking-wider uppercase">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                04. 核心理論簡介
+            </div>
+            <h3 class="text-2xl font-bold text-slate-900">核心性質與四大定理要素</h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 space-y-2">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">1</div>
+                    <h4 class="font-bold text-slate-800">馬可夫性 (無記憶性)</h4>
+                    <p class="text-xs text-slate-500">
+                        已知目前狀態 $X_t$ 的條件下，未來狀態 $X_{t+1}$ 與歷史條件獨立：
+                    </p>
+                    <div class="text-xs bg-slate-50 p-2 rounded text-indigo-950 font-mono">
+                        $P(X_{t+1}=s \mid X_t, \dots, X_0) = P(X_{t+1}=s \mid X_t)$
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 space-y-2">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">2</div>
+                    <h4 class="font-bold text-slate-800">狀態轉移矩陣 (P)</h4>
+                    <p class="text-xs text-slate-500">
+                        轉移矩陣每列和為 1 (隨機矩陣, Stochastic Matrix)。元素 $P_{ij}$ 代表自狀態 $i$ 跳至狀態 $j$ 的機率。
+                    </p>
+                    <div class="text-xs bg-slate-50 p-2 rounded text-indigo-950 font-mono">
+                        $P_{ij} \ge 0, \quad \sum_{j} P_{ij} = 1$
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 space-y-2">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">3</div>
+                    <h4 class="font-bold text-slate-800">平穩分佈 (Stationary)</h4>
+                    <p class="text-xs text-slate-500">
+                        當系統運行足夠久，狀態機率分佈向量不再隨時間改變：
+                    </p>
+                    <div class="text-xs bg-slate-50 p-2 rounded text-indigo-950 font-mono">
+                        $\pi P = \pi, \quad \sum_i \pi_i = 1$
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 space-y-2">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">4</div>
+                    <h4 class="font-bold text-slate-800">遍歷性定理 (Ergodicity)</h4>
+                    <p class="text-xs text-slate-500">
+                        若馬可夫鏈是「不可約 (Irreducible)」且「非週期 (Aperiodic)」的有限鏈，則無論初態為何，最終必收斂至唯一平穩分佈。
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 05. 數學推導（互動式） -->
+        <section id="sec-math" class="glass-panel p-6 md:p-8 rounded-3xl space-y-6">
+            <div class="flex items-center gap-2 text-indigo-600 font-bold text-sm tracking-wider uppercase">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"></path></svg>
+                05. 數學推導與互動矩陣乘方驗證
+            </div>
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h3 class="text-2xl font-bold text-slate-900">Chapman-Kolmogorov 方程與收斂過程</h3>
+                    <p class="text-sm text-slate-600">$n$ 步轉移機率即為轉移矩陣的 $n$ 次方：$P^{(n)} = P^n$。若鏈收斂，則當 $n \to \infty$ 時，$P^n$ 的每一列都趨近於同一組平穩分佈向量 $\pi$。</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-slate-900 text-slate-100 p-6 rounded-2xl">
+                <!-- 矩陣參數調控 -->
+                <div class="lg:col-span-5 space-y-4">
+                    <div class="text-sm font-semibold text-indigo-300">2-狀態轉移矩陣設定 (天氣模型: 晴天☀️ / 雨天🌧️)</div>
+                    <div class="space-y-3 text-xs">
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span>晴天 → 晴天 ($P_{11}$): <strong id="val-p11" class="text-indigo-400">0.80</strong></span>
+                                <span class="text-slate-400">晴天 → 雨天: <span id="val-p12">0.20</span></span>
+                            </div>
+                            <input type="range" id="input-p11" min="0.05" max="0.95" step="0.05" value="0.80" class="w-full accent-indigo-500">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span>雨天 → 雨天 ($P_{22}$): <strong id="val-p22" class="text-indigo-400">0.60</strong></span>
+                                <span class="text-slate-400">雨天 → 晴天: <span id="val-p21">0.40</span></span>
+                            </div>
+                            <input type="range" id="input-p22" min="0.05" max="0.95" step="0.05" value="0.60" class="w-full accent-indigo-500">
+                        </div>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-800">
+                        <div class="text-xs text-slate-400 mb-2">步數 $n$（計算 $P^n$）：</div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="setPowerN(1)" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-xs rounded-md">n=1</button>
+                            <button onclick="setPowerN(2)" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-xs rounded-md">n=2</button>
+                            <button onclick="setPowerN(5)" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-xs rounded-md">n=5</button>
+                            <button onclick="setPowerN(15)" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-xs rounded-md">n=15</button>
+                            <button onclick="setPowerN(50)" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-xs text-white rounded-md">n=50 (極限)</button>
+                        </div>
+                    </div>
+
+                    <div class="text-xs bg-slate-800/80 p-3 rounded-xl border border-slate-700 font-mono space-y-1">
+                        <div class="text-indigo-300 font-semibold">解析解公式 (特徵值為 1 對應之左特徵向量)：</div>
+                        <div>$\pi_{\text{晴}} = \frac{1 - P_{22}}{(1 - P_{11}) + (1 - P_{22})}$</div>
+                        <div>$\pi_{\text{雨}} = \frac{1 - P_{11}}{(1 - P_{11}) + (1 - P_{22})}$</div>
+                    </div>
+                </div>
+
+                <!-- 計算結果面板 -->
+                <div class="lg:col-span-7 flex flex-col justify-between space-y-4 bg-slate-950 p-5 rounded-xl border border-slate-800 font-mono">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-emerald-400">當前矩陣狀態 $P^n$ (n = <span id="display-n">1</span>)</span>
+                        <span id="convergence-badge" class="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">尚未收斂</span>
+                    </div>
+
+                    <!-- 2x2 Matrix Display -->
+                    <div class="grid grid-cols-2 gap-3 text-center my-auto">
+                        <div class="p-3 bg-slate-900 rounded-lg border border-slate-800">
+                            <span class="text-[10px] text-slate-500 block">晴 → 晴</span>
+                            <span id="mat-00" class="text-xl font-bold text-indigo-400">0.8000</span>
+                        </div>
+                        <div class="p-3 bg-slate-900 rounded-lg border border-slate-800">
+                            <span class="text-[10px] text-slate-500 block">晴 → 雨</span>
+                            <span id="mat-01" class="text-xl font-bold text-slate-300">0.2000</span>
+                        </div>
+                        <div class="p-3 bg-slate-900 rounded-lg border border-slate-800">
+                            <span class="text-[10px] text-slate-500 block">雨 → 晴</span>
+                            <span id="mat-10" class="text-xl font-bold text-slate-300">0.4000</span>
+                        </div>
+                        <div class="p-3 bg-slate-900 rounded-lg border border-slate-800">
+                            <span class="text-[10px] text-slate-500 block">雨 → 雨</span>
+                            <span id="mat-11" class="text-xl font-bold text-indigo-400">0.6000</span>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-indigo-950/40 rounded-lg border border-indigo-800/40 flex justify-between items-center text-xs">
+                        <span class="text-slate-400">理論平穩分佈 $\pi$:</span>
+                        <span class="text-indigo-200 font-bold">
+                            晴天: <span id="theo-pi-sunny">66.7%</span> | 雨天: <span id="theo-pi-rainy">33.3%</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 06. 屬於哪個範疇：跨領域互動展示 -->
+        <section id="sec-ai-domains" class="space-y-6">
+            <div>
+                <div class="flex items-center gap-2 text-indigo-600 font-bold text-sm tracking-wider uppercase">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"></path></svg>
+                    06. 馬可夫鏈的跨領域 AI / CS 互動展演
+                </div>
+                <h3 class="text-2xl font-bold text-slate-900 mt-1">馬可夫模型在機器學習、深度學習、強化學習與生成式 AI 中的延伸</h3>
+            </div>
+
+            <!-- Tabs Header -->
+            <div class="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
+                <button onclick="switchTab('tab-ml')" id="btn-tab-ml" class="px-4 py-2 text-sm font-semibold rounded-xl bg-indigo-600 text-white shadow-sm transition">
+                    機器學習: PageRank 隨機遊走
+                </button>
+                <button onclick="switchTab('tab-rl')" id="btn-tab-rl" class="px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:bg-slate-100 transition">
+                    強化學習: 馬可夫決策過程 (MDP)
+                </button>
+                <button onclick="switchTab('tab-dl')" id="btn-tab-dl" class="px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:bg-slate-100 transition">
+                    深度學習: 擴散模型 (Diffusion)
+                </button>
+                <button onclick="switchTab('tab-llm')" id="btn-tab-llm" class="px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:bg-slate-100 transition">
+                    大語言模型: 自回歸高階馬可夫鏈
+                </button>
+            </div>
+
+            <!-- Tab Content 1: ML (PageRank) -->
+            <div id="tab-ml" class="glass-panel p-6 rounded-3xl space-y-4">
+                <div class="flex flex-col lg:flex-row gap-6">
+                    <div class="lg:w-1/2 space-y-3">
+                        <div class="inline-block px-2.5 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-md">ML 應用：PageRank</div>
+                        <h4 class="text-lg font-bold text-slate-900">隨機衝浪者模型 (Random Surfer)</h4>
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            使用者在瀏覽網頁時，有 $d=0.85$ (阻尼因子) 的機率沿著超連結前進，有 $1-d=0.15$ 的機率隨機跳轉到全網任意頁面。此機制確保了該馬可夫鏈具備**不可約性**與**非週期性**，必定存在唯一穩定狀態排序！
+                        </p>
+                        <div class="p-3 bg-slate-100 rounded-xl text-xs space-y-1 font-mono">
+                            <div>轉移公式：$M = d \cdot P + \frac{1-d}{N} \cdot \mathbf{1}\mathbf{1}^T$</div>
+                        </div>
+                        <button onclick="simulatePageRankStep()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow">
+                            點擊衝浪一步 (Random Surfer Step)
+                        </button>
+                        <div class="text-xs text-slate-500">
+                            目前衝浪者停留在：<span id="current-page-node" class="font-bold text-indigo-600">網頁 A (搜尋入口)</span>
+                        </div>
+                    </div>
+                    <div class="lg:w-1/2 bg-slate-900 text-slate-100 p-4 rounded-2xl flex flex-col justify-center space-y-3 font-mono text-xs">
+                        <div class="text-indigo-400 font-bold">4 個網頁權重分佈 (累積遊走統計)：</div>
+                        <div class="space-y-2">
+                            <div>
+                                <div class="flex justify-between text-[11px] mb-1"><span>網頁 A (權重最高，外鏈多)</span><span id="pr-score-A">40%</span></div>
+                                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden"><div id="pr-bar-A" class="bg-indigo-500 h-full w-[40%] transition-all"></div></div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-[11px] mb-1"><span>網頁 B</span><span id="pr-score-B">30%</span></div>
+                                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden"><div id="pr-bar-B" class="bg-blue-500 h-full w-[30%] transition-all"></div></div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-[11px] mb-1"><span>網頁 C</span><span id="pr-score-C">20%</span></div>
+                                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden"><div id="pr-bar-C" class="bg-teal-500 h-full w-[20%] transition-all"></div></div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-[11px] mb-1"><span>網頁 D</span><span id="pr-score-D">10%</span></div>
+                                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden"><div id="pr-bar-D" class="bg-slate-500 h-full w-[10%] transition-all"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content 2: RL (MDP) -->
+            <div id="tab-rl" class="glass-panel p-6 rounded-3xl space-y-4 hidden">
+                <div class="flex flex-col lg:flex-row gap-6">
+                    <div class="lg:w-1/2 space-y-3">
+                        <div class="inline-block px-2.5 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-md">RL 核心：MDP (馬可夫決策過程)</div>
+                        <h4 class="text-lg font-bold text-slate-900">將「被動隨機」升級為「主動行動與獎勵」</h4>
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            MDP 由五元組構成：$\langle S, A, P, R, \gamma \rangle$。智能體在狀態 $s$ 採取行動 $a$，根據轉移機率 $P(s' \mid s, a)$ 進入新狀態並獲得獎勵 $R$。著名的 Bellman 最優方程是 IPAS 考試中強化學習單元的核心重點。
+                        </p>
+                        <div class="text-xs bg-emerald-50 text-emerald-900 p-3 rounded-xl border border-emerald-200">
+                            <strong>Bellman 最優方程 (IPAS 核心考點)：</strong><br>
+                            $V^*(s) = \max_{a} \sum_{s'} P(s' \mid s, a) [R(s, a, s') + \gamma V^*(s')]$
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="moveMdpAgent('UP')" class="px-3 py-1.5 bg-emerald-600 text-white text-xs rounded-lg hover:bg-emerald-700">↑ 向上</button>
+                            <button onclick="moveMdpAgent('DOWN')" class="px-3 py-1.5 bg-emerald-600 text-white text-xs rounded-lg hover:bg-emerald-700">↓ 向下</button>
+                            <button onclick="moveMdpAgent('LEFT')" class="px-3 py-1.5 bg-emerald-600 text-white text-xs rounded-lg hover:bg-emerald-700">← 向左</button>
+                            <button onclick="moveMdpAgent('RIGHT')" class="px-3 py-1.5 bg-emerald-600 text-white text-xs rounded-lg hover:bg-emerald-700">→ 向右</button>
+                        </div>
+                        <div class="text-xs text-slate-500">注意：環境含有 20% 隨機側滑機率（體現轉移機率 $P(s' \mid s,a)$ 的隨機性）！</div>
+                    </div>
+                    <!-- MDP Gridworld visual -->
+                    <div class="lg:w-1/2 flex flex-col items-center justify-center p-4 bg-slate-100 rounded-2xl">
+                        <div id="gridworld" class="grid grid-cols-3 gap-2 w-64 h-64">
+                            <!-- Dynamically generated 3x3 grid -->
+                        </div>
+                        <div class="mt-2 text-xs font-mono text-slate-600">當前累積獎勵: <span id="mdp-score" class="font-bold text-emerald-600">0</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content 3: DL (Diffusion Models) -->
+            <div id="tab-dl" class="glass-panel p-6 rounded-3xl space-y-4 hidden">
+                <div class="flex flex-col lg:flex-row gap-6">
+                    <div class="lg:w-1/2 space-y-3">
+                        <div class="inline-block px-2.5 py-1 bg-purple-100 text-purple-700 text-xs font-bold rounded-md">DL 前沿：擴散模型 (Diffusion Models)</div>
+                        <h4 class="text-lg font-bold text-slate-900">前向加噪與反向去噪的雙向馬可夫鏈</h4>
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            Stable Diffusion 等圖像生成模型其本質就是一條連續時間的高斯馬可夫鏈：<br>
+                            • <strong>前向過程 $q(x_t \mid x_{t-1})$：</strong> 每一步向圖片添加少量高斯雜訊，直至完全變成純雜訊。<br>
+                            • <strong>反向過程 $p_\theta(x_{t-1} \mid x_t)$：</strong> 神經網絡學習估計噪聲，將馬可夫鏈倒著推導，從純雜訊中還原出高畫質影像！
+                        </p>
+                        <div class="space-y-1">
+                            <label class="text-xs font-semibold text-slate-700">調節時間步 $t$ (0: 原始清晰 $\leftrightarrow$ 10: 純高斯噪聲)</label>
+                            <input type="range" id="diff-step" min="0" max="10" value="0" oninput="updateDiffusionVisual(this.value)" class="w-full accent-purple-600">
+                        </div>
+                    </div>
+                    <div class="lg:w-1/2 flex flex-col items-center justify-center p-4 bg-slate-900 rounded-2xl text-white">
+                        <div id="diffusion-canvas-box" class="w-48 h-48 bg-slate-800 rounded-xl overflow-hidden relative flex items-center justify-center border border-slate-700">
+                            <!-- Synthetic dynamic digital noise canvas -->
+                            <canvas id="diff-canvas" width="96" height="96" class="w-full h-full image-rendering-pixelated"></canvas>
+                        </div>
+                        <div class="mt-2 text-xs font-mono text-purple-300">
+                            $t = <span id="diff-t-val">0</span>$ : <span id="diff-desc">清晰狀態 $x_0$ (幾何形狀特徵明確)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content 4: LLM (Autoregressive Generation) -->
+            <div id="tab-llm" class="glass-panel p-6 rounded-3xl space-y-4 hidden">
+                <div class="flex flex-col lg:flex-row gap-6">
+                    <div class="lg:w-1/2 space-y-3">
+                        <div class="inline-block px-2.5 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-md">LLM 核心：自回歸解碼即高階馬可夫鏈</div>
+                        <h4 class="text-lg font-bold text-slate-900">從 N-gram 到 Transformer 上下文條件轉移</h4>
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            經典的馬可夫文字生成以 $N$ 個詞為狀態（$N$-gram）。而現今的 Transformer 大語言模型本質上可看作<strong>視窗長度為上下文長度 $K$ 的超高階非線性馬可夫鏈</strong>：
+                        </p>
+                        <div class="text-xs bg-amber-50 text-amber-900 p-2.5 rounded-lg font-mono border border-amber-200">
+                            $P(w_t \mid w_{t-1}, w_{t-2}, \dots, w_1) \approx P_{\text{Transformer}}(w_t \mid \text{Context}_{t-K:t-1})$
+                        </div>
+                        <p class="text-xs text-slate-500">
+                            *投機解碼 (Speculative Decoding)* 更是直接在端側使用小型 2-gram / 3-gram 馬可夫草稿模型快速預測，再由大模型批次驗證，大幅提升 2-3 倍推理速度！
+                        </p>
+                    </div>
+                    <div class="lg:w-1/2 bg-white p-4 rounded-2xl border border-slate-200 flex flex-col justify-between text-xs font-mono">
+                        <div class="font-bold text-slate-800 mb-2">互動體驗：簡易 2-gram 預測生成下一步詞彙</div>
+                        <div class="p-3 bg-slate-50 rounded-lg min-h-[60px] text-slate-800 leading-relaxed border" id="llm-text-box">
+                            人工智慧正在
+                        </div>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <span class="text-slate-400 py-1">Top-3 機率候選：</span>
+                            <button onclick="appendToken('改變世界', 0.55)" class="px-2.5 py-1 bg-indigo-50 border border-indigo-200 rounded text-indigo-700 hover:bg-indigo-100">改變世界 (55%)</button>
+                            <button onclick="appendToken('加速學習', 0.30)" class="px-2.5 py-1 bg-indigo-50 border border-indigo-200 rounded text-indigo-700 hover:bg-indigo-100">加速學習 (30%)</button>
+                            <button onclick="appendToken('顛覆架構', 0.15)" class="px-2.5 py-1 bg-indigo-50 border border-indigo-200 rounded text-indigo-700 hover:bg-indigo-100">顛覆架構 (15%)</button>
+                        </div>
+                        <button onclick="resetLlmDemo()" class="mt-3 text-[11px] text-slate-400 hover:text-slate-600 underline text-left">重設文本</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 07. Python / PyTorch 實作 -->
+        <section id="sec-code" class="glass-panel p-6 md:p-8 rounded-3xl space-y-6">
+            <div class="flex items-center gap-2 text-indigo-600 font-bold text-sm tracking-wider uppercase">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                07. 完整 Python 與 PyTorch 實作代碼
+            </div>
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-2xl font-bold text-slate-900">工程級別代碼：平穩分佈求解與 GPU 批量模擬</h3>
+                    <p class="text-xs text-slate-500">包含 NumPy 線性代數求解特徵向量，以及 PyTorch 張量批量矩陣並行採樣。</p>
+                </div>
+                <button onclick="copyCodeSnippet()" class="text-xs font-semibold px-3 py-1.5 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    <span id="copy-btn-label">複製代碼</span>
+                </button>
+            </div>
+
+            <div class="bg-slate-950 text-slate-200 p-4 md:p-6 rounded-2xl overflow-x-auto shadow-inner border border-slate-800">
+<pre><code id="python-code-content" class="language-python"><span class="text-emerald-400">import</span> numpy <span class="text-emerald-400">as</span> np
+<span class="text-emerald-400">import</span> torch
+
+<span class="text-slate-500"># =====================================================================
+# 1. NumPy 經典解析解：特徵值分解求解平穩分佈 (π P = π)
+# =====================================================================</span>
+P = np.array([
+    [<span class="text-amber-300">0.80</span>, <span class="text-amber-300">0.20</span>],  <span class="text-slate-500"># 晴天 -> [晴天, 雨天]</span>
+    [<span class="text-amber-300">0.40</span>, <span class="text-amber-300">0.60</span>]   <span class="text-slate-500"># 雨天 -> [晴天, 雨天]</span>
+])
+
+<span class="text-slate-500"># 轉置求特徵值，使 P^T * v = 1 * v 成立</span>
+eigenvalues, eigenvectors = np.linalg.eig(P.T)
+<span class="text-slate-500"># 尋找特徵值最接近 1 的對應特徵向量</span>
+stationary_idx = np.argmin(np.abs(eigenvalues - <span class="text-amber-300">1.0</span>))
+stationary_vec = np.real(eigenvectors[:, stationary_idx])
+pi_numpy = stationary_vec / np.sum(stationary_vec)
+
+print(<span class="text-amber-300">f"[NumPy 解析解] 平穩分佈 π = {pi_numpy}"</span>)
+
+<span class="text-slate-500"># =====================================================================
+# 2. PyTorch GPU 向量化批量蒙地卡羅步進模擬 (Batch Markov Chain)
+# =====================================================================</span>
+device = torch.device(<span class="text-amber-300">"cuda"</span> <span class="text-emerald-400">if</span> torch.cuda.is_available() <span class="text-emerald-400">else</span> <span class="text-amber-300">"cpu"</span>)
+P_tensor = torch.tensor([
+    [<span class="text-amber-300">0.80</span>, <span class="text-amber-300">0.20</span>],
+    [<span class="text-amber-300">0.40</span>, <span class="text-amber-300">0.60</span>]
+], dtype=torch.float32, device=device)
+
+num_chains = <span class="text-amber-300">100_000</span>  <span class="text-slate-500"># 同時模擬 10 萬條獨立平行世界軌跡</span>
+steps = <span class="text-amber-300">50</span>
+
+<span class="text-slate-500"># 初始狀態全設為雨天 (State 1)，驗證不論初態為何都會收斂至平穩分佈</span>
+current_states = torch.ones(num_chains, dtype=torch.long, device=device)
+
+<span class="text-emerald-400">for</span> step <span class="text-emerald-400">in</span> range(steps):
+    <span class="text-slate-500"># 根據每個 chain 當前狀態提取對應的躍遷機率分佈 [N, 2]</span>
+    probs = P_tensor[current_states]
+    <span class="text-slate-500"># 使用 torch.multinomial 進行 GPU 並行採樣</span>
+    current_states = torch.multinomial(probs, num_samples=<span class="text-amber-300">1</span>).squeeze(-<span class="text-amber-300">1</span>)
+
+<span class="text-slate-500"># 計算經驗分佈 (Empirical Distribution)</span>
+empirical_dist = torch.bincount(current_states, minlength=<span class="text-amber-300">2</span>).float() / num_chains
+print(<span class="text-amber-300">f"[PyTorch 10萬樣本模擬] 50步後狀態分佈: {empirical_dist.cpu().numpy()}"</span>)
+</code></pre>
+            </div>
+        </section>
+
+        <!-- 08. 模擬：Step by Step 與 一鍵自動模擬 -->
+        <section id="sec-simulator" class="glass-panel p-6 md:p-8 rounded-3xl space-y-6">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                    <div class="flex items-center gap-2 text-indigo-600 font-bold text-sm tracking-wider uppercase">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        08. 動態實驗室：Step-by-Step 與 即時連續自動模擬
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-900 mt-1">3-狀態馬可夫鏈即時視覺化模擬</h3>
+                </div>
+
+                <!-- Controls Bar -->
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button id="btn-step" onclick="stepSimulation()" class="px-4 py-2 bg-indigo-50 border border-indigo-300 text-indigo-700 font-semibold text-xs rounded-xl hover:bg-indigo-100 flex items-center gap-1.5 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>
+                        單步推進 (Step)
+                    </button>
+                    <button id="btn-auto" onclick="toggleAutoSimulation()" class="px-4 py-2 bg-indigo-600 text-white font-semibold text-xs rounded-xl hover:bg-indigo-700 shadow-sm flex items-center gap-1.5 transition">
+                        <svg id="icon-play" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path></svg>
+                        <span id="label-auto">一鍵自動模擬</span>
+                    </button>
+                    <button onclick="resetSimulation()" class="px-3 py-2 bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl hover:bg-slate-300 transition">
+                        重置 (Reset)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Visualization Main Area -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Canvas Graph Diagram -->
+                <div class="lg:col-span-7 bg-slate-900 rounded-2xl p-4 flex flex-col relative overflow-hidden shadow-inner">
+                    <div class="flex justify-between items-center text-xs text-slate-400 mb-2">
+                        <span>狀態躍遷圖 (當前躍遷以光球動態展示)</span>
+                        <div class="flex items-center gap-3">
+                            <span>模擬總步數：<strong id="sim-total-steps" class="text-indigo-400 font-mono text-sm">0</strong></span>
+                            <div class="flex items-center gap-1 text-[11px]">
+                                <span>速度:</span>
+                                <input type="range" id="sim-speed" min="100" max="1000" step="50" value="400" class="w-16 accent-indigo-400">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Responsive HTML5 Canvas -->
+                    <div class="relative w-full h-80 flex items-center justify-center">
+                        <canvas id="markovCanvas" class="w-full h-full block"></canvas>
+                    </div>
+                    <div class="mt-2 text-center text-xs text-slate-400">
+                        目前所在狀態：<span id="sim-current-state-badge" class="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">晴天 (Sunny)</span>
+                    </div>
+                </div>
+
+                <!-- Statistics & Live Chart Area -->
+                <div class="lg:col-span-5 flex flex-col justify-between space-y-4">
+                    <!-- Chart.js container -->
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-bold text-slate-800">各狀態走訪頻率 VS 理論穩態分佈</span>
+                            <span class="text-slate-400 text-[10px]">大數法則收斂中</span>
+                        </div>
+                        <div class="h-44">
+                            <canvas id="distChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Step transition live log -->
+                    <div class="bg-slate-900 text-slate-300 p-4 rounded-2xl border border-slate-800 flex-1 space-y-2 font-mono text-xs overflow-hidden flex flex-col">
+                        <div class="flex justify-between items-center border-b border-slate-800 pb-1 text-slate-400">
+                            <span>即時跳轉歷程 (Live Transition Log)</span>
+                            <span class="text-[10px]">保留最新 5 筆</span>
+                        </div>
+                        <div id="sim-logs" class="space-y-1 overflow-y-auto flex-1 text-[11px]">
+                            <div class="text-slate-500 italic">點擊「單步推進」或「一鍵自動模擬」開始運算...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-16 border-t border-slate-200 bg-white py-8 text-center text-xs text-slate-500">
+        馬可夫鏈全景互動知識實驗室 | 探索隨機過程與現代人工智慧的數理基石
+    </footer>
+
+    <script>
+        /* -------------------------------------------------------------
+         * 05. 數學推導互動邏輯：矩陣乘方計算與收斂檢驗
+         * -----------------------------------------------------------*/
+        let currentPowerN = 1;
+
+        function updateMathDerivation() {
+            const p11 = parseFloat(document.getElementById('input-p11').value);
+            const p22 = parseFloat(document.getElementById('input-p22').value);
+            const p12 = 1.0 - p11;
+            const p21 = 1.0 - p22;
+
+            document.getElementById('val-p11').textContent = p11.toFixed(2);
+            document.getElementById('val-p12').textContent = p12.toFixed(2);
+            document.getElementById('val-p22').textContent = p22.toFixed(2);
+            document.getElementById('val-p21').textContent = p21.toFixed(2);
+
+            // 理論平穩分佈公式
+            const denom = p12 + p21;
+            const piSunny = (p21 / denom);
+            const piRainy = (p12 / denom);
+            document.getElementById('theo-pi-sunny').textContent = (piSunny * 100).toFixed(1) + '%';
+            document.getElementById('theo-pi-rainy').textContent = (piRainy * 100).toFixed(1) + '%';
+
+            // 矩陣 n 次方計算 (2x2 Matrix Multiplication)
+            let m00 = p11, m01 = p12, m10 = p21, m11 = p22;
+
+            function multiply(a, b) {
+                return [
+                    a[0]*b[0] + a[1]*b[2], a[0]*b[1] + a[1]*b[3],
+                    a[2]*b[0] + a[3]*b[2], a[2]*b[1] + a[3]*b[3]
+                ];
+            }
+
+            let result = [p11, p12, p21, p22];
+            for (let step = 1; step < currentPowerN; step++) {
+                result = multiply(result, [p11, p12, p21, p22]);
+            }
+
+            document.getElementById('mat-00').textContent = result[0].toFixed(4);
+            document.getElementById('mat-01').textContent = result[1].toFixed(4);
+            document.getElementById('mat-10').textContent = result[2].toFixed(4);
+            document.getElementById('mat-11').textContent = result[3].toFixed(4);
+            document.getElementById('display-n').textContent = currentPowerN;
+
+            const badge = document.getElementById('convergence-badge');
+            if (Math.abs(result[0] - result[2]) < 0.001) {
+                badge.textContent = "已完美收斂至平穩列向量";
+                badge.className = "text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold";
+            } else {
+                badge.textContent = `尚未收斂 (差距: ${Math.abs(result[0] - result[2]).toFixed(3)})`;
+                badge.className = "text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300";
+            }
+        }
+
+        function setPowerN(n) {
+            currentPowerN = n;
+            updateMathDerivation();
+        }
+
+        document.getElementById('input-p11').addEventListener('input', updateMathDerivation);
+        document.getElementById('input-p22').addEventListener('input', updateMathDerivation);
+
+        /* -------------------------------------------------------------
+         * 06. 跨領域 Tab 切換與專屬互動模擬
+         * -----------------------------------------------------------*/
+        function switchTab(activeId) {
+            const tabs = ['tab-ml', 'tab-rl', 'tab-dl', 'tab-llm'];
+            tabs.forEach(tabId => {
+                const el = document.getElementById(tabId);
+                const btn = document.getElementById('btn-' + tabId);
+                if (tabId === activeId) {
+                    el.classList.remove('hidden');
+                    btn.className = "px-4 py-2 text-sm font-semibold rounded-xl bg-indigo-600 text-white shadow-sm transition";
+                } else {
+                    el.classList.add('hidden');
+                    btn.className = "px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:bg-slate-100 transition";
+                }
+            });
+            if (activeId === 'tab-dl') {
+                updateDiffusionVisual(document.getElementById('diff-step').value);
+            }
+        }
+
+        // ML - PageRank Surfer
+        const pages = ['A', 'B', 'C', 'D'];
+        let prVisits = { A: 40, B: 30, C: 20, D: 10 };
+        let currentPrPage = 'A';
+
+        function simulatePageRankStep() {
+            const rand = Math.random();
+            let nextPage = currentPrPage;
+            // 85% link, 15% teleport
+            if (rand < 0.15) {
+                nextPage = pages[Math.floor(Math.random() * pages.length)];
+            } else {
+                if (currentPrPage === 'A') nextPage = Math.random() < 0.6 ? 'B' : 'C';
+                else if (currentPrPage === 'B') nextPage = 'A';
+                else if (currentPrPage === 'C') nextPage = 'A';
+                else nextPage = 'B';
+            }
+            currentPrPage = nextPage;
+            prVisits[nextPage]++;
+
+            const total = Object.values(prVisits).reduce((a, b) => a + b, 0);
+            pages.forEach(p => {
+                const pct = ((prVisits[p] / total) * 100).toFixed(1);
+                document.getElementById(`pr-score-${p}`).textContent = `${pct}%`;
+                document.getElementById(`pr-bar-${p}`).style.width = `${pct}%`;
+            });
+            document.getElementById('current-page-node').textContent = `網頁 ${currentPrPage}`;
+        }
+
+        // RL - MDP Gridworld
+        let agentPos = { x: 0, y: 0 };
+        let mdpReward = 0;
+        function renderGridworld() {
+            const container = document.getElementById('gridworld');
+            if (!container) return;
+            container.innerHTML = '';
+            for (let r = 0; r < 3; r++) {
+                for (let c = 0; c < 3; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = "rounded-lg flex items-center justify-center font-bold text-xs border border-slate-300 transition-colors";
+                    if (r === 2 && c === 2) {
+                        cell.className += " bg-amber-200 text-amber-800";
+                        cell.textContent = "🏆 終點 +10";
+                    } else if (r === 1 && c === 1) {
+                        cell.className += " bg-rose-200 text-rose-800";
+                        cell.textContent = "陷阱 -5";
+                    } else {
+                        cell.className += " bg-white text-slate-400";
+                    }
+
+                    if (agentPos.x === c && agentPos.y === r) {
+                        cell.className = "rounded-lg flex items-center justify-center font-bold text-xs border-2 border-indigo-600 bg-indigo-600 text-white shadow-md animate-pulse";
+                        cell.textContent = "🤖 Agent";
+                    }
+                    container.appendChild(cell);
+                }
+            }
+        }
+        function moveMdpAgent(action) {
+            // 20% random slip
+            let actualAction = action;
+            if (Math.random() < 0.2) {
+                const acts = ['UP', 'DOWN', 'LEFT', 'RIGHT'];
+                actualAction = acts[Math.floor(Math.random() * acts.length)];
+            }
+            if (actualAction === 'UP' && agentPos.y > 0) agentPos.y--;
+            if (actualAction === 'DOWN' && agentPos.y < 2) agentPos.y++;
+            if (actualAction === 'LEFT' && agentPos.x > 0) agentPos.x--;
+            if (actualAction === 'RIGHT' && agentPos.x < 2) agentPos.x++;
+
+            // Check rewards
+            if (agentPos.x === 2 && agentPos.y === 2) {
+                mdpReward += 10;
+                agentPos = { x: 0, y: 0 }; // reset
+            } else if (agentPos.x === 1 && agentPos.y === 1) {
+                mdpReward -= 5;
+            } else {
+                mdpReward -= 0.1; // step penalty
+            }
+            document.getElementById('mdp-score').textContent = mdpReward.toFixed(1);
+            renderGridworld();
+        }
+
+        // DL - Diffusion Visualizer
+        function updateDiffusionVisual(stepVal) {
+            const canvas = document.getElementById('diff-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width, h = canvas.height;
+            const step = parseInt(stepVal);
+            document.getElementById('diff-t-val').textContent = step;
+
+            const imgData = ctx.createImageData(w, h);
+            const noiseRatio = step / 10.0;
+
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < h; x++) {
+                    const idx = (y * w + x) * 4;
+                    // Circle pattern
+                    const dx = x - w/2, dy = y - h/2;
+                    const inShape = (dx*dx + dy*dy < 24*24) ? 240 : 40;
+
+                    // Interpolate with Gaussian/Uniform noise
+                    const noise = Math.random() * 255;
+                    const val = (1 - noiseRatio) * inShape + noiseRatio * noise;
+
+                    imgData.data[idx] = val * 0.8;
+                    imgData.data[idx + 1] = val * 0.7;
+                    imgData.data[idx + 2] = val;
+                    imgData.data[idx + 3] = 255;
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+
+            const desc = document.getElementById('diff-desc');
+            if (step === 0) desc.textContent = "原始清晰狀態 $x_0$";
+            else if (step < 7) desc.textContent = "添加雜訊中 $x_t$，結構逐漸模糊";
+            else if (step < 10) desc.textContent = "接近純高斯雜訊";
+            else desc.textContent = "純隨機噪聲 $x_T \sim \mathcal{N}(0, \mathbf{I})$";
+        }
+
+        // LLM Text generation demo
+        function appendToken(word, prob) {
+            const box = document.getElementById('llm-text-box');
+            box.textContent = box.textContent.trim() + " " + word;
+        }
+        function resetLlmDemo() {
+            document.getElementById('llm-text-box').textContent = "人工智慧正在";
+        }
+
+        // Copy Code Snippet
+        function copyCodeSnippet() {
+            const code = document.getElementById('python-code-content').innerText;
+            const temp = document.createElement('textarea');
+            temp.value = code;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+
+            const label = document.getElementById('copy-btn-label');
+            label.textContent = "已複製！";
+            setTimeout(() => label.textContent = "複製代碼", 2000);
+        }
+
+        /* -------------------------------------------------------------
+         * 08. 3-狀態馬可夫鏈動態模擬器 (Canvas + Chart.js)
+         * -----------------------------------------------------------*/
+        const states = [
+            { id: 0, name: "晴天 (Sunny)", color: "#f59e0b", x: 0, y: 0 },
+            { id: 1, name: "陰天 (Cloudy)", color: "#64748b", x: 0, y: 0 },
+            { id: 2, name: "雨天 (Rainy)", color: "#3b82f6", x: 0, y: 0 }
+        ];
+
+        // 3x3 轉移機率矩陣
+        const transitionMatrix3x3 = [
+            [0.60, 0.30, 0.10], // Sunny -> [S, C, R]
+            [0.30, 0.40, 0.30], // Cloudy -> [S, C, R]
+            [0.20, 0.30, 0.50]  // Rainy -> [S, C, R]
+        ];
+
+        // 3-state 理論平穩分佈約: 晴天 38.6%, 陰天 33.3%, 雨天 28.1%
+        const theoretical3 = [0.386, 0.333, 0.281];
+
+        let currentState = 0;
+        let totalSteps = 0;
+        let visitCounts = [0, 0, 0];
+        let isAutoRunning = false;
+        let autoInterval = null;
+
+        // Particle animation state
+        let particle = { active: false, x: 0, y: 0, targetX: 0, targetY: 0, progress: 1 };
+
+        const canvas = document.getElementById('markovCanvas');
+        const ctx = canvas.getContext('2d');
+        let distChart = null;
+        let indepChart = null;
+
+        /* -------------------------------------------------------------
+         * 01-B. 獨立性 vs 馬可夫相依性收斂實驗邏輯
+         * -----------------------------------------------------------*/
+        function onCorrelationChange(val) {
+            document.getElementById('label-correlation').textContent = parseFloat(val).toFixed(2);
+            runIndependenceComparison();
+        }
+
+        function runIndependenceComparison() {
+            const rho = parseFloat(document.getElementById('input-correlation').value);
+            const N = 1000;
+            const steps = [];
+            const iidCumMeans = [];
+            const markovCumMeans = [];
+
+            // 1. i.i.d. 獨立伯努利試驗 (p=0.5)
+            let iidSum = 0;
+            for (let i = 1; i <= N; i++) {
+                const x = Math.random() < 0.5 ? 1 : 0;
+                iidSum += x;
+                if (i % 5 === 0 || i === N) {
+                    iidCumMeans.push(iidSum / i);
+                }
+            }
+
+            // 2. 馬可夫相依試驗：轉移矩陣 P = [[rho, 1-rho], [1-rho, rho]]，平穩均值依然為 0.5
+            let markovState = Math.random() < 0.5 ? 1 : 0;
+            let markovSum = 0;
+            for (let i = 1; i <= N; i++) {
+                // 以機率 rho 維持當前狀態，1-rho 機率切換
+                if (Math.random() > rho) {
+                    markovState = 1 - markovState;
+                }
+                markovSum += markovState;
+                if (i % 5 === 0 || i === N) {
+                    steps.push(i);
+                    markovCumMeans.push(markovSum / i);
+                }
+            }
+
+            if (!indepChart) {
+                const chartCanvas = document.getElementById('independenceChart').getContext('2d');
+                indepChart = new Chart(chartCanvas, {
+                    type: 'line',
+                    data: {
+                        labels: steps,
+                        datasets: [
+                            {
+                                label: '獨立 i.i.d.',
+                                data: iidCumMeans,
+                                borderColor: '#34d399',
+                                borderWidth: 1.5,
+                                pointRadius: 0,
+                                tension: 0.1
+                            },
+                            {
+                                label: '馬可夫相依鏈',
+                                data: markovCumMeans,
+                                borderColor: '#fbbf24',
+                                borderWidth: 1.8,
+                                pointRadius: 0,
+                                tension: 0.1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: { duration: 300 },
+                        scales: {
+                            y: {
+                                min: 0.2,
+                                max: 0.8,
+                                ticks: { font: { size: 9 }, color: '#94a3b8' },
+                                grid: { color: 'rgba(255, 255, 255, 0.08)' }
+                            },
+                            x: {
+                                ticks: { font: { size: 9 }, color: '#94a3b8', maxTicksLimit: 10 },
+                                grid: { display: false }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+            } else {
+                indepChart.data.labels = steps;
+                indepChart.data.datasets[0].data = iidCumMeans;
+                indepChart.data.datasets[1].data = markovCumMeans;
+                indepChart.update();
+            }
+        }
+
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            // Compute triangle layout
+            const w = rect.width;
+            const h = rect.height;
+            const radius = Math.min(w, h) * 0.34;
+            const centerX = w / 2;
+            const centerY = h / 2 + 10;
+
+            states[0].x = centerX;
+            states[0].y = centerY - radius; // Top: Sunny
+            states[1].x = centerX - radius * 0.95;
+            states[1].y = centerY + radius * 0.7; // Bottom Left: Cloudy
+            states[2].x = centerX + radius * 0.95;
+            states[2].y = centerY + radius * 0.7; // Bottom Right: Rainy
+
+            drawGraph();
+        }
+
+        function drawGraph() {
+            const rect = canvas.getBoundingClientRect();
+            ctx.clearRect(0, 0, rect.width, rect.height);
+
+            // 1. Draw connecting transition lines
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    const prob = transitionMatrix3x3[i][j];
+                    if (prob <= 0) continue;
+
+                    const u = states[i];
+                    const v = states[j];
+
+                    ctx.save();
+                    if (i === j) {
+                        // Self-loop
+                        ctx.beginPath();
+                        const loopOffsetY = (i === 0) ? -24 : 20;
+                        ctx.arc(u.x, u.y + loopOffsetY, 18, 0, Math.PI * 2);
+                        ctx.strokeStyle = "rgba(100, 116, 139, 0.35)";
+                        ctx.lineWidth = prob * 3;
+                        ctx.stroke();
+                    } else {
+                        // Curved directed arrow
+                        ctx.beginPath();
+                        const dx = v.x - u.x;
+                        const dy = v.y - u.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        const normX = dx / dist;
+                        const normY = dy / dist;
+
+                        // Perpendicular curve offset
+                        const curveOffset = 22;
+                        const midX = (u.x + v.x) / 2 - normY * curveOffset;
+                        const midY = (u.y + v.y) / 2 + normX * curveOffset;
+
+                        ctx.moveTo(u.x, u.y);
+                        ctx.quadraticCurveTo(midX, midY, v.x, v.y);
+                        ctx.strokeStyle = "rgba(100, 116, 139, 0.35)";
+                        ctx.lineWidth = prob * 3.5;
+                        ctx.stroke();
+
+                        // Label prob
+                        ctx.fillStyle = "#94a3b8";
+                        ctx.font = "10px JetBrains Mono";
+                        ctx.fillText(prob.toFixed(2), midX - 6, midY);
+                    }
+                    ctx.restore();
+                }
+            }
+
+            // 2. Draw State Nodes
+            states.forEach((s) => {
+                const isCurrent = (s.id === currentState);
+                ctx.save();
+
+                // Outer halo for current active state
+                if (isCurrent) {
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, 34, 0, Math.PI * 2);
+                    ctx.fillStyle = s.color + "33";
+                    ctx.fill();
+                    ctx.strokeStyle = s.color;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
+                // Node circle
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, 25, 0, Math.PI * 2);
+                ctx.fillStyle = isCurrent ? s.color : "#1e293b";
+                ctx.fill();
+                ctx.strokeStyle = s.color;
+                ctx.lineWidth = isCurrent ? 3 : 1.5;
+                ctx.stroke();
+
+                // Node text
+                ctx.fillStyle = isCurrent ? "#ffffff" : "#cbd5e1";
+                ctx.font = "bold 11px Inter, sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(s.name.split(" ")[0], s.x, s.y);
+
+                ctx.restore();
+            });
+
+            // 3. Draw travelling photon particle if transitioning
+            if (particle.active && particle.progress < 1) {
+                ctx.save();
+                const curX = particle.x + (particle.targetX - particle.x) * particle.progress;
+                const curY = particle.y + (particle.targetY - particle.y) * particle.progress;
+
+                ctx.beginPath();
+                ctx.arc(curX, curY, 7, 0, Math.PI * 2);
+                ctx.fillStyle = "#38bdf8";
+                ctx.shadowColor = "#38bdf8";
+                ctx.shadowBlur = 12;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function stepSimulation() {
+            const prevState = currentState;
+            const probs = transitionMatrix3x3[prevState];
+            const rand = Math.random();
+
+            let cumSum = 0;
+            let nextState = 0;
+            for (let j = 0; j < probs.length; j++) {
+                cumSum += probs[j];
+                if (rand <= cumSum) {
+                    nextState = j;
+                    break;
+                }
+            }
+
+            // Animate transition
+            particle.active = true;
+            particle.x = states[prevState].x;
+            particle.y = states[prevState].y;
+            particle.targetX = states[nextState].x;
+            particle.targetY = states[nextState].y;
+            particle.progress = 0;
+
+            currentState = nextState;
+            totalSteps++;
+            visitCounts[currentState]++;
+
+            // Update UI
+            document.getElementById('sim-total-steps').textContent = totalSteps;
+            const badge = document.getElementById('sim-current-state-badge');
+            badge.textContent = states[currentState].name;
+            badge.style.color = states[currentState].color;
+
+            addSimLog(prevState, nextState, rand);
+            updateChart();
+            animateParticle();
+        }
+
+        function animateParticle() {
+            if (!particle.active) return;
+            particle.progress += 0.12;
+            if (particle.progress >= 1) {
+                particle.progress = 1;
+                particle.active = false;
+                drawGraph();
+            } else {
+                drawGraph();
+                requestAnimationFrame(animateParticle);
+            }
+        }
+
+        function addSimLog(from, to, roll) {
+            const logBox = document.getElementById('sim-logs');
+            const item = document.createElement('div');
+            item.className = "flex justify-between items-center py-1 border-b border-slate-800/60";
+            item.innerHTML = `
+                <span>${states[from].name.split(" ")[0]} <span class="text-indigo-400 font-bold mx-1">→</span> <strong class="text-white">${states[to].name.split(" ")[0]}</strong></span>
+                <span class="text-[10px] text-slate-500 font-mono">隨機骰數: ${roll.toFixed(3)}</span>
+            `;
+            logBox.prepend(item);
+            while (logBox.children.length > 5) {
+                logBox.removeChild(logBox.lastChild);
+            }
+        }
+
+        function toggleAutoSimulation() {
+            isAutoRunning = !isAutoRunning;
+            const btn = document.getElementById('btn-auto');
+            const label = document.getElementById('label-auto');
+
+            if (isAutoRunning) {
+                label.textContent = "暫停模擬";
+                btn.className = "px-4 py-2 bg-rose-600 text-white font-semibold text-xs rounded-xl hover:bg-rose-700 shadow-sm flex items-center gap-1.5 transition";
+                const speed = parseInt(document.getElementById('sim-speed').value);
+                autoInterval = setInterval(stepSimulation, speed);
+            } else {
+                label.textContent = "一鍵自動模擬";
+                btn.className = "px-4 py-2 bg-indigo-600 text-white font-semibold text-xs rounded-xl hover:bg-indigo-700 shadow-sm flex items-center gap-1.5 transition";
+                clearInterval(autoInterval);
+            }
+        }
+
+        document.getElementById('sim-speed').addEventListener('input', (e) => {
+            if (isAutoRunning) {
+                clearInterval(autoInterval);
+                autoInterval = setInterval(stepSimulation, parseInt(e.target.value));
+            }
+        });
+
+        function resetSimulation() {
+            if (isAutoRunning) toggleAutoSimulation();
+            totalSteps = 0;
+            currentState = 0;
+            visitCounts = [0, 0, 0];
+            document.getElementById('sim-total-steps').textContent = "0";
+            document.getElementById('sim-logs').innerHTML = '<div class="text-slate-500 italic">已重置狀態。</div>';
+            updateChart();
+            drawGraph();
+        }
+
+        function initChart() {
+            const chartCanvas = document.getElementById('distChart').getContext('2d');
+            distChart = new Chart(chartCanvas, {
+                type: 'bar',
+                data: {
+                    labels: ['晴天', '陰天', '雨天'],
+                    datasets: [
+                        {
+                            label: '當前經驗頻率',
+                            data: [0, 0, 0],
+                            backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                            borderRadius: 6
+                        },
+                        {
+                            label: '理論平穩分佈 (π)',
+                            data: [38.6, 33.3, 28.1],
+                            backgroundColor: 'rgba(226, 232, 240, 0.4)',
+                            borderColor: 'rgba(148, 163, 184, 0.8)',
+                            borderWidth: 1,
+                            type: 'bar',
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: { callback: v => v + '%', font: { size: 10 } },
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        x: {
+                            ticks: { font: { size: 11, weight: 'bold' } },
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            if (!distChart) return;
+            if (totalSteps === 0) {
+                distChart.data.datasets[0].data = [0, 0, 0];
+            } else {
+                const empirical = visitCounts.map(c => ((c / totalSteps) * 100).toFixed(1));
+                distChart.data.datasets[0].data = empirical;
+            }
+            distChart.update();
+        }
+
+        // Initialize Everything on Load
+        window.addEventListener('load', () => {
+            if (window.renderMathInElement) {
+                try {
+                    renderMathInElement(document.body, {
+                        delimiters: [
+                            { left: '$$', right: '$$', display: true },
+                            { left: '$', right: '$', display: false }
+                        ],
+                        throwOnError: false
+                    });
+                } catch (e) {
+                    console.warn("KaTeX auto-render skipped or failed:", e);
+                }
+            }
+            updateMathDerivation();
+            renderGridworld();
+            initChart();
+            runIndependenceComparison();
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+        });
+    </script>
+</body>
+</html>

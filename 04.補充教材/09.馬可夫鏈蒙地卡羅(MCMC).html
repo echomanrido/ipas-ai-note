@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>馬可夫鏈蒙地卡羅 (MCMC) 全方位探索與互動模擬系統</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- KaTeX for LaTeX rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+          onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+  <style>
+    .tab-active { border-b-2 border-indigo-600 text-indigo-600 font-semibold; }
+    .code-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+    .code-scroll::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen">
+
+  <!-- Navigation Header -->
+  <header class="bg-slate-900 text-white sticky top-0 z-50 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap justify-between items-center gap-4">
+      <div class="flex items-center space-x-3">
+        <span class="p-2 bg-indigo-500 rounded-lg text-white font-black text-xl tracking-wider">MC²</span>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight">MCMC 馬可夫鏈蒙地卡羅</h1>
+          <p class="text-xs text-slate-400">Markov Chain Monte Carlo : 理論推導、領域應用與即時抽樣模擬器</p>
+        </div>
+      </div>
+      <nav class="flex space-x-2 text-sm">
+        <a href="#simulator" class="px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition">動態模擬器</a>
+        <a href="#theory" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 transition">理論推導</a>
+        <a href="#applications" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 transition">AI / LLM 範疇</a>
+        <a href="#code" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 transition">程式實作</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-12">
+
+    <!-- 00. 核心前言：為什麼不能只用「馬可夫鏈」或「蒙地卡羅」？ -->
+    <section class="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-indigo-100 space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
+        <div>
+          <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 mb-1">
+            根本大哉問 • First Principles
+          </span>
+          <h2 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            為什麼不「只用蒙地卡羅」？為什麼不「只用馬可夫鏈」？
+          </h2>
+        </div>
+        <span class="text-xs text-slate-500 font-mono bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+          MCMC = Markov Chain (解決如何探索) + Monte Carlo (解決如何估計)
+        </span>
+      </div>
+
+      <!-- 對比網格：單用蒙地卡羅 vs. 單用馬可夫鏈 vs. MCMC 天作之合 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        
+        <!-- 痛點 1: 單獨使用「蒙地卡羅 (Monte Carlo)」的致命瓶頸 -->
+        <div class="p-5 bg-rose-50/50 rounded-2xl border border-rose-200/70 flex flex-col justify-between space-y-3">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold px-2 py-0.5 rounded bg-rose-200 text-rose-800">單獨用：蒙地卡羅</span>
+              <span class="text-rose-500 text-xs font-bold">致命瓶頸 ✘</span>
+            </div>
+            <h3 class="text-sm font-bold text-slate-900 mb-2">無法處理「未知分母」與「高維維度詛咒」</h3>
+            <ul class="text-xs text-slate-700 space-y-2 leading-relaxed">
+              <li>
+                <strong>需要能直接獨立抽樣 (i.i.d.)：</strong> 傳統蒙地卡羅要求我們能直接從目標分佈 $p(x)$ 抽樣（如逆變換採樣），但在多維或複雜問題中這根本辦不到。
+              </li>
+              <li>
+                <strong>分母配分函數不可解：</strong> 在貝氏推論中 $p(\theta \mid D) = \frac{p(D \mid \theta)p(\theta)}{Z}$，分母 $Z = \int p(D \mid \theta)p(\theta)d\theta$ 是百維積分，數值積分直接崩潰。
+              </li>
+              <li>
+                <strong>拒絕/重要性採樣在高維失效：</strong> 提議分佈在高維空間與目標分佈重合度極低，採樣接受率以指數級 $\mathcal{O}(e^{-D})$ 暴跌歸零。
+              </li>
+            </ul>
+          </div>
+          <div class="p-2.5 bg-white/80 rounded-xl text-[11px] text-rose-700 font-medium border border-rose-100">
+            結論：高維未知正規化常數下，單靠傳統蒙地卡羅「根本抽不出樣本」。
+          </div>
+        </div>
+
+        <!-- 痛點 2: 單獨使用「馬可夫鏈 (Markov Chain)」的局限 -->
+        <div class="p-5 bg-amber-50/50 rounded-2xl border border-amber-200/70 flex flex-col justify-between space-y-3">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold px-2 py-0.5 rounded bg-amber-200 text-amber-900">單獨用：馬可夫鏈</span>
+              <span class="text-amber-600 text-xs font-bold">局限所在 ✘</span>
+            </div>
+            <h3 class="text-sm font-bold text-slate-900 mb-2">它只是一種「狀態轉移動態」，缺乏估計目的</h3>
+            <ul class="text-xs text-slate-700 space-y-2 leading-relaxed">
+              <li>
+                <strong>只是隨機過程的數學描述：</strong> 馬可夫鏈本質僅說明「下一個狀態僅與當前狀態相關（無記憶性）」，它本身並不是數值計算或統計推論工具。
+              </li>
+              <li>
+                <strong>漫無目的的遊走：</strong> 若未特別人為設計轉移機率，隨機漫步可能發散、週期循環或滯留在低價值區域，無法對應到特定的複雜後驗分佈。
+              </li>
+              <li>
+                <strong>沒有數值估計機制：</strong> 馬可夫鏈生成的是一條時序相依的狀態軌跡，如何從這條軌跡轉化為「參數期望值、信賴區間、數值積分」？這超出馬可夫鏈原本的定義範疇。
+              </li>
+            </ul>
+          </div>
+          <div class="p-2.5 bg-white/80 rounded-xl text-[11px] text-amber-800 font-medium border border-amber-100">
+            結論：馬可夫鏈提供的是「局域移動機制」，但缺乏目標引導與統計推論功能。
+          </div>
+        </div>
+
+        <!-- 解方: MCMC 的天作之合 -->
+        <div class="p-5 bg-indigo-50/60 rounded-2xl border border-indigo-200 flex flex-col justify-between space-y-3">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold px-2 py-0.5 rounded bg-indigo-600 text-white">兩者結合：MCMC</span>
+              <span class="text-indigo-600 text-xs font-bold">完美破局 ✔</span>
+            </div>
+            <h3 class="text-sm font-bold text-indigo-950 mb-2">1 + 1 &gt; 2：巧借漫步解高維，再用經驗算期望</h3>
+            <ul class="text-xs text-slate-700 space-y-2 leading-relaxed">
+              <li>
+                <strong>馬可夫鏈解決「怎麼抽」：</strong> 設計細緻平衡轉移核，以「兩點機率比值 $\frac{\tilde{p}(x')}{\tilde{p}(x)}$」做局域探索，<strong>未知的可怕分母 $Z$ 被直接分子分母約分消去</strong>，完全不需要全域資訊！
+              </li>
+              <li>
+                <strong>蒙地卡羅解決「怎麼算」：</strong> 依據遍歷定理（Ergodic Theorem），當馬可夫鏈遍歷平穩分佈後，我們用蒙地卡羅平均值 $\frac{1}{N}\sum f(x_t)$ 直接計算高維期望值。
+              </li>
+              <li>
+                <strong>擺脫維度詛咒：</strong> 抽樣估計誤差的收斂速率恆為 $\mathcal{O}(1/\sqrt{N})$，與空間維度大小無關！
+              </li>
+            </ul>
+          </div>
+          <div class="p-2.5 bg-indigo-600 text-white rounded-xl text-[11px] font-medium shadow-sm">
+            本質：以馬可夫鏈突破「無法抽樣」的死局，用蒙地卡羅實現「高維精確推論」。
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 00. 核心導讀與全觀簡介 -->
+    <section class="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
+      <div class="absolute -right-12 -bottom-12 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="relative z-10 space-y-4">
+        <div class="flex items-center gap-2">
+          <span class="px-3 py-1 rounded-full text-xs font-bold tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+            01. 核心簡介與觀念總覽
+          </span>
+          <span class="text-xs text-slate-400">Statistical Computing Framework</span>
+        </div>
+        <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+          馬可夫鏈蒙地卡羅（Markov Chain Monte Carlo, MCMC）
+        </h2>
+        <p class="text-base sm:text-lg text-slate-200 leading-relaxed font-light">
+          一種<strong>利用馬可夫鏈進行隨機抽樣的統計計算方法</strong>。當目標機率分佈的狀態空間太大、維度太高或形式過於複雜而無法直接抽樣時，MCMC 能夠精準建構隨機漫步路徑，以經驗樣本逼近高維幾何分佈。
+        </p>
+        
+        <!-- 核心速覽卡片 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3">
+          <div class="p-3.5 bg-slate-800/80 rounded-xl border border-slate-700/80">
+            <div class="text-indigo-400 font-bold text-xs mb-1">主要目的</div>
+            <div class="text-xs text-slate-300">目標分佈狀態空間巨大、高維度且無法直接解析抽樣時的破局關鍵。</div>
+          </div>
+          <div class="p-3.5 bg-slate-800/80 rounded-xl border border-slate-700/80">
+            <div class="text-indigo-400 font-bold text-xs mb-1">馬可夫鏈（無記憶性）</div>
+            <div class="text-xs text-slate-300">序列隨機變數的下一個狀態僅與當前狀態相關，與歷史路徑無關。</div>
+          </div>
+          <div class="p-3.5 bg-slate-800/80 rounded-xl border border-slate-700/80">
+            <div class="text-indigo-400 font-bold text-xs mb-1">平穩分佈收斂</div>
+            <div class="text-xs text-slate-300">人為構造轉移機率核，確保長時間漫步後極限狀態精確匹配目標分佈。</div>
+          </div>
+          <div class="p-3.5 bg-slate-800/80 rounded-xl border border-slate-700/80">
+            <div class="text-indigo-400 font-bold text-xs mb-1">蒙地卡羅積分</div>
+            <div class="text-xs text-slate-300">自收斂後的鏈獲取樣本，透過大數法則以樣本均值估算高維積分與推斷。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 01 & 02: 核心架構四大支柱與常見演算法 -->
+    <section class="space-y-6">
+      <!-- 四大核心機制模組 -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <!-- 1. 主要目的 -->
+        <div class="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">支柱 01</span>
+              <span class="text-xs text-slate-400">Purpose</span>
+            </div>
+            <h3 class="text-base font-bold text-slate-900 mb-2">主要目的與痛點</h3>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              當目標機率分佈的狀態空間太大、維度太高且複雜（如多參數聯立分佈或分母常數無法解析積分）而無法直接均勻抽樣或逆變換時，MCMC 提供了解析高維幾何的隨機路徑解法。
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-indigo-700 font-semibold">
+            克服高維積分不可解困境
+          </div>
+        </div>
+
+        <!-- 2. 馬可夫鏈 -->
+        <div class="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">支柱 02</span>
+              <span class="text-xs text-slate-400">Markov Chain</span>
+            </div>
+            <h3 class="text-base font-bold text-slate-900 mb-2">馬可夫鏈（無記憶性）</h3>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              構建一系列序列隨機變數 $X_0, X_1, \dots, X_t$，其下一個狀態 $X_{t+1}$ 的產生機率<strong>僅取決於當前所在狀態 $X_t$</strong>，與過去歷史無關：
+              $$P(X_{t+1} \mid X_t, \dots, X_0) = P(X_{t+1} \mid X_t)$$
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-indigo-700 font-semibold">
+            狀態轉移機率核 $T(x \to x')$
+          </div>
+        </div>
+
+        <!-- 3. 平穩分佈 -->
+        <div class="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">支柱 03</span>
+              <span class="text-xs text-slate-400">Stationary</span>
+            </div>
+            <h3 class="text-base font-bold text-slate-900 mb-2">平穩分佈收斂</h3>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              MCMC 刻意設計特定的轉移機率核，保證馬可夫鏈經過多次隨機漫步更新後，其長期的極限狀態分佈能精確收斂並匹配到目標機率分佈 $\pi(x)$（Ergodic 遍歷性）。
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-indigo-700 font-semibold">
+            細緻平衡：$\pi(x)T(x \to x') = \pi(x')T(x' \to x)$
+          </div>
+        </div>
+
+        <!-- 4. 蒙地卡羅積分 -->
+        <div class="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">支柱 04</span>
+              <span class="text-xs text-slate-400">MC Integration</span>
+            </div>
+            <h3 class="text-base font-bold text-slate-900 mb-2">蒙地卡羅數值積分</h3>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              當順利從收斂後的鏈中取得大量樣本 $\{x_1, \dots, x_N\}$ 後，利用大數法則以樣本均值直接逼近任意複雜函數的統計期望值：
+              $$\mathbb{E}[f(X)] = \int f(x)\pi(x)dx \approx \frac{1}{N}\sum_{i=1}^N f(x_i)$$
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-indigo-700 font-semibold">
+            誤差收斂率 $\mathcal{O}(1/\sqrt{N})$ 不受維度影響
+          </div>
+        </div>
+      </div>
+
+      <!-- 常見演算法對比：Metropolis-Hastings vs. Gibbs Sampling -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div>
+            <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider">演算法核心演進</span>
+            <h3 class="text-lg font-bold text-slate-900">常見 MCMC 演算法比較與機制剖析</h3>
+          </div>
+          <span class="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full font-medium self-start sm:self-auto">
+            Metropolis-Hastings vs. 吉布斯抽樣 (Gibbs Sampling)
+          </span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-700">
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+            <div class="flex items-center justify-between">
+              <strong class="text-indigo-800 text-sm">1. Metropolis-Hastings (M-H) 演算法</strong>
+              <span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-[10px] font-bold">最通用基礎架構</span>
+            </div>
+            <p class="leading-relaxed text-slate-600">
+              透過提議分佈 $q(x^* \mid x_t)$ 先提出一個候選樣本點，再透過接受機率 $\alpha(x_t, x^*)$ 裁定是否跳躍：
+            </p>
+            <div class="p-2 bg-white rounded border border-slate-200 font-mono text-[11px]">
+              $$\alpha(x_t, x^*) = \min\left(1, \frac{p(x^*)q(x_t \mid x^*)}{p(x_t)q(x^* \mid x_t)}\right)$$
+            </div>
+            <ul class="list-disc list-inside space-y-1 text-slate-600 pt-1">
+              <li><strong>優勢：</strong> 幾乎適用於任何已知分子非正規化形式的高維分佈。</li>
+              <li><strong>局限：</strong> 若提議步長不佳，容易出現大量拒絕（留在原地）或遍歷緩慢現象。</li>
+            </ul>
+          </div>
+
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+            <div class="flex items-center justify-between">
+              <strong class="text-indigo-800 text-sm">2. 吉布斯抽樣 (Gibbs Sampling)</strong>
+              <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">特殊特例・100% 接受</span>
+            </div>
+            <p class="leading-relaxed text-slate-600">
+              M-H 的特殊特例。將多維變數 $\mathbf{x} = (x_1, \dots, x_D)$ 拆開，每次固定其他變數，<strong>沿單一維度的全條件機率</strong>直接抽樣：
+            </p>
+            <div class="p-2 bg-white rounded border border-slate-200 font-mono text-[11px]">
+              $$x_i^{(t+1)} \sim p\left(x_i \mid x_1^{(t+1)}, \dots, x_{i-1}^{(t+1)}, x_{i+1}^{(t)}, \dots, x_D^{(t)}\right)$$
+            </div>
+            <ul class="list-disc list-inside space-y-1 text-slate-600 pt-1">
+              <li><strong>優勢：</strong> <strong>接受率恆為 100%</strong>，無需手動微調提議分佈標準差。</li>
+              <li><strong>適用條件：</strong> 必須能夠推導出每個變數在給定其他變數下的閉式條件機率（Conjugacy）。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 12. 互動式模擬器 (Step by Step & 一鍵自動) -->
+    <section id="simulator" class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-200">
+      <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+        <div>
+          <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 mb-1">12. 即時可視化互動</span>
+          <h2 class="text-2xl font-black text-slate-900">Metropolis 採樣動態模擬實驗室</h2>
+          <p class="text-sm text-slate-500">觀察馬可夫鏈如何在未知分母的雙峰分佈中遊走，並直觀感受接受率與混合（Mixing）特性。</p>
+        </div>
+        <!-- 狀態徽章 -->
+        <div class="flex flex-wrap gap-2 text-xs">
+          <div class="bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+            總步數：<span id="stat-total-steps" class="font-bold text-slate-800">0</span>
+          </div>
+          <div class="bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+            接受步數：<span id="stat-accepted-steps" class="font-bold text-emerald-600">0</span>
+          </div>
+          <div class="bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+            即時接受率：<span id="stat-accept-rate" class="font-bold text-indigo-600">0.0%</span>
+            <span class="text-[10px] text-slate-400">(理想 20%~50%)</span>
+          </div>
+          <div class="bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+            當前位置 $x_t$：<span id="stat-current-x" class="font-mono font-bold text-amber-600">0.00</span>
+          </div>
+          <div class="bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-200">
+            蒙地卡羅估計 $\mathbb{E}[X]$：<span id="stat-mc-mean" class="font-mono font-bold text-indigo-700">0.00</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <!-- 控制面板 -->
+        <div class="lg:col-span-1 space-y-4 bg-slate-50 p-5 rounded-xl border border-slate-200 text-sm">
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">目標分佈形狀</label>
+            <select id="sim-target-dist" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+              <option value="bimodal">非對稱雙峰 (Bimodal Mixture)</option>
+              <option value="trimodal">高難度三峰 (Trimodal Isolated)</option>
+              <option value="skewed">長尾偏態 (Skewed Gamma-like)</option>
+            </select>
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="font-bold text-slate-700">提議標準差 $\sigma_{prop}$</label>
+              <span id="val-proposal-sigma" class="font-mono text-indigo-600 font-bold">1.2</span>
+            </div>
+            <input id="slider-sigma" type="range" min="0.1" max="5.0" step="0.1" value="1.2" class="w-full accent-indigo-600">
+            <p class="text-[11px] text-slate-500 mt-1">
+              太小：走動極慢、自相關過高；太大：經常跳到機率極低處被拒絕。
+            </p>
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="font-bold text-slate-700">自動模擬速度</label>
+              <span id="val-sim-speed" class="font-mono text-indigo-600 font-bold">中速</span>
+            </div>
+            <input id="slider-speed" type="range" min="1" max="100" step="1" value="30" class="w-full accent-indigo-600">
+          </div>
+
+          <!-- 操作按鈕 -->
+          <div class="pt-2 flex flex-col gap-2">
+            <button id="btn-step" class="w-full py-2.5 px-4 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold rounded-lg shadow-sm transition flex items-center justify-center gap-2">
+              <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+              逐步演算 (Step by Step)
+            </button>
+            <button id="btn-play" class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg shadow-sm transition flex items-center justify-center gap-2">
+              <svg id="icon-play" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
+              <span id="text-play">一鍵自動模擬</span>
+            </button>
+            <button id="btn-reset" class="w-full py-2 px-4 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg transition text-xs">
+              重設所有採樣數據
+            </button>
+          </div>
+
+          <!-- 即時步進決策日誌 -->
+          <div class="pt-2 border-t border-slate-200">
+            <span class="text-xs font-bold text-slate-600 block mb-1">單步決策資訊</span>
+            <div id="step-log" class="p-2.5 bg-white border border-slate-200 rounded-lg text-[11px] font-mono leading-relaxed text-slate-700 min-h-[90px]">
+              等待開始採樣...
+            </div>
+          </div>
+        </div>
+
+        <!-- 視覺化 Canvas 區塊 -->
+        <div class="lg:col-span-3 space-y-4">
+          <!-- 上方主圖：目標分佈曲線 vs 採樣直方圖 -->
+          <div class="relative bg-slate-900 rounded-xl p-3 border border-slate-800">
+            <div class="flex justify-between items-center text-xs text-slate-300 px-2 pb-1">
+              <span class="font-bold flex items-center gap-2">
+                <span class="inline-block w-3 h-0.5 bg-rose-500"></span> 真實目標 PDF $\tilde{p}(x)$
+                <span class="inline-block w-3 h-2 bg-indigo-500/60 ml-2"></span> 累積抽樣分佈長條圖
+              </span>
+              <span class="text-slate-400">當前狀態：<span class="text-amber-400 font-bold">●</span> | 候選提議：<span class="text-cyan-400 font-bold">○</span></span>
+            </div>
+            <canvas id="canvas-main" width="800" height="280" class="w-full h-[280px] block"></canvas>
+          </div>
+
+          <!-- 下方次圖：Trace Plot (遊走軌跡) -->
+          <div class="bg-slate-900 rounded-xl p-3 border border-slate-800">
+            <div class="flex justify-between items-center text-xs text-slate-300 px-2 pb-1">
+              <span class="font-bold">採樣軌跡圖 (Trace Plot: 檢驗鏈條是否良好混合 Mixing)</span>
+              <span class="text-slate-400">顯示最近 200 步</span>
+            </div>
+            <canvas id="canvas-trace" width="800" height="110" class="w-full h-[110px] block"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 08 & 09: 理論簡介與數學推導（互動式折疊） -->
+    <section id="theory" class="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+      <div>
+        <span class="text-indigo-600 text-xs font-bold uppercase tracking-wider">08 & 09. 理論剖析與數學推導</span>
+        <h2 class="text-2xl font-black text-slate-900 mt-1">為什麼 MCMC 能在不知道分母的情況下精確抽樣？</h2>
+        <p class="text-sm text-slate-600 mt-1">
+          貝氏定理中後驗機率 $p(\theta \mid D) = \frac{p(D \mid \theta)p(\theta)}{\int p(D \mid \theta')p(\theta')d\theta'}$。分母的積分稱為「邊際概似度（Marginal Likelihood）」或「配分函數（Partition Function）」。當參數空間高達數十或上百維時，數值網格積分在計算上是不可行的（$O(N^d)$ 爆炸）。
+        </p>
+      </div>
+
+      <div class="space-y-4">
+        <!-- 推導步驟 1 -->
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+          <button onclick="toggleAccordion('step-deriv-1')" class="w-full px-5 py-4 bg-slate-50 hover:bg-slate-100 flex justify-between items-center text-left font-bold text-slate-800 text-sm">
+            <span>步驟一：細緻平衡條件 (Detailed Balance Condition) 的充分性</span>
+            <span id="step-deriv-1-icon" class="text-indigo-600 text-lg">−</span>
+          </button>
+          <div id="step-deriv-1" class="p-5 text-sm text-slate-700 bg-white space-y-3">
+            <p>設目標平穩分佈為 $p(x)$，轉移機率核為 $T(x \to x')$。細緻平衡條件表述為：</p>
+            <div class="p-3 bg-slate-50 border-l-4 border-indigo-600 font-mono text-xs overflow-x-auto">
+              $$p(x) T(x \to x') = p(x') T(x' \to x)$$
+            </div>
+            <p><strong>證明平穩性：</strong>若對所有可能的前一狀態 $x$ 進行積分：</p>
+            <div class="overflow-x-auto text-xs">
+              $$\int p(x) T(x \to x') dx = \int p(x') T(x' \to x) dx = p(x') \int T(x' \to x) dx = p(x') \cdot 1 = p(x')$$
+            </div>
+            <p class="text-xs text-slate-600">
+              這證明了只要滿足細緻平衡，以 $T$ 進行轉移後的機率分佈依然是 $p(x')$，代表 $p(x)$ 必然是該馬可夫鏈的平穩分佈（Stationary Distribution）。
+            </p>
+          </div>
+        </div>
+
+        <!-- 推導步驟 2 -->
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+          <button onclick="toggleAccordion('step-deriv-2')" class="w-full px-5 py-4 bg-slate-50 hover:bg-slate-100 flex justify-between items-center text-left font-bold text-slate-800 text-sm">
+            <span>步驟二：拆解轉移核與推導接受率 $\alpha(x, x')$</span>
+            <span id="step-deriv-2-icon" class="text-indigo-600 text-lg">+</span>
+          </button>
+          <div id="step-deriv-2" class="p-5 text-sm text-slate-700 bg-white space-y-3 hidden">
+            <p>任意提議分佈 $q(x' \mid x)$（例如從當前點為中心的高斯隨機擾動）通常不滿足細緻平衡：</p>
+            <p class="font-mono text-xs text-slate-600">$$p(x) q(x' \mid x) \neq p(x') q(x \mid x')$$</p>
+            <p>我們引入一個<strong>接受機率因子 $\alpha(x, x') \in [0, 1]$</strong>，使得整體轉移機率為 $T(x \to x') = q(x' \mid x) \alpha(x, x')$。細緻平衡要求：</p>
+            <div class="p-3 bg-slate-50 border-l-4 border-indigo-600 font-mono text-xs overflow-x-auto">
+              $$p(x) q(x' \mid x) \alpha(x, x') = p(x') q(x \mid x') \alpha(x' \to x)$$
+            </div>
+            <p>移項整理得到比值：</p>
+            <div class="overflow-x-auto text-xs">
+              $$\frac{\alpha(x, x')}{\alpha(x' \to x)} = \frac{p(x') q(x \mid x')}{p(x) q(x' \mid x)}$$
+            </div>
+            <p>為了使採樣效率最高（盡量少拒絕、最大化採樣移動），Metropolis 與 Hastings 採取了極限解法：令較大的一端接收率為 $1$，因此得到經典的 <strong>Metropolis-Hastings 接受準則</strong>：</p>
+            <div class="p-3 bg-amber-50 border-l-4 border-amber-500 font-mono text-xs overflow-x-auto">
+              $$\alpha(x, x') = \min\left(1, \frac{p(x') q(x \mid x')}{p(x) q(x' \mid x)}\right) = \min\left(1, \frac{\tilde{p}(x') / Z \cdot q(x \mid x')}{\tilde{p}(x) / Z \cdot q(x' \mid x)}\right) = \min\left(1, \frac{\tilde{p}(x') q(x \mid x')}{\tilde{p}(x) q(x' \mid x)}\right)$$
+            </div>
+            <p class="text-xs text-emerald-700 font-semibold">
+              ★ 關鍵結論：未知的分母配分函數 $Z$ 在比值中被精準消去！我們只需能夠計算非正規化分子 $\tilde{p}(x)$，就能完成正確抽樣。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. 所屬範疇與跨領域深度解析 (互動式切換) -->
+    <section id="applications" class="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
+      <span class="text-indigo-600 text-xs font-bold uppercase tracking-wider">10. 領域範疇與跨領域深度應用</span>
+      <h2 class="text-2xl font-black text-slate-900 mt-1 mb-6">MCMC 在現代機器學習、深度學習與 LLM 中的定位</h2>
+
+      <!-- 標籤切換 -->
+      <div class="flex flex-wrap border-b border-slate-200 mb-6 gap-2">
+        <button onclick="switchAppTab('ml')" id="tab-btn-ml" class="px-4 py-2 text-sm tab-active transition">機器學習 (ML)</button>
+        <button onclick="switchAppTab('dl')" id="tab-btn-dl" class="px-4 py-2 text-sm text-slate-600 hover:text-indigo-600 transition">深度生成模型 (DL/EBM)</button>
+        <button onclick="switchAppTab('rl')" id="tab-btn-rl" class="px-4 py-2 text-sm text-slate-600 hover:text-indigo-600 transition">強化學習 (RL)</button>
+        <button onclick="switchAppTab('llm')" id="tab-btn-llm" class="px-4 py-2 text-sm text-slate-600 hover:text-indigo-600 transition">大型語言模型 (LLM)</button>
+        <button onclick="switchAppTab('sci')" id="tab-btn-sci" class="px-4 py-2 text-sm text-slate-600 hover:text-indigo-600 transition">計算科學 (物理/生物/圖形模型)</button>
+      </div>
+
+      <!-- 內容區塊 -->
+      <div id="app-content-ml" class="space-y-4">
+        <h3 class="text-lg font-bold text-slate-800">貝氏統計與不確定性量化 (Bayesian Statistics & ML)</h3>
+        <p class="text-sm text-slate-600 leading-relaxed">
+          貝氏統計中，參數後驗分佈為 $p(\theta \mid D) \propto p(D \mid \theta)p(\theta)$。當模型參數複雜時，分母配分函數無法封閉求解，MCMC 成為估計後驗機率分佈、信賴區間（Credible Interval）的核心支柱。
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <span class="font-bold text-indigo-700 block mb-1">貝氏邏輯斯與層次模型 (Hierarchical Models)</span>
+            透過 Gibbs 採樣或 Metropolis-Hastings 對高維階層參數抽樣，獲得完整的後驗不確定性估計，適用於小樣本高風險醫療與流行病學預測。
+          </div>
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <span class="font-bold text-indigo-700 block mb-1">潛在狄利克雷分配 (LDA 主題模型)</span>
+            透過 Collapsed Gibbs Sampling 解析海量文章集合中單詞與隱含主題（Topics）的聯合後驗分佈。
+          </div>
+        </div>
+      </div>
+
+      <div id="app-content-dl" class="space-y-4 hidden">
+        <h3 class="text-lg font-bold text-slate-800">深度能量模型 (Energy-Based Models, EBM) 與朗之萬動力學</h3>
+        <p class="text-sm text-slate-600 leading-relaxed">
+          定義資料分佈為 $p_\theta(x) = \frac{e^{-E_\theta(x)}}{Z(\theta)}$，其中 $E_\theta(x)$ 是神經網路輸出的純量能量值。最大概似訓練需要計算對數梯度的負相位（Negative Phase）：
+          $$\nabla_\theta \log p_\theta(x) = -\nabla_\theta E_\theta(x_{data}) + \mathbb{E}_{x \sim p_\theta}[\nabla_\theta E_\theta(x)]$$
+        </p>
+        <div class="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100 text-xs text-slate-700 leading-relaxed">
+          <strong>SGLD (Stochastic Gradient Langevin Dynamics)：</strong>結合神經網路自動微分梯度的 MCMC 方法。採樣時在像素空間進行迭代：
+          $$x_{t+1} = x_t - \frac{\epsilon}{2}\nabla_x E_\theta(x_t) + \sqrt{\epsilon} z_t, \quad z_t \sim \mathcal{N}(0, I)$$
+          這正是當代擴散模型（Diffusion Models）逆向生成去噪過程的物理與數學前身！
+        </div>
+      </div>
+
+      <div id="app-content-rl" class="space-y-4 hidden">
+        <h3 class="text-lg font-bold text-slate-800">最大熵強化學習與軌跡規劃 (Maximum Entropy RL)</h3>
+        <p class="text-sm text-slate-600 leading-relaxed">
+          在連續動作空間中，傳統 RL 容易陷入次優解。最大熵 RL（如 SAC, Soft Actor-Critic）將策略最佳化轉換為後驗機率採樣問題：
+          $$p(\tau) \propto \exp\left(\sum_t r(s_t, a_t) + \alpha \mathcal{H}(\pi)\right)$$
+        </p>
+        <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700">
+          <strong>以 MCMC 進行動作空間採樣：</strong>在機器人軌跡規劃（Trajectory Optimization）中，將報酬最高且動作平滑的軌跡視為高機率分佈，利用 MCMC 在動態環境障礙物中抽樣出多條可行避障路徑。
+        </div>
+      </div>
+
+      <div id="app-content-llm" class="space-y-4 hidden">
+        <h3 class="text-lg font-bold text-slate-800">大型語言模型（LLM）推理、對齊與推測解碼</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <span class="font-bold text-indigo-700 block mb-1">1. 推測解碼 (Speculative Decoding)</span>
+            小型草稿模型（Draft model）快速提議 $K$ 個 Token，目標大模型（Target model）並行驗證。其接收機制本質就是 <strong>Metropolis-Hastings 抽樣的變形</strong>，精確保證輸出 Token 分佈與大模型單獨自回歸解碼嚴格一致，同時加速 2-3 倍！
+          </div>
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <span class="font-bold text-indigo-700 block mb-1">2. 蒙地卡羅樹搜尋 (MCTS) 與複雜推理 (System-2 Reasoning)</span>
+            如同 OpenAI o1、DeepSeek-R1 的思維鏈搜索，使用隨機模擬（Rollout）評估推理路徑的價值，於潛在推理狀態樹中導航最優解題步驟。
+          </div>
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 md:col-span-2">
+            <span class="font-bold text-indigo-700 block mb-1">3. 受控文字生成 (Energy-Guided Controlled Generation)</span>
+            將語氣、安全性、事實性定義為能量評分函數 $E(y)$，在 Token 潛在空間中透過 MCMC 採樣約束自回歸機率，使 LLM 無需重新微調即可生成符合特定條件的文本。
+          </div>
+        </div>
+      </div>
+
+      <div id="app-content-sci" class="space-y-4 hidden">
+        <h3 class="text-lg font-bold text-slate-800">計算科學：計算物理、生物學與機率圖形模型</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <span class="font-bold text-indigo-700 block mb-1">計算物理：統計力學與易辛模型 (Ising Model)</span>
+            模擬自旋磁矩陣列的相變現象。高溫/低溫下的玻爾茲曼分佈 $p(s) \propto e^{-E(s)/kT}$ 透過 M-H 或 Wolff 集團抽樣模擬巨量自旋微觀態的宏觀磁化強度。
+          </div>
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <span class="font-bold text-indigo-700 block mb-1">計算生物學：系統親緣演化樹與蛋白質摺疊</span>
+            利用 MCMC（如 MrBayes 軟體）在數百萬種可能的基因譜系樹拓撲空間中遊走，計算生物演化枝後驗機率；並在三維構型空間抽樣分子能階分佈。
+          </div>
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <span class="font-bold text-indigo-700 block mb-1">機率圖形模型 (Graphical Models & MRF)</span>
+            馬可夫隨機場（Markov Random Field）及條件隨機場（CRF）中，全域配分函數計算複雜，吉布斯抽樣（Gibbs Sampling）利用節點的馬可夫毯（Markov Blanket）進行高效邊際推論。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 ~ 07: 實習、由來、生活化與工業應用 -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- 03. IPAS AI 考題與解析 -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+        <div class="flex items-center justify-between">
+          <span class="text-indigo-600 text-xs font-bold uppercase tracking-wider">03. IPAS AI 應用工程師經典考題</span>
+          <span class="text-xs bg-amber-100 text-amber-800 font-bold px-2.5 py-0.5 rounded">考試擬真題</span>
+        </div>
+        <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 text-sm">
+          <p class="font-bold text-slate-800 mb-2">
+            題目：在貝氏機器學習中使用 Metropolis-Hastings 演算法估計參數後驗分佈時，下列關於「暖機期（Burn-in period）」與「提議分佈標準差（$\sigma$）」的敘述，何者最為正確？
+          </p>
+          <div class="space-y-2 text-xs text-slate-700">
+            <label class="block p-2 rounded hover:bg-slate-100 cursor-pointer border border-transparent hover:border-slate-200">
+              <input type="radio" name="ipas-quiz" value="A" class="mr-2"> (A) 提議分佈標準差 $\sigma$ 設得越大越好，因為這樣可以百分之百保證每一次候選點都被接受。
+            </label>
+            <label class="block p-2 rounded hover:bg-slate-100 cursor-pointer border border-transparent hover:border-slate-200">
+              <input type="radio" name="ipas-quiz" value="B" class="mr-2"> (B) 暖機期（Burn-in）採集的樣本應保留在最終樣本庫中，以增加蒙地卡羅估計的樣本數量。
+            </label>
+            <label class="block p-2 rounded hover:bg-slate-100 cursor-pointer border border-transparent hover:border-slate-200">
+              <input type="radio" name="ipas-quiz" value="C" class="mr-2"> (C) 暖機期採樣旨在讓馬可夫鏈自任意初始點遊走收斂至目標平穩分佈，這些初始樣本通常會被捨棄以消除初始偏差。
+            </label>
+            <label class="block p-2 rounded hover:bg-slate-100 cursor-pointer border border-transparent hover:border-slate-200">
+              <input type="radio" name="ipas-quiz" value="D" class="mr-2"> (D) Metropolis 演算法要求提議分佈必須是非對稱的，否則無法滿足細緻平衡條件。
+            </label>
+          </div>
+          <button onclick="checkIpasAnswer()" class="mt-3 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition">
+            提交答案與檢視解析
+          </button>
+          <div id="ipas-feedback" class="mt-3 p-3 rounded-lg text-xs hidden"></div>
+        </div>
+      </div>
+
+      <!-- 04. 實務特徵與診斷 -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+        <span class="text-indigo-600 text-xs font-bold uppercase tracking-wider">04. 實務特徵與調校秘訣</span>
+        <h3 class="text-lg font-bold text-slate-900">演算法實務超參數與收斂診斷</h3>
+        <ul class="space-y-2 text-xs text-slate-700">
+          <li class="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+            <strong class="text-indigo-700">燃燒期 / 暖機期 (Burn-in)：</strong>
+            初始點可能位於目標分佈的低機率深淵，前 $N_{burn}$ 步是「尋路期」，應全部丟棄，僅保留收斂至平穩分佈後的樣本。
+          </li>
+          <li class="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+            <strong class="text-indigo-700">稀疏抽樣 (Thinning)：</strong>
+            連續馬可夫樣本間存在強烈自相關（Autocorrelation）。每隔 $k$ 步抽取一個樣本，能降低自相關，提升「有效樣本數（Effective Sample Size, ESS）」。
+          </li>
+          <li class="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+            <strong class="text-indigo-700">黃金接收率法則 (Optimal Acceptance Rate)：</strong>
+            理論證明，高維隨機遊走 Metropolis 演算法的最優漸進接收率約為 <strong>23.4%</strong>；一維情況則約在 <strong>44%</strong> 左右。
+          </li>
+          <li class="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+            <strong class="text-indigo-700">收斂檢驗 ($\hat{R}$ Gelman-Rubin 統計量)：</strong>
+            同時運行多條隨機初始化的馬可夫鏈，當鏈間方差與鏈內方差比值 $\hat{R} < 1.05$ 時，通常判定鏈已充分收斂混合。
+          </li>
+        </ul>
+      </div>
+
+      <!-- 05 & 06. 由來與生活化例子 -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+        <div>
+          <span class="text-indigo-600 text-xs font-bold uppercase tracking-wider">05. 歷史由來</span>
+          <h3 class="text-base font-bold text-slate-900 mt-1">曼哈頓計畫中的中子擴散之謎</h3>
+          <p class="text-xs text-slate-600 leading-relaxed mt-1">
+            1940 年代洛斯阿拉莫斯國家實驗室中，Stanislaw Ulam 在生病休養玩西洋單人紙牌（Solitaire）時，思考算出勝率太困難，不如「玩 100 次看贏幾次」！他與 John von Neumann 合作在 ENIAC 計算機上實作，並以著名賭場「蒙地卡羅」命名。1953 年 Nicholas Metropolis 等人發表重要論文；1970 年加拿大統計學家 W.K. Hastings 將其推廣至非對稱分佈，奠定現代 M-H 架構。
+          </p>
+        </div>
+        <div class="pt-3 border-t border-slate-100">
+          <span class="text-indigo-600 text-xs font-bold uppercase tracking-wider">06. 生活化例子</span>
+          <h3 class="text-base font-bold text-slate-900 mt-1">國王巡視群島記 (The King of Islands)</h3>
+          <p class="text-xs text-slate-600 leading-relaxed mt-1">
+            國王要在一串島嶼巡遊，希望在各島停留時間正比於該島人口。國王不知道總人口，每天只能擲硬幣決定是否提議前往相鄰島嶼：
+            <br>1. 信鴿向鄰島詢問人口 $P_{neighbor}$。
+            <br>2. 若鄰島人口更多，國王立刻啟程 ($100\%$ 接受)。
+            <br>3. 若鄰島人口較少，國王擲一枚偏向骰子，以機率 $\frac{P_{neighbor}}{P_{current}}$ 決定前往，否則留在原地。
+            <br>長此以往，國王在各島停留的時間比例完美等於各島人口比！這正是 Metropolis 演算法的核心機制。
+          </p>
+        </div>
+      </div>
+
+      <!-- 07. 工業上應用 -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+        <span class="text-indigo-600 text-xs font-bold uppercase tracking-wider">07. 工業重大工程應用</span>
+        <h3 class="text-base font-bold text-slate-900">工程實務中的四大殺手級場景</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+            <span class="font-bold text-slate-800 block">半導體可靠度與預測維護</span>
+            威布爾分佈（Weibull）參數估計與極端低溫機率推斷，預測機台零件剩餘使用壽命（RUL）。
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+            <span class="font-bold text-slate-800 block">量化金融與極端風控</span>
+            非線性隨機波動模型（Heston Model）之參數校準，精準估計百年一遇金融黑天鵝的 VaR / CVaR 尾部風險。
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+            <span class="font-bold text-slate-800 block">機器人定位與 SLAM 建圖</span>
+            粒子濾波器（Particle Filter，即循序蒙地卡羅 SMC），在非線性高雜訊環境下即時估計無人車與機械手臂姿態。
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+            <span class="font-bold text-slate-800 block">生醫製藥與分子動力學</span>
+            抽樣蛋白質分子三維折疊構型的高維玻爾茲曼能階分佈，加速新藥標靶結合親和力評估。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11. Python / PyTorch 實作 -->
+    <section id="code" class="bg-slate-900 text-slate-200 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-800 space-y-4">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <div>
+          <span class="text-indigo-400 text-xs font-bold uppercase tracking-wider">11. 程式實作範例</span>
+          <h2 class="text-xl font-black text-white">Metropolis-Hastings 採樣器 (PyTorch / Python)</h2>
+          <p class="text-xs text-slate-400">採樣未正規化雙峰高斯混合分佈 $\tilde{p}(x) = 0.4 e^{-\frac{(x+2.5)^2}{2}} + 0.6 e^{-\frac{(x-2.5)^2}{1}}$</p>
+        </div>
+        <button onclick="copyCode()" id="btn-copy-code" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs border border-slate-700 transition flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          複製代碼
+        </button>
+      </div>
+
+      <div class="relative">
+        <pre class="bg-slate-950 p-4 rounded-xl text-xs font-mono text-emerald-400 overflow-x-auto code-scroll leading-relaxed"><code id="python-code-block">import torch
+import numpy as np
+import matplotlib.pyplot as plt
+
+# 1. 定義未正規化的目標對數機率分佈 (避免數值下溢)
+def unnormalized_target_log_prob(x: torch.Tensor) -> torch.Tensor:
+    # 雙峰分佈混合: 40% N(-2.5, 1.0) + 60% N(2.5, 0.5)
+    p1 = 0.4 * torch.exp(-0.5 * ((x + 2.5) / 1.0) ** 2)
+    p2 = 0.6 * torch.exp(-0.5 * ((x - 2.5) / 0.707) ** 2)
+    return torch.log(p1 + p2 + 1e-12)
+
+# 2. Metropolis-Hastings 抽樣演算法實作
+def metropolis_hastings(num_samples=10000, proposal_std=1.2, burn_in=2000, thin=2):
+    # 隨機初始化起點
+    current_x = torch.randn(1)
+    samples = []
+    accepted_count = 0
+    total_steps = num_samples * thin + burn_in
+
+    for step in range(total_steps):
+        # 對稱高斯提議分佈: x_prop ~ N(current_x, proposal_std^2)
+        proposal_x = current_x + torch.randn(1) * proposal_std
+
+        # 計算對數接受率: log_alpha = log p(x') - log p(x)
+        log_prob_curr = unnormalized_target_log_prob(current_x)
+        log_prob_prop = unnormalized_target_log_prob(proposal_x)
+        log_alpha = log_prob_prop - log_prob_curr
+
+        # Metropolis 接受準則
+        # u ~ Uniform(0, 1) => log(u) <= log_alpha
+        u = torch.rand(1)
+        if torch.log(u) < log_alpha:
+            current_x = proposal_x
+            if step >= burn_in:
+                accepted_count += 1
+
+        # 捨棄暖機期樣本，並按 thin 步數稀疏存檔
+        if step >= burn_in and (step - burn_in) % thin == 0:
+            samples.append(current_x.item())
+
+    acceptance_rate = accepted_count / (num_samples * thin)
+    print(f"MCMC 完成! 接受率: {acceptance_rate:.2%} (理想範圍: 20%~50%)")
+    return np.array(samples)
+
+# 執行抽樣
+if __name__ == "__main__":
+    samples = metropolis_hastings(num_samples=8000, proposal_std=1.5, burn_in=1000)
+    print(f"採集樣本均值: {samples.mean():.4f}, 方差: {samples.var():.4f}")
+</code></pre>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 頁腳 -->
+  <footer class="bg-slate-900 border-t border-slate-800 text-slate-500 py-6 text-center text-xs">
+    <div class="max-w-7xl mx-auto px-4">
+      馬可夫鏈蒙地卡羅 (MCMC) 互動教學與模擬系統 • 遵循細緻平衡條件、現代機器學習與 LLM 抽樣機制
+    </div>
+  </footer>
+
+  <!-- 互動模擬引擎 JS -->
+  <script>
+    // --- 目標分佈定義 ---
+    const DISTRIBUTIONS = {
+      bimodal: {
+        pdf: (x) => 0.45 * Math.exp(-0.5 * Math.pow((x + 2.4) / 1.0, 2)) + 
+                    0.55 * Math.exp(-0.5 * Math.pow((x - 2.0) / 0.8, 2)),
+        xMin: -6, xMax: 6, yMax: 0.65
+      },
+      trimodal: {
+        pdf: (x) => 0.3 * Math.exp(-0.5 * Math.pow((x + 3.2) / 0.6, 2)) + 
+                    0.4 * Math.exp(-0.5 * Math.pow((x - 0.0) / 0.5, 2)) +
+                    0.3 * Math.exp(-0.5 * Math.pow((x - 3.2) / 0.6, 2)),
+        xMin: -6, xMax: 6, yMax: 0.75
+      },
+      skewed: {
+        pdf: (x) => {
+          const shift = x + 3.0;
+          if (shift <= 0) return 0.0001;
+          return Math.pow(shift, 2.5) * Math.exp(-1.5 * shift) * 1.6;
+        },
+        xMin: -4, xMax: 8, yMax: 0.8
+      }
+    };
+
+    // 模擬狀態
+    let currentDistKey = 'bimodal';
+    let proposalSigma = 1.2;
+    let currentX = 0.0;
+    let lastProposedX = null;
+    let lastDecision = null; // 'accept' or 'reject'
+    let totalSteps = 0;
+    let acceptedSteps = 0;
+    let samples = [];
+    let traceHistory = [];
+    let isRunning = false;
+    let animInterval = null;
+
+    // DOM 元素
+    const canvasMain = document.getElementById('canvas-main');
+    const ctxMain = canvasMain.getContext('2d');
+    const canvasTrace = document.getElementById('canvas-trace');
+    const ctxTrace = canvasTrace.getContext('2d');
+
+    const statTotalSteps = document.getElementById('stat-total-steps');
+    const statAcceptedSteps = document.getElementById('stat-accepted-steps');
+    const statAcceptRate = document.getElementById('stat-accept-rate');
+    const statCurrentX = document.getElementById('stat-current-x');
+    const statMcMean = document.getElementById('stat-mc-mean');
+    const stepLog = document.getElementById('step-log');
+
+    const sliderSigma = document.getElementById('slider-sigma');
+    const valProposalSigma = document.getElementById('val-proposal-sigma');
+    const sliderSpeed = document.getElementById('slider-speed');
+    const valSimSpeed = document.getElementById('val-sim-speed');
+    const selectDist = document.getElementById('sim-target-dist');
+    const btnStep = document.getElementById('btn-step');
+    const btnPlay = document.getElementById('btn-play');
+    const btnReset = document.getElementById('btn-reset');
+    const iconPlay = document.getElementById('icon-play');
+    const textPlay = document.getElementById('text-play');
+
+    // 常態分佈隨機數 (Box-Muller)
+    function randomGaussian(mean = 0, std = 1) {
+      let u = 1 - Math.random();
+      let v = Math.random();
+      let z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+      return mean + z * std;
+    }
+
+    // 執行單一步進 MCMC
+    function doMCMCStep() {
+      const dist = DISTRIBUTIONS[currentDistKey];
+      // 1. 提議新候選點
+      const propX = randomGaussian(currentX, proposalSigma);
+      lastProposedX = propX;
+
+      // 2. 計算分子與分母未正規化機率
+      const pCurr = dist.pdf(currentX);
+      const pProp = dist.pdf(propX);
+
+      // 對稱提議分佈 q(x|x') = q(x'|x) => 接受率 alpha = min(1, p(x')/p(x))
+      const alpha = Math.min(1.0, pProp / Math.max(pCurr, 1e-12));
+      const u = Math.random();
+
+      totalSteps++;
+      if (u < alpha) {
+        currentX = propX;
+        acceptedSteps++;
+        lastDecision = 'accept';
+      } else {
+        lastDecision = 'reject';
+      }
+
+      samples.push(currentX);
+      traceHistory.push(currentX);
+      if (traceHistory.length > 200) traceHistory.shift();
+
+      // 更新日誌
+      stepLog.innerHTML = `
+        <span class="text-slate-400">當前 $x_t$:</span> ${currentX.toFixed(3)} | <span class="text-cyan-400">提議 $x^*$:</span> ${propX.toFixed(3)}<br>
+        <span class="text-slate-400">機率比:</span> p(x*)/p(x) = ${(pProp / (pCurr + 1e-9)).toFixed(3)}<br>
+        <span class="text-slate-400">接受機率 $\\alpha$:</span> ${(alpha * 100).toFixed(1)}% | <span class="text-slate-400">隨機 $u$:</span> ${u.toFixed(3)}<br>
+        <span class="font-bold ${lastDecision === 'accept' ? 'text-emerald-500' : 'text-rose-400'}">
+          ➔ 決策: ${lastDecision === 'accept' ? '✓ 接受 (Jump to x*)' : '✗ 拒絕 (Stay at xt)'}
+        </span>
+      `;
+
+      updateStats();
+      renderAll();
+    }
+
+    function updateStats() {
+      statTotalSteps.innerText = totalSteps;
+      statAcceptedSteps.innerText = acceptedSteps;
+      const rate = totalSteps > 0 ? (acceptedSteps / totalSteps) * 100 : 0;
+      statAcceptRate.innerText = rate.toFixed(1) + '%';
+      statCurrentX.innerText = currentX.toFixed(2);
+
+      // 蒙地卡羅積分估計值 E[X]
+      if (samples.length > 0) {
+        const sum = samples.reduce((acc, v) => acc + v, 0);
+        const mcMean = sum / samples.length;
+        statMcMean.innerText = mcMean.toFixed(3);
+      } else {
+        statMcMean.innerText = "0.00";
+      }
+    }
+
+    // --- 繪圖邏輯 ---
+    function renderAll() {
+      renderMainCanvas();
+      renderTraceCanvas();
+    }
+
+    function renderMainCanvas() {
+      const w = canvasMain.width;
+      const h = canvasMain.height;
+      const dist = DISTRIBUTIONS[currentDistKey];
+
+      ctxMain.clearRect(0, 0, w, h);
+
+      const toScreenX = (x) => ((x - dist.xMin) / (dist.xMax - dist.xMin)) * (w - 60) + 30;
+      const toScreenY = (y) => h - 35 - (y / dist.yMax) * (h - 65);
+
+      // 繪製座標軸格線
+      ctxMain.strokeStyle = '#334155';
+      ctxMain.lineWidth = 1;
+      ctxMain.beginPath();
+      ctxMain.moveTo(30, h - 35);
+      ctxMain.lineTo(w - 30, h - 35);
+      ctxMain.stroke();
+
+      // 刻度
+      ctxMain.fillStyle = '#64748b';
+      ctxMain.font = '10px monospace';
+      for (let x = Math.ceil(dist.xMin); x <= Math.floor(dist.xMax); x += 2) {
+        const sx = toScreenX(x);
+        ctxMain.fillText(x.toString(), sx - 4, h - 20);
+      }
+
+      // 1. 繪製採樣樣本長條圖 (Histogram)
+      if (samples.length > 5) {
+        const numBins = 45;
+        const binWidthVal = (dist.xMax - dist.xMin) / numBins;
+        const bins = new Array(numBins).fill(0);
+
+        for (let s of samples) {
+          if (s >= dist.xMin && s <= dist.xMax) {
+            const bIdx = Math.floor((s - dist.xMin) / binWidthVal);
+            if (bIdx >= 0 && bIdx < numBins) bins[bIdx]++;
+          }
+        }
+
+        // 計算正規化高度
+        const maxBinCount = Math.max(...bins, 1);
+        const binPixelWidth = ((w - 60) / numBins) - 1;
+
+        ctxMain.fillStyle = 'rgba(99, 102, 241, 0.45)';
+        for (let i = 0; i < numBins; i++) {
+          const bxVal = dist.xMin + i * binWidthVal;
+          const sx = toScreenX(bxVal);
+          // 正規化與目標分佈高度等比縮放
+          const estimatedPdfHeight = (bins[i] / samples.length) / binWidthVal;
+          const sy = toScreenY(estimatedPdfHeight);
+          const barH = (h - 35) - sy;
+          if (barH > 0) {
+            ctxMain.fillRect(sx, sy, Math.max(binPixelWidth, 1), barH);
+          }
+        }
+      }
+
+      // 2. 繪製真實目標曲線 (Ground Truth PDF)
+      ctxMain.strokeStyle = '#f43f5e';
+      ctxMain.lineWidth = 2.5;
+      ctxMain.beginPath();
+      const steps = 250;
+      for (let i = 0; i <= steps; i++) {
+        const x = dist.xMin + (i / steps) * (dist.xMax - dist.xMin);
+        const y = dist.pdf(x);
+        const sx = toScreenX(x);
+        const sy = toScreenY(y);
+        if (i === 0) ctxMain.moveTo(sx, sy);
+        else ctxMain.lineTo(sx, sy);
+      }
+      ctxMain.stroke();
+
+      // 3. 繪製候選提議點 (Proposed Point)
+      if (lastProposedX !== null) {
+        const px = toScreenX(lastProposedX);
+        ctxMain.strokeStyle = 'rgba(34, 211, 238, 0.8)';
+        ctxMain.setLineDash([4, 4]);
+        ctxMain.beginPath();
+        ctxMain.moveTo(px, 20);
+        ctxMain.lineTo(px, h - 35);
+        ctxMain.stroke();
+        ctxMain.setLineDash([]);
+
+        ctxMain.fillStyle = '#22d3ee';
+        ctxMain.beginPath();
+        ctxMain.arc(px, h - 35, 5, 0, Math.PI * 2);
+        ctxMain.fill();
+      }
+
+      // 4. 繪製當前狀態點 (Current Point)
+      const cx = toScreenX(currentX);
+      const cy = toScreenY(dist.pdf(currentX));
+
+      // 垂線
+      ctxMain.strokeStyle = 'rgba(245, 158, 11, 0.6)';
+      ctxMain.beginPath();
+      ctxMain.moveTo(cx, cy);
+      ctxMain.lineTo(cx, h - 35);
+      ctxMain.stroke();
+
+      // 節點
+      ctxMain.fillStyle = '#f59e0b';
+      ctxMain.shadowColor = '#f59e0b';
+      ctxMain.shadowBlur = 10;
+      ctxMain.beginPath();
+      ctxMain.arc(cx, cy, 7, 0, Math.PI * 2);
+      ctxMain.fill();
+      ctxMain.shadowBlur = 0;
+    }
+
+    function renderTraceCanvas() {
+      const w = canvasTrace.width;
+      const h = canvasTrace.height;
+      const dist = DISTRIBUTIONS[currentDistKey];
+
+      ctxTrace.clearRect(0, 0, w, h);
+
+      if (traceHistory.length < 2) return;
+
+      const toScreenY = (val) => h - 15 - ((val - dist.xMin) / (dist.xMax - dist.xMin)) * (h - 30);
+
+      // 中心參考線
+      ctxTrace.strokeStyle = '#334155';
+      ctxTrace.setLineDash([2, 4]);
+      ctxTrace.beginPath();
+      const midY = toScreenY(0);
+      ctxTrace.moveTo(30, midY);
+      ctxTrace.lineTo(w - 30, midY);
+      ctxTrace.stroke();
+      ctxTrace.setLineDash([]);
+
+      // 繪製軌跡
+      ctxTrace.strokeStyle = '#38bdf8';
+      ctxTrace.lineWidth = 1.5;
+      ctxTrace.beginPath();
+      const len = traceHistory.length;
+      for (let i = 0; i < len; i++) {
+        const sx = 30 + (i / Math.max(len - 1, 1)) * (w - 60);
+        const sy = toScreenY(traceHistory[i]);
+        if (i === 0) ctxTrace.moveTo(sx, sy);
+        else ctxTrace.lineTo(sx, sy);
+      }
+      ctxTrace.stroke();
+
+      // 最新點
+      const lastX = 30 + (w - 60);
+      const lastY = toScreenY(traceHistory[len - 1]);
+      ctxTrace.fillStyle = '#f59e0b';
+      ctxTrace.beginPath();
+      ctxTrace.arc(lastX, lastY, 4, 0, Math.PI * 2);
+      ctxTrace.fill();
+    }
+
+    // --- 事件監聽與控制 ---
+    sliderSigma.addEventListener('input', (e) => {
+      proposalSigma = parseFloat(e.target.value);
+      valProposalSigma.innerText = proposalSigma.toFixed(1);
+    });
+
+    sliderSpeed.addEventListener('input', (e) => {
+      const speed = parseInt(e.target.value);
+      if (speed < 20) valSimSpeed.innerText = '慢速';
+      else if (speed < 60) valSimSpeed.innerText = '中速';
+      else valSimSpeed.innerText = '極速';
+
+      if (isRunning) {
+        clearInterval(animInterval);
+        animInterval = setInterval(doMCMCStep, 1000 / speed);
+      }
+    });
+
+    selectDist.addEventListener('change', (e) => {
+      currentDistKey = e.target.value;
+      resetSimulation();
+    });
+
+    btnStep.addEventListener('click', () => {
+      if (isRunning) togglePlay();
+      doMCMCStep();
+    });
+
+    btnPlay.addEventListener('click', togglePlay);
+
+    function togglePlay() {
+      isRunning = !isRunning;
+      if (isRunning) {
+        btnPlay.classList.remove('bg-indigo-600', 'hover:bg-indigo-500');
+        btnPlay.classList.add('bg-rose-600', 'hover:bg-rose-500');
+        textPlay.innerText = '暫停自動模擬';
+        iconPlay.innerHTML = '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>';
+        const speed = parseInt(sliderSpeed.value);
+        animInterval = setInterval(doMCMCStep, 1000 / speed);
+      } else {
+        btnPlay.classList.remove('bg-rose-600', 'hover:bg-rose-500');
+        btnPlay.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
+        textPlay.innerText = '一鍵自動模擬';
+        iconPlay.innerHTML = '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>';
+        clearInterval(animInterval);
+      }
+    }
+
+    function resetSimulation() {
+      if (isRunning) togglePlay();
+      currentX = 0.0;
+      lastProposedX = null;
+      lastDecision = null;
+      totalSteps = 0;
+      acceptedSteps = 0;
+      samples = [];
+      traceHistory = [currentX];
+      stepLog.innerText = '已重設採樣器狀態。';
+      updateStats();
+      renderAll();
+    }
+
+    btnReset.addEventListener('click', resetSimulation);
+
+    // --- 折疊與分頁控制 ---
+    function toggleAccordion(id) {
+      const el = document.getElementById(id);
+      const icon = document.getElementById(id + '-icon');
+      if (el.classList.contains('hidden')) {
+        el.classList.remove('hidden');
+        icon.innerText = '−';
+      } else {
+        el.classList.add('hidden');
+        icon.innerText = '+';
+      }
+    }
+
+    function switchAppTab(tabKey) {
+      const tabs = ['ml', 'dl', 'rl', 'llm', 'sci'];
+      tabs.forEach(t => {
+        const contentEl = document.getElementById(`app-content-${t}`);
+        const btnEl = document.getElementById(`tab-btn-${t}`);
+        if (contentEl) contentEl.classList.add('hidden');
+        if (btnEl) {
+          btnEl.classList.remove('tab-active', 'font-semibold', 'text-indigo-600');
+          btnEl.classList.add('text-slate-600');
+        }
+      });
+      const activeContent = document.getElementById(`app-content-${tabKey}`);
+      const activeBtn = document.getElementById(`tab-btn-${tabKey}`);
+      if (activeContent) activeContent.classList.remove('hidden');
+      if (activeBtn) {
+        activeBtn.classList.add('tab-active', 'font-semibold', 'text-indigo-600');
+        activeBtn.classList.remove('text-slate-600');
+      }
+    }
+
+    function checkIpasAnswer() {
+      const selected = document.querySelector('input[name="ipas-quiz"]:checked');
+      const feedback = document.getElementById('ipas-feedback');
+      feedback.classList.remove('hidden');
+      if (!selected) {
+        feedback.className = 'mt-3 p-3 rounded-lg text-xs bg-rose-100 text-rose-800 border border-rose-200';
+        feedback.innerText = '請先選擇一個選項！';
+        return;
+      }
+      if (selected.value === 'C') {
+        feedback.className = 'mt-3 p-3 rounded-lg text-xs bg-emerald-100 text-emerald-800 border border-emerald-200';
+        feedback.innerHTML = '<strong>✔ 回答完全正確！</strong><br>解析：暖機期（Burn-in）主要用途是讓馬可夫鏈自隨機起點遊走並收斂至真實平穩分佈，這些過渡期樣本帶有初始位置偏差，必須予以捨棄。(A) 錯誤，提議標準差過大會頻繁跳到低機率區域導致拒絕率激增；(B) 錯誤，暖機期樣本不能保留；(D) 錯誤，Metropolis 演算法本質就是基於對稱提議分佈設計。';
+      } else {
+        feedback.className = 'mt-3 p-3 rounded-lg text-xs bg-rose-100 text-rose-800 border border-rose-200';
+        feedback.innerHTML = '<strong>✘ 答案不正確！正確解答為 (C)。</strong><br>解析：暖機期樣本必須丟棄以確保後續樣本真正服從目標平穩分佈。若提議標準差設太大（選項 A），候選點常落在目標機率接近 0 的地方，接受率會暴跌趨近於 0。';
+      }
+    }
+
+    function copyCode() {
+      const code = document.getElementById('python-code-block').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const btn = document.getElementById('btn-copy-code');
+        btn.innerText = '✓ 已複製！';
+        setTimeout(() => {
+          btn.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg> 複製代碼`;
+        }, 2000);
+      });
+    }
+
+    // 初始化渲染
+    window.onload = () => {
+      traceHistory = [currentX];
+      renderAll();
+    };
+  </script>
+</body>
+</html>

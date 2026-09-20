@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>馬可夫鏈 (Markov Chain) vs 蒙地卡羅方法 (Monte Carlo) 終極全景解析與互動實驗室</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <!-- MathJax for LaTeX Rendering -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap');
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    pre, code { font-family: 'Fira Code', monospace; }
+    .tab-active { border-bottom: 3px solid #3b82f6; color: #1d4ed8; font-weight: 600; }
+    .card-shadow { box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03); }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="p-2 bg-blue-600 rounded-lg text-white font-bold text-xl tracking-wider">MC²</div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight">馬可夫鏈 vs 蒙地卡羅方法</h1>
+          <p class="text-xs text-slate-400">理論對比 • IPAS AI 認證考點 • 現代 AI/LLM 範疇 • 互動式動態模擬器</p>
+        </div>
+      </div>
+      <nav class="flex space-x-1 sm:space-x-2 bg-slate-800 p-1.5 rounded-xl text-xs sm:text-sm overflow-x-auto max-w-full">
+        <button onclick="switchTab('overview')" id="tab-btn-overview" class="px-3 py-1.5 rounded-lg transition font-medium text-white bg-blue-600">00-04 總覽與理論</button>
+        <button onclick="switchTab('math')" id="tab-btn-math" class="px-3 py-1.5 rounded-lg transition font-medium text-slate-300 hover:text-white">05 數學推導</button>
+        <button onclick="switchTab('ai-domains')" id="tab-btn-ai-domains" class="px-3 py-1.5 rounded-lg transition font-medium text-slate-300 hover:text-white">06 AI/RL/LLM 應用</button>
+        <button onclick="switchTab('code')" id="tab-btn-code" class="px-3 py-1.5 rounded-lg transition font-medium text-slate-300 hover:text-white">07 程式實作 (PyTorch)</button>
+        <button onclick="switchTab('sim')" id="tab-btn-sim" class="px-3 py-1.5 rounded-lg transition font-medium text-slate-300 hover:text-white">08 雙核心動態模擬器</button>
+        <button onclick="switchTab('mcmc')" id="tab-btn-mcmc" class="px-3 py-1.5 rounded-lg transition font-medium text-amber-300 hover:text-white flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>09 MCMC 專題解析</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- 頂部醒目一句話比較橫幅 (One-Line Core Comparison) -->
+    <div class="mb-8 p-6 sm:p-7 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border border-indigo-500/30 shadow-xl relative overflow-hidden">
+      <div class="absolute -right-12 -top-12 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -left-12 -bottom-12 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      
+      <div class="relative z-10">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30 text-xs font-semibold mb-3">
+          <span>⚡ 核心一句話精髓比較</span>
+        </div>
+        <h2 class="text-lg sm:text-2xl font-bold tracking-tight text-white leading-snug">
+          「<span class="text-indigo-400 font-extrabold">馬可夫鏈</span>是刻畫系統<span class="underline decoration-indigo-400 decoration-2 underline-offset-4">『由現在跳躍至未來』</span>的無記憶動態轉移模型；<br class="hidden sm:inline" />
+          <span class="text-emerald-400 font-extrabold">蒙地卡羅</span>是靠<span class="underline decoration-emerald-400 decoration-2 underline-offset-4">『海量隨機抽樣求均值』</span>以大數法則逼近複雜未知解的數值計算引擎。」
+        </h2>
+        <p class="mt-3 text-xs sm:text-sm text-slate-300 flex items-center gap-2 flex-wrap">
+          <span class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-slate-300">本質差異</span>
+          <span>前者關注<strong>「狀態如何相依轉移」</strong>（時間維度），後者關注<strong>「極限分佈如何統計逼近」</strong>（採樣維度）；兩者結合即為當代 AI 的基石 <strong>MCMC</strong>。</span>
+        </p>
+      </div>
+    </div>
+
+    <!-- TAB 1: 00 - 04 總覽、由來、生活化、工業與理論 -->
+    <section id="tab-overview" class="space-y-8">
+      
+      <!-- 00. 一句話簡介與核心特徵對比表 -->
+      <div class="bg-white rounded-2xl p-6 sm:p-8 card-shadow border border-slate-100">
+        <div class="border-b border-slate-100 pb-4 mb-6">
+          <span class="text-xs font-bold text-blue-600 tracking-wider uppercase">Section 00</span>
+          <h2 class="text-2xl font-bold text-slate-900 mt-1">核心原理與 IPAS AI 考題特徵對照</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Markov Chain Card -->
+          <div class="bg-gradient-to-br from-indigo-50/50 to-blue-50/30 p-6 rounded-xl border border-indigo-100">
+            <div class="flex items-center justify-between mb-3">
+              <span class="px-3 py-1 bg-indigo-600 text-white text-xs font-semibold rounded-full">動態狀態隨機模型</span>
+              <span class="text-xs font-mono text-indigo-500 font-semibold">Memoryless Process</span>
+            </div>
+            <h3 class="text-xl font-bold text-indigo-950 mb-2">馬可夫鏈 (Markov Chain)</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">
+              <strong>一句話簡介：</strong>「未來只取決於現在，與過去毫無關聯」的時間序列狀態轉移機率系統。
+            </p>
+            <div class="space-y-2 text-xs sm:text-sm text-slate-600">
+              <div class="flex items-start gap-2">
+                <span class="text-indigo-600 font-bold">▶ 核心原理：</span>
+                <span><strong>無記憶性 (Markov Property)</strong>，即 $P(X_{t+1}|X_t, X_{t-1}, \dots, X_0) = P(X_{t+1}|X_t)$。透過轉移機率矩陣 $P$，系統隨時間收斂至平穩分佈 $\pi P = \pi$。</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="text-indigo-600 font-bold">▶ IPAS AI 考點：</span>
+                <span>轉移矩陣的平穩分佈特徵向量計算、HMM (隱馬可夫模型) Forward-Backward 與 Viterbi 演算法、強化學習 MDP (馬可夫決策過程) 的狀態轉移假設。</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="text-indigo-600 font-bold">▶ 實務痛點：</span>
+                <span>狀態空間爆炸 (Curse of Dimensionality)，高維連續空間無法直接列舉轉移矩陣。</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Monte Carlo Card -->
+          <div class="bg-gradient-to-br from-emerald-50/50 to-teal-50/30 p-6 rounded-xl border border-emerald-100">
+            <div class="flex items-center justify-between mb-3">
+              <span class="px-3 py-1 bg-emerald-600 text-white text-xs font-semibold rounded-full">統計數值運算方法</span>
+              <span class="text-xs font-mono text-emerald-600 font-semibold">Sampling Engine</span>
+            </div>
+            <h3 class="text-xl font-bold text-emerald-950 mb-2">蒙地卡羅方法 (Monte Carlo Method)</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">
+              <strong>一句話簡介：</strong>「解析解算不出來，就靠海量隨機抽樣求均值」的大數法則數值逼近法。
+            </p>
+            <div class="space-y-2 text-xs sm:text-sm text-slate-600">
+              <div class="flex items-start gap-2">
+                <span class="text-emerald-600 font-bold">▶ 核心原理：</span>
+                <span><strong>大數法則 (LLN) 與中央極限定理 (CLT)</strong>，將期望值透過獨立同分佈 (i.i.d.) 隨機採樣均值替代：$\mathbb{E}[f(X)] \approx \frac{1}{N}\sum_{i=1}^N f(x_i)$，誤差以 $O(1/\sqrt{N})$ 收斂，與維度 $d$ 無關。</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="text-emerald-600 font-bold">▶ IPAS AI 考點：</span>
+                <span>重要性採樣 (Importance Sampling)、Monte Carlo Policy Evaluation vs. TD 學習 (無偏但高方差)、蒙地卡羅樹搜尋 (MCTS in AlphaGo)。</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="text-emerald-600 font-bold">▶ 實務痛點：</span>
+                <span>高維稀疏分佈時採樣效率低 (落入重要區域機率極低)，計算開銷巨大。</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- The Synergy: MCMC -->
+        <div class="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-4">
+          <div class="p-2.5 bg-amber-500 text-white rounded-lg font-bold text-lg">融合</div>
+          <div class="text-xs sm:text-sm text-amber-950">
+            <strong>核心交叉點 — MCMC (馬可夫鏈蒙地卡羅)：</strong>
+            蒙地卡羅在高維複雜分佈「抽不出好樣本」，馬可夫鏈在高維「算不出轉移全貌」。MCMC 巧妙構造一個平穩分佈正好等於目標後驗分佈的馬可夫鏈，隨機漫步抽樣，一舉解決貝氏統計與生成模型的積分難題！
+          </div>
+        </div>
+      </div>
+
+      <!-- 01 & 02: 由來與生活化例子 -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- 01 由來 -->
+        <div class="bg-white rounded-2xl p-6 sm:p-8 card-shadow border border-slate-100">
+          <div class="border-b border-slate-100 pb-3 mb-4">
+            <span class="text-xs font-bold text-indigo-600 tracking-wider uppercase">Section 01</span>
+            <h3 class="text-lg font-bold text-slate-900">歷史由來：思想碰撞的起點</h3>
+          </div>
+          <div class="space-y-4 text-sm text-slate-600 leading-relaxed">
+            <div class="border-l-2 border-indigo-400 pl-4">
+              <h4 class="font-bold text-slate-800">馬可夫鏈 (1906) — 數學家的哲學反擊</h4>
+              <p class="mt-1">
+                俄國數學家安德雷·馬可夫 (Andrey Markov) 為了反駁當時神學家涅克拉索夫宣稱「大數法則只能存在於相互獨立的隨機事件，證明了自由意志的存在」的論點，馬可夫手工統計了普希金長篇詩集《尤金·奧涅金》中 20,000 個俄文字母，證明「相依事件（母音後面接子音的機率更高）」同樣嚴格服從大數法則，誕生了馬可夫鏈。
+              </p>
+            </div>
+            <div class="border-l-2 border-emerald-400 pl-4">
+              <h4 class="font-bold text-slate-800">蒙地卡羅方法 (1946) — 紙牌接龍與原子彈</h4>
+              <p class="mt-1">
+                二戰曼哈頓計畫期間，斯坦尼斯瓦夫·烏拉姆 (Stanislaw Ulam) 在生病休養時玩單人紙牌接龍。他想計算贏牌機率，發現組合爆炸根本算不完，不如直接洗牌玩 100 次統計勝率！隨後他與約翰·馮·諾伊曼 (John von Neumann) 合作，利用第一台電子計算機 ENIAC 模擬中子在核裂變中的擴散運動，並以梅特羅波利斯舅舅常去的摩納哥賭城「蒙地卡羅」代號命名。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 02 生活化例子 -->
+        <div class="bg-white rounded-2xl p-6 sm:p-8 card-shadow border border-slate-100">
+          <div class="border-b border-slate-100 pb-3 mb-4">
+            <span class="text-xs font-bold text-teal-600 tracking-wider uppercase">Section 02</span>
+            <h3 class="text-lg font-bold text-slate-900">生活化直觀比喻</h3>
+          </div>
+          <div class="space-y-4 text-sm text-slate-600 leading-relaxed">
+            <div class="p-4 bg-slate-50 rounded-xl">
+              <span class="font-bold text-indigo-900 block mb-1">🌦️ 馬可夫鏈：台北天氣預測</span>
+              <p>
+                「今天是否下雨，只跟昨天是晴是雨有關，跟一個月前無關」。若晴天明天有 80% 仍是晴天，雨天明天有 60% 繼續下雨。持續模擬數月後，晴天與雨天的比例會穩定在特定常數，這就是平穩分佈。
+              </p>
+            </div>
+            <div class="p-4 bg-slate-50 rounded-xl">
+              <span class="font-bold text-emerald-900 block mb-1">🎯 蒙地卡羅：如何求出不規則形池塘面積？</span>
+              <p>
+                不規則水塘很難用幾何公式算面積。但如果在一塊已知 $100 \text{ m} \times 100 \text{ m}$ 的正方形草坪上，派無人機均勻隨機丟下 10,000 顆小彈珠。最後清點發現有 3,500 顆掉入水塘中，則池塘面積估計為 $10,000 \times \frac{3500}{10000} = 3,500 \text{ m}^2$。
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 03 工業上應用 -->
+      <div class="bg-white rounded-2xl p-6 sm:p-8 card-shadow border border-slate-100">
+        <div class="border-b border-slate-100 pb-3 mb-4">
+          <span class="text-xs font-bold text-purple-600 tracking-wider uppercase">Section 03</span>
+          <h3 class="text-lg font-bold text-slate-900">工業與產業界實務應用圖譜</h3>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="border border-slate-200 p-4 rounded-xl">
+            <div class="text-indigo-600 font-bold mb-2 flex items-center gap-2">
+              <span class="p-1 bg-indigo-100 rounded">🌐</span> 搜尋引擎與通訊
+            </div>
+            <ul class="text-xs text-slate-600 space-y-1.5 list-disc list-inside">
+              <li><strong>Google PageRank：</strong>將全網幾十億網頁看作狀態，隨機點擊超連結視為馬可夫隨機漫步，穩態機率即網頁權重。</li>
+              <li><strong>通信排隊理論 (Queueing Theory)：</strong>基地台封包溢流機率與吞吐量分析 (M/M/1 模型)。</li>
+            </ul>
+          </div>
+          <div class="border border-slate-200 p-4 rounded-xl">
+            <div class="text-emerald-600 font-bold mb-2 flex items-center gap-2">
+              <span class="p-1 bg-emerald-100 rounded">📈</span> 金融工程與半導體
+            </div>
+            <ul class="text-xs text-slate-600 space-y-1.5 list-disc list-inside">
+              <li><strong>高維衍生性金融商品定價：</strong>蒙地卡羅模擬萬條標的資產隨機幾何布朗運動路徑，為美式/亞式期權定價。</li>
+              <li><strong>EDA 晶片製程良率 (Yield)：</strong>台積電/聯發科在 SPICE 晶片電路模擬中，進行 Monte Carlo 抽樣檢驗製程變異容忍度。</li>
+            </ul>
+          </div>
+          <div class="border border-slate-200 p-4 rounded-xl">
+            <div class="text-amber-600 font-bold mb-2 flex items-center gap-2">
+              <span class="p-1 bg-amber-100 rounded">⚛️</span> 物理工程與醫療
+            </div>
+            <ul class="text-xs text-slate-600 space-y-1.5 list-disc list-inside">
+              <li><strong>核能反應爐屏蔽設計：</strong>MCNP (Monte Carlo N-Particle) 程式模擬中子射線防護。</li>
+              <li><strong>腫瘤放射治療計畫 (Radiotherapy)：</strong>計算高能射束在不同人體器官組織內的光子散射劑量吸收分佈。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 04 理論簡介 -->
+      <div class="bg-white rounded-2xl p-6 sm:p-8 card-shadow border border-slate-100">
+        <div class="border-b border-slate-100 pb-3 mb-4">
+          <span class="text-xs font-bold text-blue-600 tracking-wider uppercase">Section 04</span>
+          <h3 class="text-lg font-bold text-slate-900">理論核心架構</h3>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm text-slate-700">
+          <div>
+            <h4 class="font-bold text-indigo-900 text-base mb-2">馬可夫鏈理論基石</h4>
+            <p class="mb-2">設狀態空間 $S = \{s_1, s_2, \dots, s_K\}$，一階離散時間馬可夫鏈具備以下要素：</p>
+            <ol class="list-decimal list-inside space-y-1 text-slate-600 text-xs sm:text-sm">
+              <li><strong>馬可夫性質：</strong>條件分佈僅與前一狀態相依。</li>
+              <li><strong>一步轉移機率矩陣 $P$：</strong>每個元素 $P_{ij} = P(X_{t+1}=s_j | X_t=s_i)$，滿足以列為基準 $\sum_j P_{ij} = 1$。</li>
+              <li><strong>Chapman-Kolmogorov 方程：</strong>$n$ 步轉移機率為矩陣冪次 $P^{(n)} = P^n$。</li>
+              <li><strong>遍歷性定理 (Ergodicity)：</strong>若鏈不可約 (Irreducible) 且非週期 (Aperiodic)，則必存在唯一的平穩分佈向量 $\pi$，滿足 $\pi P = \pi$。</li>
+            </ol>
+          </div>
+          <div>
+            <h4 class="font-bold text-emerald-900 text-base mb-2">蒙地卡羅理論基石</h4>
+            <p class="mb-2">目標是估算積分 $I = \int_{\Omega} g(x) f(x) dx = \mathbb{E}_{f}[g(X)]$：</p>
+            <ol class="list-decimal list-inside space-y-1 text-slate-600 text-xs sm:text-sm">
+              <li><strong>不偏估計量 (Unbiased Estimator)：</strong>$\hat{I}_N = \frac{1}{N}\sum_{i=1}^N g(x_i)$，其中 $x_i \sim f(x)$ 獨立抽樣。</li>
+              <li><strong>強大數法則 (SLLN)：</strong>保證 $\lim_{N \to \infty} \hat{I}_N = I$ 幾乎必然成立 (Almost Surely)。</li>
+              <li><strong>中央極限定理 (CLT)：</strong>誤差分佈漸近於高斯分佈 $\sqrt{N}(\hat{I}_N - I) \xrightarrow{d} \mathcal{N}(0, \sigma^2)$。</li>
+              <li><strong>收斂標準差：</strong>$\text{SE} = \frac{\sigma}{\sqrt{N}}$。精度提高 10 倍，需要增加 100 倍採樣次數。</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 2: 05 數學推導 -->
+    <section id="tab-math" class="hidden space-y-8">
+      <div class="bg-white rounded-2xl p-6 sm:p-8 card-shadow border border-slate-100">
+        <div class="border-b border-slate-100 pb-4 mb-6">
+          <span class="text-xs font-bold text-blue-600 tracking-wider uppercase">Section 05</span>
+          <h2 class="text-2xl font-bold text-slate-900 mt-1">數學推導與解析</h2>
+          <p class="text-sm text-slate-500 mt-1">包含 IPAS AI 考證最常考的平穩分佈求解方程與蒙地卡羅誤差收斂證明。</p>
+        </div>
+
+        <!-- Derivation 1: Stationary Distribution -->
+        <div class="mb-10 bg-slate-50 p-6 rounded-xl border border-slate-200">
+          <h3 class="text-lg font-bold text-indigo-900 mb-3">一、馬可夫平穩分佈推導 (Stationary Distribution)</h3>
+          <div class="text-sm text-slate-700 space-y-3 leading-relaxed">
+            <p>
+              若一個狀態機率向量在經過一步轉移後保持不變，即稱為<strong>平穩分佈 $\pi = [\pi_1, \pi_2, \dots, \pi_K]$</strong>：
+            </p>
+            <div class="p-3 bg-white rounded-lg border border-slate-200 overflow-x-auto text-center font-mono">
+              $$ \pi P = \pi \iff \pi (P - I) = \mathbf{0} \iff (P^T - I) \pi^T = \mathbf{0} $$
+            </div>
+            <p>
+              這表示 $\pi^T$ 是轉移矩陣轉置 $P^T$ 對應特徵值 $\lambda = 1$ 的左特徵向量。同時滿足機率公理約制：
+            </p>
+            <div class="p-3 bg-white rounded-lg border border-slate-200 overflow-x-auto text-center font-mono">
+              $$ \sum_{i=1}^K \pi_i = 1, \quad \pi_i \ge 0 $$
+            </div>
+            <div class="bg-indigo-50 p-4 rounded-lg text-xs sm:text-sm text-indigo-950">
+              <strong>IPAS 典型考題示範：</strong><br>
+              若轉移矩陣 $P = \begin{bmatrix} 0.7 & 0.3 \\ 0.4 & 0.6 \end{bmatrix}$，求平穩狀態 $\pi = [\pi_1, \pi_2]$。<br>
+              聯立方程組：
+              $$\begin{cases} 0.7\pi_1 + 0.4\pi_2 = \pi_1 \implies 0.4\pi_2 = 0.3\pi_1 \implies \pi_1 = \frac{4}{3}\pi_2 \\ \pi_1 + \pi_2 = 1 \end{cases}$$
+              解得：$\frac{4}{3}\pi_2 + \pi_2 = 1 \implies \frac{7}{3}\pi_2 = 1 \implies \pi_2 = \frac{3}{7} \approx 0.4286, \quad \pi_1 = \frac{4}{7} \approx 0.5714$。
+            </div>
+          </div>
+        </div>
+
+        <!-- Derivation 2: Monte Carlo Variance & Convergence -->
+        <div class="bg-slate-50 p-6 rounded-xl border border-slate-200">
+          <h3 class="text-lg font-bold text-emerald-900 mb-3">二、蒙地卡羅積分之無偏性與誤差率推導</h3>
+          <div class="text-sm text-slate-700 space-y-3 leading-relaxed">
+            <p>
+              考慮估算積分 $I = \int_a^b g(x) dx$。我們令均勻分佈密度函數 $f(x) = \frac{1}{b-a}$，則：
+            </p>
+            <div class="p-3 bg-white rounded-lg border border-slate-200 overflow-x-auto text-center font-mono">
+              $$ I = (b-a) \int_a^b g(x) \frac{1}{b-a} dx = (b-a) \mathbb{E}_{X \sim U(a,b)}[g(X)] $$
+            </div>
+            <p>蒙地卡羅估計量定義為：</p>
+            <div class="p-3 bg-white rounded-lg border border-slate-200 overflow-x-auto text-center font-mono">
+              $$ \hat{I}_N = \frac{b-a}{N} \sum_{i=1}^N g(X_i), \quad X_i \overset{i.i.d.}{\sim} U(a,b) $$
+            </div>
+            
+            <p><strong>1. 無偏性證明 (Unbiasedness)：</strong></p>
+            <div class="p-3 bg-white rounded-lg border border-slate-200 overflow-x-auto text-center font-mono">
+              $$ \mathbb{E}[\hat{I}_N] = \frac{b-a}{N} \sum_{i=1}^N \mathbb{E}[g(X_i)] = \frac{b-a}{N} \cdot N \cdot \mathbb{E}[g(X)] = I $$
+            </div>
+
+            <p><strong>2. 估計方差與收斂速率 (Variance & Convergence Rate)：</strong></p>
+            <div class="p-3 bg-white rounded-lg border border-slate-200 overflow-x-auto text-center font-mono">
+              $$ \text{Var}(\hat{I}_N) = \text{Var}\left( \frac{b-a}{N}\sum_{i=1}^N g(X_i) \right) = \frac{(b-a)^2}{N^2} \sum_{i=1}^N \text{Var}(g(X_i)) = \frac{(b-a)^2 \sigma_g^2}{N} $$
+            </div>
+            <div class="p-3 bg-white rounded-lg border border-slate-200 overflow-x-auto text-center font-mono">
+              $$ \text{標準差 (Standard Error, SE)} = \sqrt{\text{Var}(\hat{I}_N)} = \frac{(b-a)\sigma_g}{\sqrt{N}} = \mathcal{O}\left( \frac{1}{\sqrt{N}} \right) $$
+            </div>
+            <div class="bg-emerald-50 p-4 rounded-lg text-xs sm:text-sm text-emerald-950">
+              <strong>關鍵洞察（為何高維必選蒙地卡羅？）：</strong><br>
+              傳統網格數值積分（如梯形法 Trapezoidal Rule）在 $d$ 維空間的誤差收斂速度為 $\mathcal{O}(N^{-2/d})$。當維度 $d \ge 5$ 時，網格法的收斂速度急劇劣化；而<strong>蒙地卡羅的誤差永遠是 $\mathcal{O}(N^{-1/2})$，完全不隨維度 $d$ 衰減！</strong>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 3: 06 屬於哪個範疇？AI / RL / LLM 深度應用 -->
+    <section id="tab-ai-domains" class="hidden space-y-8">
+      <div class="bg-white rounded-2xl p-6 sm:p-8 card-shadow border border-slate-100">
+        <div class="border-b border-slate-100 pb-4 mb-6">
+          <span class="text-xs font-bold text-blue-600 tracking-wider uppercase">Section 06</span>
+          <h2 class="text-2xl font-bold text-slate-900 mt-1">現代人工智慧體系中的落點與範疇</h2>
+          <p class="text-sm text-slate-500 mt-1">從經典機器學習、擴散模型，到 AlphaGo 樹搜尋與當代 LLM 推理加速核心架構。</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+          <!-- 機器學習應用 -->
+          <div class="p-5 border border-indigo-200 rounded-xl bg-indigo-50/30">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="px-2.5 py-1 bg-indigo-600 text-white rounded text-xs font-bold">ML</span>
+              <h3 class="text-lg font-bold text-indigo-950">機器學習：貝氏推理與 MCMC</h3>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-600 mb-3">
+              在貝氏機器學習中，後驗機率分佈 $p(\theta|D) = \frac{p(D|\theta)p(\theta)}{\int p(D|\theta)p(\theta)d\theta}$ 的分母積分在參數眾多時無法解析計算。
+            </p>
+            <ul class="text-xs text-slate-700 space-y-2 list-disc list-inside">
+              <li><strong>Metropolis-Hastings (MH 演算法)：</strong>構造接受率 $\alpha = \min\left(1, \frac{p(x')q(x|x')}{p(x)q(x'|x)}\right)$，只靠機率比例隨機漫步抽樣。</li>
+              <li><strong>吉布斯採樣 (Gibbs Sampling)：</strong>在高維時輪流對每個變數的條件條件分佈 $p(\theta_i | \theta_{-i}, D)$ 進行採樣，廣泛應用於 LDA 主題模型。</li>
+            </ul>
+          </div>
+
+          <!-- 深度學習應用 -->
+          <div class="p-5 border border-purple-200 rounded-xl bg-purple-50/30">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="px-2.5 py-1 bg-purple-600 text-white rounded text-xs font-bold">DL</span>
+              <h3 class="text-lg font-bold text-purple-950">深度學習：擴散模型 (Diffusion Models)</h3>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-600 mb-3">
+              現代生圖神經網路 (Stable Diffusion, Midjourney, Sora) 本質上就是一個連續狀態的雙向馬可夫鏈：
+            </p>
+            <ul class="text-xs text-slate-700 space-y-2 list-disc list-inside">
+              <li><strong>前向擴散過程 (Forward Process)：</strong>符合馬可夫性質，每一步向圖像逐步加入微量高斯雜訊：$q(x_t|x_{t-1}) = \mathcal{N}(x_t; \sqrt{1-\beta_t}x_{t-1}, \beta_t I)$。</li>
+              <li><strong>反向去噪過程 (Reverse Process)：</strong>神經網絡學習逆向馬可夫鏈 $p_\theta(x_{t-1}|x_t)$，從純雜訊隨機採樣逐步還原清晰圖片。</li>
+            </ul>
+          </div>
+
+          <!-- 強化學習應用 -->
+          <div class="p-5 border border-emerald-200 rounded-xl bg-emerald-50/30">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="px-2.5 py-1 bg-emerald-600 text-white rounded text-xs font-bold">RL</span>
+              <h3 class="text-lg font-bold text-emerald-950">強化學習：MDP 與 蒙地卡羅樹搜尋 (MCTS)</h3>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-600 mb-3">
+              強化學習的環境數學建模就是<strong>馬可夫決策過程 (MDP: $\langle S, A, P, R, \gamma \rangle$)</strong>。
+            </p>
+            <ul class="text-xs text-slate-700 space-y-2 list-disc list-inside">
+              <li><strong>Monte Carlo Policy Evaluation：</strong>玩完整個回合 (Episode) 統計真實回報 $G_t$ 來更新價值函數，無偏但方差高。</li>
+              <li><strong>MCTS (AlphaGo 核心)：</strong>四步迴圈（選擇 Selection $\to$ 擴展 Expansion $\to$ 模擬 Simulation $\to$ 回傳 Backpropagation），用蒙地卡羅隨機推演估算盤面勝率。</li>
+            </ul>
+          </div>
+
+          <!-- LLM 應用細節 -->
+          <div class="p-5 border border-amber-200 rounded-xl bg-amber-50/30">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="px-2.5 py-1 bg-amber-600 text-white rounded text-xs font-bold">LLM</span>
+              <h3 class="text-lg font-bold text-amber-950">LLM 應用：投機解碼與 CoT 自洽採樣</h3>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-600 mb-3">
+              大語言模型的自迴歸生成（Next-Token Prediction）就是語言狀態空間上的隨機轉移鏈！
+            </p>
+            <ul class="text-xs text-slate-700 space-y-2 list-disc list-inside">
+              <li><strong>投機解碼 (Speculative Decoding)：</strong>小模型 (Draft) 高速生成 $K$ 個 token，大模型 (Target) 並行計算並用<strong>蒙地卡羅拒絕採樣</strong>無損校驗接受率，推理速度提升 2~3 倍！</li>
+              <li><strong>Self-Consistency (CoT 採樣)：</strong>利用 Monte Carlo 採樣多條思考鏈推理路徑，以多數決 (Majority Vote) 顯著提高數學與代碼正確率。</li>
+              <li><strong>OpenAI o1 / 推理模型：</strong>結合 MCTS 蒙地卡羅樹搜尋於思維鏈節點，搜尋最優解答路徑。</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: 07 Python / PyTorch 實作 -->
+    <section id="tab-code" class="hidden space-y-8">
+      <div class="bg-white rounded-2xl p-6 sm:p-8 card-shadow border border-slate-100">
+        <div class="border-b border-slate-100 pb-4 mb-6 flex justify-between items-center">
+          <div>
+            <span class="text-xs font-bold text-blue-600 tracking-wider uppercase">Section 07</span>
+            <h2 class="text-2xl font-bold text-slate-900 mt-1">Python & PyTorch 工業級程式實作</h2>
+          </div>
+          <span class="text-xs px-2.5 py-1 bg-slate-100 text-slate-600 font-mono rounded-md">Python 3.10+ / PyTorch 2.x</span>
+        </div>
+
+        <div class="space-y-6">
+
+          <!-- Code 1: Stationary Distribution Solver -->
+          <div class="border border-slate-200 rounded-xl overflow-hidden">
+            <div class="bg-slate-800 px-4 py-2.5 flex justify-between items-center text-xs text-slate-300">
+              <span class="font-bold text-white flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block"></span>
+                實作 1: 馬可夫鏈平穩分佈求解器 (特徵值分解 vs. 冪次法)
+              </span>
+              <button onclick="copyCode('code-markov')" class="hover:text-white transition">複製代碼</button>
+            </div>
+            <pre id="code-markov" class="bg-slate-950 p-4 text-xs text-emerald-400 overflow-x-auto"><code>import numpy as np
+
+# 定義 3-狀態 轉移機率矩陣 P (晴天, 多雲, 雨天)
+# 每一列之和必須嚴格為 1.0
+P = np.array([
+    [0.70, 0.20, 0.10],  # 晴天
+    [0.30, 0.40, 0.30],  # 多雲
+    [0.20, 0.30, 0.50]   # 雨天
+])
+
+# 方法一：利用特徵值分解 (左特徵向量 lambda = 1)
+# pi * P = pi  <=>  P.T * pi.T = pi.T
+eigenvalues, eigenvectors = np.linalg.eig(P.T)
+idx = np.argmin(np.abs(eigenvalues - 1.0))
+stationary = np.real(eigenvectors[:, idx])
+stationary /= stationary.sum()  # 歸一化
+
+print("=== 解析解 (特徵向量法) ===")
+print(f"平穩分佈機率: 晴天={stationary[0]:.4f}, 多雲={stationary[1]:.4f}, 雨天={stationary[2]:.4f}")
+
+# 方法二：冪次迭代法 (模擬長時間狀態演變)
+pi_init = np.array([1.0, 0.0, 0.0]) # 從晴天開始
+P_t = np.linalg.matrix_power(P, 50) # 50天之後
+pi_sim = pi_init @ P_t
+
+print("=== 數值冪次法 (50次轉移後) ===")
+print(f"平穩分佈機率: 晴天={pi_sim[0]:.4f}, 多雲={pi_sim[1]:.4f}, 雨天={pi_sim[2]:.4f}")
+assert np.allclose(stationary, pi_sim)
+</code></pre>
+          </div>
+
+          <!-- Code 2: PyTorch Monte Carlo LLM Sampler -->
+          <div class="border border-slate-200 rounded-xl overflow-hidden">
+            <div class="bg-slate-800 px-4 py-2.5 flex justify-between items-center text-xs text-slate-300">
+              <span class="font-bold text-white flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                實作 2: PyTorch 實現 LLM 蒙地卡羅核採樣 (Temperature + Top-p 採樣)
+              </span>
+              <button onclick="copyCode('code-llm')" class="hover:text-white transition">複製代碼</button>
+            </div>
+            <pre id="code-llm" class="bg-slate-950 p-4 text-xs text-emerald-400 overflow-x-auto"><code>import torch
+import torch.nn.functional as F
+
+def monte_carlo_top_p_sampling(logits: torch.Tensor, temperature: float = 0.8, top_p: float = 0.9) -> int:
+    """
+    LLM 自迴歸生成中的蒙地卡羅 Token 隨機採樣函數
+    :param logits: 模型輸出的原始未歸一化得分向量 [Vocab_Size]
+    :param temperature: 採樣溫度 (越大越隨機，越小越確定性)
+    :param top_p: 核心採樣累積門檻 (Nucleus Sampling)
+    :return: 抽樣得到的 next_token_id
+    """
+    # 1. 溫度縮放
+    scaled_logits = logits / max(temperature, 1e-5)
+    
+    # 2. 轉換為機率分佈 (Softmax)
+    probs = F.softmax(scaled_logits, dim=-1)
+    
+    # 3. 按機率降序排列，做 Top-p (Nucleus) 截斷
+    sorted_probs, sorted_indices = torch.sort(probs, descending=True)
+    cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
+    
+    # 移除累積機率超過 top_p 門檻的尾端 token
+    sorted_indices_to_remove = cumulative_probs > top_p
+    # 保留第一個超過門檻的 token
+    sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
+    sorted_indices_to_remove[..., 0] = 0
+    
+    # 將被濾除的候選者機率歸零
+    sorted_probs[sorted_indices_to_remove] = 0.0
+    sorted_probs = sorted_probs / sorted_probs.sum()  # 重新歸一化
+    
+    # 4. 執行蒙地卡羅多項式隨機抽樣 (Categorical Sampling)
+    sampled_sorted_idx = torch.multinomial(sorted_probs, num_samples=1)
+    next_token_id = sorted_indices[sampled_sorted_idx].item()
+    
+    return next_token_id
+
+# 測試用假 Logits (假設詞表大小為 8)
+vocab = ["AI", "深度學習", "蒙地卡羅", "馬可夫鏈", "強化學習", "大模型", "梯度下降", "神經網絡"]
+dummy_logits = torch.tensor([2.1, 1.2, 5.4, 4.8, 3.1, 0.5, -1.0, 2.8])
+
+# 進行 500 次蒙地卡羅生成測試
+token_counts = {word: 0 for word in vocab}
+for _ in range(500):
+    idx = monte_carlo_top_p_sampling(dummy_logits, temperature=0.7, top_p=0.85)
+    token_counts[vocab[idx]] += 1
+
+print("=== LLM 蒙地卡羅 Token 抽樣 500 次頻率統計 ===")
+for k, v in sorted(token_counts.items(), key=lambda item: item[1], reverse=True):
+    print(f"Token [{k}]: 出現 {v} 次 ({v/500*100:.1f}%)")
+</code></pre>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: 08 雙核心動態模擬器 -->
+    <section id="tab-sim" class="space-y-8">
+      
+      <!-- Top banner for Tab 08 -->
+      <div class="bg-white rounded-2xl p-6 sm:p-8 card-shadow border border-slate-100">
+        <div class="border-b border-slate-100 pb-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <span class="text-xs font-bold text-blue-600 tracking-wider uppercase">Section 08</span>
+            <h2 class="text-2xl font-bold text-slate-900 mt-1">互動實驗室：Step-by-Step 與 一鍵自動模擬</h2>
+            <p class="text-sm text-slate-500 mt-1">即時可視化驗證狀態機率矩陣收斂與大數法則 $\pi$ 估算。</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              ● 引擎就緒
+            </span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          
+          <!-- SIMULATOR 1: MARKOV CHAIN -->
+          <div class="flex flex-col border border-indigo-100 rounded-2xl p-6 bg-gradient-to-b from-indigo-50/20 to-white">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-bold text-indigo-950 flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-indigo-600"></span>
+                模擬器 1：馬可夫鏈狀態漫步與平穩收斂
+              </h3>
+              <span id="markov-step-counter" class="text-xs font-mono bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded font-bold">步數: 0</span>
+            </div>
+
+            <!-- Canvas Visualization -->
+            <div class="relative bg-slate-900 rounded-xl overflow-hidden mb-4 h-64 border border-slate-800 flex items-center justify-center">
+              <canvas id="markovCanvas" width="450" height="250" class="w-full h-full"></canvas>
+            </div>
+
+            <!-- Real-time Stats -->
+            <div class="grid grid-cols-3 gap-2 mb-4 text-center">
+              <div class="bg-slate-100 p-2 rounded-lg border border-slate-200">
+                <div class="text-xs text-slate-500 font-medium">晴天 (S1)</div>
+                <div id="stat-s1" class="text-sm font-bold text-amber-600 font-mono">0.0%</div>
+                <div class="text-[10px] text-slate-400">理論: 45.5%</div>
+              </div>
+              <div class="bg-slate-100 p-2 rounded-lg border border-slate-200">
+                <div class="text-xs text-slate-500 font-medium">多雲 (S2)</div>
+                <div id="stat-s2" class="text-sm font-bold text-blue-600 font-mono">0.0%</div>
+                <div class="text-[10px] text-slate-400">理論: 27.3%</div>
+              </div>
+              <div class="bg-slate-100 p-2 rounded-lg border border-slate-200">
+                <div class="text-xs text-slate-500 font-medium">雨天 (S3)</div>
+                <div id="stat-s3" class="text-sm font-bold text-emerald-600 font-mono">0.0%</div>
+                <div class="text-[10px] text-slate-400">理論: 27.2%</div>
+              </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="mt-auto space-y-2">
+              <div class="flex gap-2">
+                <button id="btn-markov-step" onclick="stepMarkov()" class="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 active:scale-95 transition text-white font-medium text-xs sm:text-sm rounded-lg shadow-sm">
+                  單步演進 (Step by Step)
+                </button>
+                <button id="btn-markov-auto" onclick="toggleAutoMarkov()" class="flex-1 py-2.5 px-4 bg-slate-800 hover:bg-slate-900 active:scale-95 transition text-white font-medium text-xs sm:text-sm rounded-lg shadow-sm">
+                  一鍵連續模擬 (Auto)
+                </button>
+                <button onclick="resetMarkov()" class="p-2.5 bg-slate-200 hover:bg-slate-300 transition text-slate-700 rounded-lg text-xs" title="重設">
+                  ↺
+                </button>
+              </div>
+              <p class="text-[11px] text-slate-500 leading-tight">
+                觀察隨著隨機轉移步數持續增加，訪問各節點的經驗比例如何逐步逼近固定特徵向量理論值。
+              </p>
+            </div>
+          </div>
+
+          <!-- SIMULATOR 2: MONTE CARLO INTEGRATION / PI -->
+          <div class="flex flex-col border border-emerald-100 rounded-2xl p-6 bg-gradient-to-b from-emerald-50/20 to-white">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-bold text-emerald-950 flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-emerald-600"></span>
+                模擬器 2：蒙地卡羅圓周率 $\pi$ 投點採樣
+              </h3>
+              <span id="mc-samples-counter" class="text-xs font-mono bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">採樣點數: 0</span>
+            </div>
+
+            <!-- Canvas Visualization -->
+            <div class="relative bg-slate-900 rounded-xl overflow-hidden mb-4 h-64 border border-slate-800 flex items-center justify-center">
+              <canvas id="mcCanvas" width="450" height="250" class="w-full h-full"></canvas>
+            </div>
+
+            <!-- Real-time Stats -->
+            <div class="grid grid-cols-3 gap-2 mb-4 text-center">
+              <div class="bg-slate-100 p-2 rounded-lg border border-slate-200">
+                <div class="text-xs text-slate-500 font-medium">估算 $\pi$ 值</div>
+                <div id="stat-pi-val" class="text-sm font-bold text-emerald-600 font-mono">0.0000</div>
+                <div class="text-[10px] text-slate-400">真實: 3.14159...</div>
+              </div>
+              <div class="bg-slate-100 p-2 rounded-lg border border-slate-200">
+                <div class="text-xs text-slate-500 font-medium">絕對誤差</div>
+                <div id="stat-pi-err" class="text-sm font-bold text-rose-600 font-mono">100.0%</div>
+                <div class="text-[10px] text-slate-400">$|\hat{\pi} - \pi|$</div>
+              </div>
+              <div class="bg-slate-100 p-2 rounded-lg border border-slate-200">
+                <div class="text-xs text-slate-500 font-medium">理論界限 $1/\sqrt{N}$</div>
+                <div id="stat-pi-se" class="text-sm font-bold text-indigo-600 font-mono">--</div>
+                <div class="text-[10px] text-slate-400">漸近標準差</div>
+              </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="mt-auto space-y-2">
+              <div class="flex gap-2">
+                <button id="btn-mc-step" onclick="stepMonteCarlo(50)" class="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-95 transition text-white font-medium text-xs sm:text-sm rounded-lg shadow-sm">
+                  單步投擲 (+50點)
+                </button>
+                <button id="btn-mc-auto" onclick="toggleAutoMonteCarlo()" class="flex-1 py-2.5 px-4 bg-slate-800 hover:bg-slate-900 active:scale-95 transition text-white font-medium text-xs sm:text-sm rounded-lg shadow-sm">
+                  一鍵連續採樣 (Auto)
+                </button>
+                <button onclick="resetMonteCarlo()" class="p-2.5 bg-slate-200 hover:bg-slate-300 transition text-slate-700 rounded-lg text-xs" title="重設">
+                  ↺
+                </button>
+              </div>
+              <p class="text-[11px] text-slate-500 leading-tight">
+                透過在 $[0, 1] \times [0, 1]$ 區間投擲均勻隨機點，統計落入 $x^2 + y^2 \le 1$ 內比例計算 $\pi \approx 4 \times \frac{M}{N}$。
+              </p>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 6: 09 什麼是 MCMC (Markov Chain Monte Carlo) 專題解析 -->
+    <section id="tab-mcmc" class="hidden space-y-8">
+      
+      <!-- Banner -->
+      <div class="bg-gradient-to-r from-amber-950 via-slate-900 to-indigo-950 rounded-2xl p-6 sm:p-8 text-white border border-amber-500/30 shadow-xl">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 text-xs font-semibold mb-3">
+          <span>🔥 當代理論與演算法明珠</span>
+        </div>
+        <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-amber-100">
+          什麼是 MCMC（馬可夫鏈蒙地卡羅）？
+        </h2>
+        <p class="mt-3 text-sm sm:text-base text-slate-300 leading-relaxed max-w-4xl">
+          <strong>一句話定義：</strong>MCMC 是一種<strong>「構造一條以未知目標分佈為平穩狀態的馬可夫鏈，藉由隨機漫步在複雜高維空間中進行高效率蒙地卡羅抽樣」</strong>的統計運算框架。它讓科學家<strong>完全不需要計算難如登天的分母歸一化常數</strong>，就能精確摸清任何高難度分佈的形狀。
+        </p>
+      </div>
+
+      <!-- Why MCMC & The Blind Climber Metaphor -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- 為什麼需要 MCMC？解決什麼痛點？ -->
+        <div class="bg-white rounded-2xl p-6 sm:p-8 card-shadow border border-slate-100">
+          <div class="border-b border-slate-100 pb-3 mb-4">
+            <span class="text-xs font-bold text-amber-600 tracking-wider uppercase">Problem & Pain Points</span>
+            <h3 class="text-lg font-bold text-slate-900">為什麼需要 MCMC？它拯救了什麼？</h3>
+          </div>
+          <div class="space-y-3.5 text-sm text-slate-600 leading-relaxed">
+            <p>
+              在貝氏機器學習與統計物理中，我們經常遇到以下致命困境：
+            </p>
+            <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs font-mono text-amber-950 text-center">
+              $$ P(\theta|D) = \frac{P(D|\theta)P(\theta)}{\int_{\Omega} P(D|\theta')P(\theta') d\theta'} = \frac{\tilde{P}(\theta)}{Z} $$
+            </div>
+            <ul class="space-y-2 text-xs sm:text-sm list-disc list-inside">
+              <li><strong>分母配分函數 (Partition Function $Z$) 無法積分：</strong>當參數 $\theta$ 維度多達數十或數千維時，分母的全空間積分在解析上根本積不出來，數值網格積分也因維度災難直接癱瘓。</li>
+              <li><strong>普通蒙地卡羅在高維徹底失效：</strong>隨機均勻撒點，在極高維空間中 99.9999% 的點都會落在機率趨近於 0 的無效真空中，就像在太平洋撈一根針。</li>
+              <li><strong>MCMC 的破局妙手：</strong>如果我們讓採樣器像一個「探險家」，只在機率密度高的地方隨機漫步，且採樣躍遷只比較<strong>兩點的機率比值</strong>，分母 $Z$ 便會在相除時<strong>被完美消去！</strong></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 生活化比喻：迷霧中的盲人登山島嶼 -->
+        <div class="bg-white rounded-2xl p-6 sm:p-8 card-shadow border border-slate-100">
+          <div class="border-b border-slate-100 pb-3 mb-4">
+            <span class="text-xs font-bold text-emerald-600 tracking-wider uppercase">Intuitive Metaphor</span>
+            <h3 class="text-lg font-bold text-slate-900">生活直觀比喻：迷霧海島上的盲人登山者</h3>
+          </div>
+          <div class="space-y-3 text-sm text-slate-600 leading-relaxed">
+            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <span class="font-bold text-slate-900 block mb-1">🏔️ 任務：在每座山停留的時間，必須嚴格等於山峰高度</span>
+              <p class="text-xs sm:text-sm">
+                濃霧籠罩著一座未知的群島，盲人完全不知道整座島嶼的總陸地面積（無法求分母歸一化 $Z$）。他只有一個高度計，可以測量腳下目前的實時海拔。
+              </p>
+            </div>
+            <div class="border-l-2 border-amber-400 pl-4 space-y-1.5 text-xs sm:text-sm">
+              <p><strong>盲人的前進法則（Metropolis-Hastings 準則）：</strong></p>
+              <ol class="list-decimal list-inside space-y-1">
+                <li>閉著眼朝隨機方向跨出試探的一步（提議位置 $x^*$）。</li>
+                <li><strong>如果踩到的新位置更高：</strong>毫不猶豫，立刻走過去！（接受率 $\alpha = 1$）。</li>
+                <li><strong>如果新位置比現在低：</strong>擲一次骰子，以「新高度 / 舊高度」的比例機率決定要不要走過去；若被拒絕，則留在原地不動。</li>
+              </ol>
+            </div>
+            <p class="text-xs text-slate-500">
+              <strong>神奇的結果：</strong>只要走得夠久，盲人在島上任何座標的出現次數比例，<strong>分毫不差地嚴格正比於該處的海拔高度！</strong>
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 數學本質：細緻平衡條件 (Detailed Balance) 與 Metropolis-Hastings -->
+      <div class="bg-white rounded-2xl p-6 sm:p-8 card-shadow border border-slate-100">
+        <div class="border-b border-slate-100 pb-4 mb-6">
+          <span class="text-xs font-bold text-blue-600 tracking-wider uppercase">Mathematical Core</span>
+          <h2 class="text-2xl font-bold text-slate-900 mt-1">MCMC 的數學真諦：細緻平衡條件 (Detailed Balance)</h2>
+          <p class="text-sm text-slate-500 mt-1">如何人為「量身打造」一條平穩分佈恰為目標分佈 $\pi(x)$ 的馬可夫鏈？</p>
+        </div>
+
+        <div class="space-y-4 text-sm text-slate-700 leading-relaxed">
+          <p>
+            馬可夫鏈能夠收斂到特定平穩分佈 $\pi(x)$ 的<strong>充分條件</strong>是滿足<strong>細緻平衡條件 (Detailed Balance)</strong>：
+          </p>
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-center font-mono">
+            $$ \pi(x) P(x \to x^*) = \pi(x^*) P(x^* \to x) $$
+          </div>
+          <p class="text-xs sm:text-sm text-slate-600">
+            意義：從狀態 $x$ 轉移到 $x^*$ 的機率流，必須完全等於從 $x^*$ 流回 $x$ 的機率流（動態微觀平衡）。
+          </p>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-2">
+            <div class="p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 text-xs sm:text-sm">
+              <span class="font-bold text-indigo-950 block mb-1">1. 拆解轉移機率</span>
+              將一步轉移拆為「提議 (Proposal)」與「接受 (Acceptance)」兩階段：
+              $$ P(x \to x^*) = q(x^*|x) \cdot \alpha(x, x^*) $$
+              其中 $q(x^*|x)$ 是隨機漫步提議分佈（如高斯分佈 $\mathcal{N}(x, \sigma^2)$），$\alpha(x, x^*)$ 是接受機率。
+            </div>
+            <div class="p-4 bg-emerald-50/60 rounded-xl border border-emerald-100 text-xs sm:text-sm">
+              <span class="font-bold text-emerald-950 block mb-1">2. Metropolis-Hastings 接受率推導</span>
+              代入細緻平衡條件：
+              $$ \pi(x) q(x^*|x) \alpha(x, x^*) = \pi(x^*) q(x|x^*) \alpha(x^*, x) $$
+              為了讓接受率最大化，Metropolis 構造出：
+              $$ \alpha(x, x^*) = \min\left(1, \frac{\pi(x^*) q(x|x^*)}{\pi(x) q(x^*|x)}\right) $$
+            </div>
+          </div>
+
+          <div class="p-4 bg-amber-50 rounded-xl border border-amber-200 text-xs sm:text-sm text-amber-950">
+            <strong>消去分母的世紀神蹟：</strong><br>
+            若提議分佈對稱（即 $q(x^*|x) = q(x|x^*)$，如以當前點為中心的高斯分佈），則：
+            $$ \alpha(x, x^*) = \min\left(1, \frac{\pi(x^*)}{\pi(x)}\right) = \min\left(1, \frac{\tilde{\pi}(x^*)/Z}{\tilde{\pi}(x)/Z}\right) = \min\left(1, \frac{\tilde{\pi}(x^*)}{\tilde{\pi}(x)}\right) $$
+            <strong>配分函數 $Z$ 在相除中被乾淨俐落地消滅了！</strong>這意味著我們只要知道非歸一化的相對機率函數 $\tilde{\pi}(x)$，就能完全精準抽樣！
+          </div>
+        </div>
+      </div>
+
+      <!-- 互動模擬器：Metropolis-Hastings 雙峰高斯抽樣實驗室 -->
+      <div class="bg-white rounded-2xl p-6 sm:p-8 card-shadow border border-slate-100">
+        <div class="border-b border-slate-100 pb-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <span class="text-xs font-bold text-amber-600 tracking-wider uppercase">Interactive Lab</span>
+            <h2 class="text-2xl font-bold text-slate-900 mt-1">MCMC (Metropolis) 即時抽樣模擬器</h2>
+            <p class="text-sm text-slate-500 mt-1">目標分佈：雙峰高斯分佈 $P(x) \propto 0.4e^{-\frac{(x+2)^2}{0.8}} + 0.6e^{-\frac{(x-2.5)^2}{1.5}}$。無需計算分母，見證漫步者如何描繪出雙峰！</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="mcmc-state-badge" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+              ● MCMC 引擎就緒
+            </span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <!-- Canvas Visualization (Col 1 & 2) -->
+          <div class="lg:col-span-2 flex flex-col">
+            <div class="relative bg-slate-950 rounded-xl overflow-hidden mb-3 h-72 border border-slate-800 flex items-center justify-center">
+              <canvas id="mcmcCanvas" width="600" height="300" class="w-full h-full"></canvas>
+            </div>
+            
+            <div class="flex items-center justify-between text-xs text-slate-500 px-1">
+              <span class="flex items-center gap-1.5"><span class="w-3 h-1 bg-amber-400 inline-block rounded"></span> 理論目標形狀（未歸一化密度）</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-indigo-500/60 inline-block rounded-sm"></span> MCMC 抽樣直方圖</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span> 當前漫步者位置</span>
+            </div>
+          </div>
+
+          <!-- Controls & Diagnostics (Col 3) -->
+          <div class="flex flex-col justify-between space-y-4 bg-slate-50 p-5 rounded-xl border border-slate-200">
+            <div>
+              <h4 class="text-sm font-bold text-slate-900 mb-3">抽樣診斷與參數控制</h4>
+              
+              <!-- Slider for Proposal Step Size -->
+              <div class="space-y-1.5 mb-4">
+                <div class="flex justify-between text-xs">
+                  <span class="font-medium text-slate-700">提議步長 ($\sigma_{proposal}$):</span>
+                  <span id="mcmc-sigma-val" class="font-mono font-bold text-indigo-600">1.2</span>
+                </div>
+                <input type="range" id="mcmc-sigma-slider" min="0.2" max="4.0" step="0.1" value="1.2" oninput="updateMCMCSigma(this.value)" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                <p class="text-[10px] text-slate-500">
+                  步長太小：探索太慢（鏈相關性高）；步長太大：常跳到極低密度區，拒絕率激增。
+                </p>
+              </div>
+
+              <!-- Stats Cards -->
+              <div class="grid grid-cols-2 gap-2 text-center mb-4">
+                <div class="bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm">
+                  <div class="text-[11px] text-slate-400">總採樣數 (N)</div>
+                  <div id="stat-mcmc-n" class="text-base font-bold font-mono text-slate-800">0</div>
+                </div>
+                <div class="bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm">
+                  <div class="text-[11px] text-slate-400">接受率 (Accept)</div>
+                  <div id="stat-mcmc-acc" class="text-base font-bold font-mono text-emerald-600">0.0%</div>
+                </div>
+                <div class="bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm col-span-2">
+                  <div class="text-[11px] text-slate-400">當前位置 $x$ 與上一跳躍狀態</div>
+                  <div id="stat-mcmc-cur" class="text-xs font-bold font-mono text-indigo-700">x = 0.00 (準備中)</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="space-y-2">
+              <div class="flex gap-2">
+                <button onclick="stepMCMC(1)" class="flex-1 py-2 px-3 bg-indigo-600 hover:bg-indigo-700 active:scale-95 transition text-white font-medium text-xs rounded-lg shadow-sm">
+                  單步試探 (Step)
+                </button>
+                <button id="btn-mcmc-auto" onclick="toggleAutoMCMC()" class="flex-1 py-2 px-3 bg-slate-800 hover:bg-slate-900 active:scale-95 transition text-white font-medium text-xs rounded-lg shadow-sm">
+                  自動抽樣 (Auto)
+                </button>
+                <button onclick="resetMCMC()" class="p-2 bg-slate-200 hover:bg-slate-300 transition text-slate-700 rounded-lg text-xs" title="重設">
+                  ↺
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+      <!-- MCMC 演進家族比較表 -->
+      <div class="bg-white rounded-2xl p-6 sm:p-8 card-shadow border border-slate-100">
+        <div class="border-b border-slate-100 pb-3 mb-4">
+          <span class="text-xs font-bold text-indigo-600 tracking-wider uppercase">Algorithm Family</span>
+          <h3 class="text-lg font-bold text-slate-900">現代 MCMC 四大核心演算法比較</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs sm:text-sm text-slate-600 border-collapse">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-slate-800 font-semibold">
+                <th class="p-3">演算法</th>
+                <th class="p-3">核心機制</th>
+                <th class="p-3">優勢</th>
+                <th class="p-3">痛點 / 適用場景</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr>
+                <td class="p-3 font-bold text-indigo-900">Metropolis-Hastings (MH)</td>
+                <td class="p-3">提議分佈 + 接受率判定 $\alpha = \min(1, \frac{p(x')q(x|x')}{p(x)q(x'|x)})$</td>
+                <td class="p-3">原理最通用，適用於任何連續或離散非標準分佈</td>
+                <td class="p-3">高維時隨機漫步效率低（容易受困或過度拒絕）</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-bold text-emerald-900">Gibbs Sampling (吉布斯採樣)</td>
+                <td class="p-3">輪流固定其餘變數，只對單一變數條件分佈 $p(x_i | x_{-i})$ 採樣（接受率恆為 1）</td>
+                <td class="p-3">無需手動調節步長，每次提議保證 100% 接受</td>
+                <td class="p-3">需要各維度的條件共軛解析分佈；變數強相關時收斂慢</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-bold text-purple-900">Hamiltonian Monte Carlo (HMC / NUTS)</td>
+                <td class="p-3">引入物理學「動量」與哈密頓動力學，沿著機率梯度軌跡滑行</td>
+                <td class="p-3">能在高維空間高速長距離穿越，極少走回頭路</td>
+                <td class="p-3">需要目標分佈的一階梯度；當前 Stan、PyMC 的核心引擎</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-bold text-amber-900">SGLD (隨機梯度朗之萬動力學)</td>
+                <td class="p-3">深度學習 SGD 梯度下降 + 注入適量高斯雜訊隨機擾動</td>
+                <td class="p-3">能處理 Big Data（基於 Mini-batch 數據直接進行貝氏後驗採樣）</td>
+                <td class="p-3">現代貝氏深度神經網路 (Bayesian Neural Networks) 核心</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center text-xs text-slate-400 border-t border-slate-200 mt-12">
+    馬可夫鏈與蒙地卡羅方法知識庫 • 涵蓋機器學習、深度學習擴散模型、RL MCTS 與 LLM 推理採樣全景
+  </footer>
+
+  <!-- Interactive JavaScript Engine -->
+  <script>
+    // Tab Switching
+    function switchTab(tabId) {
+      const tabs = ['overview', 'math', 'ai-domains', 'code', 'sim', 'mcmc'];
+      tabs.forEach(id => {
+        const el = document.getElementById(`tab-${id}`);
+        const btn = document.getElementById(`tab-btn-${id}`);
+        if (id === tabId) {
+          el.classList.remove('hidden');
+          btn.classList.add('bg-blue-600', 'text-white');
+          btn.classList.remove('text-slate-300');
+        } else {
+          el.classList.add('hidden');
+          btn.classList.remove('bg-blue-600', 'text-white');
+          btn.classList.add('text-slate-300');
+        }
+      });
+      if (tabId === 'sim') {
+        drawMarkov();
+        drawMonteCarlo();
+      } else if (tabId === 'mcmc') {
+        drawMCMC();
+      }
+    }
+
+    function copyCode(id) {
+      const code = document.getElementById(id).innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        alert("代碼已複製到剪貼簿！");
+      });
+    }
+
+    // ==========================================
+    // SIMULATOR 1: MARKOV CHAIN ENGINE
+    // ==========================================
+    const markovCanvas = document.getElementById('markovCanvas');
+    const mCtx = markovCanvas.getContext('2d');
+
+    // 3 states: 0: Sunny, 1: Cloudy, 2: Rainy
+    const states = [
+      { name: "晴天 (S1)", color: "#f59e0b", x: 120, y: 80, visits: 0 },
+      { name: "多雲 (S2)", color: "#3b82f6", x: 330, y: 80, visits: 0 },
+      { name: "雨天 (S3)", color: "#10b981", x: 225, y: 190, visits: 0 }
+    ];
+
+    // Transition matrix
+    const P_matrix = [
+      [0.6, 0.2, 0.2], // From Sunny
+      [0.3, 0.4, 0.3], // From Cloudy
+      [0.4, 0.2, 0.4]  // From Rainy
+    ];
+
+    let currentState = 0;
+    let markovSteps = 0;
+    let markovInterval = null;
+
+    function stepMarkov() {
+      // Pick next state according to transition probability
+      const r = Math.random();
+      const currentProbs = P_matrix[currentState];
+      let cumulative = 0;
+      let nextState = currentState;
+
+      for (let i = 0; i < currentProbs.length; i++) {
+        cumulative += currentProbs[i];
+        if (r <= cumulative) {
+          nextState = i;
+          break;
+        }
+      }
+
+      currentState = nextState;
+      states[currentState].visits++;
+      markovSteps++;
+
+      updateMarkovStats();
+      drawMarkov();
+    }
+
+    function toggleAutoMarkov() {
+      const btn = document.getElementById('btn-markov-auto');
+      if (markovInterval) {
+        clearInterval(markovInterval);
+        markovInterval = null;
+        btn.innerText = "一鍵連續模擬 (Auto)";
+        btn.classList.remove('bg-rose-600');
+        btn.classList.add('bg-slate-800');
+      } else {
+        markovInterval = setInterval(() => {
+          for(let i=0; i<3; i++) stepMarkov();
+        }, 60);
+        btn.innerText = "暫停模擬 (Pause)";
+        btn.classList.remove('bg-slate-800');
+        btn.classList.add('bg-rose-600');
+      }
+    }
+
+    function resetMarkov() {
+      if (markovInterval) toggleAutoMarkov();
+      markovSteps = 0;
+      currentState = 0;
+      states.forEach(s => s.visits = 0);
+      updateMarkovStats();
+      drawMarkov();
+    }
+
+    function updateMarkovStats() {
+      document.getElementById('markov-step-counter').innerText = `步數: ${markovSteps}`;
+      const total = markovSteps || 1;
+      document.getElementById('stat-s1').innerText = `${((states[0].visits / total) * 100).toFixed(1)}%`;
+      document.getElementById('stat-s2').innerText = `${((states[1].visits / total) * 100).toFixed(1)}%`;
+      document.getElementById('stat-s3').innerText = `${((states[2].visits / total) * 100).toFixed(1)}%`;
+    }
+
+    function drawMarkov() {
+      mCtx.clearRect(0, 0, markovCanvas.width, markovCanvas.height);
+
+      // Draw transition connections
+      mCtx.strokeStyle = "rgba(148, 163, 184, 0.3)";
+      mCtx.lineWidth = 1.5;
+      for (let i = 0; i < states.length; i++) {
+        for (let j = 0; j < states.length; j++) {
+          if (i !== j) {
+            mCtx.beginPath();
+            mCtx.moveTo(states[i].x, states[i].y);
+            mCtx.lineTo(states[j].x, states[j].y);
+            mCtx.stroke();
+          }
+        }
+      }
+
+      // Draw State Nodes
+      states.forEach((s, idx) => {
+        const isCurrent = (idx === currentState);
+        mCtx.beginPath();
+        mCtx.arc(s.x, s.y, isCurrent ? 28 : 22, 0, 2 * Math.PI);
+        mCtx.fillStyle = s.color;
+        mCtx.fill();
+        
+        if (isCurrent) {
+          mCtx.lineWidth = 4;
+          mCtx.strokeStyle = "#ffffff";
+          mCtx.stroke();
+
+          // Pulsing wave
+          mCtx.beginPath();
+          mCtx.arc(s.x, s.y, 34, 0, 2 * Math.PI);
+          mCtx.strokeStyle = s.color + "66";
+          mCtx.lineWidth = 2;
+          mCtx.stroke();
+        }
+
+        mCtx.fillStyle = "#ffffff";
+        mCtx.font = "bold 11px Inter";
+        mCtx.textAlign = "center";
+        mCtx.textBaseline = "middle";
+        mCtx.fillText(s.name.split(' ')[0], s.x, s.y);
+      });
+    }
+
+    // ==========================================
+    // SIMULATOR 2: MONTE CARLO PI ENGINE
+    // ==========================================
+    const mcCanvas = document.getElementById('mcCanvas');
+    const mcCtx = mcCanvas.getContext('2d');
+
+    let totalPoints = 0;
+    let insideCirclePoints = 0;
+    let mcInterval = null;
+    const recentPoints = [];
+
+    function stepMonteCarlo(count = 50) {
+      for (let i = 0; i < count; i++) {
+        const x = Math.random();
+        const y = Math.random();
+        const inside = (x * x + y * y) <= 1.0;
+        
+        totalPoints++;
+        if (inside) insideCirclePoints++;
+
+        if (recentPoints.length < 400) {
+          recentPoints.push({ x, y, inside });
+        } else {
+          recentPoints[Math.floor(Math.random() * recentPoints.length)] = { x, y, inside };
+        }
+      }
+
+      updateMonteCarloStats();
+      drawMonteCarlo();
+    }
+
+    function toggleAutoMonteCarlo() {
+      const btn = document.getElementById('btn-mc-auto');
+      if (mcInterval) {
+        clearInterval(mcInterval);
+        mcInterval = null;
+        btn.innerText = "一鍵連續採樣 (Auto)";
+        btn.classList.remove('bg-rose-600');
+        btn.classList.add('bg-slate-800');
+      } else {
+        mcInterval = setInterval(() => {
+          stepMonteCarlo(150);
+        }, 40);
+        btn.innerText = "暫停採樣 (Pause)";
+        btn.classList.remove('bg-slate-800');
+        btn.classList.add('bg-rose-600');
+      }
+    }
+
+    function resetMonteCarlo() {
+      if (mcInterval) toggleAutoMonteCarlo();
+      totalPoints = 0;
+      insideCirclePoints = 0;
+      recentPoints.length = 0;
+      updateMonteCarloStats();
+      drawMonteCarlo();
+    }
+
+    function updateMonteCarloStats() {
+      document.getElementById('mc-samples-counter').innerText = `採樣點數: ${totalPoints.toLocaleString()}`;
+      if (totalPoints === 0) {
+        document.getElementById('stat-pi-val').innerText = "0.0000";
+        document.getElementById('stat-pi-err').innerText = "100.0%";
+        document.getElementById('stat-pi-se').innerText = "--";
+        return;
+      }
+      const piEstimate = (4.0 * insideCirclePoints) / totalPoints;
+      const absError = Math.abs(piEstimate - Math.PI);
+      const se = (1.0 / Math.sqrt(totalPoints)).toFixed(4);
+
+      document.getElementById('stat-pi-val').innerText = piEstimate.toFixed(5);
+      document.getElementById('stat-pi-err').innerText = `${((absError / Math.PI) * 100).toFixed(3)}%`;
+      document.getElementById('stat-pi-se').innerText = `±${se}`;
+    }
+
+    function drawMonteCarlo() {
+      mcCtx.clearRect(0, 0, mcCanvas.width, mcCanvas.height);
+
+      const size = 200;
+      const offsetX = (mcCanvas.width - size) / 2;
+      const offsetY = (mcCanvas.height - size) / 2;
+
+      // Draw bounding box
+      mcCtx.strokeStyle = "#475569";
+      mcCtx.lineWidth = 1.5;
+      mcCtx.strokeRect(offsetX, offsetY, size, size);
+
+      // Draw quarter circle arc
+      mcCtx.beginPath();
+      mcCtx.arc(offsetX, offsetY + size, size, 1.5 * Math.PI, 2 * Math.PI);
+      mcCtx.strokeStyle = "#10b981";
+      mcCtx.lineWidth = 2;
+      mcCtx.stroke();
+
+      // Draw points
+      recentPoints.forEach(pt => {
+        mcCtx.beginPath();
+        const px = offsetX + pt.x * size;
+        const py = offsetY + size - pt.y * size;
+        mcCtx.arc(px, py, 1.8, 0, 2 * Math.PI);
+        mcCtx.fillStyle = pt.inside ? "#10b981" : "#f43f5e";
+        mcCtx.fill();
+      });
+    }
+
+    // Initialize on window load
+    window.addEventListener('load', () => {
+      drawMarkov();
+      drawMonteCarlo();
+      drawMCMC();
+    });
+
+    // ==========================================
+    // SIMULATOR 3: MCMC METROPOLIS-HASTINGS ENGINE
+    // ==========================================
+    const mcmcCanvas = document.getElementById('mcmcCanvas');
+    const mcmcCtx = mcmcCanvas ? mcmcCanvas.getContext('2d') : null;
+
+    let mcmcCurrentX = 0.0;
+    let mcmcSigma = 1.2;
+    let mcmcTotalSamples = 0;
+    let mcmcAcceptedCount = 0;
+    let mcmcInterval = null;
+    let lastProposedX = null;
+    let lastAccepted = true;
+
+    // Binned histogram between [-5, 6] with 44 bins
+    const minDomain = -5;
+    const maxDomain = 6;
+    const numBins = 44;
+    const binWidth = (maxDomain - minDomain) / numBins;
+    const mcmcBins = new Array(numBins).fill(0);
+
+    // Unnormalized target distribution: Bimodal Gaussian Mixture
+    function targetDensity(x) {
+      const g1 = 0.4 * Math.exp(-Math.pow(x + 2.0, 2) / 0.8);
+      const g2 = 0.6 * Math.exp(-Math.pow(x - 2.5, 2) / 1.5);
+      return g1 + g2;
+    }
+
+    function updateMCMCSigma(val) {
+      mcmcSigma = parseFloat(val);
+      document.getElementById('mcmc-sigma-val').innerText = mcmcSigma.toFixed(1);
+    }
+
+    // Normal random using Box-Muller transform
+    function randn() {
+      let u = 0, v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    }
+
+    function stepMCMC(count = 1) {
+      for (let i = 0; i < count; i++) {
+        const x_prop = mcmcCurrentX + randn() * mcmcSigma;
+        const p_cur = targetDensity(mcmcCurrentX);
+        const p_prop = targetDensity(x_prop);
+        const alpha = Math.min(1.0, p_prop / (p_cur + 1e-12));
+
+        const u = Math.random();
+        lastProposedX = x_prop;
+        mcmcTotalSamples++;
+
+        if (u < alpha) {
+          mcmcCurrentX = x_prop;
+          mcmcAcceptedCount++;
+          lastAccepted = true;
+        } else {
+          lastAccepted = false;
+        }
+
+        // Add to histogram if within domain
+        if (mcmcCurrentX >= minDomain && mcmcCurrentX <= maxDomain) {
+          const bIdx = Math.floor((mcmcCurrentX - minDomain) / binWidth);
+          if (bIdx >= 0 && bIdx < numBins) {
+            mcmcBins[bIdx]++;
+          }
+        }
+      }
+
+      updateMCMCStats();
+      drawMCMC();
+    }
+
+    function toggleAutoMCMC() {
+      const btn = document.getElementById('btn-mcmc-auto');
+      if (mcmcInterval) {
+        clearInterval(mcmcInterval);
+        mcmcInterval = null;
+        btn.innerText = "自動抽樣 (Auto)";
+        btn.classList.remove('bg-rose-600');
+        btn.classList.add('bg-slate-800');
+      } else {
+        mcmcInterval = setInterval(() => {
+          stepMCMC(8);
+        }, 40);
+        btn.innerText = "暫停抽樣 (Pause)";
+        btn.classList.remove('bg-slate-800');
+        btn.classList.add('bg-rose-600');
+      }
+    }
+
+    function resetMCMC() {
+      if (mcmcInterval) toggleAutoMCMC();
+      mcmcCurrentX = 0.0;
+      mcmcTotalSamples = 0;
+      mcmcAcceptedCount = 0;
+      lastProposedX = null;
+      lastAccepted = true;
+      mcmcBins.fill(0);
+      updateMCMCStats();
+      drawMCMC();
+    }
+
+    function updateMCMCStats() {
+      document.getElementById('stat-mcmc-n').innerText = mcmcTotalSamples.toLocaleString();
+      const accRate = mcmcTotalSamples > 0 ? ((mcmcAcceptedCount / mcmcTotalSamples) * 100).toFixed(1) : 0.0;
+      document.getElementById('stat-mcmc-acc').innerText = `${accRate}%`;
+      
+      const statusText = lastProposedX !== null
+        ? `x = ${mcmcCurrentX.toFixed(2)} (${lastAccepted ? '✓ 提議已接受' : '✗ 提議被拒絕，留原地'})`
+        : `x = ${mcmcCurrentX.toFixed(2)} (初始狀態)`;
+      document.getElementById('stat-mcmc-cur').innerText = statusText;
+    }
+
+    function drawMCMC() {
+      if (!mcmcCtx) return;
+      const w = mcmcCanvas.width;
+      const h = mcmcCanvas.height;
+      mcmcCtx.clearRect(0, 0, w, h);
+
+      const padding = { left: 45, right: 30, top: 30, bottom: 40 };
+      const plotW = w - padding.left - padding.right;
+      const plotH = h - padding.top - padding.bottom;
+
+      function toScreenX(x) {
+        return padding.left + ((x - minDomain) / (maxDomain - minDomain)) * plotW;
+      }
+
+      function toScreenY(y, maxY) {
+        return padding.top + plotH - (y / maxY) * plotH;
+      }
+
+      // Draw Grid & Baseline
+      mcmcCtx.strokeStyle = "#334155";
+      mcmcCtx.lineWidth = 1;
+      mcmcCtx.beginPath();
+      mcmcCtx.moveTo(padding.left, padding.top + plotH);
+      mcmcCtx.lineTo(padding.left + plotW, padding.top + plotH);
+      mcmcCtx.stroke();
+
+      // Find max in histogram for scaling
+      const maxBinCount = Math.max(...mcmcBins, 1);
+      const binPixW = plotW / numBins;
+
+      // 1. Draw Histogram of samples
+      mcmcCtx.fillStyle = "rgba(99, 102, 241, 0.45)";
+      mcmcCtx.strokeStyle = "rgba(129, 140, 248, 0.7)";
+      mcmcCtx.lineWidth = 1;
+
+      for (let i = 0; i < numBins; i++) {
+        const count = mcmcBins[i];
+        if (count > 0) {
+          const barH = (count / maxBinCount) * (plotH * 0.85);
+          const bx = padding.left + i * binPixW;
+          const by = padding.top + plotH - barH;
+          mcmcCtx.fillRect(bx, by, binPixW - 1, barH);
+          mcmcCtx.strokeRect(bx, by, binPixW - 1, barH);
+        }
+      }
+
+      // 2. Draw Target Density Curve (Normalized to fit nicely)
+      const maxTargetDensity = 0.65; // Approx peak of bimodal
+      mcmcCtx.beginPath();
+      mcmcCtx.strokeStyle = "#fbbf24";
+      mcmcCtx.lineWidth = 2.5;
+
+      for (let px = 0; px <= plotW; px += 3) {
+        const x = minDomain + (px / plotW) * (maxDomain - minDomain);
+        const yVal = targetDensity(x);
+        const py = toScreenY(yVal, maxTargetDensity);
+        if (px === 0) mcmcCtx.moveTo(padding.left + px, py);
+        else mcmcCtx.lineTo(padding.left + px, py);
+      }
+      mcmcCtx.stroke();
+
+      // 3. Draw Proposed Jump Trace (if step occurred)
+      if (lastProposedX !== null && lastProposedX >= minDomain && lastProposedX <= maxDomain) {
+        const curPx = toScreenX(mcmcCurrentX);
+        const propPx = toScreenX(lastProposedX);
+        
+        mcmcCtx.setLineDash([3, 3]);
+        mcmcCtx.strokeStyle = lastAccepted ? "#34d399" : "#f87171";
+        mcmcCtx.lineWidth = 1.5;
+        mcmcCtx.beginPath();
+        mcmcCtx.moveTo(curPx, padding.top + plotH - 10);
+        mcmcCtx.quadraticCurveTo((curPx + propPx) / 2, padding.top + plotH - 40, propPx, padding.top + plotH - 10);
+        mcmcCtx.stroke();
+        mcmcCtx.setLineDash([]);
+
+        // Proposed candidate marker
+        mcmcCtx.beginPath();
+        mcmcCtx.arc(propPx, padding.top + plotH - 10, 4, 0, 2 * Math.PI);
+        mcmcCtx.fillStyle = lastAccepted ? "#34d399" : "#f87171";
+        mcmcCtx.fill();
+      }
+
+      // 4. Draw Current Walker Position
+      const curX_px = toScreenX(mcmcCurrentX);
+      mcmcCtx.beginPath();
+      mcmcCtx.arc(curX_px, padding.top + plotH, 6, 0, 2 * Math.PI);
+      mcmcCtx.fillStyle = "#10b981";
+      mcmcCtx.fill();
+      mcmcCtx.strokeStyle = "#ffffff";
+      mcmcCtx.lineWidth = 2;
+      mcmcCtx.stroke();
+
+      // Axis Ticks
+      mcmcCtx.fillStyle = "#94a3b8";
+      mcmcCtx.font = "10px monospace";
+      mcmcCtx.textAlign = "center";
+      for (let tick = -4; tick <= 5; tick += 2) {
+        const tx = toScreenX(tick);
+        mcmcCtx.fillText(tick.toString(), tx, padding.top + plotH + 16);
+      }
+    }
+  </script>
+</body>
+</html>
