@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>迴歸分析 (Regression) 全景精粹與互動模擬實驗室</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- KaTeX for crisp mathematical formulas -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <!-- Chart.js for loss monitoring -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        pre, code {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .canvas-container {
+            cursor: crosshair;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-sky-200">
+
+    <nav class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-slate-200 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-sky-500/20">
+                        <i class="fa-solid fa-chart-line text-lg"></i>
+                    </div>
+                    <div>
+                        <span class="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-700 to-indigo-800">Regression Masterclass</span>
+                        <span class="hidden sm:inline-block ml-2 px-2 py-0.5 text-xs font-semibold bg-sky-100 text-sky-700 rounded-full">AI / ML / DL / RL / LLM</span>
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center gap-1 text-sm font-medium text-slate-600">
+                    <a href="#quick-overview" class="px-3 py-1.5 rounded-lg hover:text-sky-600 hover:bg-slate-100 transition">概念由來</a>
+                    <a href="#theory-math" class="px-3 py-1.5 rounded-lg hover:text-sky-600 hover:bg-slate-100 transition">理論與數學</a>
+                    <a href="#cross-domain" class="px-3 py-1.5 rounded-lg hover:text-sky-600 hover:bg-slate-100 transition">範疇應用</a>
+                    <a href="#simulator" class="px-3 py-1.5 rounded-lg bg-sky-600 text-white hover:bg-sky-700 transition shadow-sm">梯度下降模擬器</a>
+                    <a href="#code-impl" class="px-3 py-1.5 rounded-lg hover:text-sky-600 hover:bg-slate-100 transition">Code 實作</a>
+                    <a href="#ipas-exam" class="px-3 py-1.5 rounded-lg hover:text-sky-600 hover:bg-slate-100 transition text-amber-600 font-semibold"><i class="fa-solid fa-graduation-cap mr-1"></i>iPAS 考題</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <header class="bg-gradient-to-b from-sky-50/70 via-white to-slate-50 border-b border-slate-200 py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-6xl mx-auto">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-sky-100 text-sky-800 mb-4">
+                <i class="fa-solid fa-sparkles"></i> 機器學習基石演算法・連續變數預測
+            </div>
+            <h1 class="text-3xl sm:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight">
+                迴歸分析 <span class="text-sky-600">(Regression)</span> 全景探索
+            </h1>
+            <p class="mt-3 text-lg text-slate-600 max-w-3xl">
+                從高爾頓身高的生物統計、最小平方法封閉解推導，到深度學習 MLP 與大語言模型 Reward Model 的實務應用全覽。
+            </p>
+
+            <!-- 01 & 02 Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                <!-- 01. 一句話簡介 -->
+                <div class="bg-white rounded-2xl p-6 border border-sky-100 shadow-sm relative overflow-hidden group hover:border-sky-300 transition">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-sky-50 rounded-full blur-2xl -mr-6 -mt-6"></div>
+                    <div class="flex items-center gap-3 text-sky-700 font-bold mb-2">
+                        <span class="w-7 h-7 rounded-lg bg-sky-100 flex items-center justify-center text-xs">01</span>
+                        <h2 class="text-lg">一句話簡介 (One-Liner)</h2>
+                    </div>
+                    <blockquote class="text-slate-800 font-medium text-lg leading-relaxed border-l-4 border-sky-500 pl-4 py-1 mt-3 bg-sky-50/40 rounded-r-lg">
+                        「迴歸分析是一種透過學習自變數 $(X)$ 與應變數 $(Y)$ 間的數學對應關係，藉此對<span class="text-sky-700 font-bold underline decoration-sky-400">未知連續數值進行量化預測</span>與趨勢解釋的統計機器學習方法。」
+                    </blockquote>
+                </div>
+
+                <!-- 02. 核心原理 -->
+                <div class="bg-white rounded-2xl p-6 border border-indigo-100 shadow-sm relative overflow-hidden group hover:border-indigo-300 transition">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-indigo-50 rounded-full blur-2xl -mr-6 -mt-6"></div>
+                    <div class="flex items-center gap-3 text-indigo-700 font-bold mb-2">
+                        <span class="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center text-xs">02</span>
+                        <h2 class="text-lg">核心原理 (Core Principles)</h2>
+                    </div>
+                    <ul class="text-slate-600 text-sm space-y-2.5 mt-3">
+                        <li class="flex items-start gap-2">
+                            <i class="fa-solid fa-check-circle text-indigo-500 mt-1"></i>
+                            <span><strong>映射連續函數：</strong> 建立假設函數 $\hat{y} = f(X; \mathbf{w}, b)$，將多維特徵投影至連續實數軸 $\mathbb{R}$。</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <i class="fa-solid fa-check-circle text-indigo-500 mt-1"></i>
+                            <span><strong>誤差最小化 (Loss Minimization)：</strong> 定義預測值與真值之殘差 (Residual)，通常採用均方誤差 (MSE) 或絕對誤差 (MAE)。</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <i class="fa-solid fa-check-circle text-indigo-500 mt-1"></i>
+                            <span><strong>最佳化求解：</strong> 凸優化問題下可求解<strong>解析封閉解 (Normal Equation)</strong>，或採用大數據泛用的<strong>梯度下降法 (Gradient Descent)</strong> 迭代收斂。</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Regression VS AutoRegression 對比模組 -->
+            <div class="mt-8 bg-white rounded-2xl p-6 sm:p-7 border border-slate-200 shadow-sm relative overflow-hidden">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-sky-600 flex items-center justify-center text-white text-sm shadow-sm">
+                            <i class="fa-solid fa-code-compare"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900">核心對照：一般迴歸 (Regression) vs. 自迴歸 (AutoRegression)</h2>
+                            <p class="text-xs text-slate-500">理解傳統機器學習與現代時間序列 / 生成式大語言模型 (LLM) 的分水嶺</p>
+                        </div>
+                    </div>
+                    <span class="text-xs font-semibold px-3 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                        關鍵差別：輸入是「他人特徵」還是「自身過去」
+                    </span>
+                </div>
+
+                <!-- 一句話說明 -->
+                <div class="p-4 rounded-xl bg-gradient-to-r from-sky-50/80 via-purple-50/60 to-slate-50 border border-slate-200 mb-6">
+                    <span class="text-xs font-bold text-purple-700 uppercase tracking-wider block mb-1">
+                        <i class="fa-solid fa-bullseye mr-1 text-purple-600"></i> 一句話極簡秒懂
+                    </span>
+                    <p class="text-slate-800 text-sm sm:text-base font-semibold leading-relaxed">
+                        「<strong>一般迴歸</strong>是用<span class="text-sky-700 underline decoration-sky-400">外部特徵預測未知目標</span> ($X \to Y$)；而<strong>自迴歸</strong>是用<span class="text-purple-700 underline decoration-purple-400">自己過去的歷史預測未來的自己</span> ($y_{t-p:t-1} \to y_t$)，是時間序列分析與現代 GPT 等大模型逐字生成的底層機制。」
+                    </p>
+                </div>
+
+                <!-- 雙欄對比與舉例說明 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Column 1: 一般迴歸 (Regression) -->
+                    <div class="p-5 rounded-xl bg-sky-50/40 border border-sky-100 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="font-bold text-sky-800 text-base flex items-center gap-2">
+                                    <i class="fa-solid fa-chart-line text-sky-600"></i> 一般迴歸 (Regression)
+                                </span>
+                                <span class="text-[11px] px-2 py-0.5 bg-sky-100 text-sky-700 rounded-md font-mono">Cross-Variable ($X \neq Y$)</span>
+                            </div>
+                            
+                            <div class="bg-white p-3 rounded-lg border border-sky-100 text-xs text-sky-900 font-mono text-center my-2 shadow-2xs">
+                                $$\hat{y} = f(X) = \mathbf{w}^T \mathbf{x} + b$$
+                            </div>
+
+                            <ul class="text-xs text-slate-600 space-y-2 mt-3">
+                                <li class="flex items-start gap-1.5">
+                                    <i class="fa-solid fa-arrow-right text-sky-500 mt-0.5"></i>
+                                    <span><strong>輸入本質：</strong> 自變數 $X$ 與應變數 $Y$ 屬於<strong>不同物理量/不同維度</strong>的屬性。</span>
+                                </li>
+                                <li class="flex items-start gap-1.5">
+                                    <i class="fa-solid fa-arrow-right text-sky-500 mt-0.5"></i>
+                                    <span><strong>資料假設：</strong> 樣本間通常假設為<strong>獨立同分佈 (i.i.d.)</strong>，無前後時間順序依賴。</span>
+                                </li>
+                            </ul>
+
+                            <!-- 舉例說明 -->
+                            <div class="mt-4 pt-3 border-t border-sky-100/80">
+                                <span class="text-xs font-bold text-sky-900 block mb-1.5"><i class="fa-solid fa-lightbulb text-amber-500 mr-1"></i> 生活與工程舉例：</span>
+                                <div class="bg-white/80 p-2.5 rounded-lg border border-sky-100 text-xs text-slate-700 leading-relaxed">
+                                    <strong>中古屋房價預測：</strong> 輸入「室內坪數 ($x_1$)、屋齡 ($x_2$)、捷運距離 ($x_3$)」，直接輸出「房價總額 ($y$)」。坪數本身並不是房價，而是外部驅動因子。
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column 2: 自迴歸 (AutoRegression) -->
+                    <div class="p-5 rounded-xl bg-purple-50/40 border border-purple-100 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="font-bold text-purple-800 text-base flex items-center gap-2">
+                                    <i class="fa-solid fa-repeat text-purple-600"></i> 自迴歸 (AutoRegression, AR)
+                                </span>
+                                <span class="text-[11px] px-2 py-0.5 bg-purple-100 text-purple-700 rounded-md font-mono">Self-Predicting ($Y \to Y$)</span>
+                            </div>
+
+                            <div class="bg-white p-3 rounded-lg border border-purple-100 text-xs text-purple-900 font-mono text-center my-2 shadow-2xs">
+                                $$\hat{y}_t = c + \sum_{i=1}^p \phi_i y_{t-i} + \epsilon_t$$
+                            </div>
+
+                            <ul class="text-xs text-slate-600 space-y-2 mt-3">
+                                <li class="flex items-start gap-1.5">
+                                    <i class="fa-solid fa-arrow-right text-purple-500 mt-0.5"></i>
+                                    <span><strong>輸入本質：</strong> 自變數是<strong>該指標過去時間點的滯後值 (Lags)</strong>，$y$ 預測未來的 $y$。</span>
+                                </li>
+                                <li class="flex items-start gap-1.5">
+                                    <i class="fa-solid fa-arrow-right text-purple-500 mt-0.5"></i>
+                                    <span><strong>資料假設：</strong> 具有強烈的<strong>時間序列自我相關性 (Autocorrelation)</strong> 與時序因果性。</span>
+                                </li>
+                            </ul>
+
+                            <!-- 舉例說明 -->
+                            <div class="mt-4 pt-3 border-t border-purple-100/80">
+                                <span class="text-xs font-bold text-purple-900 block mb-1.5"><i class="fa-solid fa-robot text-purple-600 mr-1"></i> 生活與 LLM 經典舉例：</span>
+                                <div class="bg-white/80 p-2.5 rounded-lg border border-purple-100 text-xs text-slate-700 leading-relaxed space-y-1.5">
+                                    <p><strong>1. 股價/氣溫預測：</strong> 用「前 5 天的收盤價 ($y_{t-5 \dots t-1}$)」預測「今日股價 ($y_t$)」。</p>
+                                    <p><strong>2. 現代 LLM (GPT / Llama)：</strong> 屬於<strong>自迴歸語言模型 (AutoRegressive LM)</strong>，根據前面已經生成的字詞歷史序列，滾動預測下一個字：$P(w_t \mid w_1, w_2, \dots, w_{t-1})$。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16" id="quick-overview">
+
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 05. 由來 -->
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center gap-2 text-slate-700 font-bold mb-3">
+                        <span class="w-6 h-6 rounded bg-slate-100 text-slate-600 text-xs flex items-center justify-center font-mono">05</span>
+                        <h3 class="text-base font-bold">歷史由來 (Origin)</h3>
+                    </div>
+                    <p class="text-sm text-slate-600 leading-relaxed">
+                        1886 年，英國生物統計學家<strong>法蘭西斯·高爾頓 (Francis Galton)</strong> 在研究父子遺傳身高時發現：極高父親所生的兒子平均高度雖然高於群體，但傾向比父親矮一些；極矮父親的兒子則傾向比父親高一點。
+                    </p>
+                    <div class="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-xs">
+                        <i class="fa-solid fa-lightbulb mr-1 text-amber-600"></i>
+                        這被稱為<strong>「迴歸到平庸/平均 (Regression to the mean)」</strong>。後來高斯與勒壤得發展的最小平方法 (OLS) 與該統計概念結合，成為現代「迴歸分析」的正式定名。
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-400">
+                    Key Figure: Francis Galton & Carl Friedrich Gauss
+                </div>
+            </div>
+
+            <!-- 06. 生活化例子 -->
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center gap-2 text-slate-700 font-bold mb-3">
+                        <span class="w-6 h-6 rounded bg-slate-100 text-slate-600 text-xs flex items-center justify-center font-mono">06</span>
+                        <h3 class="text-base font-bold">生活化例子 (Everyday Life)</h3>
+                    </div>
+                    <div class="space-y-3 text-sm text-slate-600">
+                        <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+                            <span class="font-semibold text-slate-800 block text-xs mb-1"><i class="fa-solid fa-mug-hot text-amber-600 mr-1"></i> 手搖飲單日銷量預測</span>
+                            輸入當日氣溫、濕度、是否為週末與促銷折扣，模型輸出今日預計賣出 <strong>845 杯</strong> 珍奶。
+                        </div>
+                        <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+                            <span class="font-semibold text-slate-800 block text-xs mb-1"><i class="fa-solid fa-house-chimney text-emerald-600 mr-1"></i> 中古二手屋價格預測</span>
+                            依據坪數、屋齡、距離捷運站公尺數、公設比，連續性估算出合理總價為 <strong>1,840 萬元</strong>。
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-400">
+                    關鍵標的：目標變數為「實數值」而非離散類別
+                </div>
+            </div>
+
+            <!-- 07. 工業上應用 -->
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center gap-2 text-slate-700 font-bold mb-3">
+                        <span class="w-6 h-6 rounded bg-slate-100 text-slate-600 text-xs flex items-center justify-center font-mono">07</span>
+                        <h3 class="text-base font-bold">工業上應用 (Industrial AI)</h3>
+                    </div>
+                    <div class="space-y-3 text-sm text-slate-600">
+                        <div class="p-2.5 rounded-lg bg-sky-50/60 border border-sky-100">
+                            <span class="font-semibold text-sky-900 block text-xs mb-1"><i class="fa-solid fa-microchip text-sky-600 mr-1"></i> 半導體製程晶圓良率預測 (Yield)</span>
+                            根據薄膜沈積時間、腔體電漿電壓與蝕刻氣流比率，線性/非線性迴歸即時預估良率百分比。
+                        </div>
+                        <div class="p-2.5 rounded-lg bg-indigo-50/60 border border-indigo-100">
+                            <span class="font-semibold text-indigo-900 block text-xs mb-1"><i class="fa-solid fa-wrench text-indigo-600 mr-1"></i> 設備剩餘可用壽命預測 (RUL)</span>
+                            依震動感測器時域與頻域特徵，預測 CNC 機台主軸在 <strong>142 小時</strong> 後達到磨耗極限（預兆診斷）。
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-400">
+                    Industrial 4.0: Predictive Maintenance & Optimization
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-xs">
+            <div class="flex items-center gap-2 text-slate-900 font-bold mb-4">
+                <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 text-xs flex items-center justify-center font-mono">04</span>
+                <h2 class="text-xl">實務特徵與資料工程注意事項 (Practical Features)</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+                <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <div class="text-sky-600 text-lg mb-2"><i class="fa-solid fa-scale-balanced"></i></div>
+                    <h4 class="font-bold text-slate-800 text-sm mb-1">特徵共線性 (Multicollinearity)</h4>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        當特徵間存在高度線性相關時，逆矩陣 $(X^TX)^{-1}$ 接近奇異 (Singular)，導致權重變異數劇增。可用 <strong>VIF (Variance Inflation Factor)</strong> 檢驗或改採 Ridge/PCA。
+                    </p>
+                </div>
+                <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <div class="text-amber-600 text-lg mb-2"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <h4 class="font-bold text-slate-800 text-sm mb-1">極端離群值敏感度 (Outlier Sensitivity)</h4>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        OLS 的損失函數為殘差平方 $(y - \hat{y})^2$，單一離群點會被平方放大數十倍，劇烈拉扯迴歸線。可採用 <strong>Huber Loss</strong> 或 <strong>RANSAC</strong> 演算法提高強健性。
+                    </p>
+                </div>
+                <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <div class="text-purple-600 text-lg mb-2"><i class="fa-solid fa-shield-halved"></i></div>
+                    <h4 class="font-bold text-slate-800 text-sm mb-1">正規化懲罰 (Regularization)</h4>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        高維度特徵易導致過擬合 (Overfitting)。<strong>Lasso (L1)</strong> 能產生稀疏權重 (特徵篩選)；<strong>Ridge (L2)</strong> 能壓縮權重並減緩共線性問題；<strong>ElasticNet</strong> 兼取兩者優勢。
+                    </p>
+                </div>
+                <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <div class="text-indigo-600 text-lg mb-2"><i class="fa-solid fa-chart-area"></i></div>
+                    <h4 class="font-bold text-slate-800 text-sm mb-1">殘差常態性假設 (Gauss-Markov)</h4>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        傳統統計線性迴歸最佳線性不偏估計量 (BLUE) 需假設殘差具有<strong>獨立性、同質變異數 (Homoscedasticity) 與常態分佈</strong>，可用 Q-Q 圖檢驗。
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-xs" id="theory-math">
+            <div class="flex items-center justify-between flex-wrap gap-4 border-b border-slate-100 pb-5 mb-6">
+                <div class="flex items-center gap-2 text-slate-900 font-bold">
+                    <span class="w-7 h-7 rounded-lg bg-sky-100 text-sky-800 text-xs flex items-center justify-center font-mono">08/09</span>
+                    <h2 class="text-xl">理論簡介與數學推導 (Theory & Mathematical Derivation)</h2>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-slate-500">切換推導視角：</span>
+                    <button id="btnDerivOLS" onclick="switchDerivation('ols')" class="px-3 py-1 text-xs font-semibold rounded-lg bg-sky-600 text-white shadow-xs">最小平方法 (OLS 閉合解)</button>
+                    <button id="btnDerivGD" onclick="switchDerivation('gd')" class="px-3 py-1 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">梯度下降推導 (GD)</button>
+                    <button id="btnDerivMetrics" onclick="switchDerivation('metrics')" class="px-3 py-1 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">評估指標 ($R^2$, MSE)</button>
+                </div>
+            </div>
+
+            <!-- Theory Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <span class="text-xs font-bold text-sky-600 uppercase tracking-wide">線性假設 (Linear Hypothesis)</span>
+                    <p class="text-xs text-slate-600 mt-2">
+                        假設應變數由自變數線性疊加組合而成：
+                        $$\hat{y} = w_1 x_1 + w_2 x_2 + \dots + w_d x_d + b = \mathbf{x}^T \mathbf{w} + b$$
+                    </p>
+                </div>
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <span class="text-xs font-bold text-indigo-600 uppercase tracking-wide">損失函數 (MSE Loss)</span>
+                    <p class="text-xs text-slate-600 mt-2">
+                        利用歐幾里得距離平方衡量預測偏差：
+                        $$J(\mathbf{w}, b) = \frac{1}{2N}\sum_{i=1}^N \left( \hat{y}^{(i)} - y^{(i)} \right)^2$$
+                    </p>
+                </div>
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <span class="text-xs font-bold text-emerald-600 uppercase tracking-wide">機率論觀點 (MLE)</span>
+                    <p class="text-xs text-slate-600 mt-2">
+                        若假設雜訊服從高斯分佈 $\epsilon \sim \mathcal{N}(0, \sigma^2)$，則最大概似估計 (MLE) 在數學上等價於最小化 MSE。
+                    </p>
+                </div>
+            </div>
+
+            <!-- Interactive Derivation Viewer -->
+            <div class="bg-slate-900 text-slate-100 p-6 rounded-2xl relative shadow-inner overflow-x-auto">
+                <div id="contentOLS" class="derivation-panel space-y-4">
+                    <div class="flex items-center justify-between text-xs text-slate-400 border-b border-slate-800 pb-2">
+                        <span>模式：矩陣形式推導 Ordinary Least Squares (OLS) 正規方程組</span>
+                        <span class="text-sky-400 font-mono">閉式解：無需迭代學習率</span>
+                    </div>
+                    <div class="text-sm leading-relaxed space-y-3">
+                        <p class="text-slate-300"><strong>步驟 1. 矩陣化表示：</strong> 將 $N$ 筆資料與截距項 $b$ 併入矩陣，目標函數簡化為向量二項式：</p>
+                        <div class="bg-slate-800/80 p-3 rounded-lg text-emerald-300 text-center font-mono">
+                            $$J(\mathbf{w}) = \frac{1}{2N} \|\mathbf{X}\mathbf{w} - \mathbf{y}\|_2^2 = \frac{1}{2N} (\mathbf{X}\mathbf{w} - \mathbf{y})^T (\mathbf{X}\mathbf{w} - \mathbf{y})$$
+                        </div>
+                        <p class="text-slate-300"><strong>步驟 2. 展開向量內積項：</strong> 利用轉置分配律 $(\mathbf{A}\mathbf{B})^T = \mathbf{B}^T \mathbf{A}^T$：</p>
+                        <div class="bg-slate-800/80 p-3 rounded-lg text-emerald-300 text-center font-mono">
+                            $$J(\mathbf{w}) = \frac{1}{2N} \left( \mathbf{w}^T \mathbf{X}^T \mathbf{X}\mathbf{w} - 2\mathbf{y}^T \mathbf{X}\mathbf{w} + \mathbf{y}^T\mathbf{y} \right)$$
+                        </div>
+                        <p class="text-slate-300"><strong>步驟 3. 對權重向量 $\mathbf{w}$ 進行矩陣微積分求偏導：</strong> 尋找梯度為零的極小值點：</p>
+                        <div class="bg-slate-800/80 p-3 rounded-lg text-emerald-300 text-center font-mono">
+                            $$\nabla_{\mathbf{w}} J(\mathbf{w}) = \frac{1}{N} \left( \mathbf{X}^T \mathbf{X} \mathbf{w} - \mathbf{X}^T \mathbf{y} \right) = \mathbf{0}$$
+                        </div>
+                        <p class="text-slate-300"><strong>步驟 4. 移項求得 Normal Equation 封閉解：</strong> 若 $(\mathbf{X}^T \mathbf{X})$ 可逆：</p>
+                        <div class="bg-sky-950/70 border border-sky-600/40 p-3 rounded-lg text-sky-300 text-center font-bold text-base font-mono">
+                            $$\mathbf{w}^* = (\mathbf{X}^T \mathbf{X})^{-1} \mathbf{X}^T \mathbf{y}$$
+                        </div>
+                    </div>
+                </div>
+
+                <div id="contentGD" class="derivation-panel hidden space-y-4">
+                    <div class="flex items-center justify-between text-xs text-slate-400 border-b border-slate-800 pb-2">
+                        <span>模式：梯度下降法 (Gradient Descent) 偏微分更新法則</span>
+                        <span class="text-amber-400 font-mono">時間複雜度：適合大規模高維特徵</span>
+                    </div>
+                    <div class="text-sm leading-relaxed space-y-3">
+                        <p class="text-slate-300"><strong>單變數鏈鎖律 (Chain Rule)：</strong> 設 $\hat{y}^{(i)} = w x^{(i)} + b$，損失函數為 $J(w, b) = \frac{1}{2N} \sum_{i=1}^N (w x^{(i)} + b - y^{(i)})^2$</p>
+                        <p class="text-slate-300"><strong>步驟 1. 對斜率 $w$ 偏微分：</strong></p>
+                        <div class="bg-slate-800/80 p-3 rounded-lg text-amber-300 text-center font-mono">
+                            $$\frac{\partial J}{\partial w} = \frac{1}{N} \sum_{i=1}^N \left( \hat{y}^{(i)} - y^{(i)} \right) \cdot x^{(i)}$$
+                        </div>
+                        <p class="text-slate-300"><strong>步驟 2. 對截距 $b$ 偏微分：</strong></p>
+                        <div class="bg-slate-800/80 p-3 rounded-lg text-amber-300 text-center font-mono">
+                            $$\frac{\partial J}{\partial b} = \frac{1}{N} \sum_{i=1}^N \left( \hat{y}^{(i)} - y^{(i)} \right)$$
+                        </div>
+                        <p class="text-slate-300"><strong>步驟 3. 沿反向梯度方向更新 (學習率 $\alpha$)：</strong></p>
+                        <div class="bg-amber-950/70 border border-amber-600/40 p-3 rounded-lg text-amber-300 text-center font-bold text-base font-mono">
+                            $$w \leftarrow w - \alpha \frac{\partial J}{\partial w}, \quad b \leftarrow b - \alpha \frac{\partial J}{\partial b}$$
+                        </div>
+                    </div>
+                </div>
+
+                <div id="contentMetrics" class="derivation-panel hidden space-y-4">
+                    <div class="flex items-center justify-between text-xs text-slate-400 border-b border-slate-800 pb-2">
+                        <span>模式：迴歸模型評估指標 (Regression Metrics)</span>
+                        <span class="text-emerald-400 font-mono">模型擬合度檢定</span>
+                    </div>
+                    <div class="text-sm leading-relaxed space-y-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div class="bg-slate-800/80 p-3 rounded-lg">
+                                <span class="text-sky-300 font-bold block text-xs">決定係數 (Coefficient of Determination $R^2$)</span>
+                                <div class="text-xs text-slate-300 mt-1">衡量模型解釋變異的比例 (最高為 1.0，小於 0 代表不如平均線)：</div>
+                                <div class="text-center text-emerald-300 my-2">$$R^2 = 1 - \frac{\sum (y_i - \hat{y}_i)^2}{\sum (y_i - \bar{y})^2} = 1 - \frac{SS_{\text{res}}}{SS_{\text{tot}}}$$</div>
+                            </div>
+                            <div class="bg-slate-800/80 p-3 rounded-lg">
+                                <span class="text-sky-300 font-bold block text-xs">均方根誤差 (RMSE) 與 MAE</span>
+                                <div class="text-xs text-slate-300 mt-1">保持與原標籤相同量綱單位，RMSE 對大誤差懲罰較重：</div>
+                                <div class="text-center text-emerald-300 my-2">$$\text{RMSE} = \sqrt{\frac{1}{N}\sum_{i=1}^N (y_i - \hat{y}_i)^2}, \quad \text{MAE} = \frac{1}{N}\sum_{i=1}^N |y_i - \hat{y}_i|$$</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-xs" id="cross-domain">
+            <div class="flex items-center gap-2 text-slate-900 font-bold mb-3">
+                <span class="w-7 h-7 rounded-lg bg-purple-100 text-purple-800 text-xs flex items-center justify-center font-mono">10</span>
+                <h2 class="text-xl">迴歸在跨 AI 範疇之角色與互動切換 (Across AI Paradigms)</h2>
+            </div>
+            <p class="text-sm text-slate-600 mb-6">點擊不同 AI 範疇，即時探勘「迴歸 (Regression)」在該領域中的核心任務與架構：</p>
+
+            <!-- Domain Tabs -->
+            <div class="flex flex-wrap gap-2 border-b border-slate-200 pb-3 mb-6" id="domainTabGroup">
+                <button onclick="selectDomain('ml')" class="domain-btn px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-purple-600 text-white shadow-xs">
+                    <i class="fa-solid fa-shapes mr-1.5"></i> 機器學習 (Classic ML)
+                </button>
+                <button onclick="selectDomain('dl')" class="domain-btn px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200">
+                    <i class="fa-solid fa-network-wired mr-1.5"></i> 深度學習 (Deep Learning)
+                </button>
+                <button onclick="selectDomain('rl')" class="domain-btn px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200">
+                    <i class="fa-solid fa-gamepad mr-1.5"></i> 強化學習 (Reinforcement Learning)
+                </button>
+                <button onclick="selectDomain('llm')" class="domain-btn px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200">
+                    <i class="fa-solid fa-brain mr-1.5"></i> LLM 應用 (Reward & Value)
+                </button>
+            </div>
+
+            <!-- Domain Display Area -->
+            <div id="domainContent" class="bg-slate-50 p-6 rounded-2xl border border-slate-200 min-h-[220px]">
+                <!-- Dynamic Content Injected Here via JavaScript -->
+            </div>
+        </section>
+
+        <section class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm" id="simulator">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5 mb-6">
+                <div>
+                    <div class="flex items-center gap-2 text-slate-900 font-bold">
+                        <span class="w-7 h-7 rounded-lg bg-sky-600 text-white text-xs flex items-center justify-center font-mono">12</span>
+                        <h2 class="text-xl">線上即時模擬：Step-by-Step 與一鍵自動梯度下降 (Live Simulator)</h2>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">直接在左側畫布點擊即可加入自訂資料點或離群值！觀察損失函數與迴歸直線如何動態收斂。</p>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button id="btnStep" onclick="stepGradientDescent()" class="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-800 text-white hover:bg-slate-900 transition flex items-center gap-1.5 shadow-xs">
+                        <i class="fa-solid fa-forward-step"></i> 單步更新 (Step)
+                    </button>
+                    <button id="btnAuto" onclick="toggleAutoSimulate()" class="px-4 py-2 text-xs font-semibold rounded-xl bg-sky-600 text-white hover:bg-sky-700 transition flex items-center gap-1.5 shadow-sm">
+                        <i id="autoIcon" class="fa-solid fa-play"></i> <span id="autoText">一鍵自動擬合 (Auto)</span>
+                    </button>
+                    <button onclick="solveClosedFormOLS()" class="px-3 py-2 text-xs font-semibold rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition border border-indigo-200">
+                        <i class="fa-solid fa-bolt"></i> 瞬間 OLS 解析解
+                    </button>
+                    <button onclick="resetData()" class="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+                        <i class="fa-solid fa-arrow-rotate-right"></i> 重設
+                    </button>
+                </div>
+            </div>
+
+            <!-- Simulation Controls & Canvas Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Left: Interactive Canvas -->
+                <div class="lg:col-span-8 flex flex-col">
+                    <div class="relative w-full aspect-[16/10] bg-slate-900 rounded-2xl overflow-hidden shadow-inner border border-slate-800 canvas-container">
+                        <canvas id="regressionCanvas" class="w-full h-full block"></canvas>
+                        <div class="absolute top-3 left-3 bg-slate-800/80 backdrop-blur px-3 py-1.5 rounded-lg text-xs text-slate-300 border border-slate-700 pointer-events-none">
+                            <span class="inline-block w-2.5 h-2.5 rounded-full bg-sky-400 mr-1.5"></span>點擊畫布可新增自訂數據點
+                        </div>
+                        <div id="simStatsBadge" class="absolute top-3 right-3 bg-slate-800/80 backdrop-blur px-3 py-1.5 rounded-lg text-xs font-mono text-emerald-400 border border-slate-700 pointer-events-none">
+                            Epoch: 0 | MSE: 0.000 | R²: 0.00
+                        </div>
+                    </div>
+
+                    <!-- Live Parameter Sliders -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+                        <div>
+                            <label class="font-semibold text-slate-700 flex justify-between">
+                                學習率 $(\alpha)$: <span id="valLR" class="font-mono text-sky-600">0.05</span>
+                            </label>
+                            <input id="sliderLR" type="range" min="0.001" max="0.2" step="0.005" value="0.05" oninput="updateParams()" class="w-full accent-sky-600 mt-2">
+                        </div>
+                        <div>
+                            <label class="font-semibold text-slate-700 flex justify-between">
+                                隨機雜訊 (Noise): <span id="valNoise" class="font-mono text-sky-600">15</span>
+                            </label>
+                            <input id="sliderNoise" type="range" min="0" max="40" step="1" value="15" oninput="regeneratePoints()" class="w-full accent-sky-600 mt-2">
+                        </div>
+                        <div>
+                            <label class="font-semibold text-slate-700 flex justify-between">
+                                資料點數 $(N)$: <span id="valN" class="font-mono text-sky-600">35</span>
+                            </label>
+                            <input id="sliderN" type="range" min="10" max="80" step="5" value="35" oninput="regeneratePoints()" class="w-full accent-sky-600 mt-2">
+                        </div>
+                        <div class="flex flex-col justify-end">
+                            <button onclick="injectOutlier()" class="w-full py-1.5 px-2 bg-amber-100 hover:bg-amber-200 text-amber-900 font-semibold rounded-lg transition text-xs flex items-center justify-center gap-1">
+                                <i class="fa-solid fa-virus"></i> 加入致命離群值
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Real-time Loss Curve & Equation -->
+                <div class="lg:col-span-4 flex flex-col space-y-4">
+                    <!-- Current Equation Display -->
+                    <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">當前模型擬合方程式</span>
+                        <div id="liveEquation" class="text-sm font-mono font-bold text-slate-800 bg-white p-3 rounded-lg border border-slate-200 text-center shadow-2xs min-h-[48px] flex items-center justify-center">
+                            \hat{y} = 0.000x + 0.000
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mt-3 text-xs text-slate-600">
+                            <div class="p-2 bg-white rounded border border-slate-100">
+                                斜率梯度 $\frac{\partial J}{\partial w}$: <span id="gradW" class="font-mono font-semibold text-rose-600">0.00</span>
+                            </div>
+                            <div class="p-2 bg-white rounded border border-slate-100">
+                                截距梯度 $\frac{\partial J}{\partial b}$: <span id="gradB" class="font-mono font-semibold text-rose-600">0.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mini Chart for Loss History -->
+                    <div class="flex-1 bg-white p-4 rounded-xl border border-slate-200 flex flex-col min-h-[220px]">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold text-slate-700">損失下降歷史 (MSE Loss)</span>
+                            <span class="text-[10px] text-slate-400">即時監控收斂曲線</span>
+                        </div>
+                        <div class="flex-1 relative">
+                            <canvas id="lossChartCanvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-xs" id="code-impl">
+            <div class="flex items-center justify-between flex-wrap gap-4 border-b border-slate-100 pb-5 mb-6">
+                <div class="flex items-center gap-2 text-slate-900 font-bold">
+                    <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 text-xs flex items-center justify-center font-mono">11</span>
+                    <h2 class="text-xl">Python / PyTorch 實作範例 (Implementation)</h2>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btnCodePytorch" onclick="switchCodeTab('pytorch')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-600 text-white shadow-xs">PyTorch 神經網絡版</button>
+                    <button id="btnCodeSklearn" onclick="switchCodeTab('sklearn')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">Scikit-Learn 工業版</button>
+                    <button onclick="copyActiveCode()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-900 flex items-center gap-1">
+                        <i class="fa-regular fa-copy"></i> 複製程式碼
+                    </button>
+                </div>
+            </div>
+
+            <!-- Code Box -->
+            <div class="relative bg-slate-950 rounded-2xl p-5 border border-slate-800 shadow-inner">
+                <div id="codePyTorchBlock" class="code-panel">
+                    <div class="text-xs text-slate-400 mb-2 font-mono flex items-center justify-between">
+                        <span># PyTorch: 使用 autograd 與 nn.Linear 進行線性迴歸</span>
+                        <span class="text-emerald-400">PyTorch 2.x Compatible</span>
+                    </div>
+                    <pre class="text-xs text-sky-300 overflow-x-auto leading-relaxed font-mono">
+<span class="text-purple-400">import</span> torch
+<span class="text-purple-400">import</span> torch.nn <span class="text-purple-400">as</span> nn
+<span class="text-purple-400">import</span> numpy <span class="text-purple-400">as</span> np
+
+<span class="text-slate-500"># 1. 產生模擬資料 (含雜訊)</span>
+torch.manual_seed(<span class="text-amber-400">42</span>)
+X = torch.linspace(<span class="text-amber-400">0</span>, <span class="text-amber-400">10</span>, steps=<span class="text-amber-400">100</span>).unsqueeze(<span class="text-amber-400">1</span>) <span class="text-slate-500"># 形狀: (100, 1)</span>
+true_w, true_b = <span class="text-amber-400">2.5</span>, <span class="text-amber-400">4.2</span>
+y = true_w * X + true_b + torch.randn_like(X) * <span class="text-amber-400">1.2</span>
+
+<span class="text-slate-500"># 2. 定義線性迴歸模型與損失函數</span>
+model = nn.Linear(in_features=<span class="text-amber-400">1</span>, out_features=<span class="text-amber-400">1</span>)
+criterion = nn.MSELoss()
+optimizer = torch.optim.SGD(model.parameters(), lr=<span class="text-amber-400">0.01</span>)
+
+<span class="text-slate-500"># 3. 梯度下降訓練迴圈 (Step by Step)</span>
+epochs = <span class="text-amber-400">300</span>
+<span class="text-purple-400">for</span> epoch <span class="text-purple-400">in</span> range(epochs):
+    model.train()
+    optimizer.zero_grad()            <span class="text-slate-500"># 清除前一輪累積梯度</span>
+    predictions = model(X)           <span class="text-slate-500"># 前向傳播 (Forward Pass)</span>
+    loss = criterion(predictions, y) <span class="text-slate-500"># 計算 MSE Loss</span>
+    loss.backward()                  <span class="text-slate-500"># 反向傳播計算梯度 (Autograd)</span>
+    optimizer.step()                 <span class="text-slate-500"># 權重更新: w = w - lr * grad</span>
+    
+    <span class="text-purple-400">if</span> (epoch + <span class="text-amber-400">1</span>) % <span class="text-amber-400">50</span> == <span class="text-amber-400">0</span>:
+        w_val = model.weight.item()
+        b_val = model.bias.item()
+        print(f<span class="text-emerald-300">"Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}, w: {w_val:.3f}, b: {b_val:.3f}"</span>)
+
+<span class="text-slate-500"># 4. 取得訓練完畢權重與預測</span>
+w_final = model.weight.item()
+b_final = model.bias.item()
+print(f<span class="text-emerald-300">"訓練完成! 最終方程式: y_hat = {w_final:.2f} * x + {b_final:.2f}"</span>)</pre>
+                </div>
+
+                <div id="codeSklearnBlock" class="code-panel hidden">
+                    <div class="text-xs text-slate-400 mb-2 font-mono flex items-center justify-between">
+                        <span># Scikit-Learn: 工業級 OLS 與 Ridge 正規化流程</span>
+                        <span class="text-sky-400">Production Ready</span>
+                    </div>
+                    <pre class="text-xs text-sky-300 overflow-x-auto leading-relaxed font-mono">
+<span class="text-purple-400">from</span> sklearn.linear_model <span class="text-purple-400">import</span> LinearRegression, Ridge
+<span class="text-purple-400">from</span> sklearn.metrics <span class="text-purple-400">import</span> mean_squared_error, r2_score
+<span class="text-purple-400">from</span> sklearn.model_selection <span class="text-purple-400">import</span> train_test_split
+<span class="text-purple-400">import</span> numpy <span class="text-purple-400">as</span> np
+
+<span class="text-slate-500"># 1. 準備特徵資料 (例如坪數、屋齡)</span>
+X = np.random.uniform(<span class="text-amber-400">10</span>, <span class="text-amber-400">100</span>, (<span class="text-amber-400">200</span>, <span class="text-amber-400">2</span>))
+y = <span class="text-amber-400">3.5</span> * X[:, <span class="text-amber-400">0</span>] - <span class="text-amber-400">1.2</span> * X[:, <span class="text-amber-400">1</span>] + <span class="text-amber-400">15.0</span> + np.random.normal(<span class="text-amber-400">0</span>, <span class="text-amber-400">5</span>, <span class="text-amber-400">200</span>)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=<span class="text-amber-400">0.2</span>, random_state=<span class="text-amber-400">42</span>)
+
+<span class="text-slate-500"># 2. 擬合經典 OLS 封閉解模型</span>
+reg = LinearRegression()
+reg.fit(X_train, y_train)
+
+<span class="text-slate-500"># 3. 預測與評估指標</span>
+y_pred = reg.predict(X_test)
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+
+print(f<span class="text-emerald-300">"權重係數: {reg.coef_}, 截距項: {reg.intercept_:.2f}"</span>)
+print(f<span class="text-emerald-300">"測試集 MSE: {mse:.3f}, R-Squared (R²): {r2:.3f}"</span>)
+
+<span class="text-slate-500"># 4. 若有多重共線性風險，加入 L2 正則化 (Ridge)</span>
+ridge = Ridge(alpha=<span class="text-amber-400">1.0</span>)
+ridge.fit(X_train, y_train)
+print(f<span class="text-emerald-300">"Ridge 係數: {ridge.coef_}"</span>)</pre>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-xs" id="ipas-exam">
+            <div class="flex items-center justify-between flex-wrap gap-4 border-b border-slate-100 pb-5 mb-6">
+                <div class="flex items-center gap-2 text-slate-900 font-bold">
+                    <span class="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 text-xs flex items-center justify-center font-mono">03</span>
+                    <h2 class="text-xl">經濟部 iPAS 人工智慧應用工程師 — 經典考題實戰</h2>
+                </div>
+                <span class="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1 rounded-full font-semibold">
+                    能力鑑定考點：迴歸 vs 分類、正則化、評估指標
+                </span>
+            </div>
+
+            <div class="space-y-6">
+                <!-- Question 1 -->
+                <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200">
+                    <div class="flex items-center gap-2 text-slate-800 font-bold text-sm mb-3">
+                        <span class="px-2 py-0.5 bg-sky-100 text-sky-800 rounded text-xs font-mono">試題 01</span>
+                        <span>關於線性迴歸 (Linear Regression) 的特性與評估指標，下列敘述何者「錯誤」？</span>
+                    </div>
+                    <div class="space-y-2 text-sm text-slate-700">
+                        <label class="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-100 transition">
+                            <input type="radio" name="q1" value="A" class="accent-sky-600">
+                            <span>(A) 線性迴歸的目標是尋找最小化殘差平方和 (SSE) 的參數組合</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-100 transition">
+                            <input type="radio" name="q1" value="B" class="accent-sky-600">
+                            <span>(B) 決定係數 $R^2$ 的數值必定落在 0 到 1 之間，絕對不可能小於 0</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-100 transition">
+                            <input type="radio" name="q1" value="C" class="accent-sky-600">
+                            <span>(C) OLS 封閉解的計算涉及矩陣求逆，當特徵間存在高度線性重合時容易發生數值不穩定</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-100 transition">
+                            <input type="radio" name="q1" value="D" class="accent-sky-600">
+                            <span>(D) 均方根誤差 (RMSE) 的量綱單位與目標應變數 $y$ 的單位相同，易於實務解釋</span>
+                        </label>
+                    </div>
+                    <div class="mt-4 flex items-center gap-3">
+                        <button onclick="checkQuestion(1, 'B')" class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-sky-600 text-white hover:bg-sky-700 transition">檢驗答案</button>
+                        <div id="q1Feedback" class="text-xs font-medium hidden"></div>
+                    </div>
+                </div>
+
+                <!-- Question 2 -->
+                <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200">
+                    <div class="flex items-center gap-2 text-slate-800 font-bold text-sm mb-3">
+                        <span class="px-2 py-0.5 bg-sky-100 text-sky-800 rounded text-xs font-mono">試題 02</span>
+                        <span>在訓練高維度線性迴歸模型時，若發生嚴重的過擬合 (Overfitting)，下列哪一種處理手法「最為適當」？</span>
+                    </div>
+                    <div class="space-y-2 text-sm text-slate-700">
+                        <label class="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-100 transition">
+                            <input type="radio" name="q2" value="A" class="accent-sky-600">
+                            <span>(A) 在損失函數中加入 L1 (Lasso) 或 L2 (Ridge) 懲罰項以限制模型權重大小</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-100 transition">
+                            <input type="radio" name="q2" value="B" class="accent-sky-600">
+                            <span>(B) 增加多項式階數 (Polynomial degree) 以提升模型擬合能力</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-100 transition">
+                            <input type="radio" name="q2" value="C" class="accent-sky-600">
+                            <span>(C) 將評估指標從 MSE 更換為 Cross-Entropy Loss</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-100 transition">
+                            <input type="radio" name="q2" value="D" class="accent-sky-600">
+                            <span>(D) 減少訓練資料集筆數以簡化分佈複雜度</span>
+                        </label>
+                    </div>
+                    <div class="mt-4 flex items-center gap-3">
+                        <button onclick="checkQuestion(2, 'A')" class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-sky-600 text-white hover:bg-sky-700 transition">檢驗答案</button>
+                        <div id="q2Feedback" class="text-xs font-medium hidden"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 py-8 mt-16 text-center text-xs text-slate-500">
+        <div class="max-w-6xl mx-auto px-4">
+            <p class="font-medium text-slate-700">Regression Masterclass & Simulator • AI / Data Science Interactive Curriculum</p>
+            <p class="mt-1">結合統計經典、矩陣推導、深度學習神經網絡與強化學習/LLM連續估計技術架構</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- Centralized KaTeX Render Helper with Inline $ and Block $$ Support ---
+        function renderAllMath(target = document.body) {
+            if (!target) return;
+            if (window.renderMathInElement) {
+                try {
+                    renderMathInElement(target, {
+                        delimiters: [
+                            { left: "$$", right: "$$", display: true },
+                            { left: "\\[", right: "\\]", display: true },
+                            { left: "\\(", right: "\\)", display: false },
+                            { left: "$", right: "$", display: false }
+                        ],
+                        ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+                        throwOnError: false
+                    });
+                } catch (err) {
+                    console.warn("KaTeX rendering warning:", err);
+                }
+            } else {
+                // If KaTeX is still loading via defer, retry after a short delay
+                setTimeout(() => renderAllMath(target), 100);
+            }
+        }
+
+        // --- 09. Mathematical Derivation Tab Switching ---
+        function switchDerivation(type) {
+            const panels = document.querySelectorAll('.derivation-panel');
+            panels.forEach(p => p.classList.add('hidden'));
+
+            const btnOLS = document.getElementById('btnDerivOLS');
+            const btnGD = document.getElementById('btnDerivGD');
+            const btnMetrics = document.getElementById('btnDerivMetrics');
+
+            [btnOLS, btnGD, btnMetrics].forEach(b => {
+                b.className = "px-3 py-1 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200";
+            });
+
+            let activePanel = null;
+            if (type === 'ols') {
+                activePanel = document.getElementById('contentOLS');
+                btnOLS.className = "px-3 py-1 text-xs font-semibold rounded-lg bg-sky-600 text-white shadow-xs";
+            } else if (type === 'gd') {
+                activePanel = document.getElementById('contentGD');
+                btnGD.className = "px-3 py-1 text-xs font-semibold rounded-lg bg-sky-600 text-white shadow-xs";
+            } else if (type === 'metrics') {
+                activePanel = document.getElementById('contentMetrics');
+                btnMetrics.className = "px-3 py-1 text-xs font-semibold rounded-lg bg-sky-600 text-white shadow-xs";
+            }
+            if (activePanel) {
+                activePanel.classList.remove('hidden');
+                renderAllMath(activePanel);
+            }
+        }
+
+        // --- 10. Cross Domain Dynamic Renderer ---
+        const domainData = {
+            ml: {
+                title: "機器學習 (Classic ML) 中的迴歸",
+                badge: "統計學習 / 解釋力",
+                desc: "在傳統機器學習中，迴歸用於特徵與連續實數目標的映射，強調理論保證與特徵重要性 (Feature Importance)。",
+                bullets: [
+                    "<strong>廣義線性模型 (GLM)：</strong> 藉由連結函數 (Link Function) 處理偏態數據 (例如 Poisson 迴歸計數)。",
+                    "<strong>多項式迴歸 (Polynomial)：</strong> 透過特徵交互項 $(x_1^2, x_1x_2)$ 擬合非線性曲線。",
+                    "<strong>非參數迴歸：</strong> 如 SVR (支持向量迴歸)、隨機森林迴歸 (Random Forest Regressor) 及梯度提升樹 (XGBoost / LightGBM)。"
+                ],
+                flow: "輸入特徵 X → [特徵工程/正規化] → 權重內積 W·X + b → 輸出實數預測 ŷ"
+            },
+            dl: {
+                title: "深度學習 (Deep Learning) 中的迴歸",
+                badge: "高維表徵 / 非線性擬合",
+                desc: "在神經網絡 (DNN / CNN / Transformer) 中，將最後一層隱藏層的 Activation 取消 (改為 Linear/Identity)，直接輸出連續純量或向量。",
+                bullets: [
+                    "<strong>多目標迴歸 (Multi-output Regression)：</strong> 例如目標偵測 (YOLO / Faster R-CNN) 中的 Bounding Box 座標迴歸 $[x, y, w, h]$。",
+                    "<strong>關鍵點定位 (Keypoint Estimation)：</strong> 人臉 68 個特徵點或人體骨架 3D 座標預測。",
+                    "<strong>常用損失：</strong> Smooth L1 Loss (Huber Loss)，在小誤差時平滑可導，在大誤差時限制梯度避免爆發。"
+                ],
+                flow: "高維輸入 (圖片/序列) → [多層神經網絡隱藏層] → Linear Head (無 Softmax) → 連續座標/數值"
+            },
+            rl: {
+                title: "強化學習 (Reinforcement Learning) 中的迴歸",
+                badge: "價值評估 / 貝爾曼逼近",
+                desc: "強化學習的核心就是估計狀態價值 $V(s)$ 或動作價值 $Q(s, a)$，本質上就是以神經網絡進行 Bellman 期望目標的迴歸擬合。",
+                bullets: [
+                    "<strong>DQN (Deep Q-Network)：</strong> 損失函數為 $\\mathcal{L} = (r + \\gamma \\max_{a'} Q(s', a') - Q(s, a))^2$，完全是標準的均方誤差 (MSE) 迴歸問題！",
+                    "<strong>Actor-Critic 架構：</strong> Critic 網絡專門負責「價值函數迴歸」，為 Actor (策略) 提供連續優勢值 (Advantage Estimation) 基準。"
+                ],
+                flow: "環境狀態 State (s) → Critic 神經網絡 → 預測預期未來累加回報 V(s) (實數迴歸)"
+            },
+            llm: {
+                title: "大語言模型 (LLM & Alignment) 中的迴歸",
+                badge: "RLHF / Reward Model",
+                desc: "在當前頂尖生成式大模型 (如 ChatGPT, Claude, Llama 3) 的對齊 (Alignment) 流程中，迴歸扮演至關重要的判官角色。",
+                bullets: [
+                    "<strong>Reward Model (獎勵模型)：</strong> 取消 LLM 最後預測下一個 Token 的 Softmax 分類層，改為 Linear 標量投影頭，將長文本輸入直接映射為一個實數品質評分 (Reward Score $\\in \\mathbb{R}$)。",
+                    "<strong>Pairwise Ranking Loss：</strong> 透過比較正負文本的迴歸分數差值 $\\sigma(r_w - r_l)$ 進行優化。",
+                    "<strong>Embedding 相似度迴歸：</strong> 利用連續向量空間餘弦距離估計語意相似度數值 (0.0 ~ 1.0)。"
+                ],
+                flow: "用戶提示詞 + 模型回答 → Transformer Backbone → 純量迴歸頭 (Linear Projection) → 連續獎勵分數 (Scalar)"
+            }
+        };
+
+        function selectDomain(key) {
+            const data = domainData[key];
+            const container = document.getElementById('domainContent');
+            
+            // update tabs
+            const buttons = document.querySelectorAll('.domain-btn');
+            buttons.forEach(btn => {
+                btn.className = "domain-btn px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200";
+            });
+            event.currentTarget.className = "domain-btn px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-purple-600 text-white shadow-xs";
+
+            let bulletsHtml = data.bullets.map(b => `<li class="flex items-start gap-2"><i class="fa-solid fa-angle-right text-purple-600 mt-1"></i><span>${b}</span></li>`).join('');
+
+            container.innerHTML = `
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-200 pb-3 mb-4">
+                    <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                        <span>${data.title}</span>
+                    </h3>
+                    <span class="text-xs bg-purple-100 text-purple-800 font-semibold px-2.5 py-1 rounded-full">${data.badge}</span>
+                </div>
+                <p class="text-sm text-slate-600 mb-4">${data.desc}</p>
+                <ul class="space-y-2 text-xs text-slate-700 mb-4">
+                    ${bulletsHtml}
+                </ul>
+                <div class="p-3 bg-white rounded-xl border border-purple-100 text-xs font-mono text-purple-900 flex items-center gap-2">
+                    <i class="fa-solid fa-diagram-project text-purple-500"></i>
+                    <span><strong>管線拓撲：</strong> ${data.flow}</span>
+                </div>
+            `;
+            renderAllMath(container);
+        }
+
+        // --- 11. Code Tab Switcher ---
+        let activeCodeType = 'pytorch';
+        function switchCodeTab(type) {
+            activeCodeType = type;
+            const pyBlock = document.getElementById('codePyTorchBlock');
+            const skBlock = document.getElementById('codeSklearnBlock');
+            const btnPy = document.getElementById('btnCodePytorch');
+            const btnSk = document.getElementById('btnCodeSklearn');
+
+            if (type === 'pytorch') {
+                pyBlock.classList.remove('hidden');
+                skBlock.classList.add('hidden');
+                btnPy.className = "px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-600 text-white shadow-xs";
+                btnSk.className = "px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200";
+            } else {
+                pyBlock.classList.add('hidden');
+                skBlock.classList.remove('hidden');
+                btnSk.className = "px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-600 text-white shadow-xs";
+                btnPy.className = "px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200";
+            }
+        }
+
+        function copyActiveCode() {
+            const block = activeCodeType === 'pytorch' ? document.getElementById('codePyTorchBlock') : document.getElementById('codeSklearnBlock');
+            const text = block.querySelector('pre').innerText;
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast("程式碼已成功複製至剪貼簿！");
+        }
+
+        // --- 03. iPAS Quiz Checker ---
+        function checkQuestion(qNum, correctVal) {
+            const radios = document.getElementsByName('q' + qNum);
+            let selected = null;
+            for (let r of radios) {
+                if (r.checked) selected = r.value;
+            }
+
+            const feedback = document.getElementById('q' + qNum + 'Feedback');
+            feedback.classList.remove('hidden');
+
+            if (!selected) {
+                feedback.innerHTML = `<span class="text-amber-600"><i class="fa-solid fa-triangle-exclamation mr-1"></i>請先選擇一個選項再進行檢查。</span>`;
+                return;
+            }
+
+            if (selected === correctVal) {
+                let explanation = qNum === 1 
+                    ? "<strong>答對了！</strong> (B) 選項錯誤。當模型在測試集上的表現極差（預測效果甚至劣於直接猜測平均值 $\\bar{y}$）時，$R^2$ 會是負數 ($-\\infty < R^2 \\le 1$)。"
+                    : "<strong>答對了！</strong> (A) 選項正確。正規化 (L1/L2 正則化) 專門透過懲罰過大的權重參數以降低模型複雜度，進而有效緩解過擬合。";
+                feedback.innerHTML = `<div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800">${explanation}</div>`;
+            } else {
+                feedback.innerHTML = `<div class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800">
+                    <strong>回答不正確。</strong> 您選擇了 (${selected})，正確答案為 <strong>(${correctVal})</strong>。請詳閱題目與解析！
+                </div>`;
+            }
+            renderAllMath(feedback);
+        }
+
+        // --- Toast utility without using alert() ---
+        function showToast(msg) {
+            const toast = document.createElement('div');
+            toast.className = "fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-xl text-xs z-50 flex items-center gap-2 border border-slate-700 transition-all duration-300";
+            toast.innerHTML = `<i class="fa-solid fa-circle-check text-sky-400"></i><span>${msg}</span>`;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+    </script>
+
+    <script>
+        // Canvas & Simulation State
+        const canvas = document.getElementById('regressionCanvas');
+        const ctx = canvas.getContext('2d');
+        let points = []; // [{x, y}] in normalized space [0, 1]
+        let w = 0.0;
+        let b = 0.5;
+        let epoch = 0;
+        let learningRate = 0.05;
+        let isAutoSimulating = false;
+        let autoTimer = null;
+        let lossHistory = [];
+
+        // Chart.js Setup
+        let lossChart;
+        function initChart() {
+            const chartCtx = document.getElementById('lossChartCanvas').getContext('2d');
+            lossChart = new Chart(chartCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'MSE Loss',
+                        data: [],
+                        borderColor: '#0284c7',
+                        backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 1,
+                        tension: 0.2,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { display: false },
+                        y: { 
+                            beginAtZero: true,
+                            ticks: { font: { size: 10 } }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // Resize Canvas dynamically
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            drawCanvas();
+        }
+
+        // Initialize Points
+        function generateSyntheticData(n, noiseVal) {
+            const pts = [];
+            const trueW = 0.7;
+            const trueB = 0.15;
+            for (let i = 0; i < n; i++) {
+                const x = 0.08 + Math.random() * 0.84;
+                const noise = (Math.random() - 0.5) * (noiseVal / 100);
+                let y = trueW * x + trueB + noise;
+                y = Math.max(0.02, Math.min(0.98, y));
+                pts.push({ x, y });
+            }
+            return pts;
+        }
+
+        function regeneratePoints() {
+            const n = parseInt(document.getElementById('sliderN').value);
+            const noise = parseInt(document.getElementById('sliderNoise').value);
+            document.getElementById('valN').innerText = n;
+            document.getElementById('valNoise').innerText = noise;
+            
+            points = generateSyntheticData(n, noise);
+            resetModel();
+            drawCanvas();
+        }
+
+        function resetModel() {
+            w = (Math.random() - 0.5) * 0.5;
+            b = 0.5 + (Math.random() - 0.5) * 0.2;
+            epoch = 0;
+            lossHistory = [];
+            if (lossChart) {
+                lossChart.data.labels = [];
+                lossChart.data.datasets[0].data = [];
+                lossChart.update();
+            }
+            updateStatsUI(0, 0, 0, 0, 0);
+        }
+
+        function resetData() {
+            if (isAutoSimulating) toggleAutoSimulate();
+            regeneratePoints();
+        }
+
+        function updateParams() {
+            learningRate = parseFloat(document.getElementById('sliderLR').value);
+            document.getElementById('valLR').innerText = learningRate.toFixed(3);
+        }
+
+        function injectOutlier() {
+            // Put an outlier far from current trend
+            points.push({ x: 0.2, y: 0.95 });
+            points.push({ x: 0.85, y: 0.08 });
+            showToast("已加入 2 個強烈離群點！觀察最小平面的敏感度。");
+            drawCanvas();
+        }
+
+        // Mathematical Calculations
+        function computeGradients() {
+            const N = points.length;
+            if (N === 0) return { gradW: 0, gradB: 0, mse: 0, r2: 0 };
+
+            let sumGradW = 0;
+            let sumGradB = 0;
+            let totalLoss = 0;
+            let sumY = 0;
+
+            for (let pt of points) {
+                sumY += pt.y;
+            }
+            const meanY = sumY / N;
+
+            let ssTot = 0;
+            let ssRes = 0;
+
+            for (let pt of points) {
+                const yPred = w * pt.x + b;
+                const err = yPred - pt.y;
+                sumGradW += err * pt.x;
+                sumGradB += err;
+                totalLoss += err * err;
+                ssRes += err * err;
+                ssTot += (pt.y - meanY) * (pt.y - meanY);
+            }
+
+            const mse = totalLoss / N;
+            const r2 = ssTot === 0 ? 1 : 1 - (ssRes / ssTot);
+
+            return {
+                gradW: sumGradW / N,
+                gradB: sumGradB / N,
+                mse: mse,
+                r2: r2
+            };
+        }
+
+        // 1 Step Gradient Descent
+        function stepGradientDescent() {
+            const { gradW, gradB, mse, r2 } = computeGradients();
+            w = w - learningRate * gradW;
+            b = b - learningRate * gradB;
+            epoch++;
+
+            // Record loss history
+            lossHistory.push(mse);
+            if (lossChart) {
+                lossChart.data.labels.push(epoch);
+                lossChart.data.datasets[0].data.push(mse);
+                if (lossChart.data.labels.length > 50) {
+                    lossChart.data.labels.shift();
+                    lossChart.data.datasets[0].data.shift();
+                }
+                lossChart.update('none');
+            }
+
+            updateStatsUI(epoch, mse, r2, gradW, gradB);
+            drawCanvas();
+        }
+
+        // Closed form Normal Equation
+        function solveClosedFormOLS() {
+            if (isAutoSimulating) toggleAutoSimulate();
+            const N = points.length;
+            if (N < 2) return;
+
+            let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+            for (let p of points) {
+                sumX += p.x;
+                sumY += p.y;
+                sumXY += p.x * p.y;
+                sumX2 += p.x * p.x;
+            }
+
+            const denominator = (N * sumX2 - sumX * sumX);
+            if (Math.abs(denominator) < 1e-9) {
+                showToast("分母為 0，可能特徵完全重合無法求逆！");
+                return;
+            }
+
+            w = (N * sumXY - sumX * sumY) / denominator;
+            b = (sumY - w * sumX) / N;
+            epoch += 1;
+
+            const { gradW, gradB, mse, r2 } = computeGradients();
+            updateStatsUI(epoch, mse, r2, gradW, gradB);
+            drawCanvas();
+            showToast("⚡ 已套用 OLS 封閉解公式直接命中理論最優解！");
+        }
+
+        function toggleAutoSimulate() {
+            const btn = document.getElementById('btnAuto');
+            const icon = document.getElementById('autoIcon');
+            const txt = document.getElementById('autoText');
+
+            if (!isAutoSimulating) {
+                isAutoSimulating = true;
+                icon.className = "fa-solid fa-pause";
+                txt.innerText = "暫停自動擬合";
+                btn.classList.replace('bg-sky-600', 'bg-amber-600');
+                btn.classList.replace('hover:bg-sky-700', 'hover:bg-amber-700');
+
+                autoTimer = setInterval(() => {
+                    stepGradientDescent();
+                }, 30);
+            } else {
+                isAutoSimulating = false;
+                clearInterval(autoTimer);
+                icon.className = "fa-solid fa-play";
+                txt.innerText = "一鍵自動擬合 (Auto)";
+                btn.classList.replace('bg-amber-600', 'bg-sky-600');
+                btn.classList.replace('hover:bg-amber-700', 'hover:bg-sky-700');
+            }
+        }
+
+        function updateStatsUI(ep, mse, r2, gW, gB) {
+            document.getElementById('simStatsBadge').innerText = 
+                `Epoch: ${ep} | MSE: ${mse.toFixed(4)} | R²: ${r2.toFixed(3)}`;
+            
+            const eqContainer = document.getElementById('liveEquation');
+            const sign = b >= 0 ? '+' : '-';
+            const texFormula = `\\hat{y} = ${w.toFixed(3)}x ${sign} ${Math.abs(b).toFixed(3)}`;
+            
+            if (window.katex) {
+                katex.render(texFormula, eqContainer, { throwOnError: false, displayMode: false });
+            } else {
+                eqContainer.textContent = `ŷ = ${w.toFixed(3)}x ${sign} ${Math.abs(b).toFixed(3)}`;
+            }
+            
+            document.getElementById('gradW').innerText = gW.toFixed(4);
+            document.getElementById('gradB').innerText = gB.toFixed(4);
+        }
+
+        // Draw Routine on Canvas
+        function drawCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            const width = rect.width;
+            const height = rect.height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw Background Grid
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            const gridCols = 8;
+            for (let i = 1; i < gridCols; i++) {
+                const gx = (width / gridCols) * i;
+                ctx.beginPath();
+                ctx.moveTo(gx, 0);
+                ctx.lineTo(gx, height);
+                ctx.stroke();
+
+                const gy = (height / gridCols) * i;
+                ctx.beginPath();
+                ctx.moveTo(0, gy);
+                ctx.lineTo(width, gy);
+                ctx.stroke();
+            }
+
+            // Coordinate conversion helpers
+            // Canvas coordinate: x from 0 to width; y is inverted: y_canvas = height - y * height
+            function toCanvasX(nx) { return nx * width; }
+            function toCanvasY(ny) { return height - ny * height; }
+
+            // Draw Residual Lines (Red dashed lines)
+            ctx.strokeStyle = 'rgba(244, 63, 94, 0.45)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([3, 3]);
+            for (let p of points) {
+                const px = toCanvasX(p.x);
+                const py = toCanvasY(p.y);
+                const predYNorm = w * p.x + b;
+                const predCanvasY = toCanvasY(predYNorm);
+
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.lineTo(px, predCanvasY);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]); // Reset line dash
+
+            // Draw Regression Line
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 3.5;
+            ctx.shadowColor = '#0284c7';
+            ctx.shadowBlur = 10;
+
+            const y0 = w * 0.0 + b;
+            const y1 = w * 1.0 + b;
+
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(0.0), toCanvasY(y0));
+            ctx.lineTo(toCanvasX(1.0), toCanvasY(y1));
+            ctx.stroke();
+
+            ctx.shadowBlur = 0; // Reset shadow
+
+            // Draw Data Points
+            for (let p of points) {
+                const cx = toCanvasX(p.x);
+                const cy = toCanvasY(p.y);
+
+                ctx.beginPath();
+                ctx.arc(cx, cy, 5.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#f8fafc';
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#0284c7';
+                ctx.stroke();
+            }
+        }
+
+        // Add Point by Clicking Canvas
+        canvas.addEventListener('mousedown', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.clientX - rect.left;
+            const clientY = e.clientY - rect.top;
+
+            const normX = Math.max(0, Math.min(1, clientX / rect.width));
+            const normY = Math.max(0, Math.min(1, 1 - (clientY / rect.height)));
+
+            points.push({ x: normX, y: normY });
+            drawCanvas();
+        });
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            initChart();
+            selectDomain('ml');
+            regeneratePoints();
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            renderAllMath(document.body);
+        });
+    </script>
+</body>
+</html>

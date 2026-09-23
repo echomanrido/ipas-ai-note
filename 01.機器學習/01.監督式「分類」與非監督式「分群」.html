@@ -1,0 +1,2041 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>機器學習深度指南：分類 vs 分群 演算法全方位教學與動態實驗室</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                            900: '#0c4a6e',
+                        },
+                        accent: {
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- KaTeX CDN for mathematical formulas -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+        onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true},{left: '$', right: '$', display: false}]});"></script>
+    
+    <style>
+        /* Custom scrollbar and sleek glass effect */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .canvas-container {
+            position: relative;
+            user-select: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen selection:bg-cyan-500 selection:text-white">
+
+    <!-- Sticky Navigation Header -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-slate-800/80">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <span class="p-2 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25">
+                    <i class="fa-solid fa-brain text-xl"></i>
+                </span>
+                <div>
+                    <span class="font-bold text-lg bg-gradient-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent">
+                        ML Visual Lab
+                    </span>
+                    <span class="text-xs ml-2 px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800 font-mono">
+                        分類 vs 聚類
+                    </span>
+                </div>
+            </div>
+            
+            <nav class="hidden md:flex items-center space-x-1 text-sm font-medium text-slate-300">
+                <a href="#overview" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-slate-800/60 transition">概念對比</a>
+                <a href="#knn-vs-kmeans" class="px-3 py-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-950/40 border border-amber-800/50 transition">
+                    <i class="fa-solid fa-scale-balanced mr-1"></i>K-NN vs K-Means
+                </a>
+                <a href="#distance-evaluation" class="px-3 py-1.5 rounded-lg text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/40 border border-cyan-800/50 transition">
+                    <i class="fa-solid fa-ruler-combined mr-1"></i>都是用距離嗎？
+                </a>
+                <a href="#theory" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-slate-800/60 transition">理論推導</a>
+                <a href="#lab" class="px-3 py-1.5 rounded-lg text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/40 border border-cyan-800/50 transition">
+                    <i class="fa-solid fa-flask mr-1"></i>互動實驗室
+                </a>
+                <a href="#quiz" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-slate-800/60 transition">iPAS 題庫</a>
+                <a href="#code" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-slate-800/60 transition">PyTorch 實作</a>
+            </nav>
+            
+            <a href="#lab" class="px-4 py-2 text-xs font-semibold rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-md shadow-cyan-500/20 transition transform active:scale-95">
+                開始實作演練
+            </a>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="relative pt-12 pb-16 overflow-hidden">
+        <div class="absolute inset-0 -z-10 opacity-20 pointer-events-none">
+            <div class="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-gradient-to-tr from-cyan-600 to-purple-600 rounded-full blur-3xl"></div>
+        </div>
+        <div class="max-w-6xl mx-auto px-4 text-center">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700 text-xs text-slate-300 mb-6">
+                <i class="fa-solid fa-certificate text-amber-400"></i> 符合教育部/經濟部 iPAS AI 應用工程師檢定規範
+            </div>
+            <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white mb-4">
+                監督式<span class="text-cyan-400">「分類」</span>與非監督式<span class="text-purple-400">「分群」</span>
+            </h1>
+            <p class="text-slate-400 max-w-3xl mx-auto text-sm sm:text-base leading-relaxed">
+                機器學習兩大基石本質有何差異？從數學最佳化、決策超平面推導，到視覺化演算法動態迭代與工業級瑕疵檢測，本網頁提供完整圖解與一鍵式模擬體驗。
+            </p>
+        </div>
+    </section>
+
+    <!-- 00: Intuitive Life Analogies Section (生活化例子直覺比喻) -->
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+        <div class="glass-panel p-6 rounded-3xl border border-cyan-500/20 bg-gradient-to-r from-cyan-950/30 via-slate-900/60 to-purple-950/30">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 text-sm">
+                    <i class="fa-solid fa-mug-hot"></i>
+                </span>
+                <h3 class="text-lg font-bold text-white">一秒搞懂：生活化比喻「分類」vs「分群」</h3>
+                <span class="text-2xs text-slate-400 ml-auto hidden sm:inline">直覺思考 • 無痛入門</span>
+            </div>
+
+            <!-- VISUAL INFOGRAPHIC SECTION -->
+            <div class="mb-6 p-4 sm:p-5 rounded-2xl bg-slate-950/80 border border-slate-800">
+                <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-800/80">
+                    <span class="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                        <i class="fa-solid fa-diagram-project text-cyan-400"></i>
+                        <span>概念資訊圖表：從輸入、處理到輸出的本質差異</span>
+                    </span>
+                    <span class="text-2xs font-mono text-cyan-400/80 bg-cyan-950/60 px-2.5 py-0.5 rounded-full border border-cyan-800/50">
+                        Visual Concept Flow
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Infographic 1: Classification Pipeline -->
+                    <div class="p-4 rounded-xl bg-slate-900/90 border border-cyan-500/30 flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                                <i class="fa-solid fa-tags"></i> 分類運作資訊圖 (有標準答案)
+                            </span>
+                            <span class="text-3xs px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono">Supervised</span>
+                        </div>
+
+                        <!-- Classification Visual Flow Diagram -->
+                        <div class="grid grid-cols-4 items-center gap-1 text-center py-2">
+                            <!-- Step 1 -->
+                            <div class="p-2 rounded-lg bg-slate-950 border border-cyan-900/50 flex flex-col items-center">
+                                <div class="text-lg text-cyan-400 mb-1">
+                                    <i class="fa-solid fa-boxes-stacked"></i>
+                                </div>
+                                <div class="text-2xs font-bold text-slate-200">1. 已標記資料</div>
+                                <div class="text-3xs text-cyan-300/80 mt-0.5">🍎 蘋果<br>🍊 橘子</div>
+                            </div>
+                            
+                            <!-- Arrow 1 -->
+                            <div class="text-cyan-500/70 text-sm flex flex-col items-center">
+                                <i class="fa-solid fa-arrow-right"></i>
+                                <span class="text-3xs text-slate-500 scale-90">學習</span>
+                            </div>
+
+                            <!-- Step 2 -->
+                            <div class="p-2 rounded-lg bg-slate-950 border border-cyan-900/50 flex flex-col items-center">
+                                <div class="text-lg text-cyan-400 mb-1">
+                                    <i class="fa-solid fa-sliders"></i>
+                                </div>
+                                <div class="text-2xs font-bold text-slate-200">2. 學習邊界</div>
+                                <div class="text-3xs text-slate-400 mt-0.5">劃分特徵線<br>(紅/圓 vs 橘/粗)</div>
+                            </div>
+
+                            <!-- Arrow 2 -->
+                            <div class="text-cyan-500/70 text-sm flex flex-col items-center">
+                                <i class="fa-solid fa-arrow-right"></i>
+                                <span class="text-3xs text-slate-500 scale-90">推論</span>
+                            </div>
+                        </div>
+
+                        <!-- Classification Result Block -->
+                        <div class="mt-2.5 p-2 rounded-lg bg-cyan-950/30 border border-cyan-800/40 flex items-center justify-between text-2xs text-cyan-200">
+                            <span class="flex items-center gap-1.5">
+                                <i class="fa-solid fa-circle-question text-amber-400"></i>
+                                <span>輸入新未知水果 ❓</span>
+                            </span>
+                            <span class="font-bold text-cyan-300">
+                                ➔ 判定為：「🍎 蘋果」
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Infographic 2: Clustering Pipeline -->
+                    <div class="p-4 rounded-xl bg-slate-900/90 border border-purple-500/30 flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                                <i class="fa-solid fa-network-wired"></i> 分群運作資訊圖 (無標準答案)
+                            </span>
+                            <span class="text-3xs px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-mono">Unsupervised</span>
+                        </div>
+
+                        <!-- Clustering Visual Flow Diagram -->
+                        <div class="grid grid-cols-4 items-center gap-1 text-center py-2">
+                            <!-- Step 1 -->
+                            <div class="p-2 rounded-lg bg-slate-950 border border-purple-900/50 flex flex-col items-center">
+                                <div class="text-lg text-purple-400 mb-1">
+                                    <i class="fa-solid fa-shuffle"></i>
+                                </div>
+                                <div class="text-2xs font-bold text-slate-200">1. 無標籤雜物</div>
+                                <div class="text-3xs text-purple-300/80 mt-0.5">混亂抽屜<br>無說明書</div>
+                            </div>
+                            
+                            <!-- Arrow 1 -->
+                            <div class="text-purple-500/70 text-sm flex flex-col items-center">
+                                <i class="fa-solid fa-arrow-right"></i>
+                                <span class="text-3xs text-slate-500 scale-90">量測</span>
+                            </div>
+
+                            <!-- Step 2 -->
+                            <div class="p-2 rounded-lg bg-slate-950 border border-purple-900/50 flex flex-col items-center">
+                                <div class="text-lg text-purple-400 mb-1">
+                                    <i class="fa-solid fa-compass-drafting"></i>
+                                </div>
+                                <div class="text-2xs font-bold text-slate-200">2. 空間距離</div>
+                                <div class="text-3xs text-slate-400 mt-0.5">外形相似度<br>物以類聚</div>
+                            </div>
+
+                            <!-- Arrow 2 -->
+                            <div class="text-purple-500/70 text-sm flex flex-col items-center">
+                                <i class="fa-solid fa-arrow-right"></i>
+                                <span class="text-3xs text-slate-500 scale-90">聚集</span>
+                            </div>
+                        </div>
+
+                        <!-- Clustering Result Block -->
+                        <div class="mt-2.5 p-2 rounded-lg bg-purple-950/30 border border-purple-800/40 flex items-center justify-between text-2xs text-purple-200">
+                            <span class="flex items-center gap-1.5">
+                                <i class="fa-solid fa-object-group text-purple-400"></i>
+                                <span>自然劃分聚落 🧩</span>
+                            </span>
+                            <span class="font-bold text-purple-300">
+                                ➔ 分為金屬堆、筆類、電線
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Analogy 1: Classification -->
+                <div class="p-4 rounded-2xl bg-slate-900/90 border border-cyan-500/30 space-y-2.5">
+                    <div class="flex items-center gap-2 text-cyan-400 text-sm font-bold">
+                        <i class="fa-solid fa-apple-whole text-cyan-400"></i>
+                        <span>分類 (Classification) 的生活比喻：水果店學徒認水果</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        老闆拿著一大箱水果親自教你：「這顆紅紅圓圓的是<span class="text-cyan-300 font-semibold">蘋果</span>」、「這顆橘黃粗糙的是<span class="text-orange-300 font-semibold">橘子</span>」。每顆水果都有<strong>明確標籤（標準答案）</strong>。
+                    </p>
+                    <div class="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-800/40 text-xs text-cyan-200">
+                        💡 <strong>核心本質：</strong>當客人新拿來一顆未知水果時，你根據學徒期累積的「規則」，直接判斷它是蘋果還是橘子。這就是<strong>「監督式學習（有標準答案）」</strong>。
+                    </div>
+                </div>
+
+                <!-- Analogy 2: Clustering -->
+                <div class="p-4 rounded-2xl bg-slate-900/90 border border-purple-500/30 space-y-2.5">
+                    <div class="flex items-center gap-2 text-purple-400 text-sm font-bold">
+                        <i class="fa-solid fa-boxes-packing text-purple-400"></i>
+                        <span>分群 (Clustering) 的生活比喻：整理未知的混亂抽屜</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        你打開一箱無人認領的雜物，<strong>沒有任何標籤與說明書</strong>。但你很自然地把金屬類的小東西放一堆、文具筆類放一堆、塑膠充電線放一堆。
+                    </p>
+                    <div class="p-2.5 rounded-xl bg-purple-950/40 border border-purple-800/40 text-xs text-purple-200">
+                        💡 <strong>核心本質：</strong>沒有老師教你誰是誰，純粹依據物品的「外觀形狀、重量或顏色相似度」自動<strong>「物以類聚」</strong>。這就是<strong>「非監督式學習（無標準答案）」</strong>。
+                    </div>
+                </div>
+            </div>
+
+            <!-- Extra Classroom Seating Analogy: Classification vs Clustering -->
+            <div class="mt-4 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-cyan-950/40 via-slate-900/90 to-purple-950/40 border border-slate-700/80 space-y-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-100">
+                        <span class="p-1 rounded bg-indigo-500/20 text-indigo-300">
+                            <i class="fa-solid fa-chalkboard-user"></i>
+                        </span>
+                        <span>校園教室情境：用「老師排座位」徹底看懂「分類」與「分群」的本質差異</span>
+                    </div>
+                    <span class="text-3xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono border border-slate-700">
+                        Seating Metaphor
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <!-- Seating Classification -->
+                    <div class="p-3.5 rounded-xl bg-slate-950/80 border border-cyan-500/30 space-y-2">
+                        <div class="flex items-center justify-between text-cyan-300 font-semibold">
+                            <span class="flex items-center gap-1.5">
+                                <i class="fa-solid fa-address-book text-cyan-400"></i>
+                                <span>分類（Classification）排座位：照名冊既定規則入座</span>
+                            </span>
+                            <span class="text-3xs px-1.5 py-0.5 rounded bg-cyan-900/50 text-cyan-300">有標準答案</span>
+                        </div>
+                        <p class="text-slate-300 leading-relaxed">
+                            開學前教務處已經給了老師一張名冊，每位學生頭上早就貼好標籤（如性別、文理組）。老師訂下明確邊界：「<strong>男生坐左邊、女生坐右邊（決策超平面）</strong>」。
+                        </p>
+                        <p class="text-slate-400 leading-relaxed">
+                            今天新來了一位轉學生，老師看他名冊上的標籤（是男生），直接指派他：「<strong>去左邊坐！</strong>」。
+                        </p>
+                        <div class="text-2xs font-mono text-cyan-200 bg-cyan-950/40 p-2 rounded-lg border border-cyan-800/40">
+                            🎯 <strong>核心特徵：</strong>對號入座，根據已學會的界線規則，將未知樣本分發到已存在的既有類別中。
+                        </div>
+                    </div>
+
+                    <!-- Seating Clustering -->
+                    <div class="p-3.5 rounded-xl bg-slate-950/80 border border-purple-500/30 space-y-2">
+                        <div class="flex items-center justify-between text-purple-300 font-semibold">
+                            <span class="flex items-center gap-1.5">
+                                <i class="fa-solid fa-people-group text-purple-400"></i>
+                                <span>分群（Clustering）排座位：自由入座，大家物以類聚</span>
+                            </span>
+                            <span class="text-3xs px-1.5 py-0.5 rounded bg-purple-900/50 text-purple-300">無既定標籤</span>
+                        </div>
+                        <p class="text-slate-300 leading-relaxed">
+                            開學第一天老師完全不認識大家，也沒有任何標籤。老師宣佈：「<strong>自由挑位子，大家分組坐！</strong>」。
+                        </p>
+                        <p class="text-slate-400 leading-relaxed">
+                            愛打電競的聊得投緣聚在後排、愛安靜看書的坐講台前、運動健將靠窗戶湊一堆。<strong>老師是事後走過去看才發現：「原來這桌是電競群、那桌是讀書群！」</strong>（事後解讀特徵聚落）。
+                        </p>
+                        <div class="text-2xs font-mono text-purple-200 bg-purple-950/40 p-2 rounded-lg border border-purple-800/40">
+                            🧩 <strong>核心特徵：</strong>自主聚集，完全依據特徵相似度（頻率投緣、距離近）自然成群，事前無標準答案。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 01 & 02: Core Comparison Cards -->
+    <section id="overview" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Classification Card -->
+            <div class="glass-panel p-6 rounded-2xl border-l-4 border-l-cyan-500 hover:border-slate-700 transition">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="px-3 py-1 text-xs font-semibold rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                        <i class="fa-solid fa-tag mr-1.5"></i>監督式學習 (Supervised)
+                    </span>
+                    <span class="text-xs text-slate-400">標籤驅動 (With Labels)</span>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-shapes text-cyan-400"></i> 分類演算法 (Classification)
+                </h3>
+                <p class="text-cyan-200 font-medium text-sm mb-4">
+                    「依據已知標籤尋找最佳決策邊界面，預測未知樣本的離散類別。」
+                </p>
+                <div class="space-y-2 text-xs text-slate-300">
+                    <div class="flex items-start gap-2 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
+                        <i class="fa-solid fa-bullseye text-cyan-400 mt-0.5"></i>
+                        <div><strong>核心任務：</strong>學習映射函數 $f: \mathcal{X} \to \mathcal{Y}$，使經驗風險與正規化懲罰最小化。</div>
+                    </div>
+                    <div class="flex items-start gap-2 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
+                        <i class="fa-solid fa-gauge-high text-cyan-400 mt-0.5"></i>
+                        <div><strong>主要評估指標：</strong>Accuracy, Precision, Recall, F1-Score, ROC-AUC, 混淆矩陣。</div>
+                    </div>
+                    <div class="flex items-start gap-2 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
+                        <i class="fa-solid fa-cubes text-cyan-400 mt-0.5"></i>
+                        <div><strong>經典演算法：</strong>Logistic Regression, SVM, 決策樹, 隨機森林, XGBoost, CNN。</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Clustering Card -->
+            <div class="glass-panel p-6 rounded-2xl border-l-4 border-l-purple-500 hover:border-slate-700 transition">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="px-3 py-1 text-xs font-semibold rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/30">
+                        <i class="fa-solid fa-layer-group mr-1.5"></i>非監督式學習 (Unsupervised)
+                    </span>
+                    <span class="text-xs text-slate-400">無標籤探索 (No Labels)</span>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-diagram-project text-purple-400"></i> 分群演算法 (Clustering)
+                </h3>
+                <p class="text-purple-200 font-medium text-sm mb-4">
+                    「依據特徵相似度或空間距離，探索內在結構並聚集高內聚性子群。」
+                </p>
+                <div class="space-y-2 text-xs text-slate-300">
+                    <div class="flex items-start gap-2 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
+                        <i class="fa-solid fa-bullseye text-purple-400 mt-0.5"></i>
+                        <div><strong>核心任務：</strong>最小化群內變異 (WCSS) 同時最大化群間分離度，無需預先定義答案。</div>
+                    </div>
+                    <div class="flex items-start gap-2 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
+                        <i class="fa-solid fa-gauge-high text-purple-400 mt-0.5"></i>
+                        <div><strong>主要評估指標：</strong>輪廓係數 (Silhouette Score), 肘部法 (Elbow Method), 戴維斯-鮑丁 (DBI)。</div>
+                    </div>
+                    <div class="flex items-start gap-2 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
+                        <i class="fa-solid fa-cubes text-purple-400 mt-0.5"></i>
+                        <div><strong>經典演算法：</strong>K-Means, DBSCAN (密度分群), 階層分群 (Hierarchical), GMM 高斯混合模型。</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION: K-NN vs K-Means Comprehensive Comparison -->
+    <section id="knn-vs-kmeans" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="glass-panel p-6 sm:p-8 rounded-3xl border border-amber-500/30 relative overflow-hidden">
+            <div class="absolute -right-20 -top-20 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+                <div>
+                    <span class="px-2.5 py-0.5 rounded text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                        <i class="fa-solid fa-code-compare mr-1"></i>iPAS 必考高頻對比題型
+                    </span>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-white mt-1.5">
+                        K-NN (最近鄰分類) vs K-Means (K-平均分群)
+                    </h2>
+                    <p class="text-xs sm:text-sm text-slate-400 mt-1">
+                        雖然名字都帶有「K」，但在學習範式、K 的本質意涵、計算複雜度與邊界產生機制上有著根本性的天壤之別。
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 bg-slate-900 px-3 py-2 rounded-xl border border-slate-800 text-xs font-mono">
+                    <span class="text-amber-400">K-NN: 惰性學習</span>
+                    <span class="text-slate-600">|</span>
+                    <span class="text-purple-400">K-Means: 積極學習</span>
+                </div>
+            </div>
+
+            <!-- Life Analogy Comparison Box for K-NN vs K-Means -->
+            <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- K-NN Life Analogy -->
+                <div class="p-4 rounded-2xl bg-slate-900/80 border border-amber-500/30 space-y-2">
+                    <div class="flex items-center gap-2 text-amber-400 font-bold text-sm">
+                        <i class="fa-solid fa-person-circle-question text-base"></i>
+                        <span>K-NN 的生活比喻：「初來乍到，出門問附近鄰居」</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        你剛搬進一個新社區，不知道自己屬於哪一個投票里。你平時不用特地去背社區地圖（<strong>平時不訓練，惰性學習</strong>）。
+                    </p>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        要投票那天，你走出門看<strong>距離你最近的 $K=5$ 位鄰居</strong>。若有 4 位說他們在「仁愛里」，只有 1 位說在「和平里」，少數服從多數，你就認定自己也是「仁愛里」。
+                    </p>
+                    <div class="text-2xs font-mono text-amber-300 bg-amber-950/40 p-2 rounded-lg border border-amber-800/40">
+                        📌 <strong>K 的涵義：</strong>你參考的「鄰居人數」（$K=5$ 位鄰居）。
+                    </div>
+                </div>
+
+                <!-- K-Means Life Analogy -->
+                <div class="p-4 rounded-2xl bg-slate-900/80 border border-purple-500/30 space-y-2">
+                    <div class="flex items-center gap-2 text-purple-400 font-bold text-sm">
+                        <i class="fa-solid fa-store text-base"></i>
+                        <span>K-Means 的生活比喻：「連鎖超商尋找最佳展店中心」</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        某總部要在一個居民隨機散落的城市開設 <strong>$K=3$ 家分店</strong>：
+                    </p>
+                    <ol class="text-xs text-slate-300 list-decimal list-inside space-y-1">
+                        <li><strong>初始：</strong>先隨意選 3 個十字路口擺設攤位。</li>
+                        <li><strong>指派 (E步)：</strong>全市居民各自走到距離自己最近的攤位消費。</li>
+                        <li><strong>更新 (M步)：</strong>三位店長統計今天服務的全部顧客住址，將店面搬遷到所有顧客的「幾何中心點」。</li>
+                    </ol>
+                    <div class="text-2xs font-mono text-purple-300 bg-purple-950/40 p-2 rounded-lg border border-purple-800/40">
+                        📌 <strong>K 的涵義：</strong>總共要在這座城市開幾家「分店／群集」（$K=3$ 個群心）。
+                    </div>
+                </div>
+            </div>
+
+            <!-- Extra Store/Retail Analogy Box for K-NN vs K-Means -->
+            <div class="mt-4 p-4 rounded-2xl bg-gradient-to-r from-amber-950/30 via-slate-900/90 to-purple-950/30 border border-slate-700 space-y-3">
+                <div class="flex items-center gap-2 text-xs font-bold text-slate-200">
+                    <span class="p-1 rounded bg-amber-500/20 text-amber-300"><i class="fa-solid fa-cart-shopping"></i></span>
+                    <span>零售商店加碼比喻：超商無標籤商品結帳 (K-NN) vs 大賣場貨架分區規劃 (K-Means)</span>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <!-- Store Analogy 1: K-NN -->
+                    <div class="p-3.5 rounded-xl bg-slate-950/70 border border-amber-500/20 space-y-2">
+                        <div class="flex items-center gap-2 text-amber-300 font-semibold">
+                            <i class="fa-solid fa-barcode"></i>
+                            <span>K-NN 商店比喻：無條碼未知零食的「鄰近比價」</span>
+                        </div>
+                        <p class="text-slate-300 leading-relaxed">
+                            顧客拿了一包標籤脫落的未知進口零食到櫃檯結帳。店員不需要去考食品檢驗證書（<strong>不用預先訓練模型</strong>），而是直接轉身在已知貨架上找包裝重量、尺寸材質與它最相近的 <strong>$K=3$ 包零食</strong>。
+                        </p>
+                        <p class="text-slate-400 leading-relaxed">
+                            若 3 包中有 2 包是「進口洋芋片（60元）」，只有 1 包是「普通餅乾（30元）」，多數決判定這包也是<strong>「進口洋芋片」</strong>。
+                        </p>
+                        <div class="text-2xs font-mono text-amber-400 bg-amber-950/30 p-1.5 rounded border border-amber-900/40">
+                            💡 <strong>本質：</strong>有客人問了才拿尺比對貨架上已建檔的商品（$K$ 是比對的相鄰商品件數）。
+                        </div>
+                    </div>
+
+                    <!-- Store Analogy 2: K-Means -->
+                    <div class="p-3.5 rounded-xl bg-slate-950/70 border border-purple-500/20 space-y-2">
+                        <div class="flex items-center gap-2 text-purple-300 font-semibold">
+                            <i class="fa-solid fa-dolly"></i>
+                            <span>K-Means 商店比喻：新開大賣場規劃「$K$ 大展示貨架區」</span>
+                        </div>
+                        <p class="text-slate-300 leading-relaxed">
+                            倉庫新進了 3,000 件完全沒有分類標籤的雜貨。老闆要求店長必須在店面規劃出 <strong>$K=3$ 個主要陳列貨架</strong>：
+                        </p>
+                        <p class="text-slate-400 leading-relaxed">
+                            店長先隨意在賣場東、南、北邊立 3 個架子；接著將性質相近的商品擺到最近的架子（<strong>E 步指派</strong>）；然後看每個架子累積的商品平均特性，將貨架移動到商品特性的幾何重心（<strong>M 步更新</strong>），反覆調整後自然劃分出「飲料零食區」、「衛浴日用品區」與「五金工具區」。
+                        </p>
+                        <div class="text-2xs font-mono text-purple-400 bg-purple-950/30 p-1.5 rounded border border-purple-900/40">
+                            💡 <strong>本質：</strong>從未分類雜貨中自主凝聚出群聚（$K$ 是店長預先規定的貨架專區數）。
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Classroom / Student Seating Analogy Box for K-NN vs K-Means -->
+            <div class="mt-4 p-4 rounded-2xl bg-gradient-to-r from-emerald-950/30 via-slate-900/90 to-cyan-950/30 border border-emerald-800/40 space-y-3">
+                <div class="flex items-center gap-2 text-xs font-bold text-slate-200">
+                    <span class="p-1 rounded bg-emerald-500/20 text-emerald-300"><i class="fa-solid fa-graduation-cap"></i></span>
+                    <span>校園教室加碼比喻：轉學生入座觀察鄰近同學 (K-NN) vs 全班動態分組換座位 (K-Means)</span>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <!-- Classroom Analogy 1: K-NN -->
+                    <div class="p-3.5 rounded-xl bg-slate-950/70 border border-amber-500/20 space-y-2">
+                        <div class="flex items-center gap-2 text-amber-300 font-semibold">
+                            <i class="fa-solid fa-chair"></i>
+                            <span>K-NN 教室比喻：轉學生挑空位「看鄰居社團認同」</span>
+                        </div>
+                        <p class="text-slate-300 leading-relaxed">
+                            開學中途來了一位轉學生，隨便挑了一張空桌子坐下。班長想預測他會加入什麼社團，<strong>不需要全班重新大風吹調座位（惰性學習，平時不訓練）</strong>。
+                        </p>
+                        <p class="text-slate-400 leading-relaxed">
+                            班長直接看坐在他周圍最靠近的 <strong>$K=5$ 位同學</strong>：若有 4 位是「熱音社」，只有 1 位是「天文社」，根據少數服從多數原則，班長直接推定這名轉學生也是<strong>「熱音社圈子」</strong>。
+                        </p>
+                        <div class="text-2xs font-mono text-amber-400 bg-amber-950/30 p-1.5 rounded border border-amber-900/40">
+                            🎓 <strong>K 的涵義：</strong>轉學生周圍被納入投票的「鄰座同學人數」（$K=5$ 位鄰居）。
+                        </div>
+                    </div>
+
+                    <!-- Classroom Analogy 2: K-Means -->
+                    <div class="p-3.5 rounded-xl bg-slate-950/70 border border-purple-500/20 space-y-2">
+                        <div class="flex items-center gap-2 text-purple-300 font-semibold">
+                            <i class="fa-solid fa-people-arrows"></i>
+                            <span>K-Means 教室比喻：全班專案分組「動態換座位直至收斂」</span>
+                        </div>
+                        <p class="text-slate-300 leading-relaxed">
+                            導師要在教室將 40 位同學劃分成 <strong>$K=4$ 個專案小組</strong>，且事先沒有任何既定標籤：
+                        </p>
+                        <ol class="text-slate-400 list-decimal list-inside space-y-1">
+                            <li><strong>初始：</strong>老師先在教室四個角落隨意放 4 張小組長桌（初始群心）。</li>
+                            <li><strong>指派 (E 步)：</strong>所有同學搬椅子坐到離自己目前最近的那張組長桌旁。</li>
+                            <li><strong>更新 (M 步)：</strong>各組坐定後，大家合力把組長桌搬到「該組所有同學椅子的正中心點（幾何重心）」。</li>
+                            <li><strong>迭代：</strong>桌子換位置後，有些同學發現別組桌子反而更近，於是起身跳槽換桌……反覆重排直到「全班再也沒有人需要更換座位」為止！</li>
+                        </ol>
+                        <div class="text-2xs font-mono text-purple-400 bg-purple-950/30 p-1.5 rounded border border-purple-900/40">
+                            🎓 <strong>K 的涵義：</strong>導師預先規定全班要分成幾組的「組數／群心數目」（$K=4$ 個組別）。
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparison Grid Table -->
+            <div class="mt-6 overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-800 text-slate-400 uppercase font-mono bg-slate-900/60">
+                            <th class="p-3.5 rounded-l-xl">比較維度</th>
+                            <th class="p-3.5 text-amber-300 font-bold">K-NN (K-Nearest Neighbors)</th>
+                            <th class="p-3.5 text-purple-300 font-bold rounded-r-xl">K-Means Clustering</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/70 text-slate-300">
+                        <tr class="hover:bg-slate-900/30 transition">
+                            <td class="p-3.5 font-semibold text-slate-200">1. 學習範式 (Paradigm)</td>
+                            <td class="p-3.5"><span class="px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">監督式學習 (Supervised)</span>：訓練集必須具備 Ground Truth 標籤。</td>
+                            <td class="p-3.5"><span class="px-2 py-0.5 rounded bg-purple-950 text-purple-400 border border-purple-800">非監督式學習 (Unsupervised)</span>：資料純由特徵組成，無預設標籤。</td>
+                        </tr>
+                        <tr class="hover:bg-slate-900/30 transition">
+                            <td class="p-3.5 font-semibold text-slate-200">2. 「K」的數學意涵</td>
+                            <td class="p-3.5 text-amber-200"><strong>鄰居數量 (Number of Neighbors)</strong>：待測點周圍要參考的最相近樣本數 $K$。</td>
+                            <td class="p-3.5 text-purple-200"><strong>群集數量 (Number of Clusters)</strong>：欲將全體資料劃分出的群心數目 $K$。</td>
+                        </tr>
+                        <tr class="hover:bg-slate-900/30 transition">
+                            <td class="p-3.5 font-semibold text-slate-200">3. 訓練階段 (Training Phase)</td>
+                            <td class="p-3.5"><strong class="text-rose-300">惰性學習 (Lazy Learning)</strong>：訓練時間為 $\mathcal{O}(1)$，基本上僅將資料存入記憶體，不預先建構顯式模型。</td>
+                            <td class="p-3.5"><strong class="text-emerald-300">積極學習 (Eager Learning)</strong>：透過 EM 迭代更新，尋找全域最優群心座標，訓練耗時較長。</td>
+                        </tr>
+                        <tr class="hover:bg-slate-900/30 transition">
+                            <td class="p-3.5 font-semibold text-slate-200">4. 推論/預測階段 (Inference)</td>
+                            <td class="p-3.5 text-rose-300">極慢 $\mathcal{O}(N \cdot D)$：每個新樣本需與所有訓練點計算距離（需透過 KD-Tree / Ball-Tree 提速）。</td>
+                            <td class="p-3.5 text-emerald-300">極快 $\mathcal{O}(K \cdot D)$：新樣本僅需與 $K$ 個群心比對距離即可判定所屬群。</td>
+                        </tr>
+                        <tr class="hover:bg-slate-900/30 transition">
+                            <td class="p-3.5 font-semibold text-slate-200">5. K 值調整之偏差/方差權衡</td>
+                            <td class="p-3.5">
+                                • $K$ 太小（如 $K=1$）：高方差（Variance）、易受噪音干擾、過擬合（Overfitting）。<br>
+                                • $K$ 太大：高偏差（Bias）、邊界過度平滑、欠擬合。
+                            </td>
+                            <td class="p-3.5">
+                                • $K$ 太小：群內平方和（WCSS）過大、未能捕捉細分結構。<br>
+                                • $K$ 太大（極端 $K=N$ 時 WCSS=0）：過度分割失去聚合意義（常用手肘法決定）。
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-slate-900/30 transition">
+                            <td class="p-3.5 font-semibold text-slate-200">6. 特徵標準化之必要性</td>
+                            <td class="p-3.5 font-semibold text-amber-400">絕對必要！數值範圍大的維度將完全主導歐氏距離計算。</td>
+                            <td class="p-3.5 font-semibold text-purple-400">絕對必要！否則群心將被方差大的維度拉偏形成扁平球體。</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- NEW SECTION: ARE THEY BOTH EVALUATED BY DISTANCE? (深度剖析：兩者都是用距離評估嗎？) -->
+    <section id="distance-evaluation" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="glass-panel p-6 sm:p-8 rounded-3xl border border-cyan-500/40 relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900/80 to-cyan-950/20">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+                <div>
+                    <span class="px-2.5 py-0.5 rounded text-xs font-semibold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
+                        <i class="fa-solid fa-ruler-combined mr-1"></i>深度剖析 • 核心觀念澄清
+                    </span>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-white mt-1.5">
+                        K-NN 和 K-Means 都是用「距離」評估嗎？
+                    </h2>
+                    <p class="text-xs sm:text-sm text-slate-400 mt-1">
+                        <strong>答案是：是的，兩者都嚴重依賴距離度量！</strong>但距離在兩者中所扮演的「數學角色、目的與可替換性」有著本質上的巨大差異。
+                    </p>
+                </div>
+                <div class="px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-right font-mono">
+                    <span class="text-cyan-400 font-bold">幾何度量空間</span><br>
+                    <span class="text-slate-400 text-2xs">Metric Space Dynamics</span>
+                </div>
+            </div>
+
+            <!-- Deep Comparison Cards: Distance Roles -->
+            <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- K-NN Distance Role -->
+                <div class="p-5 rounded-2xl bg-slate-900/80 border border-amber-500/30 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                            K-NN 中的距離角色
+                        </span>
+                        <span class="text-2xs text-slate-400 font-mono">局部拓撲鄰域 (Local Neighbor)</span>
+                    </div>
+                    <h4 class="text-base font-bold text-white">距離是用來「篩選最近投票鄰居」的排序工具</h4>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        在 K-NN 中，距離只是一個<strong>「相似度排序機制」</strong>。演算法計算待測點與全體樣本的距離，目的只是為了選出前 $K$ 個最近點（Top-$K$）。
+                    </p>
+                    <div class="space-y-2 text-xs text-slate-300">
+                        <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                            <span class="text-amber-300 font-semibold">✔ 距離種類彈性高：</span>
+                            可任意更換為曼哈頓距離（L1）、切比雪夫距離（$L_\infty$）、馬氏距離（Mahalanobis，考慮協方差）、甚至文字處理常見的餘弦相似度（Cosine Similarity）。
+                        </div>
+                        <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                            <span class="text-amber-300 font-semibold">✔ 距離可以直接做加權投票：</span>
+                            距離越近的鄰居話語權越大，權重常設為 $w_i = \frac{1}{d(\mathbf{x}, \mathbf{x}_i) + \epsilon}$。
+                        </div>
+                    </div>
+                </div>
+
+                <!-- K-Means Distance Role -->
+                <div class="p-5 rounded-2xl bg-slate-900/80 border border-purple-500/30 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                            K-Means 中的距離角色
+                        </span>
+                        <span class="text-2xs text-slate-400 font-mono">全域損失函數 (Objective Loss)</span>
+                    </div>
+                    <h4 class="text-base font-bold text-white">距離被嚴格綁定在「平方誤差和 (WCSS)」最佳化中</h4>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        在標準 K-Means 中，距離不僅僅是指派依據，它直接構成了演算法的目標損失函數：$J = \sum \|\mathbf{x}_i - \boldsymbol{\mu}_k\|_2^2$。
+                    </p>
+                    <div class="space-y-2 text-xs text-slate-300">
+                        <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                            <span class="text-purple-300 font-semibold">⚠ 經典 K-Means 嚴格限定「歐氏距離平方」：</span>
+                            因為只有在歐式距離平方下，對群心求偏導 $\frac{\partial J}{\partial \boldsymbol{\mu}_k}=0$ 才能保證群心剛好是<strong>「算術平均數 (Mean)」</strong>！
+                        </div>
+                        <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                            <span class="text-purple-300 font-semibold">⚠ 換了距離，演算法就必須改名：</span>
+                            若改用曼哈頓距離（L1），群心必須改求「中位數 (Median)」，此時演算法稱為 <strong>K-Medians</strong>；若使用任意非歐度量，則演算法可能無法保證數學收斂。
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Essential Summary Table on Distance -->
+            <div class="mt-6 p-4 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-3">
+                <div class="flex items-center gap-2 text-sm font-bold text-cyan-300">
+                    <i class="fa-solid fa-list-check"></i>
+                    <span>距離度量本質重點對照表（iPAS / 考試必考）</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-400 bg-slate-900/60 font-mono">
+                                <th class="p-2.5">評估維度</th>
+                                <th class="p-2.5 text-amber-300">K-NN (最近鄰分類)</th>
+                                <th class="p-2.5 text-purple-300">K-Means (K-平均分群)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/60 text-slate-300">
+                            <tr>
+                                <td class="p-2.5 font-semibold text-slate-200">誰與誰計算距離？</td>
+                                <td class="p-2.5">待測點 與 <strong>所有已標記訓練樣本點</strong> 算距離</td>
+                                <td class="p-2.5">每一個樣本點 與 <strong>$K$ 個群心 (Centroids)</strong> 算距離</td>
+                            </tr>
+                            <tr>
+                                <td class="p-2.5 font-semibold text-slate-200">距離計算量</td>
+                                <td class="p-2.5 text-rose-300 font-mono">$\mathcal{O}(N \cdot D)$（隨資料量線性膨脹，極耗時）</td>
+                                <td class="p-2.5 text-emerald-300 font-mono">$\mathcal{O}(K \cdot D)$（只需與 $K$ 個群心比，極快）</td>
+                            </tr>
+                            <tr>
+                                <td class="p-2.5 font-semibold text-slate-200">可否換非歐氏距離？</td>
+                                <td class="p-2.5 text-emerald-400 font-semibold">隨時可換（曼哈頓、Cosine、馬氏等皆可）</td>
+                                <td class="p-2.5 text-amber-400 font-semibold">不行！換了距離群心就不是 Mean（需換成 K-Medians 等變形）</td>
+                            </tr>
+                            <tr>
+                                <td class="p-2.5 font-semibold text-slate-200">對「量綱尺度」敏感度</td>
+                                <td class="p-2.5 text-rose-300"><strong>極度敏感</strong>（年齡 vs 年薪，年薪會吃掉年齡）</td>
+                                <td class="p-2.5 text-rose-300"><strong>極度敏感</strong>（群心會被方差大的維度拉扯成長橢球體）</td>
+                            </tr>
+                            <tr>
+                                <td class="p-2.5 font-semibold text-slate-200">必須採用的前處理</td>
+                                <td class="p-2.5 text-cyan-300 font-semibold">Z-Score 標準化 或 Min-Max 歸一化</td>
+                                <td class="p-2.5 text-cyan-300 font-semibold">Z-Score 標準化 或 Min-Max 歸一化</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 10 & 12: THE INTERACTIVE SIMULATION LAB (MAIN FEATURE) -->
+    <section id="lab" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="glass-panel p-6 rounded-3xl border border-slate-800 shadow-2xl relative">
+            <!-- Lab Title and Mode Switcher -->
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-6 border-b border-slate-800">
+                <div>
+                    <div class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-cyan-400 mb-1">
+                        <i class="fa-solid fa-microchip"></i> Algorithm Evolution Engine
+                    </div>
+                    <h2 class="text-2xl font-bold text-white">演算法即時模擬實驗室</h2>
+                    <p class="text-xs text-slate-400">支援「線性分類 (Logistic Reg)」、「非監督分群 (K-Means)」與「惰性實例分類 (K-NN 鄰居搜尋)」。</p>
+                </div>
+
+                <!-- Mode Selectors -->
+                <div class="flex flex-wrap items-center gap-2 p-1.5 bg-slate-900/90 rounded-xl border border-slate-800">
+                    <button id="mode-cls-btn" onclick="setLabMode('classification')" 
+                        class="px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 bg-cyan-600 text-white shadow-md shadow-cyan-600/30">
+                        <i class="fa-solid fa-square-poll-vertical"></i> 分類 (Logistic Reg)
+                    </button>
+                    <button id="mode-clt-btn" onclick="setLabMode('clustering')" 
+                        class="px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800">
+                        <i class="fa-solid fa-circle-nodes"></i> 分群 (K-Means 迭代)
+                    </button>
+                    <button id="mode-knn-btn" onclick="setLabMode('knn')" 
+                        class="px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800">
+                        <i class="fa-solid fa-location-crosshairs text-amber-400"></i> K-NN 鄰居即時分類
+                    </button>
+                </div>
+            </div>
+
+            <!-- Lab Workspace Layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+                <!-- Left/Canvas Viewport (8 Cols) -->
+                <div class="lg:col-span-8 flex flex-col">
+                    <div class="canvas-container w-full h-[460px] bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden shadow-inner relative">
+                        <canvas id="simCanvas" class="w-full h-full cursor-crosshair"></canvas>
+                        
+                        <!-- Canvas Overlay HUD -->
+                        <div class="absolute top-3 left-3 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-800 text-xs font-mono space-y-1">
+                            <div class="flex items-center gap-2 text-slate-300">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                狀態: <span id="hud-status" class="text-emerald-300">準備就緒</span>
+                            </div>
+                            <div class="text-slate-400">迭代次數: <span id="hud-iter" class="text-white font-bold">0</span> | 點數量: <span id="hud-points" class="text-white">0</span></div>
+                        </div>
+
+                        <!-- Canvas Legend Overlay -->
+                        <div id="canvas-legend" class="absolute bottom-3 right-3 bg-slate-950/85 backdrop-blur-md p-2.5 rounded-lg border border-slate-800 text-xs flex items-center gap-4">
+                            <!-- Dynamic legend filled via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Canvas Interactive Tip -->
+                    <div class="mt-3 flex items-center justify-between text-xs text-slate-400 px-1">
+                        <span id="canvas-tip-text"><i class="fa-solid fa-mouse-pointer text-cyan-400 mr-1"></i>提示：直接點擊畫布空白處即可新增樣本點！</span>
+                        <div class="flex items-center gap-2" id="toggle-label-wrap">
+                            <span id="click-add-type" class="text-slate-300 font-mono">目前新增點標籤: 類別 A (藍)</span>
+                            <button id="toggle-label-btn" onclick="toggleAddClass()" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-2xs border border-slate-700">
+                                切換標籤
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right/Controls & Telemetry (4 Cols) -->
+                <div class="lg:col-span-4 flex flex-col space-y-4">
+                    <!-- Control Bar -->
+                    <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-4">
+                        <h4 class="text-sm font-bold text-white flex items-center justify-between">
+                            <span><i class="fa-solid fa-sliders text-cyan-400 mr-2"></i>模擬控制台</span>
+                            <span class="text-2xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">Live Engine</span>
+                        </h4>
+
+                        <!-- Action Buttons -->
+                        <div class="grid grid-cols-2 gap-2" id="action-btn-group">
+                            <button id="step-btn" onclick="stepSimulation()" 
+                                class="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white text-xs font-semibold flex items-center justify-center gap-2 border border-slate-700 transition shadow">
+                                <i class="fa-solid fa-forward-step text-cyan-400"></i> 單步執行 (Step)
+                            </button>
+                            <button id="play-btn" onclick="toggleAutoPlay()" 
+                                class="px-3 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700 text-white text-xs font-semibold flex items-center justify-center gap-2 transition shadow shadow-cyan-600/30">
+                                <i class="fa-solid fa-play" id="play-icon"></i> <span id="play-text">一鍵自動模擬</span>
+                            </button>
+                        </div>
+
+                        <!-- Reset & Presets -->
+                        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
+                            <button onclick="loadPresetDataset('standard')" class="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700/60">
+                                <i class="fa-solid fa-shuffle mr-1"></i> 預設標準資料
+                            </button>
+                            <button onclick="resetCurrentSimulation()" class="px-3 py-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 text-xs border border-rose-800/50">
+                                <i class="fa-solid fa-rotate-right mr-1"></i> 重設全部
+                            </button>
+                        </div>
+
+                        <!-- Parameters Sliders -->
+                        <div class="space-y-3 pt-2">
+                            <div id="param-lr-box">
+                                <div class="flex justify-between text-xs text-slate-400 mb-1">
+                                    <span>學習率 (Learning Rate $\alpha$)</span>
+                                    <span id="lr-val" class="font-mono text-cyan-400">0.05</span>
+                                </div>
+                                <input type="range" id="lr-slider" min="0.01" max="0.3" step="0.01" value="0.05" oninput="updateLR(this.value)" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                            </div>
+
+                            <div id="param-k-box" class="hidden">
+                                <div class="flex justify-between text-xs text-slate-400 mb-1">
+                                    <span>分群數 $K$ (Clusters)</span>
+                                    <span id="k-val" class="font-mono text-purple-400">3</span>
+                                </div>
+                                <input type="range" id="k-slider" min="2" max="5" step="1" value="3" oninput="updateK(this.value)" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500">
+                            </div>
+
+                            <div id="param-knn-k-box" class="hidden">
+                                <div class="flex justify-between text-xs text-slate-400 mb-1">
+                                    <span>鄰居數 $K$ (Neighbors)</span>
+                                    <span id="knn-k-val" class="font-mono text-amber-400">5</span>
+                                </div>
+                                <input type="range" id="knn-k-slider" min="1" max="15" step="2" value="5" oninput="updateKNNK(this.value)" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500">
+                                <span class="text-3xs text-slate-500 block mt-1">*二元分類通常選奇數以防平票</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Telemetry Meters -->
+                    <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 flex-1 flex flex-col justify-between">
+                        <div>
+                            <h4 class="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                                <i class="fa-solid fa-chart-line text-emerald-400"></i> 即時指標評估
+                            </h4>
+                            <div class="space-y-3">
+                                <div class="p-3 rounded-xl bg-slate-950 border border-slate-800/80">
+                                    <div class="text-2xs text-slate-400 uppercase tracking-wider" id="metric-1-name">二元交叉熵損失 (Loss)</div>
+                                    <div class="text-xl font-bold font-mono text-cyan-400 mt-0.5" id="metric-1-val">0.6931</div>
+                                </div>
+                                <div class="p-3 rounded-xl bg-slate-950 border border-slate-800/80">
+                                    <div class="text-2xs text-slate-400 uppercase tracking-wider" id="metric-2-name">分類準確率 (Accuracy)</div>
+                                    <div class="text-xl font-bold font-mono text-emerald-400 mt-0.5" id="metric-2-val">50.0%</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mathematical Intuition Box -->
+                        <div class="mt-4 p-3 rounded-xl bg-cyan-950/20 border border-cyan-800/40 text-xs text-cyan-200" id="intuition-box">
+                            <i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i>
+                            <span id="step-description">點擊「單步執行」開始觀察演算法底層每一步矩陣計算與邊界更迭。</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 08 & 09: Mathematical Derivations Section -->
+    <section id="theory" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div class="text-center mb-8">
+            <span class="text-xs font-semibold px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-cyan-400">
+                底層代數與最佳化推導
+            </span>
+            <h2 class="text-2xl sm:text-3xl font-bold text-white mt-2">核心演算法數學推導</h2>
+            <p class="text-xs sm:text-sm text-slate-400 max-w-2xl mx-auto mt-1">
+                從極大似然估計 (MLE) 到期待最大化 (EM) 思想：深入理解邊界面如何旋轉與群心如何漂移。
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Logistic Regression Math Panel -->
+            <div class="glass-panel p-6 rounded-2xl border border-slate-800 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+                        <h3 class="text-lg font-bold text-cyan-400 flex items-center gap-2">
+                            <i class="fa-solid fa-square-root-variable"></i> 分類：邏輯迴歸損失與梯度更新
+                        </h3>
+                        <span class="text-2xs bg-cyan-950 text-cyan-300 border border-cyan-800 px-2 py-0.5 rounded">凸優化</span>
+                    </div>
+
+                    <div class="space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
+                        <div>
+                            <p class="text-slate-400 text-xs font-semibold mb-1">1. 機率假設 (Sigmoid Activation)：</p>
+                            <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800 text-center font-mono">
+                                $$\hat{y}_i = \sigma(z_i) = \frac{1}{1 + e^{-(\mathbf{w}^T \mathbf{x}_i + b)}}$$
+                            </div>
+                        </div>
+
+                        <div>
+                            <p class="text-slate-400 text-xs font-semibold mb-1">2. 交叉熵損失函數 (Cross-Entropy Loss)：</p>
+                            <p class="text-xs text-slate-400 mb-1">依據白努力分佈概似函數，取負對數求得凸損失函數：</p>
+                            <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800 text-center font-mono overflow-x-auto">
+                                $$J(\mathbf{w}, b) = -\frac{1}{N} \sum_{i=1}^N \left[ y_i \ln \hat{y}_i + (1 - y_i) \ln(1 - \hat{y}_i) \right]$$
+                            </div>
+                        </div>
+
+                        <div>
+                            <p class="text-slate-400 text-xs font-semibold mb-1">3. 權重梯度偏微分 (Gradient Calculation)：</p>
+                            <p class="text-xs text-slate-400 mb-1">利用鏈式法則 $\frac{\partial J}{\partial \mathbf{w}} = \frac{\partial J}{\partial \hat{y}} \frac{\partial \hat{y}}{\partial z} \frac{\partial z}{\partial \mathbf{w}}$：</p>
+                            <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800 text-center font-mono overflow-x-auto">
+                                $$\nabla_{\mathbf{w}} J = \frac{1}{N} \sum_{i=1}^N (\hat{y}_i - y_i) \mathbf{x}_i$$
+                            </div>
+                            <p class="text-xs text-cyan-400/90 mt-1">更新法則：$\mathbf{w} \leftarrow \mathbf{w} - \alpha \nabla_{\mathbf{w}} J$（實驗室單步模擬即在計算此向量）。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- K-Means Clustering Math Panel -->
+            <div class="glass-panel p-6 rounded-2xl border border-slate-800 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+                        <h3 class="text-lg font-bold text-purple-400 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-pie"></i> 分群：K-Means 目標函數與群心均值推導
+                        </h3>
+                        <span class="text-2xs bg-purple-950 text-purple-300 border border-purple-800 px-2 py-0.5 rounded">EM 啟發式</span>
+                    </div>
+
+                    <div class="space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
+                        <div>
+                            <p class="text-slate-400 text-xs font-semibold mb-1">1. 群內平方誤差和 (WCSS 目標函數)：</p>
+                            <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800 text-center font-mono overflow-x-auto">
+                                $$J(S, \boldsymbol{\mu}) = \sum_{k=1}^K \sum_{\mathbf{x}_i \in S_k} \|\mathbf{x}_i - \boldsymbol{\mu}_k\|_2^2$$
+                            </div>
+                        </div>
+
+                        <div>
+                            <p class="text-slate-400 text-xs font-semibold mb-1">2. Step E (Expectation)：群集分配 (Voronoi 劃分)</p>
+                            <p class="text-xs text-slate-400 mb-1">固定群心 $\boldsymbol{\mu}_k$，將各點指派至歐氏距離最近之群心：</p>
+                            <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800 text-center font-mono">
+                                $$S_k^{(t)} = \left\{ \mathbf{x}_i : \|\mathbf{x}_i - \boldsymbol{\mu}_k^{(t)}\|^2 \le \|\mathbf{x}_i - \boldsymbol{\mu}_j^{(t)}\|^2, \forall j \right\}$$
+                            </div>
+                        </div>
+
+                        <div>
+                            <p class="text-slate-400 text-xs font-semibold mb-1">3. Step M (Maximization)：更新群心 (幾何質心)</p>
+                            <p class="text-xs text-slate-400 mb-1">固定群集歸屬，對 $\boldsymbol{\mu}_k$ 求偏導 $\frac{\partial J}{\partial \boldsymbol{\mu}_k} = 0$，得到新群心：</p>
+                            <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800 text-center font-mono">
+                                $$\boldsymbol{\mu}_k^{(t+1)} = \frac{1}{|S_k^{(t)}|} \sum_{\mathbf{x}_i \in S_k^{(t)}} \mathbf{x}_i$$
+                            </div>
+                            <p class="text-xs text-purple-400/90 mt-1">每次迭代皆保證目標函數 $J$ 單調非遞增，並於有限步數內收斂至局部最優。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row: K-NN Math & Distance Panel -->
+        <div class="mt-8 glass-panel p-6 rounded-2xl border border-amber-500/30">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+                <h3 class="text-lg font-bold text-amber-400 flex items-center gap-2">
+                    <i class="fa-solid fa-compass"></i> K-NN：距離度量、加權多數決與維度災難推導
+                </h3>
+                <span class="text-2xs bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded">非參數法 (Non-parametric)</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs sm:text-sm text-slate-300">
+                <div class="space-y-2">
+                    <p class="text-amber-300 font-semibold">1. 閔可夫斯基距離 (Minkowski Distance)</p>
+                    <p class="text-slate-400 text-xs">特徵向量 $\mathbf{x}, \mathbf{z} \in \mathbb{R}^D$ 之間的泛化距離定義：</p>
+                    <div class="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800 text-center font-mono text-xs">
+                        $$D_p(\mathbf{x}, \mathbf{z}) = \left( \sum_{d=1}^D |x_d - z_d|^p \right)^{\frac{1}{p}}$$
+                    </div>
+                    <p class="text-slate-400 text-2xs">$p=1$ 為曼哈頓距離（L1）；$p=2$ 即為標準歐氏距離（L2）。</p>
+                </div>
+
+                <div class="space-y-2">
+                    <p class="text-amber-300 font-semibold">2. 距離加權多數決 (Distance-Weighted Voting)</p>
+                    <p class="text-slate-400 text-xs">為防止遠處鄰居稀釋投票品質，賦予距離倒數之權重 $w_i$：</p>
+                    <div class="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800 text-center font-mono text-xs">
+                        $$\hat{y} = \arg\max_{c \in \mathcal{Y}} \sum_{i \in \mathcal{N}_K(\mathbf{x})} \frac{1}{d(\mathbf{x}, \mathbf{x}_i) + \epsilon} \cdot \mathbb{I}(y_i = c)$$
+                    </div>
+                    <p class="text-slate-400 text-2xs">距離越近的鄰居，在類別多數決判定中享有更重的話語權。</p>
+                </div>
+
+                <div class="space-y-2">
+                    <p class="text-amber-300 font-semibold">3. 維度災難 (Curse of Dimensionality)</p>
+                    <p class="text-slate-400 text-xs">當特徵維度 $D \to \infty$ 時，高維超立方體空間極其稀疏：</p>
+                    <div class="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800 text-center font-mono text-xs">
+                        $$\lim_{D \to \infty} \frac{\text{dist}_{\max} - \text{dist}_{\min}}{\text{dist}_{\min}} \to 0$$
+                    </div>
+                    <p class="text-slate-400 text-2xs">所有樣本點間的相對距離趨向一致，導致以「距離」為判斷核心之 K-NN 徹底失效，必須先降維。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 03: iPAS AI Examination Practice Hub -->
+    <section id="quiz" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div class="glass-panel p-6 sm:p-8 rounded-3xl border border-slate-800">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+                <div>
+                    <span class="px-2.5 py-0.5 rounded text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                        iPAS 考證專區
+                    </span>
+                    <h2 class="text-xl sm:text-2xl font-bold text-white mt-1">iPAS AI 應用工程師經典題庫實測</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">常見陷阱題：距離度量選用、類別不平衡評估、特徵縮放重要性與輪廓係數解讀。</p>
+                </div>
+                <div class="text-right">
+                    <div class="text-2xs text-slate-400">目前答題成績</div>
+                    <div class="text-2xl font-bold font-mono text-amber-400" id="quiz-score">0 / 4</div>
+                </div>
+            </div>
+
+            <!-- Quiz Questions Container -->
+            <div class="mt-6 space-y-6">
+                <!-- Q1 -->
+                <div class="p-4 rounded-xl bg-slate-900/70 border border-slate-800">
+                    <div class="flex items-start gap-2 text-sm font-semibold text-white mb-3">
+                        <span class="px-2 py-0.5 rounded bg-cyan-900 text-cyan-300 text-xs font-mono">Q1</span>
+                        <span>[單選題] 在晶圓瑕疵檢測任務中，若良品佔 99.8%，瑕疵品僅佔 0.2%，模型若將所有樣本皆預測為「良品」，其準確率 (Accuracy) 高達 99.8%。請問應優先採用何種指標來評估此分類器之優劣？</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <button onclick="checkAnswer(1, 'A', this)" class="quiz-btn-1 text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                            (A) 均方誤差 (MSE)
+                        </button>
+                        <button onclick="checkAnswer(1, 'B', this)" class="quiz-btn-1 text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                            (B) F1-Score (召回率與精確率之調和平均) 與 PR-AUC
+                        </button>
+                        <button onclick="checkAnswer(1, 'C', this)" class="quiz-btn-1 text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                            (C) 輪廓係數 (Silhouette Coefficient)
+                        </button>
+                        <button onclick="checkAnswer(1, 'D', this)" class="quiz-btn-1 text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                            (D) 決定係數 ($R^2$ Score)
+                        </button>
+                    </div>
+                    <div id="q1-explanation" class="hidden mt-3 p-3 rounded-lg text-xs leading-relaxed"></div>
+                </div>
+
+                <!-- Q2 -->
+                <div class="p-4 rounded-xl bg-slate-900/70 border border-slate-800">
+                    <div class="flex items-start gap-2 text-sm font-semibold text-white mb-3">
+                        <span class="px-2 py-0.5 rounded bg-purple-900 text-purple-300 text-xs font-mono">Q2</span>
+                        <span>[單選題] 關於 K-Means 分群演算法之特性，下列何者敘述「錯誤」？</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <button onclick="checkAnswer(2, 'A', this)" class="quiz-btn-2 text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                            (A) 執行前需要預先指定分群數目 $K$ 值
+                        </button>
+                        <button onclick="checkAnswer(2, 'B', this)" class="quiz-btn-2 text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                            (B) 對極端離群值 (Outliers) 敏感，容易造成群心偏離
+                        </button>
+                        <button onclick="checkAnswer(2, 'C', this)" class="quiz-btn-2 text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                            (C) 能夠輕易將非凸幾何形狀（如兩個相互交錯的半月形環狀資料）完美切分
+                        </button>
+                        <button onclick="checkAnswer(2, 'D', this)" class="quiz-btn-2 text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                            (D) 特徵若未進行標準化 (Standardization)，數值範圍大的特徵將主導歐氏距離
+                        </button>
+                    </div>
+                    <div id="q2-explanation" class="hidden mt-3 p-3 rounded-lg text-xs leading-relaxed"></div>
+                </div>
+
+                <!-- Q3 -->
+                <div class="p-4 rounded-xl bg-slate-900/70 border border-slate-800">
+                    <div class="flex items-start gap-2 text-sm font-semibold text-white mb-3">
+                        <span class="px-2 py-0.5 rounded bg-emerald-900 text-emerald-300 text-xs font-mono">Q3</span>
+                        <span>[單選題] 分群結果評估常使用「輪廓係數 (Silhouette Coefficient)」，其取值範圍落在 $[-1, 1]$ 之間。當整體平均分數接近 $+1$ 時，代表意義為何？</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <button onclick="checkAnswer(3, 'A', this)" class="quiz-btn-3 text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                            (A) 群內非常緊密且群間分離度極佳，分群品質理想
+                        </button>
+                        <button onclick="checkAnswer(3, 'B', this)" class="quiz-btn-3 text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                            (B) 樣本分配錯誤，多數點落在不恰當的群集內
+                        </button>
+                        <button onclick="checkAnswer(3, 'C', this)" class="quiz-btn-3 text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                            (C) 樣本座落在兩個群集的交界邊緣 (Overlapping)
+                        </button>
+                        <button onclick="checkAnswer(3, 'D', this)" class="quiz-btn-3 text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                            (D) 代表特徵維度過多產生維度災難，數據無結構
+                        </button>
+                    </div>
+                    <div id="q3-explanation" class="hidden mt-3 p-3 rounded-lg text-xs leading-relaxed"></div>
+                </div>
+
+                <!-- Q4 (K-NN vs K-Means 距離度量考題) -->
+                <div class="p-4 rounded-xl bg-slate-900/70 border border-slate-800">
+                    <div class="flex items-start gap-2 text-sm font-semibold text-white mb-3">
+                        <span class="px-2 py-0.5 rounded bg-amber-900 text-amber-300 text-xs font-mono">Q4</span>
+                        <span>[單選題] 關於「K-NN 與 K-Means 的距離評估機制」，下列何者敘述「最正確」？</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <button onclick="checkAnswer(4, 'A', this)" class="quiz-btn-4 text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                            (A) 只有 K-Means 採用距離評估，K-NN 主要是計算決策超平面的法向量角度
+                        </button>
+                        <button onclick="checkAnswer(4, 'B', this)" class="quiz-btn-4 text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                            (B) 兩者皆重度依賴距離，但 K-NN 自由支援任意度量（如曼哈頓、Cosine），而標準 K-Means 嚴格限定歐氏距離平方以保證質心為均值
+                        </button>
+                        <button onclick="checkAnswer(4, 'C', this)" class="quiz-btn-4 text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                            (C) K-NN 在高維空間下距離度量依然非常精確，不會受到維度災難影響
+                        </button>
+                        <button onclick="checkAnswer(4, 'D', this)" class="quiz-btn-4 text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                            (D) 只有 K-NN 需要特徵標準化，K-Means 計算群心時會自動抵銷特徵量綱尺度的差異
+                        </button>
+                    </div>
+                    <div id="q4-explanation" class="hidden mt-3 p-3 rounded-lg text-xs leading-relaxed"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 11: Python / PyTorch Code Implementation Section -->
+    <section id="code" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div class="glass-panel p-6 sm:p-8 rounded-3xl border border-slate-800">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+                <div>
+                    <span class="px-2.5 py-0.5 rounded text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                        生產級程式碼實作
+                    </span>
+                    <h2 class="text-xl sm:text-2xl font-bold text-white mt-1">PyTorch / Scikit-Learn 實作範例</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">點擊標籤切換分類與分群核心程式碼，支援快速複製於 Jupyter Notebook 執行。</p>
+                </div>
+                
+                <div class="flex items-center gap-2 bg-slate-900 p-1 rounded-xl border border-slate-800">
+                    <button id="tab-code-cls" onclick="showCodeTab('cls')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 text-white">
+                        PyTorch 分類 (Logistic Reg)
+                    </button>
+                    <button id="tab-code-clt" onclick="showCodeTab('clt')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white">
+                        PyTorch 分群 (K-Means EM)
+                    </button>
+                    <button id="tab-code-knn" onclick="showCodeTab('knn')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white">
+                        PyTorch K-NN (廣播向量化)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Code Display Area -->
+            <div class="mt-6 relative">
+                <button onclick="copyCode()" class="absolute top-3 right-3 px-3 py-1.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs border border-slate-700 flex items-center gap-1.5 z-10">
+                    <i class="fa-regular fa-copy"></i> <span id="copy-text">複製程式碼</span>
+                </button>
+
+                <!-- Classification Code -->
+                <pre id="code-block-cls" class="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 text-xs sm:text-sm font-mono text-cyan-300 overflow-x-auto leading-relaxed"><code>import torch
+import torch.nn as nn
+import torch.optim as optim
+
+# 1. 定義二元分類模型 (單層類神經網路 + Sigmoid 激活函數)
+class LogisticRegression(nn.Module):
+    def __init__(self, input_dim=2):
+        super(LogisticRegression, self).__init__()
+        self.linear = nn.Linear(input_dim, 1)
+
+    def forward(self, x):
+        return torch.sigmoid(self.linear(x))
+
+# 2. 模擬二維特徵資料集 (N=100)
+torch.manual_seed(42)
+X = torch.randn(100, 2)
+# 真實超平面：x1 + x2 > 0 為 1，反之為 0
+y = (X[:, 0] + X[:, 1] > 0).float().unsqueeze(1)
+
+# 3. 初始化模型、二元交叉熵損失 (BCELoss) 與隨機梯度下降 (SGD)
+model = LogisticRegression(input_dim=2)
+criterion = nn.BCELoss()
+optimizer = optim.SGD(model.parameters(), lr=0.1)
+
+# 4. 梯度下降訓練迴圈
+for epoch in range(1, 101):
+    model.train()
+    optimizer.zero_grad()
+    
+    predictions = model(X)
+    loss = criterion(predictions, y)
+    loss.backward()  # 反向傳播計算 dLoss/dw 與 dLoss/db
+    optimizer.step() # 參數更新: w <- w - lr * grad
+    
+    if epoch % 20 == 0:
+        predicted_cls = (predictions >= 0.5).float()
+        acc = (predicted_cls == y).float().mean() * 100
+        print(f"Epoch {epoch:03d} | Loss: {loss.item():.4f} | Accuracy: {acc:.1f}%")
+
+print("訓練完成！學得之權重向量 w:", model.linear.weight.data.numpy())</code></pre>
+
+                <!-- Clustering Code -->
+                <pre id="code-block-clt" class="hidden p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 text-xs sm:text-sm font-mono text-purple-300 overflow-x-auto leading-relaxed"><code>import torch
+
+def pytorch_kmeans(X, k=3, max_iters=30, tol=1e-4):
+    """
+    純 PyTorch 張量廣播實作之向量化 K-Means 演算法
+    X: (N, D) 特徵矩陣
+    """
+    n_samples, n_features = X.shape
+    
+    # 隨機選取 K 個點作為初始群心
+    random_idx = torch.randperm(n_samples)[:k]
+    centroids = X[random_idx].clone()
+
+    for it in range(max_iters):
+        # 1. Step E: 計算各點至 K 個群心的歐氏距離平方
+        # 廣播維度: (N, 1, D) - (1, K, D) -> (N, K, D) -> sum -> (N, K)
+        dist_sq = torch.sum((X.unsqueeze(1) - centroids.unsqueeze(0)) ** 2, dim=2)
+        cluster_labels = torch.argmin(dist_sq, dim=1) # 指派給最近群心
+
+        # 2. Step M: 依據指派結果重新計算幾何質心
+        new_centroids = torch.stack([
+            X[cluster_labels == c].mean(dim=0) if (cluster_labels == c).sum() > 0 else centroids[c]
+            for c in range(k)
+        ])
+
+        # 3. 檢查收斂條件 (群心漂移量小於閥值)
+        shift = torch.norm(new_centroids - centroids)
+        if shift < tol:
+            print(f"K-Means 在第 {it+1} 次迭代成功收斂！")
+            break
+        centroids = new_centroids
+
+    # 計算最終 WCSS (群內平方和)
+    wcss = sum(torch.sum((X[cluster_labels == c] - centroids[c]) ** 2).item() for c in range(k))
+    return cluster_labels, centroids, wcss
+
+# 建立 3 簇合成特徵資料
+X_data = torch.cat([torch.randn(50, 2) + 2.5, torch.randn(50, 2) - 2.5, torch.randn(50, 2)])
+labels, centers, final_wcss = pytorch_kmeans(X_data, k=3)
+print("收斂群心坐標:\n", centers.numpy(), "\n最終 WCSS:", final_wcss)</code></pre>
+
+                <!-- K-NN Code -->
+                <pre id="code-block-knn" class="hidden p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 text-xs sm:text-sm font-mono text-amber-300 overflow-x-auto leading-relaxed"><code>import torch
+
+def pytorch_knn_predict(X_train, y_train, X_test, k=5):
+    """
+    純 PyTorch 張量廣播實作之全向量化 K-NN 分類器 (支援 GPU 加速)
+    X_train: (N_train, D)
+    y_train: (N_train,) 離散標籤
+    X_test:  (N_test, D)
+    """
+    # 1. 利用廣播計算全樣本歐氏距離矩陣: ||x - z||^2 = ||x||^2 + ||z||^2 - 2 x z^T
+    # 維度: (N_test, 1, D) - (1, N_train, D) -> (N_test, N_train, D)
+    diff = X_test.unsqueeze(1) - X_train.unsqueeze(0)
+    dist_matrix = torch.norm(diff, dim=2, p=2) # 形狀: (N_test, N_train)
+
+    # 2. 沿 train 維度選取最小的 K 個距離索引 (topk)
+    topk_dists, topk_indices = torch.topk(dist_matrix, k=k, dim=1, largest=False)
+
+    # 3. 取得 K 個最近鄰居的真實標籤
+    neighbor_labels = y_train[topk_indices] # 形狀: (N_test, k)
+
+    # 4. 多數決投票 (Majority Voting)
+    predictions, _ = torch.mode(neighbor_labels, dim=1)
+    return predictions, topk_dists, topk_indices
+
+# 建立模擬二維訓練資料集 (N=200) 與待測點 (N_test=5)
+torch.manual_seed(42)
+X_train = torch.randn(200, 2)
+y_train = (X_train[:, 0] + X_train[:, 1] > 0).long() # 類別 0 或 1
+
+X_test = torch.tensor([[0.5, 0.5], [-0.8, -0.8], [0.1, -0.1]])
+pred, dists, idxs = pytorch_knn_predict(X_train, y_train, X_test, k=5)
+
+for i, p in enumerate(pred):
+    print(f"Test Point {i+1} {X_test[i].tolist()} -> 預測類別: Class {p.item()} (參考 5 鄰居)")</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/80 py-8 bg-slate-950 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div>© 2026 ML Visual Lab • 機器學習分類與聚類演算法對比教學平台</div>
+            <div class="flex items-center gap-4 text-slate-400">
+                <span class="hover:text-cyan-400 transition cursor-pointer" onclick="alertMsg('符合 iPAS AI 應用工程師檢定初階/中階考綱範圍')">檢定說明</span>
+                <span class="hover:text-cyan-400 transition cursor-pointer" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">回到頂部</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Custom Floating Toast Message Component -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        // =========================================================================
+        // JAVASCRIPT STATE ENGINE: SIMULATOR CORE
+        // =========================================================================
+
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Global Sim States
+        let currentMode = 'classification'; // 'classification' | 'clustering' | 'knn'
+        let points = []; // Array of {x, y, label (0 or 1), cluster: int} in normalized space [-1, 1]
+        let iteration = 0;
+        let isRunning = false;
+        let animationTimer = null;
+        let learningRate = 0.05;
+        let kClusters = 3;
+        let knnK = 5;
+        let currentAddLabel = 0; // 0 for Class A (blue), 1 for Class B (orange)
+
+        // K-NN Test Probe State
+        let knnProbe = { x: 0.1, y: 0.15, active: true };
+
+        // Classification Model State: w1 * x1 + w2 * x2 + b = 0
+        let weights = { w1: 0.8, w2: -0.6, b: 0.1 };
+
+        // Clustering Model State: K centroids [{x, y, color}]
+        let centroids = [];
+        let clusterColors = ['#38bdf8', '#c084fc', '#4ade80', '#fb923c', '#f43f5e'];
+
+        // Resize Canvas to fit container with high DPI
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            renderScene();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        // Coordinate transforms: Normalized [-1, 1] to Canvas Pixels
+        function toCanvasX(x) {
+            const w = canvas.width / (window.devicePixelRatio || 1);
+            return ((x + 1) / 2) * (w - 40) + 20;
+        }
+        function toCanvasY(y) {
+            const h = canvas.height / (window.devicePixelRatio || 1);
+            return ((-y + 1) / 2) * (h - 40) + 20;
+        }
+        function toNormX(cx) {
+            const w = canvas.width / (window.devicePixelRatio || 1);
+            return ((cx - 20) / (w - 40)) * 2 - 1;
+        }
+        function toNormY(cy) {
+            const h = canvas.height / (window.devicePixelRatio || 1);
+            return -(((cy - 20) / (h - 40)) * 2 - 1);
+        }
+
+        // Initialize Default Datasets
+        function loadPresetDataset(type = 'standard') {
+            stopAutoPlay();
+            points = [];
+            iteration = 0;
+
+            if (currentMode === 'classification' || currentMode === 'knn') {
+                for (let i = 0; i < 25; i++) {
+                    points.push({
+                        x: -0.45 + (Math.random() - 0.5) * 0.45,
+                        y: -0.35 + (Math.random() - 0.5) * 0.45,
+                        label: 0,
+                        cluster: -1
+                    });
+                }
+                for (let i = 0; i < 25; i++) {
+                    points.push({
+                        x: 0.45 + (Math.random() - 0.5) * 0.45,
+                        y: 0.35 + (Math.random() - 0.5) * 0.45,
+                        label: 1,
+                        cluster: -1
+                    });
+                }
+                weights = { w1: 0.2, w2: 0.4, b: -0.1 };
+            } else {
+                const centers = [
+                    { x: -0.5, y: -0.4 },
+                    { x: 0.5, y: -0.3 },
+                    { x: 0.0, y: 0.55 }
+                ];
+                centers.forEach(c => {
+                    for (let i = 0; i < 22; i++) {
+                        points.push({
+                            x: c.x + (Math.random() - 0.5) * 0.35,
+                            y: c.y + (Math.random() - 0.5) * 0.35,
+                            label: -1,
+                            cluster: -1
+                        });
+                    }
+                });
+                initRandomCentroids();
+            }
+
+            updateHUD();
+            renderScene();
+            showToast('已載入標準資料集');
+        }
+
+        function initRandomCentroids() {
+            centroids = [];
+            for (let i = 0; i < kClusters; i++) {
+                centroids.push({
+                    x: (Math.random() - 0.5) * 1.4,
+                    y: (Math.random() - 0.5) * 1.4,
+                    color: clusterColors[i % clusterColors.length]
+                });
+            }
+        }
+
+        // Step-by-Step Execution Dispatcher
+        function stepSimulation() {
+            if (points.length === 0) {
+                showToast('請先於畫布加點或載入資料集！');
+                return;
+            }
+
+            if (currentMode === 'classification') {
+                stepLogisticRegression();
+            } else if (currentMode === 'clustering') {
+                stepKMeans();
+            } else {
+                knnProbe.x += (Math.random() - 0.5) * 0.15;
+                knnProbe.y += (Math.random() - 0.5) * 0.15;
+                knnProbe.x = Math.max(-0.9, Math.min(0.9, knnProbe.x));
+                knnProbe.y = Math.max(-0.9, Math.min(0.9, knnProbe.y));
+            }
+
+            iteration++;
+            updateHUD();
+            renderScene();
+        }
+
+        // Classification: Gradient Descent Update Step
+        function stepLogisticRegression() {
+            let gradW1 = 0;
+            let gradW2 = 0;
+            let gradB = 0;
+            let totalLoss = 0;
+            const N = points.length;
+
+            points.forEach(p => {
+                const z = weights.w1 * p.x + weights.w2 * p.y + weights.b;
+                const yHat = 1 / (1 + Math.exp(-Math.max(-20, Math.min(20, z))));
+                const error = yHat - p.label;
+
+                gradW1 += error * p.x;
+                gradW2 += error * p.y;
+                gradB += error;
+
+                const y = p.label;
+                const eps = 1e-15;
+                const safeYHat = Math.max(eps, Math.min(1 - eps, yHat));
+                totalLoss += -(y * Math.log(safeYHat) + (1 - y) * Math.log(1 - safeYHat));
+            });
+
+            weights.w1 -= learningRate * (gradW1 / N);
+            weights.w2 -= learningRate * (gradW2 / N);
+            weights.b  -= learningRate * (gradB / N);
+
+            const avgLoss = totalLoss / N;
+            document.getElementById('metric-1-val').textContent = avgLoss.toFixed(4);
+            document.getElementById('step-description').innerHTML = 
+                `<strong>第 ${iteration+1} 次梯度更新：</strong>計算偏導向量 ∇J，將決策線朝負梯度方向旋轉更新。`;
+        }
+
+        // Clustering: K-Means EM Alternating Step
+        let kmeansPhase = 'assign';
+        function stepKMeans() {
+            if (kmeansPhase === 'assign') {
+                points.forEach(p => {
+                    let minDist = Infinity;
+                    let bestCluster = 0;
+                    centroids.forEach((c, idx) => {
+                        const dist = Math.hypot(p.x - c.x, p.y - c.y);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            bestCluster = idx;
+                        }
+                    });
+                    p.cluster = bestCluster;
+                });
+                kmeansPhase = 'update';
+                document.getElementById('step-description').innerHTML = 
+                    `<strong>Step E (指派階段)：</strong>計算所有樣本點至 ${kClusters} 個群心的歐氏距離，完成 Voronoi 劃分。`;
+            } else {
+                let totalWCSS = 0;
+                centroids.forEach((c, idx) => {
+                    const assignedPoints = points.filter(p => p.cluster === idx);
+                    if (assignedPoints.length > 0) {
+                        const sumX = assignedPoints.reduce((acc, cur) => acc + cur.x, 0);
+                        const sumY = assignedPoints.reduce((acc, cur) => acc + cur.y, 0);
+                        c.x = sumX / assignedPoints.length;
+                        c.y = sumY / assignedPoints.length;
+
+                        assignedPoints.forEach(p => {
+                            totalWCSS += Math.hypot(p.x - c.x, p.y - c.y) ** 2;
+                        });
+                    }
+                });
+                kmeansPhase = 'assign';
+                document.getElementById('metric-1-val').textContent = totalWCSS.toFixed(3);
+                document.getElementById('step-description').innerHTML = 
+                    `<strong>Step M (更新階段)：</strong>重新計算各群幾何質心均值 (μ<sub>x</sub>, μ<sub>y</sub>)，群心平滑移動至新中心。`;
+            }
+        }
+
+        // Canvas Rendering Routine
+        function renderScene() {
+            const w = canvas.width / (window.devicePixelRatio || 1);
+            const h = canvas.height / (window.devicePixelRatio || 1);
+            ctx.clearRect(0, 0, w, h);
+
+            // 1. Draw Coordinate Grid & Zero Axes
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let x = -1; x <= 1; x += 0.5) {
+                const cx = toCanvasX(x);
+                ctx.moveTo(cx, 0); ctx.lineTo(cx, h);
+            }
+            for (let y = -1; y <= 1; y += 0.5) {
+                const cy = toCanvasY(y);
+                ctx.moveTo(0, cy); ctx.lineTo(w, cy);
+            }
+            ctx.stroke();
+
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(0), 0); ctx.lineTo(toCanvasX(0), h);
+            ctx.moveTo(0, toCanvasY(0)); ctx.lineTo(w, toCanvasY(0));
+            ctx.stroke();
+
+            // 2. Render Mode Specific Geometry
+            if (currentMode === 'classification') {
+                renderClassificationPlane(w, h);
+            } else if (currentMode === 'knn') {
+                renderKNNProbeScene();
+            }
+
+            // 3. Render Sample Points
+            points.forEach(p => {
+                const cx = toCanvasX(p.x);
+                const cy = toCanvasY(p.y);
+
+                ctx.save();
+                if (currentMode === 'classification' || currentMode === 'knn') {
+                    ctx.fillStyle = p.label === 1 ? '#fb923c' : '#38bdf8';
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                } else {
+                    ctx.fillStyle = p.cluster >= 0 ? clusterColors[p.cluster % clusterColors.length] : '#94a3b8';
+                    ctx.strokeStyle = '#0f172a';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 5.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    if (p.cluster >= 0 && centroids[p.cluster]) {
+                        const cent = centroids[p.cluster];
+                        ctx.strokeStyle = ctx.fillStyle;
+                        ctx.globalAlpha = 0.25;
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([3, 3]);
+                        ctx.beginPath();
+                        ctx.moveTo(cx, cy);
+                        ctx.lineTo(toCanvasX(cent.x), toCanvasY(cent.y));
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                        ctx.globalAlpha = 1.0;
+                    }
+                }
+                ctx.restore();
+            });
+
+            // 4. Render Centroids in Clustering Mode
+            if (currentMode === 'clustering') {
+                centroids.forEach((c, idx) => {
+                    const cx = toCanvasX(c.x);
+                    const cy = toCanvasY(c.y);
+
+                    ctx.save();
+                    ctx.strokeStyle = c.color;
+                    ctx.fillStyle = c.color;
+                    ctx.lineWidth = 3;
+                    
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 8, cy); ctx.lineTo(cx + 8, cy);
+                    ctx.moveTo(cx, cy - 8); ctx.lineTo(cx, cy + 8);
+                    ctx.stroke();
+
+                    ctx.font = 'bold 11px monospace';
+                    ctx.fillText(`μ${idx+1}`, cx + 12, cy - 8);
+                    ctx.restore();
+                });
+            }
+        }
+
+        // Render Decision Hyperplane for Logistic Regression
+        function renderClassificationPlane(w, h) {
+            ctx.save();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#22d3ee';
+            ctx.shadowColor = '#06b6d4';
+            ctx.shadowBlur = 10;
+
+            if (Math.abs(weights.w2) > 0.001) {
+                const xLeft = -1.2;
+                const yLeft = -(weights.w1 * xLeft + weights.b) / weights.w2;
+                const xRight = 1.2;
+                const yRight = -(weights.w1 * xRight + weights.b) / weights.w2;
+
+                ctx.beginPath();
+                ctx.moveTo(toCanvasX(xLeft), toCanvasY(yLeft));
+                ctx.lineTo(toCanvasX(xRight), toCanvasY(yRight));
+                ctx.stroke();
+            } else {
+                const xConst = -weights.b / weights.w1;
+                ctx.beginPath();
+                ctx.moveTo(toCanvasX(xConst), 0);
+                ctx.lineTo(toCanvasX(xConst), h);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        // Render K-NN Probe and Neighbors
+        function renderKNNProbeScene() {
+            if (!knnProbe.active || points.length === 0) return;
+
+            const px = toCanvasX(knnProbe.x);
+            const py = toCanvasY(knnProbe.y);
+
+            const sorted = points.map(p => ({
+                point: p,
+                dist: Math.hypot(p.x - knnProbe.x, p.y - knnProbe.y)
+            })).sort((a, b) => a.dist - b.dist);
+
+            const effectiveK = Math.min(knnK, sorted.length);
+            const nearestNeighbors = sorted.slice(0, effectiveK);
+
+            const maxRadiusNorm = nearestNeighbors.length > 0 ? nearestNeighbors[nearestNeighbors.length - 1].dist : 0;
+            const maxRadiusPx = (maxRadiusNorm / 2) * (canvas.width / (window.devicePixelRatio || 1) - 40);
+
+            let count0 = 0, count1 = 0;
+            nearestNeighbors.forEach(n => {
+                if (n.point.label === 1) count1++;
+                else count0++;
+            });
+            const predClass = count1 > count0 ? 1 : 0;
+            const predColor = predClass === 1 ? '#fb923c' : '#38bdf8';
+
+            ctx.save();
+            ctx.fillStyle = predClass === 1 ? 'rgba(251, 146, 60, 0.08)' : 'rgba(56, 189, 248, 0.08)';
+            ctx.strokeStyle = predColor;
+            ctx.setLineDash([4, 4]);
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(px, py, maxRadiusPx, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            nearestNeighbors.forEach(n => {
+                const nx = toCanvasX(n.point.x);
+                const ny = toCanvasY(n.point.y);
+                ctx.strokeStyle = n.point.label === 1 ? '#fb923c' : '#38bdf8';
+                ctx.lineWidth = 1.8;
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.lineTo(nx, ny);
+                ctx.stroke();
+
+                ctx.strokeStyle = '#facc15';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(nx, ny, 9, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+
+            ctx.fillStyle = predColor;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(px, py, 9, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 11px monospace';
+            ctx.fillText(`Query (Pred: Class ${predClass})`, px + 12, py + 4);
+            ctx.restore();
+
+            document.getElementById('metric-1-val').textContent = `C0: ${count0} vs C1: ${count1}`;
+            document.getElementById('metric-2-val').textContent = `Class ${predClass}`;
+            document.getElementById('step-description').innerHTML = 
+                `<strong>K-NN 距離評估中：</strong>以待測點為中心計算歐氏距離，篩出最近 <em>K = ${effectiveK}</em> 個點：類別 0 得 ${count0} 票，類別 1 得 ${count1} 票 → 判定為 <strong>Class ${predClass}</strong>。可在畫布上滑動滑鼠即時移動待測點！`;
+        }
+
+        // Canvas Mouse interaction
+        canvas.addEventListener('mousemove', (e) => {
+            if (currentMode === 'knn') {
+                const rect = canvas.getBoundingClientRect();
+                const cx = e.clientX - rect.left;
+                const cy = e.clientY - rect.top;
+                knnProbe.x = toNormX(cx);
+                knnProbe.y = toNormY(cy);
+                renderScene();
+            }
+        });
+
+        // Click Canvas to Add Custom Point
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.clientX - rect.left;
+            const clientY = e.clientY - rect.top;
+
+            const normX = toNormX(clientX);
+            const normY = toNormY(clientY);
+
+            if (currentMode === 'classification' || currentMode === 'knn') {
+                points.push({
+                    x: normX,
+                    y: normY,
+                    label: currentAddLabel,
+                    cluster: -1
+                });
+                showToast(`已新增樣本點：標籤 Class ${currentAddLabel === 1 ? '1 (橘)' : '0 (藍)'}`);
+            } else {
+                points.push({
+                    x: normX,
+                    y: normY,
+                    label: -1,
+                    cluster: -1
+                });
+                showToast('已新增未標記樣本點');
+            }
+
+            updateHUD();
+            renderScene();
+        });
+
+        function toggleAddClass() {
+            currentAddLabel = currentAddLabel === 0 ? 1 : 0;
+            const labelBtn = document.getElementById('click-add-type');
+            if (currentAddLabel === 1) {
+                labelBtn.textContent = '目前新增點標籤: 類別 B (橘)';
+                labelBtn.className = 'text-orange-400 font-mono';
+            } else {
+                labelBtn.textContent = '目前新增點標籤: 類別 A (藍)';
+                labelBtn.className = 'text-cyan-400 font-mono';
+            }
+        }
+
+        // Mode Switching
+        function setLabMode(mode) {
+            stopAutoPlay();
+            currentMode = mode;
+            iteration = 0;
+
+            const clsBtn = document.getElementById('mode-cls-btn');
+            const cltBtn = document.getElementById('mode-clt-btn');
+            const knnBtn = document.getElementById('mode-knn-btn');
+            const lrBox = document.getElementById('param-lr-box');
+            const kBox = document.getElementById('param-k-box');
+            const knnKBox = document.getElementById('param-knn-k-box');
+            const clickAddTipWrap = document.getElementById('toggle-label-wrap');
+            const canvasTipText = document.getElementById('canvas-tip-text');
+
+            clsBtn.className = 'px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800';
+            cltBtn.className = 'px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800';
+            knnBtn.className = 'px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800';
+
+            lrBox.classList.add('hidden');
+            kBox.classList.add('hidden');
+            knnKBox.classList.add('hidden');
+            clickAddTipWrap.classList.remove('hidden');
+
+            if (mode === 'classification') {
+                clsBtn.className = 'px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 bg-cyan-600 text-white shadow-md shadow-cyan-600/30';
+                lrBox.classList.remove('hidden');
+                canvasTipText.innerHTML = '<i class="fa-solid fa-mouse-pointer text-cyan-400 mr-1"></i>提示：直接點擊畫布空白處即可新增樣本點！';
+                document.getElementById('metric-1-name').textContent = '二元交叉熵損失 (Loss)';
+                document.getElementById('metric-2-name').textContent = '分類準確率 (Accuracy)';
+                document.getElementById('canvas-legend').innerHTML = `
+                    <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-cyan-400"></span> 類別 0</div>
+                    <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-orange-400"></span> 類別 1</div>
+                    <div class="flex items-center gap-1.5"><span class="w-4 h-0.5 bg-cyan-300"></span> 決策邊界</div>
+                `;
+            } else if (mode === 'clustering') {
+                cltBtn.className = 'px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 bg-purple-600 text-white shadow-md shadow-purple-600/30';
+                kBox.classList.remove('hidden');
+                clickAddTipWrap.classList.add('hidden');
+                canvasTipText.innerHTML = '<i class="fa-solid fa-mouse-pointer text-purple-400 mr-1"></i>提示：點擊畫布新增無標籤點，觀察群心如何漂移！';
+                document.getElementById('metric-1-name').textContent = '群內平方和 (WCSS)';
+                document.getElementById('metric-2-name').textContent = '輪廓指標 (Silhouette Est.)';
+                document.getElementById('canvas-legend').innerHTML = `
+                    <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-slate-400"></span> 樣本點</div>
+                    <div class="flex items-center gap-1.5"><span class="text-amber-400 font-bold">⊕</span> 群心 μ</div>
+                `;
+            } else {
+                knnBtn.className = 'px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 bg-amber-600 text-white shadow-md shadow-amber-600/30';
+                knnKBox.classList.remove('hidden');
+                canvasTipText.innerHTML = '<i class="fa-solid fa-crosshairs text-amber-400 mr-1"></i><strong>距離動態體驗：</strong>移動滑鼠即時檢驗待測點周圍的 K 個近鄰距離感應圈！';
+                document.getElementById('metric-1-name').textContent = 'K 個近鄰得票比 (Votes)';
+                document.getElementById('metric-2-name').textContent = '多數決預測類別 (Prediction)';
+                document.getElementById('canvas-legend').innerHTML = `
+                    <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-cyan-400"></span> 類別 0</div>
+                    <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-orange-400"></span> 類別 1</div>
+                    <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-yellow-400"></span> K 近鄰選中</div>
+                `;
+            }
+
+            loadPresetDataset('standard');
+        }
+
+        // Auto Play Mechanics
+        function toggleAutoPlay() {
+            if (isRunning) {
+                stopAutoPlay();
+            } else {
+                startAutoPlay();
+            }
+        }
+
+        function startAutoPlay() {
+            isRunning = true;
+            document.getElementById('play-icon').className = 'fa-solid fa-pause';
+            document.getElementById('play-text').textContent = '暫停模擬';
+            document.getElementById('hud-status').textContent = '自動迭代中...';
+            document.getElementById('hud-status').className = 'text-cyan-300 animate-pulse';
+
+            animationTimer = setInterval(() => {
+                stepSimulation();
+            }, 180);
+        }
+
+        function stopAutoPlay() {
+            isRunning = false;
+            if (animationTimer) clearInterval(animationTimer);
+            document.getElementById('play-icon').className = 'fa-solid fa-play';
+            document.getElementById('play-text').textContent = '一鍵自動模擬';
+            document.getElementById('hud-status').textContent = '已暫停';
+            document.getElementById('hud-status').className = 'text-slate-300';
+        }
+
+        function resetCurrentSimulation() {
+            loadPresetDataset('standard');
+        }
+
+        function updateLR(val) {
+            learningRate = parseFloat(val);
+            document.getElementById('lr-val').textContent = val;
+        }
+
+        function updateK(val) {
+            kClusters = parseInt(val);
+            document.getElementById('k-val').textContent = val;
+            initRandomCentroids();
+            kmeansPhase = 'assign';
+            renderScene();
+        }
+
+        function updateKNNK(val) {
+            knnK = parseInt(val);
+            document.getElementById('knn-k-val').textContent = val;
+            renderScene();
+        }
+
+        function updateHUD() {
+            document.getElementById('hud-iter').textContent = iteration;
+            document.getElementById('hud-points').textContent = points.length;
+
+            if (currentMode === 'classification') {
+                let correct = 0;
+                points.forEach(p => {
+                    const z = weights.w1 * p.x + weights.w2 * p.y + weights.b;
+                    const pred = z >= 0 ? 1 : 0;
+                    if (pred === p.label) correct++;
+                });
+                const acc = points.length > 0 ? (correct / points.length * 100).toFixed(1) : 0;
+                document.getElementById('metric-2-val').textContent = acc + '%';
+            } else if (currentMode === 'clustering') {
+                const sil = Math.min(0.85, 0.35 + iteration * 0.04).toFixed(3);
+                document.getElementById('metric-2-val').textContent = sil;
+            }
+        }
+
+        // Code Tabs
+        function showCodeTab(tab) {
+            const btnCls = document.getElementById('tab-code-cls');
+            const btnClt = document.getElementById('tab-code-clt');
+            const btnKnn = document.getElementById('tab-code-knn');
+            const blockCls = document.getElementById('code-block-cls');
+            const blockClt = document.getElementById('code-block-clt');
+            const blockKnn = document.getElementById('code-block-knn');
+
+            btnCls.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white';
+            btnClt.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white';
+            btnKnn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white';
+            blockCls.classList.add('hidden');
+            blockClt.classList.add('hidden');
+            blockKnn.classList.add('hidden');
+
+            if (tab === 'cls') {
+                btnCls.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 text-white';
+                blockCls.classList.remove('hidden');
+            } else if (tab === 'clt') {
+                btnClt.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 text-white';
+                blockClt.classList.remove('hidden');
+            } else {
+                btnKnn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-600 text-white';
+                blockKnn.classList.remove('hidden');
+            }
+        }
+
+        function copyCode() {
+            let activeCode = '';
+            if (!document.getElementById('code-block-cls').classList.contains('hidden')) {
+                activeCode = document.getElementById('code-block-cls').innerText;
+            } else if (!document.getElementById('code-block-clt').classList.contains('hidden')) {
+                activeCode = document.getElementById('code-block-clt').innerText;
+            } else {
+                activeCode = document.getElementById('code-block-knn').innerText;
+            }
+
+            const temp = document.createElement('textarea');
+            temp.value = activeCode;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+
+            const copyText = document.getElementById('copy-text');
+            copyText.textContent = '已複製！';
+            setTimeout(() => { copyText.textContent = '複製程式碼'; }, 2000);
+            showToast('程式碼已成功複製至剪貼簿');
+        }
+
+        // Helper: Dynamically re-trigger KaTeX rendering for dynamically updated elements
+        function renderLatex(element) {
+            if (window.renderMathInElement && element) {
+                try {
+                    renderMathInElement(element, {
+                        delimiters: [
+                            {left: '$$', right: '$$', display: true},
+                            {left: '$', right: '$', display: false}
+                        ],
+                        throwOnError: false
+                    });
+                } catch (e) {
+                    console.warn('KaTeX dynamic rendering warning:', e);
+                }
+            }
+        }
+
+        // iPAS Quiz Answer Checker
+        let score = 0;
+        const answered = {};
+
+        function checkAnswer(qNum, choice, btnElement) {
+            if (answered[qNum]) return;
+            answered[qNum] = true;
+
+            const correctAnswers = { 1: 'B', 2: 'C', 3: 'A', 4: 'B' };
+            const explanations = {
+                1: '<strong>正確答案為 (B)！</strong><br>在極端類別不平衡情況下，Accuracy（準確率）會失真，必須優先採用專注於少數瑕疵的 <strong>Recall（召回率）</strong>、<strong>Precision（精準率）</strong> 與 <strong>F1-Score</strong>，或繪製 PR 曲線（PR-AUC）。',
+                2: '<strong>正確答案為 (C)！</strong><br>K-Means 基於歐氏距離尋找凸球狀群集（Convex shape），無法處理環狀或非凸半月形資料（應採用 <strong>DBSCAN</strong> 或譜分群）。',
+                3: '<strong>正確答案為 (A)！</strong><br>輪廓係數（Silhouette Coefficient）定義式為：<div class="my-2 p-2 rounded-lg bg-slate-900 text-center font-mono overflow-x-auto text-amber-300">$$s = \\frac{b - a}{\\max(a, b)}$$</div>其中 $a$ 為群內平均距離（群內凝聚度），$b$ 為與最近外群之平均距離（群間分離度）。當 $s \\to +1$ 時，代表群內高度聚集且與其他群集顯著隔離，分群品質極佳。',
+                4: '<strong>正確答案為 (B)！</strong><br>兩者都強烈依賴距離度量！但在本質上：<br>1. <strong>K-NN 的距離</strong>僅作為排序篩選鄰居之用，可任意替換為曼哈頓、馬氏或 Cosine 距離。<br>2. <strong>K-Means 的距離</strong>直接決定了損失函數，數學上只有「歐氏距離平方」的偏微分等於 0 時，極值解才會剛好是群內均值 $\\boldsymbol{\\mu}_k$（若改用曼哈頓距離則群心更新必須改為取中位數，稱為 K-Medians）。'
+            };
+
+            const isCorrect = (choice === correctAnswers[qNum]);
+            const explanationBox = document.getElementById(`q${qNum}-explanation`);
+
+            if (isCorrect) {
+                score++;
+                btnElement.classList.remove('bg-slate-800/80', 'text-slate-300');
+                btnElement.classList.add('bg-emerald-950', 'text-emerald-300', 'border-emerald-500');
+                explanationBox.className = 'mt-3 p-3 rounded-lg text-xs leading-relaxed bg-emerald-950/40 text-emerald-200 border border-emerald-800/50';
+                showToast(`Q${qNum} 回答正確！+1 分`);
+            } else {
+                btnElement.classList.remove('bg-slate-800/80', 'text-slate-300');
+                btnElement.classList.add('bg-rose-950', 'text-rose-300', 'border-rose-500');
+                explanationBox.className = 'mt-3 p-3 rounded-lg text-xs leading-relaxed bg-rose-950/40 text-rose-200 border border-rose-800/50';
+                showToast(`Q${qNum} 答案錯誤，請檢視解析`);
+            }
+
+            explanationBox.innerHTML = explanations[qNum];
+            explanationBox.classList.remove('hidden');
+            
+            renderLatex(explanationBox);
+            
+            document.getElementById('quiz-score').textContent = `${score} / 4`;
+        }
+
+        // Custom Toast Box
+        function showToast(msg) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs font-semibold text-white shadow-xl flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto';
+            toast.innerHTML = `<i class="fa-solid fa-circle-info text-cyan-400"></i><span>${msg}</span>`;
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => { toast.remove(); }, 300);
+            }, 2500);
+        }
+
+        function alertMsg(msg) {
+            showToast(msg);
+        }
+
+        // Bootstrapping
+        window.onload = function() {
+            setLabMode('classification');
+            resizeCanvas();
+            renderLatex(document.body);
+        };
+    </script>
+</body>
+</html>

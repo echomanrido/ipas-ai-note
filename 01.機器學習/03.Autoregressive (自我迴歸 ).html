@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autoregressive (自我迴歸 / 自迴歸) 核心理論與互動實驗室</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- KaTeX for pristine LaTeX Math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              900: '#0c4a6e',
+            },
+            darkbg: '#0b1120',
+            cardbg: '#131d31',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .math-block { overflow-x: auto; padding: 0.75rem 0; font-size: 1.05rem; }
+    .katex-display { margin: 0.5em 0 !important; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="bg-[#0b1120] text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-sky-500 selection:text-white">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-[#0f172a]/95 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-sky-500/20">
+          AR
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            Autoregressive (自我迴歸 / 自迴歸)
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">統計時序 · 機器學習 · LLM</span>
+          </h1>
+          <p class="text-xs text-slate-400">完整知識圖譜 · 自相關假說 · IPAS 認證模擬 · 互動演算法平台</p>
+        </div>
+      </div>
+      <nav class="hidden md:flex space-x-1" id="nav-tabs">
+        <!-- Tab buttons rendered here -->
+      </nav>
+    </div>
+  </header>
+
+  <!-- Mobile Tab Selector -->
+  <div class="md:hidden bg-[#0f172a] border-b border-slate-800 p-2 overflow-x-auto flex space-x-2" id="mobile-tabs">
+    <!-- Populated by JS -->
+  </div>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+
+    <!-- TAB 1: 概念與實務全景 (01, 02, 04, 05, 06, 07, 08 + 照片新增核心知識) -->
+    <section id="panel-overview" class="tab-panel space-y-6">
+      
+      <!-- 01 & 02 Hero Banner (融入權威定義與直覺核心) -->
+      <div class="p-6 sm:p-8 rounded-2xl bg-gradient-to-br from-[#131d31] via-[#0f172a] to-sky-950/30 border border-slate-800 shadow-xl relative overflow-hidden">
+        <div class="absolute -right-12 -bottom-12 w-64 h-64 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="max-w-5xl space-y-4">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="px-3 py-1 rounded-md bg-sky-500/15 text-sky-400 text-xs font-semibold uppercase tracking-wider border border-sky-500/20">
+              01. 權威定義 (AWS / 統計與機器學習)
+            </span>
+            <span class="px-2.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 text-xs font-mono border border-emerald-500/20">
+              Autoregressive (簡稱 AR)
+            </span>
+          </div>
+
+          <h2 class="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight leading-snug">
+            「一種利用<span class="text-sky-400 underline decoration-sky-500/50 underline-offset-4">資料自身的過去數值</span>來預測未來或當前數值的統計與機器學習方法。」
+          </h2>
+          <p class="text-sm text-slate-300">
+            更通俗地說：「<strong>以自己過去的輸出，作為自己未來的輸入，一步一步遞推生成整個序列。</strong>」
+          </p>
+
+          <!-- 新增：Autoregressive vs. Regressive 深度核心對照 -->
+          <div class="pt-4 pb-2">
+            <div class="p-4 sm:p-5 bg-[#080d19]/90 rounded-xl border border-slate-700/80 shadow-inner space-y-4">
+              <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
+                <div class="flex items-center gap-2 text-xs font-bold text-amber-300 uppercase tracking-wider">
+                  <span>⚖️ 核心概念釐清</span>
+                  <span>Autoregressive (自迴歸) vs. Regressive (一般/標準迴歸)</span>
+                </div>
+                <span class="text-[11px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono">
+                  Auto (自我) 的本質差異
+                </span>
+              </div>
+
+              <!-- 一句話極簡對比亮點橫幅 -->
+              <div class="p-3 bg-gradient-to-r from-indigo-950/40 via-purple-950/30 to-sky-950/40 rounded-xl border border-amber-500/30 shadow-md">
+                <div class="flex items-start gap-2.5">
+                  <span class="text-base mt-0.5">⚡</span>
+                  <div class="space-y-1">
+                    <div class="text-xs font-bold text-amber-300 tracking-wide">
+                      【一句話秒懂兩者本質差異】：
+                    </div>
+                    <p class="text-xs sm:text-sm text-slate-100 font-medium leading-relaxed">
+                      「<span class="text-indigo-300 font-bold">一般迴歸 (Regressive)</span> 是<span class="underline decoration-indigo-400/60 underline-offset-2">用別人的特徵預測自己</span>（看坪數預測房價）；<br class="hidden sm:inline">而 <span class="text-sky-300 font-bold">自迴歸 (Autoregressive)</span> 則是<span class="underline decoration-sky-400/60 underline-offset-2">用過去的自己預測未來的自己</span>（看昨天今天氣溫推測明天氣溫）。」
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <!-- Regressive 一般迴歸 -->
+                <div class="p-3.5 bg-[#0e1626] rounded-lg border border-slate-800 space-y-2.5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-indigo-400 flex items-center gap-1.5">
+                      <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+                      一般迴歸 (Regressive / Standard Regression)
+                    </span>
+                    <span class="text-[10px] text-slate-400 font-mono">跨維度特徵映射</span>
+                  </div>
+                  <div class="text-[11px] text-slate-300 space-y-1.5">
+                    <div>
+                      <strong class="text-slate-200">輸入變數來源：</strong>
+                      <span class="text-slate-300">來自<span class="text-indigo-300 font-semibold">外部不同維度的特徵自變數 $X$</span>（如：坪數、屋齡、利率）。</span>
+                    </div>
+                    <div>
+                      <strong class="text-slate-200">數學形式：</strong>
+                      <div class="p-1.5 mt-1 bg-[#090e1a] rounded text-indigo-300 font-mono text-[11px] text-center border border-slate-800">
+                        $$Y = f(X_1, X_2, \dots, X_k) + \epsilon$$
+                      </div>
+                    </div>
+                    <div>
+                      <strong class="text-slate-200">樣本假設：</strong>通常假設樣本間<span class="text-indigo-300 font-medium">獨立同分佈（i.i.d.）</span>，樣本之間無時間依賴與因果回饋。
+                    </div>
+                    <div class="p-2 rounded bg-indigo-950/30 text-[11px] text-indigo-200/90 border border-indigo-900/40">
+                      💡 <strong>直觀比喻：</strong>「借他山之石」—— 依據外部的多個指標來推測未知結果（例如：看體重與年齡預測血壓）。
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Autoregressive 自迴歸 -->
+                <div class="p-3.5 bg-[#0e1626] rounded-lg border border-sky-900/40 space-y-2.5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-sky-400 flex items-center gap-1.5">
+                      <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+                      自迴歸 (Autoregressive / AR)
+                    </span>
+                    <span class="text-[10px] text-sky-400 font-mono">時間軸自我反饋</span>
+                  </div>
+                  <div class="text-[11px] text-slate-300 space-y-1.5">
+                    <div>
+                      <strong class="text-slate-200">輸入變數來源：</strong>
+                      <span class="text-slate-300">來自<span class="text-sky-300 font-semibold">目標變數自己過去的歷史數值 $Y_{t-1}, Y_{t-2}, \dots$</span>（時間滯後 Lag）。</span>
+                    </div>
+                    <div>
+                      <strong class="text-slate-200">數學形式：</strong>
+                      <div class="p-1.5 mt-1 bg-[#090e1a] rounded text-sky-300 font-mono text-[11px] text-center border border-slate-800">
+                        $$Y_t = f(Y_{t-1}, Y_{t-2}, \dots, Y_{t-p}) + \epsilon_t$$
+                      </div>
+                    </div>
+                    <div>
+                      <strong class="text-slate-200">樣本假設：</strong>高度依賴序列的<span class="text-sky-300 font-medium">自我相關性（Autocorrelation）</span>，形成「當前輸出即下一步輸入」的閉環。
+                    </div>
+                    <div class="p-2 rounded bg-sky-950/30 text-[11px] text-sky-200/90 border border-sky-900/40">
+                      💡 <strong>直觀比喻：</strong>「以己為鑑、滾雪球」—— 依據自己剛講過的話接下一句；用前幾天的氣溫推演明天的氣溫。
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 對照核心精華總結 -->
+              <div class="p-2.5 rounded-lg bg-[#111c30] border border-slate-800 text-[11px] text-slate-300 flex flex-wrap items-center justify-between gap-2">
+                <span class="flex items-center gap-1.5">
+                  <strong class="text-amber-300">📌 一句話辨析：</strong>
+                  一般迴歸研究的是<strong>「變數與外部變數間的因果映射」</strong>；自迴歸研究的是<strong>「系統隨時間演化與自身的歷史延續性」</strong>。
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="pt-4 border-t border-slate-800/80 space-y-3">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block">02. 核心數學原理 (Core Principle)</span>
+            <p class="text-sm text-slate-300 leading-relaxed">
+              核心在於將序列聯合機率分佈依據條件機率鏈式法則（Probability Chain Rule）做嚴格的自因果分解：
+            </p>
+            <div class="p-4 bg-[#080d19] rounded-xl border border-slate-800 font-mono text-center text-sky-300 text-sm math-block shadow-inner">
+              $$P(X_1, X_2, \dots, X_T) = \prod_{t=1}^{T} P(X_t \mid X_1, X_2, \dots, X_{t-1}) = \prod_{t=1}^{T} P(X_t \mid X_{\lt t})$$
+            </div>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              在每一個時間步 $t$，模型只能觀察過去已知狀態 $X_{\lt t}$，估計當前狀態 $X_t$ 的條件機率，經採樣或取最大值後將新結果追加進歷史序列中，形成循環遞歸回路。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 新增：照片重點【什麼是自我迴歸？三大基石解析】 -->
+      <div class="p-6 rounded-2xl bg-[#131d31] border border-slate-800 shadow-xl space-y-4">
+        <div class="flex items-center gap-2 text-xs font-semibold text-sky-400 uppercase tracking-wider">
+          <span>📘 觀念剖析</span> 什麼是自我迴歸？（三大核心基石）
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- 1. 基本概念 -->
+          <div class="p-4 bg-[#0b1120] rounded-xl border border-slate-800 space-y-2">
+            <div class="flex items-center gap-2 text-sm font-bold text-white">
+              <span class="w-6 h-6 rounded-md bg-sky-500/20 text-sky-400 flex items-center justify-center text-xs font-mono">1</span>
+              基本概念 (Basic Concept)
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              <strong>序列中的當前值是過去值的函數。</strong> 它假設現在的狀態並非憑空產生，而是深受過去一段時間內的歷史數值積累與影響。
+            </p>
+            <div class="text-[11px] text-sky-400/90 font-mono bg-sky-950/30 p-2 rounded border border-sky-800/30">
+              $X_t = f(X_{t-1}, X_{t-2}, \dots, X_{t-p}) + \epsilon_t$
+            </div>
+          </div>
+
+          <!-- 2. 運作方式 -->
+          <div class="p-4 bg-[#0b1120] rounded-xl border border-slate-800 space-y-2">
+            <div class="flex items-center gap-2 text-sm font-bold text-white">
+              <span class="w-6 h-6 rounded-md bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-mono">2</span>
+              運作方式 (Operational Flow)
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              就像<strong>文字接龍</strong>或<strong>預測天氣</strong>一樣，模型會根據先前已經發生或生成的內容，一步步預測下一個組件或單字。
+            </p>
+            <div class="text-[11px] text-indigo-300 bg-indigo-950/30 p-2 rounded border border-indigo-800/30">
+              [輸入: 天氣晴] $\rightarrow$ [預測: 氣溫高] $\rightarrow$ [反饋輸入] $\rightarrow \dots$
+            </div>
+          </div>
+
+          <!-- 3. 核心假設 -->
+          <div class="p-4 bg-[#0b1120] rounded-xl border border-slate-800 space-y-2">
+            <div class="flex items-center gap-2 text-sm font-bold text-emerald-300">
+              <span class="w-6 h-6 rounded-md bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-mono">3</span>
+              核心假設 (Core Hypothesis)
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              <strong>變數在不同時間點之間具有相關性。</strong> 模型正是在數學上挖掘並利用這些<strong>自我相關性（Autocorrelation, 自相關）</strong>來建立穩固的迴歸關係。
+            </p>
+            <div class="text-[11px] text-emerald-300 bg-emerald-950/30 p-2 rounded border border-emerald-800/30">
+              $\text{Cov}(X_t, X_{t-k}) \neq 0$（存在跨期依賴）
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 新增：照片重點【主要應用領域雙核心對照 (時間序列 vs 生成式 AI)】 -->
+      <div class="p-6 rounded-2xl bg-[#131d31] border border-slate-800 shadow-xl space-y-4">
+        <div class="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
+          <span>🎯 主要應用領域</span> 傳統時間序列 vs 現代生成式大模型
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <!-- 領域 1: 時間序列分析 -->
+          <div class="p-4 bg-[#0b1120] rounded-xl border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span class="p-1 rounded bg-sky-500/20 text-sky-400 text-xs">📈</span>
+                時間序列分析 (Time-Series Analysis)
+              </h3>
+              <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">連續數值預測</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              在<strong>金融、經濟預測與氣象學</strong>中，用來預測<strong>股票價格、GDP 或氣溫</strong>等隨時間變化的連續數據。
+            </p>
+            <div class="p-3 bg-[#131d31] rounded-lg border border-slate-800/80 text-xs space-y-1.5">
+              <div class="text-sky-300 font-semibold">經典模型組合：</div>
+              <ul class="list-disc list-inside text-slate-400 space-y-1 text-[11px]">
+                <li><strong>ARMA(p, q)：</strong>自迴歸（AR）與移動平均（MA）相結合。</li>
+                <li><strong>ARIMA(p, d, q)：</strong>結合差分整合（Integrated），消除非平穩趨勢。</li>
+                <li><strong>SARIMA：</strong>加入週期季節性因果迴歸。</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 領域 2: 人工智慧與生成式模型 -->
+          <div class="p-4 bg-[#0b1120] rounded-xl border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span class="p-1 rounded bg-violet-500/20 text-violet-400 text-xs">🤖</span>
+                人工智慧與生成式模型 (Generative AI & LLMs)
+              </h3>
+              <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">離散 Token 預測</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              許多<strong>大型語言模型（LLM，如 GPT、Llama）</strong>採用自迴歸方式，<strong>逐字生成語句</strong>，使後續生成的文字能夠嚴密依賴前面的輸出。
+            </p>
+            <div class="p-3 bg-[#131d31] rounded-lg border border-slate-800/80 text-xs space-y-1.5">
+              <div class="text-violet-300 font-semibold">生成機制特點：</div>
+              <ul class="list-disc list-inside text-slate-400 space-y-1 text-[11px]">
+                <li><strong>Next-Token Prediction：</strong>從詞表中計算幾萬個 token 的條件機率分佈。</li>
+                <li><strong>因果遮罩 (Causal Mask)：</strong>阻絕未來訊息洩漏，確保嚴格的自迴歸約束。</li>
+                <li><strong>KV Cache：</strong>儲存歷史注意力張量，解決長文本推論的算力浪費。</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 兩欄佈局：歷史脈絡 (05) 與 實務特徵與代價 (04) 平衡展示 -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- 05. 歷史由來 -->
+        <div class="p-6 rounded-2xl bg-[#131d31] border border-slate-800 shadow-xl flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2 text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-2">
+              05. 歷史由來 (Origins & Evolution)
+            </div>
+            <h3 class="text-lg font-bold text-white mb-4">從太陽黑子預測到全能 GPT</h3>
+            <div class="relative pl-6 border-l-2 border-slate-700/80 space-y-5 text-xs text-slate-300">
+              <div class="relative">
+                <span class="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-sky-500 ring-4 ring-[#131d31]"></span>
+                <span class="text-sky-400 font-mono font-bold text-[11px]">1927 年</span>
+                <h4 class="font-bold text-slate-100 text-sm mt-0.5">George Udny Yule 提出 AR 模型</h4>
+                <p class="text-slate-400 mt-1 leading-relaxed">為了解決太陽黑子週期的隨機波動問題，統計學家 Yule 首次構想出「用系統過去的觀測值線性組合來預測當前值」，奠定統計自迴歸 AR($p$) 之基石。</p>
+              </div>
+              <div class="relative">
+                <span class="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-indigo-500 ring-4 ring-[#131d31]"></span>
+                <span class="text-indigo-400 font-mono font-bold text-[11px]">1970 年</span>
+                <h4 class="font-bold text-slate-100 text-sm mt-0.5">Box & Jenkins 時間序列體系</h4>
+                <p class="text-slate-400 mt-1 leading-relaxed">將 AR 與移動平均（MA）及差分整合（I）結合，確立 ARIMA 框架，支配計量經濟學數十年。</p>
+              </div>
+              <div class="relative">
+                <span class="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-violet-500 ring-4 ring-[#131d31]"></span>
+                <span class="text-violet-400 font-mono font-bold text-[11px]">2016 年</span>
+                <h4 class="font-bold text-slate-100 text-sm mt-0.5">神經自迴歸爆發 (WaveNet & PixelCNN)</h4>
+                <p class="text-slate-400 mt-1 leading-relaxed">DeepMind 採用因果擴張卷積（Causal Dilated Conv），逐取樣點生成高保真人類語音，證明神經自迴歸的驚人生成潛力。</p>
+              </div>
+              <div class="relative">
+                <span class="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-4 ring-[#131d31]"></span>
+                <span class="text-emerald-400 font-mono font-bold text-[11px]">2018 年~至今</span>
+                <h4 class="font-bold text-slate-100 text-sm mt-0.5">Transformer Causal Decoder 統治生成式 AI</h4>
+                <p class="text-slate-400 mt-1 leading-relaxed">OpenAI 的 GPT 系列捨棄 BERT 的雙向遮蔽式編碼，專注於 Next-Token Autoregressive 預訓練，引爆現代 LLM 與通用人工智慧（AGI）浪潮。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 04. 實務特徵 -->
+        <div class="p-6 rounded-2xl bg-[#131d31] border border-slate-800 shadow-xl flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">
+              04. 實務特徵 (Practical Characteristics)
+            </div>
+            <h3 class="text-lg font-bold text-white mb-4">工程實踐中的優勢與核心代價</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+              <div class="p-3.5 bg-[#0b1120] rounded-xl border border-slate-800">
+                <div class="text-emerald-400 font-bold mb-1.5 flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  訓練完全並行化
+                </div>
+                <p class="text-slate-400 leading-relaxed">訓練期透過 Teacher Forcing 與因果注意力遮罩（Causal Mask），一次性輸入整段文本同時計算所有 token 損失，算力利用率極高。</p>
+              </div>
+              <div class="p-3.5 bg-[#0b1120] rounded-xl border border-slate-800">
+                <div class="text-rose-400 font-bold mb-1.5 flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                  推論無法時間並行
+                </div>
+                <p class="text-slate-400 leading-relaxed">生成時每產出一個 token 必須等上一步完成，每次推理需從顯存載入權重，屬於典型記憶體頻寬受限（Memory-bound）。</p>
+              </div>
+              <div class="p-3.5 bg-[#0b1120] rounded-xl border border-slate-800">
+                <div class="text-amber-400 font-bold mb-1.5 flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                  曝光偏差 (Exposure Bias)
+                </div>
+                <p class="text-slate-400 leading-relaxed">模型訓練時永遠看正確前文（Ground Truth），推論時卻看自己過去產出的可能錯誤，導致小錯誤隨序列滾動放大。</p>
+              </div>
+              <div class="p-3.5 bg-[#0b1120] rounded-xl border border-slate-800">
+                <div class="text-sky-400 font-bold mb-1.5 flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
+                  依賴 KV Cache 技術加速
+                </div>
+                <p class="text-slate-400 leading-relaxed">若不儲存前文的 Key 與 Value 張量，生成長度為 $N$ 的句子將產生 $\mathcal{O}(N^2)$ 的自注意力重複計算，需耗費額外顯存。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-5 p-3.5 bg-sky-950/30 border border-sky-800/40 rounded-xl text-xs text-sky-200">
+            <strong class="text-sky-300 font-semibold block mb-1">07. 工業上核心應用領域：</strong>
+            <div class="text-slate-300 grid grid-cols-2 gap-2 text-xs">
+              <span class="flex items-center gap-1.5">⚡ <strong>高頻量化金融：</strong>股價與波動率預測</span>
+              <span class="flex items-center gap-1.5">🤖 <strong>文字代碼生成：</strong>ChatGPT、Copilot</span>
+              <span class="flex items-center gap-1.5">🎙️ <strong>語音合成 (TTS)：</strong>VALL-E, CosyVoice</span>
+              <span class="flex items-center gap-1.5">🏭 <strong>工廠預知維護：</strong>感測器震動異常預警</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 06 生活化例子 (橫向卡片) -->
+      <div class="p-6 rounded-2xl bg-[#131d31] border border-slate-800 shadow-xl">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-amber-500/15 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-3 border border-amber-500/20">
+          06. 生活化直覺比喻
+        </div>
+        <h3 class="text-lg font-bold text-white mb-4">成語接龍、即席演說家與天氣預報</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div class="p-4 bg-[#0b1120] rounded-xl border border-slate-800 space-y-2">
+            <div class="text-amber-400 font-bold text-sm flex items-center gap-2">
+              <span>🎤</span> 即席演說家
+            </div>
+            <p class="text-slate-300 leading-relaxed">
+              演講者開口時往往不知道整段演講的最後一個字是什麼，而是講出第一個字後，根據前述所有詞句脈絡，瞬間決定下一個最合理的詞。
+            </p>
+          </div>
+          <div class="p-4 bg-[#0b1120] rounded-xl border border-slate-800 space-y-2">
+            <div class="text-amber-400 font-bold text-sm flex items-center gap-2">
+              <span>🔤</span> 文字接龍（文字鏈）
+            </div>
+            <p class="text-slate-300 leading-relaxed">
+              前一個人說出「一心一意」，下一人只能根據「意」接出「意氣風發」，前字即是下一字的絕對約束條件，環環相扣。
+            </p>
+          </div>
+          <div class="p-4 bg-[#0b1120] rounded-xl border border-slate-800 space-y-2">
+            <div class="text-amber-400 font-bold text-sm flex items-center gap-2">
+              <span>🌦️</span> 連續天氣預報
+            </div>
+            <p class="text-slate-300 leading-relaxed">
+              今天下午的氣溫與氣壓，主要取決於今天上午與昨天的氣象觀測值；預測明天的陰晴，必先以今日氣候為自相關參考基礎。
+            </p>
+          </div>
+        </div>
+        <div class="mt-4 p-3 bg-amber-950/20 border border-amber-800/30 rounded-xl text-xs text-amber-200/90 flex items-center gap-2">
+          <span>💡</span> <strong>關鍵直覺：</strong>生成不是「全景一次照相」，而是「筆尖在前一字的墨跡後繼續往前走」。
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 2: 數學推導與互動推演 (08, 09) -->
+    <section id="panel-math" class="tab-panel hidden space-y-6">
+      <div class="p-6 rounded-2xl bg-[#131d31] border border-slate-800 shadow-xl space-y-6">
+        <div>
+          <span class="text-xs font-semibold px-2.5 py-1 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">09. 數學推導 (Mathematical Derivations)</span>
+          <h2 class="text-xl font-bold text-white mt-2">自迴歸的三大數學基石：機率分解、時序平穩性與神經損失函數</h2>
+        </div>
+
+        <!-- Math 1: Probability Chain Rule -->
+        <div class="p-5 bg-[#0b1120] rounded-xl border border-slate-800 space-y-2">
+          <h3 class="text-sm font-bold text-sky-300">一、聯合機率的因果分解（Autoregressive Factorization）</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            對於任意隨機變數序列 $X = (x_1, x_2, \dots, x_T)$，由條件機率乘法定則，其聯合分佈恆等於條件機率之連乘：
+          </p>
+          <div class="text-xs text-slate-200 math-block text-center bg-[#080d19] p-3 rounded-lg border border-slate-800/80">
+            $$P(x_1, x_2, \dots, x_T) = P(x_1) \cdot P(x_2 \mid x_1) \cdot P(x_3 \mid x_1, x_2) \cdots P(x_T \mid x_1, \dots, x_{T-1}) = \prod_{t=1}^T P(x_t \mid x_{\lt t})$$
+          </div>
+          <p class="text-xs text-slate-400">
+            自迴歸模型將「建模高維聯合分佈」的困難問題，轉化為建模 $T$ 個「一維條件機率分佈」的監督學習問題。
+          </p>
+        </div>
+
+        <!-- Math 2: AR(1) and AR(p) Stationary Condition & Autocorrelation -->
+        <div class="p-5 bg-[#0b1120] rounded-xl border border-slate-800 space-y-3">
+          <h3 class="text-sm font-bold text-indigo-300">二、古典統計 AR(p) 模型與自我相關（Autocorrelation）推導</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            階數為 $p$ 的古典自迴歸模型定義為過去 $p$ 個時間點的線性組合加上白噪聲：
+          </p>
+          <div class="text-xs text-slate-200 math-block text-center bg-[#080d19] p-2.5 rounded-lg border border-slate-800/80">
+            $$X_t = c + \sum_{i=1}^p \phi_i X_{t-i} + \epsilon_t, \quad \epsilon_t \sim \text{WN}(0, \sigma^2)$$
+          </div>
+          <div class="bg-[#131d31] p-4 rounded-xl border border-slate-800 text-xs space-y-3">
+            <div class="font-semibold text-amber-300 flex items-center gap-2">
+              <span>💡</span> 深入推導：以一階 AR(1) 模型 $X_t = \phi X_{t-1} + \epsilon_t$ 為例
+            </div>
+            <p class="text-slate-300">逐步遞推替換：</p>
+            <div class="math-block text-slate-200 bg-[#080d19] p-2.5 rounded-lg text-center">
+              $$X_t = \phi(\phi X_{t-2} + \epsilon_{t-1}) + \epsilon_t = \sum_{k=0}^{\infty} \phi^k \epsilon_{t-k}$$
+            </div>
+            <p class="text-slate-300">計算方差：</p>
+            <div class="math-block text-slate-200 bg-[#080d19] p-2.5 rounded-lg text-center">
+              $$\text{Var}(X_t) = \text{Var}\left(\sum_{k=0}^\infty \phi^k \epsilon_{t-k}\right) = \sigma^2 \sum_{k=0}^\infty \phi^{2k} = \frac{\sigma^2}{1 - \phi^2}$$
+            </div>
+            <p class="text-slate-300 leading-relaxed">
+              若要保證方差有限且不隨時間發散（滿足弱平穩條件），幾何級數必須收斂，即：
+              <span class="text-emerald-400 font-bold ml-1">弱平穩充要條件：$|\phi| \lt 1$</span>（特徵方程的根位於複數單位圓外）。
+              自相關係數（ACF）呈現指數衰減：$\rho_k = \phi^k$。
+            </p>
+          </div>
+        </div>
+
+        <!-- Interactive Math Playground: AR(1) Stability -->
+        <div class="p-5 bg-gradient-to-br from-[#0b1120] to-[#131d31] rounded-xl border border-sky-800/40 space-y-4">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div>
+              <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                <span>🎛️ 互動推演：AR(1) 係數 $\phi$ 數值平穩性試驗台</span>
+              </h4>
+              <p class="text-xs text-slate-400">拖動係數 $\phi$，觀察序列是維持平穩震盪、還是發生指數型發散或單位根隨機遊走。</p>
+            </div>
+            <div class="text-right">
+              <span id="phi-status" class="px-2.5 py-1 text-xs rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">平穩序列 (|φ| &lt; 1)</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+            <div class="space-y-3">
+              <div>
+                <div class="flex justify-between text-xs text-slate-300 mb-1">
+                  <span>自迴歸係數 $\phi$:</span>
+                  <span id="phi-val" class="font-mono text-sky-400 font-bold">0.70</span>
+                </div>
+                <input type="range" id="slider-phi" min="-1.3" max="1.3" step="0.05" value="0.7" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500">
+              </div>
+              <div>
+                <div class="flex justify-between text-xs text-slate-300 mb-1">
+                  <span>白噪聲標準差 $\sigma$:</span>
+                  <span id="noise-val" class="font-mono text-sky-400 font-bold">1.0</span>
+                </div>
+                <input type="range" id="slider-noise" min="0.1" max="2.0" step="0.1" value="1.0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500">
+              </div>
+              <button id="btn-re-sim-ar1" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg transition font-medium border border-slate-700">
+                重新生成序列樣本
+              </button>
+            </div>
+            <div class="md:col-span-2 h-44 bg-[#080d19] p-2 rounded-lg border border-slate-800 relative">
+              <canvas id="chart-ar1-interactive"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Math 3: Transformer Cross-Entropy Training Loss -->
+        <div class="p-5 bg-[#0b1120] rounded-xl border border-slate-800 space-y-2">
+          <h3 class="text-sm font-bold text-violet-300">三、神經自迴歸模型 (LLM) 的最佳化目標函數</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            現代 LLM（如 GPT）將每個 token 的預測視為多分類問題，詞表大小為 $V$。目標是最小化整個語料庫的負對數似然（Negative Log-Likelihood, NLL），即交叉熵損失：
+          </p>
+          <div class="text-xs text-slate-200 math-block text-center bg-[#080d19] p-3 rounded-lg border border-slate-800/80">
+            $$\mathcal{L}(\theta) = - \sum_{t=1}^T \log P_\theta(x_t \mid x_{\lt t}) = - \sum_{t=1}^T \log \left( \frac{\exp(z_{t, x_t} / \tau)}{\sum_{j=1}^V \exp(z_{t, j} / \tau)} \right)$$
+          </div>
+          <p class="text-xs text-slate-400">
+            其中 $z_{t}$ 為 Transformer 解碼器在第 $t$ 步輸出的未正規化 Logits，$\tau$ 為溫度係數。因果遮罩矩陣（Causal Mask）在計算注意力權重矩陣時，強制將 $j \gt i$ 處的值設為 $-\infty$，確保數學上嚴格滿足自迴歸條件約束。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: LLM 互動模擬器 (10, 12) -->
+    <section id="panel-simulator" class="tab-panel hidden space-y-6">
+      
+      <!-- Controls & Interactive Generator -->
+      <div class="p-6 rounded-2xl bg-[#131d31] border border-slate-800 shadow-xl space-y-5">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-4">
+          <div>
+            <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded bg-sky-500/10 text-sky-400 text-xs font-semibold">
+              10 & 12. LLM 自迴歸生成演算法模擬台
+            </div>
+            <h2 class="text-xl font-bold text-white mt-1">Next-Token Prediction 逐步與一鍵自動生成實時剖析</h2>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btn-step-gen" class="px-3.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-lg shadow-sky-600/30">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+              單步生成 (Step)
+            </button>
+            <button id="btn-auto-gen" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-lg shadow-emerald-600/30">
+              <svg id="auto-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span id="auto-btn-text">一鍵自動生成</span>
+            </button>
+            <button id="btn-reset-gen" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
+              重設
+            </button>
+          </div>
+        </div>
+
+        <!-- Sampling Config Sliders -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-[#0b1120] rounded-xl border border-slate-800 text-xs">
+          <div>
+            <div class="flex justify-between text-slate-300 mb-1">
+              <span>溫度係數 (Temperature $\tau$):</span>
+              <span id="temp-display" class="text-sky-400 font-mono font-bold">0.7</span>
+            </div>
+            <input type="range" id="param-temp" min="0.1" max="1.8" step="0.1" value="0.7" class="w-full h-1.5 bg-slate-800 rounded appearance-none cursor-pointer accent-sky-500">
+            <span class="text-[10px] text-slate-500">越低越確定保守，越高越天馬行空</span>
+          </div>
+          <div>
+            <div class="flex justify-between text-slate-300 mb-1">
+              <span>Top-k 截斷 (Top-k Sampling):</span>
+              <span id="topk-display" class="text-sky-400 font-mono font-bold">4</span>
+            </div>
+            <input type="range" id="param-topk" min="1" max="8" step="1" value="4" class="w-full h-1.5 bg-slate-800 rounded appearance-none cursor-pointer accent-sky-500">
+            <span class="text-[10px] text-slate-500">僅在機率最高的前 k 個候選詞中採樣</span>
+          </div>
+          <div>
+            <div class="flex justify-between text-slate-300 mb-1">
+              <span>生成速度 (ms/step):</span>
+              <span id="speed-display" class="text-sky-400 font-mono font-bold">600ms</span>
+            </div>
+            <input type="range" id="param-speed" min="200" max="1500" step="100" value="600" class="w-full h-1.5 bg-slate-800 rounded appearance-none cursor-pointer accent-sky-500">
+            <span class="text-[10px] text-slate-500">自動生成時每個 step 的間隔動畫</span>
+          </div>
+        </div>
+
+        <!-- Text Generation Canvas -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-xs text-slate-400">
+            <span>當前文本序列上下文（觀察每一步模型如何將自己產出的詞追加進輸入）：</span>
+            <span id="token-count-badge" class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[11px]">Tokens: 5</span>
+          </div>
+          <div id="sequence-container" class="min-h-[70px] p-4 bg-[#0b1120] rounded-xl border border-slate-800 text-sm leading-relaxed flex flex-wrap items-center gap-1.5 transition">
+            <!-- Tokens injected dynamically -->
+          </div>
+        </div>
+
+        <!-- Deep Dive Visualizers: Probability distribution + KV Cache Flow -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+          
+          <!-- Next-Token Probability Chart -->
+          <div class="p-4 bg-[#0b1120] rounded-xl border border-slate-800 space-y-2 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <h4 class="text-xs font-bold text-white flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+                  下一步候選詞 Softmax 機率分佈 $P(X_t \mid X_{\lt t})$
+                </h4>
+                <span class="text-[10px] text-slate-500" id="top-sampled-note">已採樣：-</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1">直觀展示溫度 $\tau$ 與 Top-k 截斷如何重塑 Softmax 分佈。</p>
+            </div>
+            <div class="h-44 w-full relative mt-2">
+              <canvas id="chart-next-token"></canvas>
+            </div>
+          </div>
+
+          <!-- KV Cache Visualizer -->
+          <div class="p-4 bg-[#0b1120] rounded-xl border border-slate-800 space-y-2 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <h4 class="text-xs font-bold text-white flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  推論引擎狀態：KV-Cache 記憶體動態追蹤
+                </h4>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono" id="kv-cache-size">KV Cache: 5 slots</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1">避免每次重新運算已生成詞彙的 Key 與 Value 向量。</p>
+            </div>
+
+            <div class="p-3 bg-[#131d31] rounded-lg border border-slate-800 space-y-2">
+              <div class="flex items-center justify-between text-[11px] text-slate-300">
+                <span>因果遮罩 (Causal Mask) 運作：</span>
+                <span class="text-emerald-400 font-mono text-[10px]">保留歷史，阻擋未來</span>
+              </div>
+              <div id="kv-grid" class="flex flex-wrap gap-1">
+                <!-- KV chips injected dynamically -->
+              </div>
+            </div>
+
+            <div class="text-[11px] text-slate-400 bg-[#131d31]/50 p-2.5 rounded-lg border border-slate-800/80">
+              💡 <strong>為什麼推論速度隨長度變慢？</strong> 雖然 KV Cache 將每步注意力計算降為 $\mathcal{O}(1)$，但需要將龐大的歷史 $K, V$ 緩存頻繁載入 GPU 暫存器（SRAM），頻寬達到吞吐瓶頸。
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- TAB 4: IPAS AI 證照仿真考題 (03) -->
+    <section id="panel-ipas" class="tab-panel hidden space-y-6">
+      <div class="p-6 rounded-2xl bg-[#131d31] border border-slate-800 shadow-xl space-y-6">
+        <div>
+          <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-xs font-semibold">
+            03. IPAS AI 考題精選 (iPAS 人工智慧應用工程師證照)
+          </div>
+          <h2 class="text-xl font-bold text-white mt-1">實戰檢定：自迴歸概念、核心假設與模型架構考題</h2>
+          <p class="text-xs text-slate-400">依據台灣經濟部 IPAS 官方大綱與能力指標，精心設計包含自相關假設、時序平穩性與注意力推論優化考題。</p>
+        </div>
+
+        <div class="space-y-4" id="quiz-container">
+          <!-- Quiz Item 1 -->
+          <div class="p-5 bg-[#0b1120] rounded-xl border border-slate-800 space-y-3" data-correct="B">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">題型：模型架構與機制比較</span>
+              <span class="text-xs text-slate-500">考題編號 #AR-01</span>
+            </div>
+            <p class="text-sm text-slate-200 font-medium">
+              1. 關於生成式語言模型 GPT 與編碼模型 BERT 在訓練與生成機制上的差異，下列敘述何者最為正確？
+            </p>
+            <div class="space-y-2 text-xs">
+              <label class="flex items-center gap-3 p-2.5 rounded-lg bg-[#131d31]/60 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+                <input type="radio" name="q1" value="A" class="accent-sky-500">
+                <span class="text-slate-300">(A) GPT 採用雙向自注意力（Bidirectional Self-Attention），因此擅長語義理解任務。</span>
+              </label>
+              <label class="flex items-center gap-3 p-2.5 rounded-lg bg-[#131d31]/60 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+                <input type="radio" name="q1" value="B" class="accent-sky-500">
+                <span class="text-slate-300">(B) GPT 屬於自迴歸模型（Autoregressive），使用因果遮罩（Causal Mask）限制每個字僅能關注過去已知 tokens。</span>
+              </label>
+              <label class="flex items-center gap-3 p-2.5 rounded-lg bg-[#131d31]/60 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+                <input type="radio" name="q1" value="C" class="accent-sky-500">
+                <span class="text-slate-300">(C) BERT 屬於自迴歸模型，在推論階段逐詞生成下一個字（Next-token prediction）。</span>
+              </label>
+              <label class="flex items-center gap-3 p-2.5 rounded-lg bg-[#131d31]/60 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+                <input type="radio" name="q1" value="D" class="accent-sky-500">
+                <span class="text-slate-300">(D) 兩者在推論生成長篇文本時，皆可在 GPU 上一次性完成全局並行運算（Parallel Inference）。</span>
+              </label>
+            </div>
+            <div class="feedback hidden p-3 rounded-lg text-xs"></div>
+          </div>
+
+          <!-- Quiz Item 2 -->
+          <div class="p-5 bg-[#0b1120] rounded-xl border border-slate-800 space-y-3" data-correct="C">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">題型：時序平穩性與核心假設</span>
+              <span class="text-xs text-slate-500">考題編號 #AR-02</span>
+            </div>
+            <p class="text-sm text-slate-200 font-medium">
+              2. 設有一階自迴歸時間序列模型 $X_t = c + \phi X_{t-1} + \epsilon_t$，其中 $\epsilon_t \sim \text{WN}(0, \sigma^2)$ 為白噪聲。該序列滿足「弱平穩（Weak Stationarity）」的充要條件為何？
+            </p>
+            <div class="space-y-2 text-xs">
+              <label class="flex items-center gap-3 p-2.5 rounded-lg bg-[#131d31]/60 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+                <input type="radio" name="q2" value="A" class="accent-sky-500">
+                <span class="text-slate-300">(A) $\phi \gt 1$</span>
+              </label>
+              <label class="flex items-center gap-3 p-2.5 rounded-lg bg-[#131d31]/60 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+                <input type="radio" name="q2" value="B" class="accent-sky-500">
+                <span class="text-slate-300">(B) $\phi = 1$（單位根隨機遊走）</span>
+              </label>
+              <label class="flex items-center gap-3 p-2.5 rounded-lg bg-[#131d31]/60 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+                <input type="radio" name="q2" value="C" class="accent-sky-500">
+                <span class="text-slate-300">(C) $|\phi| \lt 1$</span>
+              </label>
+              <label class="flex items-center gap-3 p-2.5 rounded-lg bg-[#131d31]/60 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+                <input type="radio" name="q2" value="D" class="accent-sky-500">
+                <span class="text-slate-300">(D) $\phi$ 可以為任意實數，平穩性完全由白噪聲方差 $\sigma^2$ 決定</span>
+              </label>
+            </div>
+            <div class="feedback hidden p-3 rounded-lg text-xs"></div>
+          </div>
+
+          <!-- Quiz Item 3 -->
+          <div class="p-5 bg-[#0b1120] rounded-xl border border-slate-800 space-y-3" data-correct="B">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">題型：LLM 工程優化</span>
+              <span class="text-xs text-slate-500">考題編號 #AR-03</span>
+            </div>
+            <p class="text-sm text-slate-200 font-medium">
+              3. 在部署大規模自迴歸語言模型進行即時推論服務時，導入「KV Cache」技術的核心目的與代價分別為何？
+            </p>
+            <div class="space-y-2 text-xs">
+              <label class="flex items-center gap-3 p-2.5 rounded-lg bg-[#131d31]/60 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+                <input type="radio" name="q3" value="A" class="accent-sky-500">
+                <span class="text-slate-300">(A) 為了減少模型參數量以節省磁碟儲存空間；代價是大幅降低語言模型生成的流暢度與困惑度（Perplexity）。</span>
+              </label>
+              <label class="flex items-center gap-3 p-2.5 rounded-lg bg-[#131d31]/60 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+                <input type="radio" name="q3" value="B" class="accent-sky-500">
+                <span class="text-slate-300">(B) 為了避免每步重複計算先前 tokens 的 Key 與 Value 矩陣，將計算量降低；代價是需要消耗額外的 GPU 顯存（VRAM）來快取張量。</span>
+              </label>
+              <label class="flex items-center gap-3 p-2.5 rounded-lg bg-[#131d31]/60 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+                <input type="radio" name="q3" value="C" class="accent-sky-500">
+                <span class="text-slate-300">(C) 為了讓推論過程可以完全打破時間先後順序進行全並行生成；代價是運算延遲不可預測。</span>
+              </label>
+              <label class="flex items-center gap-3 p-2.5 rounded-lg bg-[#131d31]/60 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+                <input type="radio" name="q3" value="D" class="accent-sky-500">
+                <span class="text-slate-300">(D) 為了在推論階段自動修正曝光偏差（Exposure Bias）；代價是需要連網線上微調權重。</span>
+              </label>
+            </div>
+            <div class="feedback hidden p-3 rounded-lg text-xs"></div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-4 border-t border-slate-800">
+          <button id="btn-submit-quiz" class="px-5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition">
+            送出答案並檢視解析
+          </button>
+          <span id="quiz-score-badge" class="text-xs font-semibold text-slate-400">尚未提交測驗</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: Python / PyTorch 實作 (11) -->
+    <section id="panel-code" class="tab-panel hidden space-y-6">
+      <div class="p-6 rounded-2xl bg-[#131d31] border border-slate-800 shadow-xl space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-800 pb-3">
+          <div>
+            <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded bg-sky-500/10 text-sky-400 text-xs font-semibold">
+              11. Python / PyTorch 實作工程
+            </div>
+            <h2 class="text-xl font-bold text-white mt-1">最小自迴歸 Transformer Decoder 引擎 (含 Causal Mask 與採樣迴圈)</h2>
+          </div>
+          <button id="btn-copy-code" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 flex items-center gap-1.5 transition">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            <span id="copy-btn-text">複製代碼</span>
+          </button>
+        </div>
+
+        <div class="relative bg-[#080d19] rounded-xl border border-slate-800 overflow-hidden font-mono text-xs text-slate-200">
+          <div class="flex items-center justify-between px-4 py-2 bg-[#0f172a] border-b border-slate-800 text-[11px] text-slate-400">
+            <span>autoregressive_transformer.py</span>
+            <span>PyTorch 2.x</span>
+          </div>
+          <pre class="p-4 overflow-x-auto leading-relaxed text-sky-200"><code id="code-snippet">import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class MiniAutoregressiveDecoder(nn.Module):
+    """
+    極簡因果自迴歸解碼器（GPT 架構原型）
+    展示 Causal Mask 如何迫使注意力只能看見過去的 Token
+    """
+    def __init__(self, vocab_size: int = 1000, d_model: int = 64, n_heads: int = 4, max_len: int = 128):
+        super().__init__()
+        self.d_model = d_model
+        self.token_emb = nn.Embedding(vocab_size, d_model)
+        self.pos_emb = nn.Embedding(max_len, d_model)
+        
+        # 單層 Decoder Transformer
+        self.attn = nn.MultiheadAttention(embed_dim=d_model, num_heads=n_heads, batch_first=True)
+        self.ffn = nn.Sequential(
+            nn.Linear(d_model, d_model * 2),
+            nn.ReLU(),
+            nn.Linear(d_model * 2, d_model)
+        )
+        self.ln1 = nn.LayerNorm(d_model)
+        self.ln2 = nn.LayerNorm(d_model)
+        self.head = nn.Linear(d_model, vocab_size)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        x: [batch_size, seq_len] 包含已生成的 tokens
+        """
+        B, T = x.size()
+        positions = torch.arange(0, T, device=x.device).unsqueeze(0)
+        
+        # 1. 產生因果注意力遮罩 (Causal Mask)
+        # 遮蔽未來資訊：上三角矩陣設為 -inf，防止時間穿越
+        causal_mask = torch.triu(torch.full((T, T), float('-inf'), device=x.device), diagonal=1)
+
+        # 2. Embedding + Positional Encoding
+        h = self.token_emb(x) + self.pos_emb(positions)
+        
+        # 3. Masked Multi-Head Attention
+        norm_h = self.ln1(h)
+        attn_out, _ = self.attn(norm_h, norm_h, norm_h, attn_mask=causal_mask)
+        h = h + attn_out
+        
+        # 4. Feed Forward Network
+        h = h + self.ffn(self.ln2(h))
+        
+        # 5. Output Logits: [batch_size, seq_len, vocab_size]
+        logits = self.head(h)
+        return logits
+
+    @torch.no_grad()
+    def autoregressive_generate(self, prompt_tokens: torch.Tensor, max_new_tokens: int = 10, temperature: float = 0.8, top_k: int = 5):
+        """
+        核心演算法：Step-by-Step 自迴歸循環生成邏輯
+        """
+        self.eval()
+        curr_seq = prompt_tokens.clone() # [1, prompt_len]
+
+        print(f"[*] 初始 Prompt Tokens: {curr_seq.tolist()[0]}")
+        for step in range(max_new_tokens):
+            # 1. 前向傳播獲取當前完整序列的 Logits
+            logits = self.forward(curr_seq)
+            
+            # 2. 僅取出最後一個時間步的預測 (Next-Token Logits)
+            next_token_logits = logits[:, -1, :] / max(temperature, 1e-5)
+            
+            # 3. Top-k 截斷採樣
+            if top_k is not None:
+                v, _ = torch.topk(next_token_logits, min(top_k, next_token_logits.size(-1)))
+                next_token_logits[next_token_logits < v[:, [-1]]] = -float('Inf')
+            
+            # 4. Softmax 計算條件機率分佈
+            probs = F.softmax(next_token_logits, dim=-1)
+            
+            # 5. 依機率多項分佈隨機採樣出下一個 Token
+            next_token = torch.multinomial(probs, num_samples=1) # [1, 1]
+            
+            # 6. 【關鍵自迴歸迴路】：將新生成的 Token 追加至序列尾端
+            curr_seq = torch.cat([curr_seq, next_token], dim=1)
+            print(f" -> Step {step+1:02d}: 生成 Token ID [{next_token.item()}], 當前總長度: {curr_seq.size(1)}")
+
+        return curr_seq
+
+if __name__ == "__main__":
+    # 測試最小自迴歸生成
+    model = MiniAutoregressiveDecoder()
+    prompt = torch.tensor([[101, 45, 88]]) # 假設 Prompt
+    final_output = model.autoregressive_generate(prompt, max_new_tokens=6, temperature=0.7, top_k=3)
+    print(f"\n[+] 最終自迴歸生成序列: {final_output.tolist()[0]}")</code></pre>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 bg-[#0f172a]/80 py-6 text-center text-xs text-slate-400 mt-12">
+    <div class="max-w-7xl mx-auto px-4 space-y-1">
+      <p class="font-medium text-slate-300">Autoregressive (AR) 全景教學與互動模擬系統</p>
+      <p>涵蓋古典統計時序（ARMA/ARIMA）、自我相關假說、深度神經自迴歸與現代 LLM 生成架構</p>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script>
+    // Tab switching logic
+    const tabs = [
+      { id: 'overview', name: '01-08. 核心概念與應用全景' },
+      { id: 'math', name: '09. 數學推導與平穩性' },
+      { id: 'simulator', name: '10 & 12. LLM 互動生成模擬台' },
+      { id: 'ipas', name: '03. IPAS AI 考題認證' },
+      { id: 'code', name: '11. Python / PyTorch 實作' },
+    ];
+
+    let currentTab = 'overview';
+
+    function initNav() {
+      const navContainer = document.getElementById('nav-tabs');
+      const mobContainer = document.getElementById('mobile-tabs');
+      navContainer.innerHTML = '';
+      mobContainer.innerHTML = '';
+
+      tabs.forEach(t => {
+        // Desktop
+        const btn = document.createElement('button');
+        btn.className = `px-3 py-2 text-xs font-medium rounded-lg transition ${
+          currentTab === t.id 
+          ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' 
+          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+        }`;
+        btn.innerText = t.name;
+        btn.onclick = () => switchTab(t.id);
+        navContainer.appendChild(btn);
+
+        // Mobile
+        const mBtn = document.createElement('button');
+        mBtn.className = `px-3 py-1.5 text-xs whitespace-nowrap rounded-md font-medium ${
+          currentTab === t.id 
+          ? 'bg-sky-500 text-white' 
+          : 'bg-slate-800 text-slate-400'
+        }`;
+        mBtn.innerText = t.name;
+        mBtn.onclick = () => switchTab(t.id);
+        mobContainer.appendChild(mBtn);
+      });
+    }
+
+    function renderKaTeXFormulas() {
+      if (typeof renderMathInElement === 'function') {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+          throwOnError: false
+        });
+      }
+    }
+
+    function switchTab(tabId) {
+      currentTab = tabId;
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+      const activePanel = document.getElementById(`panel-${tabId}`);
+      if (activePanel) activePanel.classList.remove('hidden');
+      initNav();
+
+      // Trigger KaTeX to format math inside newly visible tab
+      setTimeout(renderKaTeXFormulas, 10);
+
+      // Trigger charts resize if needed
+      if (tabId === 'math' && ar1Chart) {
+        setTimeout(() => ar1Chart.resize(), 50);
+      }
+      if (tabId === 'simulator' && nextTokenChart) {
+        setTimeout(() => nextTokenChart.resize(), 50);
+      }
+    }
+
+    // Render KaTeX automatically
+    document.addEventListener("DOMContentLoaded", function() {
+      initNav();
+      renderKaTeXFormulas();
+      initAR1Chart();
+      initLLMSimulator();
+      initQuiz();
+    });
+
+    // -------------------------------------------------------------
+    // TAB 2: AR(1) Interactive Math Simulator
+    // -------------------------------------------------------------
+    let ar1Chart = null;
+
+    function simulateAR1(phi, sigma, n = 50) {
+      const data = [];
+      let current = 0;
+      for (let i = 0; i < n; i++) {
+        // Box-Muller transform for normal noise
+        const u1 = Math.random() || 1e-6;
+        const u2 = Math.random() || 1e-6;
+        const noise = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2) * sigma;
+        current = phi * current + noise;
+        data.push(Number(current.toFixed(3)));
+      }
+      return data;
+    }
+
+    function initAR1Chart() {
+      const ctx = document.getElementById('chart-ar1-interactive');
+      if (!ctx) return;
+
+      const phi = parseFloat(document.getElementById('slider-phi').value);
+      const noise = parseFloat(document.getElementById('slider-noise').value);
+      const points = simulateAR1(phi, noise);
+
+      ar1Chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: Array.from({length: points.length}, (_, i) => `t=${i}`),
+          datasets: [{
+            label: 'X(t) 時序軌跡',
+            data: points,
+            borderColor: '#38bdf8',
+            backgroundColor: 'rgba(56, 189, 248, 0.1)',
+            borderWidth: 2,
+            pointRadius: 2,
+            tension: 0.25,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `X_t: ${ctx.parsed.y}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: '#1e293b' },
+              ticks: { color: '#64748b', maxTicksLimit: 10 }
+            },
+            y: {
+              grid: { color: '#1e293b' },
+              ticks: { color: '#64748b' }
+            }
+          }
+        }
+      });
+
+      // Listeners
+      const sliderPhi = document.getElementById('slider-phi');
+      const sliderNoise = document.getElementById('slider-noise');
+      const phiVal = document.getElementById('phi-val');
+      const noiseVal = document.getElementById('noise-val');
+      const phiStatus = document.getElementById('phi-status');
+
+      function updateAR1() {
+        const p = parseFloat(sliderPhi.value);
+        const s = parseFloat(sliderNoise.value);
+        phiVal.innerText = p.toFixed(2);
+        noiseVal.innerText = s.toFixed(1);
+
+        if (Math.abs(p) < 0.98) {
+          phiStatus.className = 'px-2.5 py-1 text-xs rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+          phiStatus.innerText = '平穩序列 (|φ| < 1)';
+        } else if (Math.abs(p) >= 0.98 && Math.abs(p) <= 1.02) {
+          phiStatus.className = 'px-2.5 py-1 text-xs rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30';
+          phiStatus.innerText = '單位根隨機遊走 (|φ| ≈ 1)';
+        } else {
+          phiStatus.className = 'px-2.5 py-1 text-xs rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30';
+          phiStatus.innerText = '非平穩 / 指數發散 (|φ| > 1)';
+        }
+
+        ar1Chart.data.datasets[0].data = simulateAR1(p, s);
+        ar1Chart.update();
+      }
+
+      sliderPhi.oninput = updateAR1;
+      sliderNoise.oninput = updateAR1;
+      document.getElementById('btn-re-sim-ar1').onclick = updateAR1;
+    }
+
+    // -------------------------------------------------------------
+    // TAB 3: LLM Step-by-Step & Auto Generation Simulator
+    // -------------------------------------------------------------
+    const sampleCorpusTransitions = {
+      "人工智慧": [
+        { word: "正在", logit: 3.8 },
+        { word: "的發展", logit: 3.2 },
+        { word: "技術", logit: 2.7 },
+        { word: "將會", logit: 2.1 },
+        { word: "為人類", logit: 1.4 },
+        { word: "如何", logit: 0.9 }
+      ],
+      "正在": [
+        { word: "深刻改變", logit: 4.1 },
+        { word: "加速顛覆", logit: 3.4 },
+        { word: "重塑", logit: 3.1 },
+        { word: "帶來", logit: 2.2 },
+        { word: "進入", logit: 1.6 }
+      ],
+      "深刻改變": [
+        { word: "全球產業的", logit: 4.0 },
+        { word: "現代社會的", logit: 3.5 },
+        { word: "人類生活的", logit: 3.0 },
+        { word: "軟體開發的", logit: 2.4 }
+      ],
+      "全球產業的": [
+        { word: "運作模式，", logit: 4.2 },
+        { word: "核心競爭力，", logit: 3.6 },
+        { word: "底層架構，", logit: 2.8 },
+        { word: "生產關係，", logit: 2.1 }
+      ],
+      "運作模式，": [
+        { word: "特別是在", logit: 3.9 },
+        { word: "其背後核心", logit: 3.5 },
+        { word: "並推動了", logit: 3.0 },
+        { word: "同時也促使", logit: 2.3 }
+      ],
+      "特別是在": [
+        { word: "大語言模型與", logit: 4.2 },
+        { word: "智慧製造與", logit: 3.7 },
+        { word: "自動駕駛領域，", logit: 3.1 },
+        { word: "醫療輔助診斷，", logit: 2.5 }
+      ],
+      "大語言模型與": [
+        { word: "自迴歸生成技術的", logit: 4.5 },
+        { word: "知識庫檢索增強，", logit: 3.2 },
+        { word: "多模態感知的", logit: 2.6 }
+      ],
+      "自迴歸生成技術的": [
+        { word: "爆發式增長，", logit: 4.3 },
+        { word: "持續演進中，", logit: 3.6 },
+        { word: "廣泛落地應用，", logit: 3.0 }
+      ],
+      "爆發式增長，": [
+        { word: "實現了", logit: 4.0 },
+        { word: "讓機器具備了", logit: 3.6 },
+        { word: "開啟了", logit: 3.1 }
+      ],
+      "讓機器具備了": [
+        { word: "自主推理與", logit: 4.1 },
+        { word: "自然流暢的", logit: 3.5 },
+        { word: "驚人的", logit: 2.7 }
+      ],
+      "自主推理與": [
+        { word: "逐詞創作的全新能力。", logit: 4.6 },
+        { word: "解決複雜問題的智慧。", logit: 3.9 }
+      ]
+    };
+
+    const fallbackCandidates = [
+      { word: "技術體系。", logit: 3.2 },
+      { word: "演進。", logit: 2.9 },
+      { word: "突破。", logit: 2.7 },
+      { word: "全新篇章。", logit: 2.4 },
+      { word: "關鍵躍進。", logit: 2.1 }
+    ];
+
+    let currentTokens = ["人工智慧", "正在"];
+    let nextTokenChart = null;
+    let isAutoPlaying = false;
+    let autoPlayTimer = null;
+
+    function getCandidatesForLastToken(token) {
+      if (sampleCorpusTransitions[token]) {
+        return sampleCorpusTransitions[token];
+      }
+      return fallbackCandidates;
+    }
+
+    function calculateSoftmax(candidates, temperature, topK) {
+      // 1. apply temperature
+      const scaled = candidates.map(c => ({
+        word: c.word,
+        scaledLogit: c.logit / Math.max(temperature, 0.05)
+      }));
+
+      // 2. sort desc
+      scaled.sort((a, b) => b.scaledLogit - a.scaledLogit);
+
+      // 3. apply top-k
+      const truncated = scaled.slice(0, Math.min(topK, scaled.length));
+
+      // 4. numeric stable softmax
+      const maxLogit = Math.max(...truncated.map(c => c.scaledLogit));
+      const expVals = truncated.map(c => Math.exp(c.scaledLogit - maxLogit));
+      const sumExp = expVals.reduce((acc, v) => acc + v, 0);
+
+      return truncated.map((c, i) => ({
+        word: c.word,
+        prob: expVals[i] / sumExp
+      }));
+    }
+
+    function sampleNextToken(dist) {
+      const r = Math.random();
+      let acc = 0;
+      for (const item of dist) {
+        acc += item.prob;
+        if (r <= acc) return item;
+      }
+      return dist[dist.length - 1];
+    }
+
+    function renderTokensUI() {
+      const container = document.getElementById('sequence-container');
+      const countBadge = document.getElementById('token-count-badge');
+      const kvGrid = document.getElementById('kv-grid');
+      const kvSize = document.getElementById('kv-cache-size');
+
+      container.innerHTML = '';
+      kvGrid.innerHTML = '';
+      countBadge.innerText = `Tokens: ${currentTokens.length}`;
+      kvSize.innerText = `KV Cache: ${currentTokens.length} slots`;
+
+      currentTokens.forEach((t, idx) => {
+        // Token chip
+        const chip = document.createElement('span');
+        const isLatest = idx === currentTokens.length - 1;
+        chip.className = `px-2.5 py-1 rounded-md text-xs font-medium transition flex items-center gap-1 ${
+          isLatest 
+          ? 'bg-sky-500 text-white shadow-md shadow-sky-500/30 scale-105 animate-pulse' 
+          : 'bg-slate-800 text-slate-200 border border-slate-700/60'
+        }`;
+        chip.innerHTML = `<span class="opacity-40 text-[9px] font-mono">#${idx+1}</span> ${t}`;
+        container.appendChild(chip);
+
+        // KV Cache chip
+        const kv = document.createElement('div');
+        kv.className = 'px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-300 font-mono flex items-center gap-1';
+        kv.innerHTML = `<span>k,v_${idx}</span><span class="text-slate-500 truncate max-w-[50px]">${t}</span>`;
+        kvGrid.appendChild(kv);
+      });
+    }
+
+    function updateChart(dist, sampledWord = null) {
+      if (!nextTokenChart) return;
+      nextTokenChart.data.labels = dist.map(d => d.word);
+      nextTokenChart.data.datasets[0].data = dist.map(d => Number((d.prob * 100).toFixed(1)));
+      nextTokenChart.data.datasets[0].backgroundColor = dist.map(d => 
+        d.word === sampledWord ? '#38bdf8' : 'rgba(56, 189, 248, 0.4)'
+      );
+      nextTokenChart.update();
+
+      const note = document.getElementById('top-sampled-note');
+      if (sampledWord) {
+        note.innerHTML = `已採樣: <strong class="text-sky-300 font-bold">${sampledWord}</strong>`;
+      } else {
+        note.innerHTML = `當前 Top-1: <strong class="text-slate-300">${dist[0]?.word || '-'}</strong>`;
+      }
+    }
+
+    function stepGenerate() {
+      const lastToken = currentTokens[currentTokens.length - 1];
+      const candidates = getCandidatesForLastToken(lastToken);
+      
+      const temp = parseFloat(document.getElementById('param-temp').value);
+      const topk = parseInt(document.getElementById('param-topk').value, 10);
+
+      const dist = calculateSoftmax(candidates, temp, topk);
+      const picked = sampleNextToken(dist);
+
+      currentTokens.push(picked.word);
+      renderTokensUI();
+      updateChart(dist, picked.word);
+
+      // Stop auto play if long
+      if (currentTokens.length >= 20) {
+        stopAutoPlay();
+      }
+    }
+
+    function toggleAutoPlay() {
+      if (isAutoPlaying) {
+        stopAutoPlay();
+      } else {
+        startAutoPlay();
+      }
+    }
+
+    function startAutoPlay() {
+      isAutoPlaying = true;
+      document.getElementById('auto-btn-text').innerText = '暫停生成';
+      document.getElementById('btn-auto-gen').classList.replace('bg-emerald-600', 'bg-amber-600');
+      document.getElementById('btn-auto-gen').classList.replace('hover:bg-emerald-500', 'hover:bg-amber-500');
+
+      const speed = parseInt(document.getElementById('param-speed').value, 10);
+      autoPlayTimer = setInterval(() => {
+        stepGenerate();
+      }, speed);
+    }
+
+    function stopAutoPlay() {
+      isAutoPlaying = false;
+      clearInterval(autoPlayTimer);
+      document.getElementById('auto-btn-text').innerText = '一鍵自動生成';
+      document.getElementById('btn-auto-gen').classList.replace('bg-amber-600', 'bg-emerald-600');
+      document.getElementById('btn-auto-gen').classList.replace('hover:bg-amber-500', 'hover:bg-emerald-500');
+    }
+
+    function resetGenerator() {
+      stopAutoPlay();
+      currentTokens = ["人工智慧", "正在"];
+      renderTokensUI();
+      const lastToken = currentTokens[currentTokens.length - 1];
+      const candidates = getCandidatesForLastToken(lastToken);
+      const temp = parseFloat(document.getElementById('param-temp').value);
+      const topk = parseInt(document.getElementById('param-topk').value, 10);
+      const dist = calculateSoftmax(candidates, temp, topk);
+      updateChart(dist, null);
+    }
+
+    function initLLMSimulator() {
+      const ctx = document.getElementById('chart-next-token');
+      if (!ctx) return;
+
+      nextTokenChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [{
+            label: '條件機率 (%)',
+            data: [],
+            backgroundColor: 'rgba(56, 189, 248, 0.4)',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `機率: ${ctx.parsed.x}%`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: '#1e293b' },
+              ticks: { color: '#64748b' },
+              max: 100
+            },
+            y: {
+              grid: { display: false },
+              ticks: { color: '#e2e8f0', font: { size: 11 } }
+            }
+          }
+        }
+      });
+
+      // Controls
+      document.getElementById('btn-step-gen').onclick = stepGenerate;
+      document.getElementById('btn-auto-gen').onclick = toggleAutoPlay;
+      document.getElementById('btn-reset-gen').onclick = resetGenerator;
+
+      const paramTemp = document.getElementById('param-temp');
+      const paramTopK = document.getElementById('param-topk');
+      const paramSpeed = document.getElementById('param-speed');
+
+      paramTemp.oninput = (e) => {
+        document.getElementById('temp-display').innerText = parseFloat(e.target.value).toFixed(1);
+        const lastToken = currentTokens[currentTokens.length - 1];
+        const dist = calculateSoftmax(getCandidatesForLastToken(lastToken), parseFloat(e.target.value), parseInt(paramTopK.value, 10));
+        updateChart(dist);
+      };
+
+      paramTopK.oninput = (e) => {
+        document.getElementById('topk-display').innerText = e.target.value;
+        const lastToken = currentTokens[currentTokens.length - 1];
+        const dist = calculateSoftmax(getCandidatesForLastToken(lastToken), parseFloat(paramTemp.value), parseInt(e.target.value, 10));
+        updateChart(dist);
+      };
+
+      paramSpeed.oninput = (e) => {
+        document.getElementById('speed-display').innerText = `${e.target.value}ms`;
+        if (isAutoPlaying) {
+          stopAutoPlay();
+          startAutoPlay();
+        }
+      };
+
+      resetGenerator();
+    }
+
+    // -------------------------------------------------------------
+    // TAB 4: IPAS AI Quiz
+    // -------------------------------------------------------------
+    function initQuiz() {
+      const btn = document.getElementById('btn-submit-quiz');
+      if (!btn) return;
+
+      const explanations = {
+        q1: {
+          correct: 'B',
+          text: '<strong>詳解：</strong>GPT 是標準自迴歸因果解碼器（Causal Decoder），使用因果遮罩（下三角矩陣）確保注意力機制只看歷史不看未來；BERT 是遮蔽自編碼器（Masked Autoencoder），採用雙向注意力，適合做分類與特徵提取，無法直接自然進行自迴歸流暢續寫。'
+        },
+        q2: {
+          correct: 'C',
+          text: '<strong>詳解：</strong>一階自迴歸 AR(1) 弱平穩（Weak Stationarity）條件為係數的絕對值嚴格小於 1，即 $|\phi| \\lt 1$。此時其特徵根落在複數單位圓之外，級數方差有限不發散；若 $\phi=1$ 則退化為隨機遊走（Random Walk）。'
+        },
+        q3: {
+          correct: 'B',
+          text: '<strong>詳解：</strong>自迴歸推論是逐字遞增的，前文產生的 Key 和 Value 向量在後續時間步並不會改變。若不緩存（KV Cache），每產出一個新 token 都要對整段歷史重新做投影運算；代價是顯存（VRAM）使用量會隨序列長度與批次大小線性增長。'
+        }
+      };
+
+      btn.onclick = () => {
+        let score = 0;
+        let total = 3;
+
+        ['q1', 'q2', 'q3'].forEach(qName => {
+          const selected = document.querySelector(`input[name="${qName}"]:checked`);
+          const card = document.querySelector(`[data-correct][name="${qName}"]`) || document.querySelector(`input[name="${qName}"]`).closest('.p-5');
+          const feedbackDiv = card.querySelector('.feedback');
+          feedbackDiv.classList.remove('hidden');
+
+          if (selected && selected.value === explanations[qName].correct) {
+            score++;
+            feedbackDiv.className = 'feedback p-3 rounded-lg text-xs bg-emerald-950/70 border border-emerald-800 text-emerald-200 mt-2';
+            feedbackDiv.innerHTML = `<span class="font-bold text-emerald-400">✓ 正確！</span> ${explanations[qName].text}`;
+          } else {
+            feedbackDiv.className = 'feedback p-3 rounded-lg text-xs bg-rose-950/70 border border-rose-800 text-rose-200 mt-2';
+            feedbackDiv.innerHTML = `<span class="font-bold text-rose-400">✗ 錯誤！</span> 正確答案為 (${explanations[qName].correct})。<br>${explanations[qName].text}`;
+          }
+        });
+
+        const badge = document.getElementById('quiz-score-badge');
+        badge.className = 'text-xs font-bold px-3 py-1 rounded-md ' + (score === total ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30');
+        badge.innerText = `得分：${score} / ${total} (${Math.round((score/total)*100)}分)`;
+      };
+    }
+
+    // Copy Code functionality
+    document.getElementById('btn-copy-code').onclick = () => {
+      const code = document.getElementById('code-snippet').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const btnText = document.getElementById('copy-btn-text');
+        btnText.innerText = '已複製到剪貼簿！';
+        setTimeout(() => { btnText.innerText = '複製代碼'; }, 2000);
+      });
+    };
+  </script>
+</body>
+</html>
