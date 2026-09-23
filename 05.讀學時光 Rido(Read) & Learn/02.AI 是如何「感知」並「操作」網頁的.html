@@ -1,0 +1,1556 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 網頁感知探索實驗室 | 3大核心模式與自動化模擬</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    pre code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #090d16;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #23314d;
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #3b4e75;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.15); opacity: 0.3; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .animate-pulse-ring {
+      animation: pulse-ring 2s infinite ease-in-out;
+    }
+    .virtual-cursor {
+      transition: left 0.65s cubic-bezier(0.22, 1, 0.36, 1), top 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    /* Shutter Flash Animation for Vision Capture */
+    @keyframes shutter-flash {
+      0% { opacity: 0; }
+      50% { opacity: 0.85; }
+      100% { opacity: 0; }
+    }
+    .animate-shutter {
+      animation: shutter-flash 0.4s ease-out;
+    }
+    /* DOM Tree Connector Lines */
+    .dom-node {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .dom-node.updated {
+      transform: scale(1.06);
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.6);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+
+  <!-- Toast Notification Box -->
+  <div id="toastBox" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 pointer-events-none transition-all duration-300 max-w-md bg-slate-900/95 border border-slate-700 text-slate-100 p-4 rounded-xl shadow-2xl backdrop-blur flex items-start space-x-3">
+    <div id="toastIcon" class="mt-0.5 text-indigo-400 flex-shrink-0">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    </div>
+    <div class="flex-1 text-sm font-medium leading-relaxed" id="toastMessage">系統訊息通知</div>
+  </div>
+
+  <!-- Navigation Header -->
+  <header class="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 via-cyan-400 to-sky-400 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+          <svg class="w-5 h-5 text-slate-950 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+        </div>
+        <div>
+          <span class="font-extrabold text-lg text-white tracking-tight">AI WebLens</span>
+          <span class="text-[11px] ml-2 px-2 py-0.5 bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 rounded-full font-mono">3-Tier Live Lab</span>
+        </div>
+      </div>
+      <nav class="hidden md:flex items-center space-x-6 text-sm font-medium text-slate-300">
+        <a href="#unified-simulator" class="hover:text-indigo-400 transition-colors">3大感知即時模擬</a>
+        <a href="#pipeline-diff" class="hover:text-indigo-400 transition-colors">清洗管線透視</a>
+        <a href="#architecture" class="hover:text-indigo-400 transition-colors">三大核心架構</a>
+        <a href="#calculator" class="hover:text-indigo-400 transition-colors">成本試算器</a>
+      </nav>
+      <button onclick="startAutoPlay()" class="px-4 py-2 bg-gradient-to-r from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white rounded-lg text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all flex items-center space-x-2">
+        <svg class="w-4 h-4 animate-spin-slow" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/></svg>
+        <span>一鍵自動模擬</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="relative overflow-hidden py-14 border-b border-slate-800/80 bg-gradient-to-b from-indigo-950/25 via-slate-950 to-slate-950">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 text-center">
+      <div class="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-cyan-300 text-xs font-mono mb-5 shadow-inner">
+        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+        <span>完整覆蓋：純文字與清理 HTML ｜ 渲染後的 DOM 樹 ｜ 多模態視覺截圖</span>
+      </div>
+      <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight mb-5">
+        AI 是如何「感知」並「操作」網頁的？
+      </h1>
+      <p class="text-sm sm:text-base text-slate-400 max-w-3xl mx-auto leading-relaxed mb-6">
+        AI 看網頁不是單一模式，而是根據任務深度在<strong>成本</strong>、<strong>動態互動</strong>與<strong>無視防爬</strong>之間取捨。下方模擬器可手動體驗或啟動<strong>「一鍵自動模擬」</strong>，即時洞悉三大模式的資料 Payload 與 CDP 操作指令。
+      </p>
+
+      <!-- 3大模式一句話精準對照區 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto text-left mt-8">
+        <!-- Mode 1 Card -->
+        <div onclick="setPerceptionMode('text')" class="p-5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-emerald-500/60 hover:bg-slate-900 transition cursor-pointer group shadow-lg">
+          <div class="flex items-center justify-between mb-2.5">
+            <span class="text-xs font-bold font-mono text-emerald-400">1. 純文字與清理後的 HTML</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-800/40">最常見 ‧ 成本最低</span>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed group-hover:text-white transition-colors">
+            透過演算法剔除 script、style 與廣告追蹤代碼，只萃取乾淨的語意 HTML 或 Markdown，Token 暴跌 90%，是搜尋摘要與 RAG 的首選。
+          </p>
+        </div>
+
+        <!-- Mode 2 Card -->
+        <div onclick="setPerceptionMode('dom')" class="p-5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-cyan-500/60 hover:bg-slate-900 transition cursor-pointer group shadow-lg">
+          <div class="flex items-center justify-between mb-2.5">
+            <span class="text-xs font-bold font-mono text-cyan-400">2. 渲染後的 DOM 樹</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-950/60 text-cyan-300 border border-cyan-800/40">處理動態網頁 / SPA</span>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed group-hover:text-white transition-colors">
+            HTML 是靜態字串，DOM 才是執行 JS 後的活體物件。無頭瀏覽器執行 SPA 後提取動態 DOM 與 a11y 樹，才能取得點擊後狀態與動態按鈕。
+          </p>
+        </div>
+
+        <!-- Mode 3 Card -->
+        <div onclick="setPerceptionMode('vision')" class="p-5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-amber-500/60 hover:bg-slate-900 transition cursor-pointer group shadow-lg">
+          <div class="flex items-center justify-between mb-2.5">
+            <span class="text-xs font-bold font-mono text-amber-400">3. 多模態視覺截圖</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-800/40">Vision-based 視覺</span>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed group-hover:text-white transition-colors">
+            直接對視窗截圖並標註元素邊框與座標（Set-of-Marks），讓模型用人類肉眼直覺理解排版，無視前端程式碼混淆、Shadow DOM 與防爬蟲。
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN UNIFIED 3-MODE INTERACTIVE SIMULATOR -->
+  <main class="flex-grow">
+    <section id="unified-simulator" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      
+      <!-- Studio Control Bar -->
+      <div class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl mb-6 shadow-2xl backdrop-blur flex flex-col lg:flex-row items-center justify-between gap-4">
+        
+        <!-- Mode Tabs (3 Modes) -->
+        <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+          <button onclick="setPerceptionMode('text')" id="tab-mode-text" class="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center space-x-2 bg-emerald-600/20 border-emerald-500 text-emerald-300 shadow-sm">
+            <span>📝 1. 純文字與清理後 HTML</span>
+          </button>
+          <button onclick="setPerceptionMode('dom')" id="tab-mode-dom" class="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center space-x-2 bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700">
+            <span>🌳 2. 渲染後的 DOM 樹 (SPA/Agent)</span>
+          </button>
+          <button onclick="setPerceptionMode('vision')" id="tab-mode-vision" class="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center space-x-2 bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700">
+            <span>👁️ 3. 多模態視覺截圖 (Vision-based)</span>
+          </button>
+        </div>
+
+        <!-- Automation Controller Buttons -->
+        <div class="flex items-center space-x-2.5 w-full lg:w-auto justify-end border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-800">
+          <button id="btnAutoPlay" onclick="toggleAutoPlay()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition flex items-center space-x-2 shadow-md shadow-indigo-600/30">
+            <svg id="iconAutoPlay" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M4.5 3.5v13l11-6.5-11-6.5z"/></svg>
+            <span id="labelAutoPlay">一鍵自動模擬 (4步驟)</span>
+          </button>
+          <button onclick="resetSimulation()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition border border-slate-700">
+            重設
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Auto Step Progress Indicator -->
+      <div class="mb-6 bg-slate-900/60 border border-slate-800/90 rounded-xl p-3 flex flex-wrap items-center justify-between text-xs font-mono gap-3">
+        <div class="flex items-center space-x-2">
+          <span class="text-slate-400">當前自動執行步驟：</span>
+          <span id="autoStepIndicator" class="text-cyan-400 font-bold">待命 (可點選元件或啟動一鍵模擬)</span>
+        </div>
+        <div class="flex items-center space-x-1 sm:space-x-2">
+          <span id="step-dot-1" class="px-2 py-0.5 rounded bg-slate-800 text-slate-500">1. 瀏覽頁面</span>
+          <span class="text-slate-600">&rarr;</span>
+          <span id="step-dot-2" class="px-2 py-0.5 rounded bg-slate-800 text-slate-500">2. 選極光銀</span>
+          <span class="text-slate-600">&rarr;</span>
+          <span id="step-dot-3" class="px-2 py-0.5 rounded bg-slate-800 text-slate-500">3. 折扣代碼</span>
+          <span class="text-slate-600">&rarr;</span>
+          <span id="step-dot-4" class="px-2 py-0.5 rounded bg-slate-800 text-slate-500">4. 結帳購買</span>
+        </div>
+      </div>
+
+      <!-- Simulator Split Screen -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        
+        <!-- Left: Virtual Browser Store (Interactive Canvas) -->
+        <div class="lg:col-span-6 bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-2xl flex flex-col justify-between relative overflow-hidden">
+          
+          <!-- Virtual Browser Topbar -->
+          <div>
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+              <div class="flex items-center space-x-2">
+                <span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span>
+                <span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span>
+                <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+                <span class="text-xs font-mono text-slate-400 ml-2">https://store.soundtech.ai/pro-headphones</span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <span id="browserModeBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 border border-emerald-800 text-emerald-400">
+                  純文字提取中
+                </span>
+              </div>
+            </div>
+
+            <!-- Web Container with Dynamic Overlays -->
+            <div id="mockBrowserContainer" class="relative bg-white text-slate-900 rounded-xl p-5 border border-slate-200 shadow-inner overflow-hidden select-none">
+              
+              <!-- Shutter Flash Overlay for Multimodal Capture -->
+              <div id="cameraFlashOverlay" class="absolute inset-0 bg-white pointer-events-none z-50 opacity-0"></div>
+
+              <!-- Virtual Cursor (moves smoothly during auto-simulation) -->
+              <div id="virtualCursor" class="virtual-cursor absolute top-4 left-4 z-40 pointer-events-none transition-all duration-500 transform -translate-x-1 -translate-y-1 opacity-0">
+                <svg class="w-7 h-7 text-indigo-600 drop-shadow-[0_4px_6px_rgba(0,0,0,0.3)]" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M3 3l7 18 3-7 7-3L3 3z"/>
+                </svg>
+                <div class="absolute left-4 top-4 bg-indigo-600 text-white text-[9px] font-mono px-1.5 py-0.5 rounded shadow whitespace-nowrap">Agent Cursor</div>
+              </div>
+
+              <!-- OVERLAY: Vision Mode Set-of-Marks (Boxes & Tags) -->
+              <div id="visionOverlay" class="absolute inset-0 pointer-events-none z-30 hidden">
+                <div class="absolute top-4 left-4 border-2 border-red-500 bg-red-500/10 px-1 py-0.5 text-[10px] font-bold text-red-700 rounded shadow-sm">[1] Logo</div>
+                <div class="absolute top-4 right-4 border-2 border-red-500 bg-red-500/10 px-1 py-0.5 text-[10px] font-bold text-red-700 rounded shadow-sm">[2] 購物車按鈕</div>
+                <div class="absolute top-20 left-5 border-2 border-blue-500 bg-blue-500/10 px-1 py-0.5 text-[10px] font-bold text-blue-700 rounded shadow-sm">[3] 標題區塊</div>
+                <div class="absolute top-44 left-5 border-2 border-purple-500 bg-purple-500/10 px-1 py-0.5 text-[10px] font-bold text-purple-700 rounded shadow-sm">[4] 規格選區 (x:80, y:210)</div>
+                <div class="absolute top-60 left-5 border-2 border-amber-500 bg-amber-500/10 px-1 py-0.5 text-[10px] font-bold text-amber-700 rounded shadow-sm">[5] 折扣輸入欄</div>
+                <div class="absolute bottom-5 right-5 border-2 border-emerald-600 bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 rounded shadow-sm">[6] 結帳按鈕 (x:380, y:420)</div>
+                <!-- Dynamic crosshair for clicks -->
+                <div id="visionCrosshair" class="absolute w-6 h-6 border-2 border-rose-600 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none hidden animate-ping"></div>
+              </div>
+
+              <!-- OVERLAY: a11y Mode ARIA Node badges -->
+              <div id="a11yOverlay" class="absolute inset-0 pointer-events-none z-20 hidden">
+                <div class="absolute top-3 right-3 text-[9px] font-mono bg-cyan-900/90 text-cyan-200 px-1.5 py-0.5 rounded border border-cyan-400 shadow">role: button [name="購物車"]</div>
+                <div class="absolute top-44 left-3 text-[9px] font-mono bg-cyan-900/90 text-cyan-200 px-1.5 py-0.5 rounded border border-cyan-400 shadow">role: radiogroup [aria-label="規格"]</div>
+                <div class="absolute bottom-3 right-3 text-[9px] font-mono bg-cyan-900/90 text-cyan-200 px-1.5 py-0.5 rounded border border-cyan-400 shadow">role: button [name="立即結帳"]</div>
+              </div>
+
+              <!-- Content of Mock Store -->
+              <!-- Store Header -->
+              <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+                <div class="font-extrabold text-indigo-950 tracking-tight text-base flex items-center space-x-1.5">
+                  <span class="text-xl">🎧</span>
+                  <span>SoundTech Pro 旗艦館</span>
+                </div>
+                <button id="mockCartBtn" onclick="userClickAction('cart_icon')" class="relative px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-semibold flex items-center space-x-1 transition">
+                  <span>🛒 購物車</span>
+                  <span id="mockCartCount" class="bg-indigo-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono">1</span>
+                </button>
+              </div>
+
+              <!-- Product Overview -->
+              <div class="mt-4">
+                <div class="flex items-center space-x-2 text-[11px] text-indigo-600 font-semibold mb-1">
+                  <span class="px-2 py-0.5 bg-indigo-100 rounded">2026 新品</span>
+                  <span>神經降噪晶片 5.0</span>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 leading-tight">AuraZero 沉浸式降噪無線耳機</h3>
+                <p class="text-xs text-slate-500 mt-1">智慧音場主動消噪，續航力長達 45 小時，支援高解析無損傳輸。</p>
+                <div class="mt-2.5 flex items-baseline space-x-2">
+                  <span class="text-2xl font-black text-indigo-950 font-mono" id="storePriceDisplay">NT$ 7,990</span>
+                  <span class="text-xs text-slate-400 line-through">NT$ 9,500</span>
+                  <span id="storeDiscountTag" class="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded font-bold hidden">已扣減 $500</span>
+                </div>
+              </div>
+
+              <!-- Color Selection Interactive -->
+              <div class="mt-4 pt-3 border-t border-slate-100">
+                <label class="text-xs font-bold text-slate-700 block mb-2">規格顏色選擇：</label>
+                <div class="grid grid-cols-2 gap-2" id="specButtonGroup">
+                  <button id="btnColorBlack" onclick="userClickAction('select_black')" class="px-3 py-2 rounded-lg text-xs font-medium border border-indigo-600 bg-indigo-50 text-indigo-950 flex items-center justify-between transition">
+                    <span>太空黑 (已選)</span>
+                    <span class="text-[10px] bg-indigo-200 text-indigo-900 px-1.5 py-0.5 rounded">現貨充足</span>
+                  </button>
+                  <button id="btnColorSilver" onclick="userClickAction('select_silver')" class="px-3 py-2 rounded-lg text-xs font-medium border border-slate-200 bg-white text-slate-700 hover:border-indigo-300 flex items-center justify-between transition">
+                    <span>極光銀</span>
+                    <span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">庫存 3</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Promo Code Input Interactive -->
+              <div class="mt-4 pt-3 border-t border-slate-100">
+                <label class="text-xs font-bold text-slate-700 block mb-2">促銷折價代碼：</label>
+                <div class="flex space-x-2">
+                  <input type="text" id="storeCouponInput" value="AI2026_OFF500" class="flex-1 px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-600 font-mono text-slate-800">
+                  <button id="btnApplyCoupon" onclick="userClickAction('apply_coupon')" class="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition">
+                    套用折扣
+                  </button>
+                </div>
+              </div>
+
+              <!-- Checkout & Cart Actions -->
+              <div class="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <button id="btnAddCart" onclick="userClickAction('add_cart')" class="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-200 transition">
+                  ➕ 加入購物車
+                </button>
+                <button id="btnCheckout" onclick="userClickAction('checkout')" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-md shadow-emerald-600/30 transition">
+                  ⚡ 立即下單結帳
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          <div class="mt-4 p-3 bg-slate-950/70 border border-slate-800 rounded-xl text-xs text-slate-400 flex items-center justify-between">
+            <span>💡 提示：可手動點擊上方顏色、折價代碼或結帳按鈕，觀察右側 AI 感知即時變化。</span>
+          </div>
+        </div>
+
+        <!-- Right: AI Perception Output & Agent Action -->
+        <div class="lg:col-span-6 bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-2xl flex flex-col justify-between">
+          <div>
+            <!-- Perception View Header & Live Metrics -->
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3 mb-3">
+              <div class="flex items-center space-x-2">
+                <span id="aiActiveModeBadge" class="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  語意純文字 (Markdown)
+                </span>
+                <span class="text-xs text-slate-400 font-mono" id="aiStreamMime">text/markdown</span>
+              </div>
+              <div class="flex items-center space-x-3 text-xs font-mono">
+                <div>
+                  <span class="text-slate-500">Tokens:</span>
+                  <span id="metricTokenUsage" class="font-bold text-amber-400 ml-1">~185</span>
+                </div>
+                <div>
+                  <span class="text-slate-500">延遲:</span>
+                  <span id="metricLatencyUsage" class="font-bold text-cyan-400 ml-1">18ms</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Subview Switcher: What AI Sees vs What AI Generates -->
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <div class="flex space-x-2">
+                <button type="button" onclick="setAiSubView('input')" id="subtab-input" class="px-3 py-1 rounded-lg text-xs font-mono font-semibold bg-indigo-600/30 text-indigo-300 border border-indigo-500/40">
+                  1. AI 實際收到的網頁資訊 (Perception Input)
+                </button>
+                <button type="button" onclick="setAiSubView('action')" id="subtab-action" class="px-3 py-1 rounded-lg text-xs font-mono font-semibold bg-slate-950 text-slate-400 border border-slate-800 hover:border-slate-700">
+                  2. AI 思考鏈與 CDP 指令 (Agent CoT & Action)
+                </button>
+              </div>
+              <div id="spaDiffToggleContainer" class="hidden">
+                <button type="button" onclick="toggleSpaCompare()" id="btnSpaCompare" class="px-2.5 py-1 text-[11px] font-mono rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition flex items-center space-x-1">
+                  <span>⚡ 對照：SPA 原始 HTML 空殼</span>
+                </button>
+              </div>
+              <div id="visionSnapshotBtnContainer" class="hidden">
+                <button type="button" onclick="triggerManualSnapshot()" class="px-2.5 py-1 text-[11px] font-mono rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition flex items-center space-x-1">
+                  <span>📸 重新拍攝當前畫面 (Screenshot)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- AI Output Window (Code, DOM Tree SVG, or Vision Tokenizer) -->
+            <div class="relative">
+              <div class="h-[360px] bg-slate-950 rounded-xl p-4 border border-slate-800 overflow-y-auto custom-scrollbar font-mono text-xs leading-relaxed" id="aiConsoleViewer">
+                <!-- Dynamically injected via JS based on mode and current state -->
+              </div>
+              <button onclick="copyCurrentAiOutput()" class="absolute top-3 right-3 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] rounded border border-slate-700 transition flex items-center space-x-1 shadow z-20">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                <span>複製代碼</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Dynamic Mode Architectural Explainer Card -->
+          <div id="modeInsightCard" class="mt-4 p-3.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs leading-relaxed text-slate-300">
+            <!-- Dynamic architectural analysis based on mode -->
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Pipeline Cleaning & Token Optimization Section -->
+    <section id="pipeline-diff" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-slate-800/80 bg-slate-950">
+      <div class="text-center max-w-3xl mx-auto mb-10">
+        <span class="text-xs font-mono text-emerald-400 uppercase tracking-wider bg-emerald-950/60 px-3 py-1 rounded-full border border-emerald-800/40">資料清洗管線透視</span>
+        <h2 class="text-2xl sm:text-4xl font-bold tracking-tight text-white mt-3 mb-3">
+          從 100,000 字元到 500 字元：清洗管線究竟刪除了什麼？
+        </h2>
+        <p class="text-xs sm:text-sm text-slate-400">
+          許多人以為餵入網頁給 AI 是「把整個原始碼丟進去」，點擊下方階段觀察清洗演算法（Readability / Trafilatura）如何剔除無用雜訊。
+        </p>
+      </div>
+
+      <!-- Pipeline Step Buttons -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6 max-w-4xl mx-auto">
+        <button onclick="switchPipelineStep(1)" id="pipe-tab-1" class="p-3.5 rounded-xl border border-indigo-500 bg-indigo-950/40 text-left transition">
+          <div class="text-xs font-bold text-indigo-400">步驟 1: 原始 HTTP Response</div>
+          <div class="text-[11px] text-slate-400 mt-1">包含 CSS、JS、廣告追蹤代碼 (100% 體積)</div>
+        </button>
+        <button onclick="switchPipelineStep(2)" id="pipe-tab-2" class="p-3.5 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition hover:border-slate-700">
+          <div class="text-xs font-bold text-slate-300">步驟 2: 標籤剔除 (DOM Sanitization)</div>
+          <div class="text-[11px] text-slate-400 mt-1">移除 script、style、svg、iframe (節省 78%)</div>
+        </button>
+        <button onclick="switchPipelineStep(3)" id="pipe-tab-3" class="p-3.5 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition hover:border-slate-700">
+          <div class="text-xs font-bold text-slate-300">步驟 3: 語意結構化 (Markdown 轉化)</div>
+          <div class="text-[11px] text-slate-400 mt-1">僅留標題與本文，Token 暴跌 93%</div>
+        </button>
+      </div>
+
+      <!-- Pipeline Content Display Box -->
+      <div class="max-w-4xl mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-3 text-xs font-mono">
+          <div class="flex items-center space-x-2">
+            <span class="text-slate-400">當前階段內容檢視:</span>
+            <span id="pipelineStepTitle" class="text-indigo-400 font-bold">1. 完整原始 HTTP Response (未經處理)</span>
+          </div>
+          <div class="flex items-center space-x-4">
+            <div>
+              <span class="text-slate-500">預估 Tokens: </span>
+              <span id="pipelineTokensBadge" class="text-rose-400 font-bold">~14,200</span>
+            </div>
+            <div>
+              <span class="text-slate-500">雜訊比例: </span>
+              <span id="pipelineNoiseBadge" class="text-rose-400 font-bold">89.4%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="relative">
+          <pre id="pipelineContentArea" class="h-[260px] bg-slate-950 p-4 rounded-xl font-mono text-xs text-slate-300 overflow-y-auto custom-scrollbar leading-relaxed"></pre>
+        </div>
+
+        <div id="pipelineInsightBox" class="mt-4 p-3.5 bg-slate-950/70 border border-slate-800/90 rounded-xl text-xs text-slate-300 leading-relaxed">
+          <!-- Dynamic insights -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Four Core Architectures Deep Dive -->
+    <section id="architecture" class="border-t border-slate-800/80 bg-slate-950 py-16">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center max-w-3xl mx-auto mb-12">
+          <span class="text-xs font-mono text-indigo-400 uppercase tracking-wider bg-indigo-950/60 px-3 py-1 rounded-full border border-indigo-800/40">體系化解析</span>
+          <h2 class="text-2xl sm:text-4xl font-bold tracking-tight text-white mt-3 mb-4">
+            AI 解析網頁的 4 大演進階段
+          </h2>
+          <p class="text-sm sm:text-base text-slate-400">
+            不同解析模式決定了系統速度、Token 成本與操作精準度。
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <!-- Card 1 -->
+    <!-- Three Core Architectures Deep Dive -->
+    <section id="architecture" class="border-t border-slate-800/80 bg-slate-950 py-16">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center max-w-3xl mx-auto mb-12">
+          <span class="text-xs font-mono text-indigo-400 uppercase tracking-wider bg-indigo-950/60 px-3 py-1 rounded-full border border-indigo-800/40">體系化解析</span>
+          <h2 class="text-2xl sm:text-4xl font-bold tracking-tight text-white mt-3 mb-4">
+            HTML 與 DOM 到底差在哪？3 大核心感知範式
+          </h2>
+          <p class="text-sm sm:text-base text-slate-400">
+            理解「靜態原始碼 HTML」與「運行時記憶體 DOM」的本質差異，是打造自主瀏覽 Agent 的核心基本功。
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <!-- Pillar 1 -->
+          <div class="bg-slate-900/60 border border-slate-800 hover:border-emerald-500/40 transition rounded-2xl p-6 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-4">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-mono font-bold text-sm">
+                  01
+                </div>
+                <span class="text-xs font-mono text-emerald-400/90 bg-emerald-950/30 px-2.5 py-0.5 rounded border border-emerald-800/30">靜態文本 ‧ 成本最低</span>
+              </div>
+              <h3 class="text-lg font-bold text-white mb-2">純文字與清理後的 HTML</h3>
+              <p class="text-xs sm:text-sm text-slate-400 leading-relaxed mb-4">
+                <strong>本質是「伺服器回傳的靜態文字字串」</strong>。不啟動瀏覽器引擎，直接由 Python/Go 發出 HTTP 請求後剔除 JS/CSS。
+              </p>
+              <div class="space-y-2 text-xs text-slate-300 bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+                <div class="flex items-start space-x-2 text-emerald-400">
+                  <span>✓</span><span>極度輕量，單頁 Token 消耗僅數百，延遲小於 30ms</span>
+                </div>
+                <div class="flex items-start space-x-2 text-rose-400">
+                  <span>✕</span><span><strong>致命缺點：</strong>若網頁是 React/Vue 單頁應用（SPA），抓回來的 HTML 只有一個空殼 <code>&lt;div id="root"&gt;&lt;/div&gt;</code>，內容全是空白！</span>
+                </div>
+              </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-500 font-mono">典型代表：Jina Reader, Perplexity 聯網檢索</div>
+          </div>
+
+          <!-- Pillar 2 -->
+          <div class="bg-slate-900/60 border border-slate-800 hover:border-cyan-500/40 transition rounded-2xl p-6 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-4">
+                <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center font-mono font-bold text-sm">
+                  02
+                </div>
+                <span class="text-xs font-mono text-cyan-400/90 bg-cyan-950/30 px-2.5 py-0.5 rounded border border-cyan-800/30">動態執行 ‧ 互動核心</span>
+              </div>
+              <h3 class="text-lg font-bold text-white mb-2">渲染後的 DOM 樹 (Rendered DOM)</h3>
+              <p class="text-xs sm:text-sm text-slate-400 leading-relaxed mb-4">
+                <strong>本質是「瀏覽器記憶體裡的動態物件樹」</strong>。必須啟動無頭瀏覽器（Chromium）跑完前端 JS、打完 API 之後，從記憶體抓出的即時狀態。
+              </p>
+              <div class="space-y-2 text-xs text-slate-300 bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+                <div class="flex items-start space-x-2 text-cyan-400">
+                  <span>✓</span><span><strong>解決 SPA 盲區：</strong>即使是客戶端動態渲染，也能拿到執行後真實的商品、價格與購物車按鈕</span>
+                </div>
+                <div class="flex items-start space-x-2 text-cyan-400">
+                  <span>✓</span><span>能即時掌握動態狀態（例如 input 內使用者輸入的文字、選單是否展開）</span>
+                </div>
+              </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-500 font-mono">典型代表：Browser-Use, Playwright Agent, MultiOn</div>
+          </div>
+
+          <!-- Pillar 3 -->
+          <div class="bg-slate-900/60 border border-slate-800 hover:border-amber-500/40 transition rounded-2xl p-6 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-4">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center font-mono font-bold text-sm">
+                  03
+                </div>
+                <span class="text-xs font-mono text-amber-400/90 bg-amber-950/30 px-2.5 py-0.5 rounded border border-amber-800/30">多模態 ‧ 視覺直覺</span>
+              </div>
+              <h3 class="text-lg font-bold text-white mb-2">多模態視覺截圖 (Vision-based)</h3>
+              <p class="text-xs sm:text-sm text-slate-400 leading-relaxed mb-4">
+                以無頭瀏覽器將畫面完整渲染為視窗截圖，並在互動元件上自動疊加數字標籤（Set-of-Marks）或像素座標，送交多模態模型（VLM）以肉眼方式閱讀。
+              </p>
+              <div class="space-y-2 text-xs text-slate-300 bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+                <div class="flex items-start space-x-2 text-amber-400">
+                  <span>✓</span><span>完全無視 Shadow DOM、Canvas 畫布渲染與前端反爬蟲混淆代碼</span>
+                </div>
+                <div class="flex items-start space-x-2 text-amber-400">
+                  <span>✓</span><span>精準理解相對視覺排版、圖表趨勢、驗證碼與遮罩彈窗</span>
+                </div>
+                <div class="flex items-start space-x-2 text-slate-400">
+                  <span>⚠</span><span>圖像 Token 計費較高，且受視窗滾動範圍限制（無法單次看整頁）</span>
+                </div>
+              </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-500 font-mono">典型代表：Claude 3.7 Computer Use, GPT-4o Vision</div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Cost & Latency Interactive Calculator -->
+    <section id="calculator" class="py-16 border-t border-slate-800/80 bg-slate-900/30">
+      <div class="max-w-5xl mx-auto px-4 sm:px-6">
+        <div class="text-center max-w-2xl mx-auto mb-10">
+          <span class="text-xs font-mono text-cyan-400 uppercase tracking-wider bg-cyan-950/60 px-3 py-1 rounded-full border border-cyan-800/40">工程估算器</span>
+          <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-white mt-3 mb-2">
+            不同讀取方式的 Token 與成本試算
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-400">
+            調整每日請求次數與網頁複雜度，量化不同網頁讀取策略在商業應用中的巨大落差。
+          </p>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            
+            <!-- Controls -->
+            <div class="space-y-6">
+              <div>
+                <div class="flex justify-between items-center text-xs font-semibold mb-2">
+                  <span class="text-slate-300">網頁結構複雜度</span>
+                  <span id="pageComplexityLabel" class="text-indigo-400 font-mono">一般企業官網 (~8,000 DOM 節點)</span>
+                </div>
+                <input type="range" id="complexitySlider" min="1" max="3" value="2" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                <div class="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
+                  <span>輕量部落格</span>
+                  <span>中型商城</span>
+                  <span>大型 SPA / 後台</span>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between items-center text-xs font-semibold mb-2">
+                  <span class="text-slate-300">每日網頁造訪請求次數</span>
+                  <span id="requestsLabel" class="text-indigo-400 font-mono">10,000 次 / 天</span>
+                </div>
+                <input type="range" id="requestsSlider" min="1000" max="50000" step="1000" value="10000" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                <div class="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
+                  <span>1,000</span>
+                  <span>25,000</span>
+                  <span>50,000+</span>
+                </div>
+              </div>
+
+              <div class="p-4 bg-slate-950 rounded-xl border border-slate-800/80 text-xs text-slate-400 leading-relaxed">
+                💡 <strong class="text-slate-200">架構師心法：</strong> 如果只是做檢索摘要（RAG），將 HTML 轉換為 Markdown 再餵入 LLM，每月可省下數千美元帳單！
+              </div>
+            </div>
+
+            <!-- Results Cards -->
+            <div class="space-y-3">
+              <div class="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/40 flex items-center justify-between ring-1 ring-emerald-500/20">
+                <div>
+                  <div class="text-xs font-bold text-emerald-400">1. 純文字與清理後 HTML</div>
+                  <div class="text-[11px] text-slate-400 mt-0.5">單頁平均 ~350 Tokens (成本最低)</div>
+                </div>
+                <div class="text-right">
+                  <div id="markdownDailyCost" class="text-base font-bold text-emerald-400 font-mono">$1.05 / 天</div>
+                  <div class="text-[10px] text-emerald-500/90 font-mono">極致節省 93%</div>
+                </div>
+              </div>
+
+              <div class="p-4 rounded-xl bg-cyan-950/30 border border-cyan-500/40 flex items-center justify-between ring-1 ring-cyan-500/20">
+                <div>
+                  <div class="text-xs font-bold text-cyan-400">2. 渲染後的 DOM 樹 (SPA/Agent)</div>
+                  <div class="text-[11px] text-slate-400 mt-0.5">單頁平均 ~1,600 Tokens (含動態狀態)</div>
+                </div>
+                <div class="text-right">
+                  <div id="a11yDailyCost" class="text-base font-bold text-cyan-300 font-mono">$4.80 / 天</div>
+                  <div class="text-[10px] text-slate-400">操作成功率最穩健</div>
+                </div>
+              </div>
+
+              <div class="p-4 rounded-xl bg-amber-950/30 border border-amber-500/40 flex items-center justify-between ring-1 ring-amber-500/20">
+                <div>
+                  <div class="text-xs font-bold text-amber-400">3. 多模態視覺截圖 (Vision-based)</div>
+                  <div class="text-[11px] text-slate-400 mt-0.5">高解析度圖像 Token 計費</div>
+                </div>
+                <div class="text-right">
+                  <div id="visionDailyCost" class="text-base font-bold text-amber-300 font-mono">$18.50 / 天</div>
+                  <div class="text-[10px] text-slate-400">無視前端反爬與複雜排版</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 bg-slate-950 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-500 space-y-2 font-mono">
+      <div>AI WebLens 探索教學平台 &copy; 2026. Designed for Modern AI Engineering Education.</div>
+      <div>關鍵總結：文字看清洗、操作看 a11y、抗爬與排版看 Vision 視覺。</div>
+    </div>
+  </footer>
+
+  <script>
+    // System State
+    const state = {
+      mode: 'text', // 'text' | 'dom' | 'vision'
+      subView: 'input', // 'input' | 'action'
+      showSpaHtmlGhost: false, // Compares raw HTML empty shell vs Rendered DOM
+      color: '太空黑',
+      price: 7990,
+      couponApplied: false,
+      cartCount: 1,
+      lastAction: 'INITIAL_LOAD',
+      isAutoPlaying: false,
+      autoPlayTimer: null,
+      currentAutoStep: 0,
+      snapshotTimestamp: '23:38:05'
+    };
+
+    // Mode Configuration Specs for the 3 Categories
+    const modeConfig = {
+      text: {
+        name: "1. 純文字與清理後的 HTML",
+        badgeClass: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+        mime: "text/markdown & sanitized-html",
+        baseTokens: 210,
+        latency: "16ms",
+        overlayId: null,
+        browserBadge: "純文字與語意清洗 (靜態文字)",
+        browserBadgeClass: "bg-emerald-950 border-emerald-800 text-emerald-400",
+        insight: "📝 <strong>HTML 的本質：</strong> HTML 只是靜態檔案文字（String）。透過 Readability 剔除雜訊後轉為純文字或 Markdown，Token 最省，但<strong>無法執行 JS</strong>，遇純 SPA 時容易抓到空頁。"
+      },
+      dom: {
+        name: "2. 渲染後的 DOM 樹 (SPA/Agent)",
+        badgeClass: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
+        mime: "in-memory / dom-tree-object",
+        baseTokens: 1450,
+        latency: "68ms",
+        overlayId: "a11yOverlay",
+        browserBadge: "動態 DOM 樹狀結構 (記憶體物件)",
+        browserBadgeClass: "bg-cyan-950 border-cyan-800 text-cyan-400",
+        insight: "🌳 <strong>DOM 樹的本質：</strong> 瀏覽器將 HTML 解析成節點物件樹（Document &rarr; html &rarr; body &rarr; 元素/屬性/文字）。執行 JS 後，動態變更的顏色屬性、價格節點都會即時掛在記憶體樹上！"
+      },
+      vision: {
+        name: "3. 多模態視覺截圖 (Vision-based)",
+        badgeClass: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+        mime: "image/png -> ViT Patches (Tokens)",
+        baseTokens: 765,
+        latency: "320ms",
+        overlayId: "visionOverlay",
+        browserBadge: "多模態視覺截圖 (RGB 圖像切片)",
+        browserBadgeClass: "bg-amber-950 border-amber-800 text-amber-400",
+        insight: "👁️ <strong>視覺與 Token 轉換：</strong> 瀏覽器拍照（Screenshot）後，VLM 模型將整張圖裁切成固定大小的 Patches（如 512x512 Tiles），每個圖塊經過 Patch Embedding 轉換為固定數量的 Tokens，模型用肉眼看懂排版。"
+      }
+    };
+
+    // Trigger Shutter Flash Effect
+    function triggerCameraFlash() {
+      const flash = document.getElementById('cameraFlashOverlay');
+      if (!flash) return;
+      flash.classList.remove('animate-shutter');
+      void flash.offsetWidth; // force reflow
+      flash.classList.add('animate-shutter');
+      const now = new Date();
+      state.snapshotTimestamp = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+    }
+
+    function triggerManualSnapshot() {
+      triggerCameraFlash();
+      showToast("📸 無頭瀏覽器已完成視窗截圖，正在進行 ViT 圖塊切片與 Token 轉換！");
+      updateAiConsole();
+    }
+
+    // Toast notification utility
+    let toastTimeout = null;
+    function showToast(message) {
+      const box = document.getElementById('toastBox');
+      const text = document.getElementById('toastMessage');
+      if (!box || !text) return;
+      text.textContent = message;
+      box.classList.remove('opacity-0', 'translate-y-20', 'pointer-events-none');
+      box.classList.add('opacity-100', 'translate-y-0');
+      
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        box.classList.remove('opacity-100', 'translate-y-0');
+        box.classList.add('opacity-0', 'translate-y-20', 'pointer-events-none');
+      }, 2500);
+    }
+
+    // Switch between Sub-views: 1. Input vs 2. Action
+    function setAiSubView(view) {
+      state.subView = view;
+      const btnInput = document.getElementById('subtab-input');
+      const btnAction = document.getElementById('subtab-action');
+
+      if (view === 'input') {
+        btnInput.className = "px-3 py-1 rounded-lg text-xs font-mono font-semibold bg-indigo-600/30 text-indigo-300 border border-indigo-500/40";
+        btnAction.className = "px-3 py-1 rounded-lg text-xs font-mono font-semibold bg-slate-950 text-slate-400 border border-slate-800 hover:border-slate-700";
+        showToast("已切換為：1. AI 實際收到的網頁資訊 (Perception Input)");
+      } else {
+        btnAction.className = "px-3 py-1 rounded-lg text-xs font-mono font-semibold bg-indigo-600/30 text-indigo-300 border border-indigo-500/40";
+        btnInput.className = "px-3 py-1 rounded-lg text-xs font-mono font-semibold bg-slate-950 text-slate-400 border border-slate-800 hover:border-slate-700";
+        showToast("已切換為：2. AI 思考鏈與 CDP 指令 (Agent CoT & Action)");
+      }
+      updateAiConsole();
+    }
+
+    function toggleSpaCompare() {
+      state.showSpaHtmlGhost = !state.showSpaHtmlGhost;
+      const btn = document.getElementById('btnSpaCompare');
+      if (state.showSpaHtmlGhost) {
+        btn.className = "px-2.5 py-1 text-[11px] font-mono rounded-lg border border-rose-500 bg-rose-500/20 text-rose-300 transition flex items-center space-x-1";
+        btn.innerHTML = "<span>⚠️ 正在顯示：SPA 原始 HTML 空殼 (無動態內容)</span>";
+        showToast("已切換為：尚未執行 JS 的原始 HTML（空殼狀態）");
+      } else {
+        btn.className = "px-2.5 py-1 text-[11px] font-mono rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition flex items-center space-x-1";
+        btn.innerHTML = "<span>⚡ 對照：SPA 原始 HTML 空殼</span>";
+        showToast("已還原為：渲染後的 DOM 樹（完整動態節點）");
+      }
+      updateAiConsole();
+    }
+
+    // Render Real Graphical DOM Tree Diagram (like the user-provided W3C architecture diagram)
+    function generateDomTreeDiagram() {
+      const { color, price, couponApplied, cartCount, showSpaHtmlGhost } = state;
+
+      if (showSpaHtmlGhost) {
+        return `
+        <div class="p-3">
+          <div class="flex items-center justify-between mb-3 border-b border-rose-900/50 pb-2">
+            <span class="text-rose-400 font-bold flex items-center space-x-1.5">
+              <span>🚨 原始 HTML 空殼樹狀圖 (未執行 JavaScript 前)</span>
+            </span>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800">節點缺失警示</span>
+          </div>
+          <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+            現代前端（React / Vue）在伺服器端回傳的 HTML 樹只有一個空節點 <code>&lt;div id="root"&gt;</code>，商品、顏色按鈕、價格文字在記憶體 DOM 樹中<strong>完全不存在</strong>！
+          </p>
+          <div class="flex flex-col items-center space-y-3 font-mono text-xs">
+            <div class="px-4 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-200">Document</div>
+            <div class="w-0.5 h-4 bg-slate-700"></div>
+            <div class="px-4 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-200">Element: &lt;html&gt;</div>
+            <div class="w-0.5 h-4 bg-slate-700"></div>
+            <div class="px-4 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-200">Element: &lt;body&gt;</div>
+            <div class="w-0.5 h-4 bg-slate-700"></div>
+            <div class="px-4 py-2 rounded-lg bg-rose-950/60 border-2 border-dashed border-rose-500 text-rose-300 text-center animate-pulse">
+              <div class="font-bold">Element: &lt;div id="root"&gt;</div>
+              <div class="text-[10px] text-rose-400 mt-1">[空殼節點：尚無商品與價格子樹]</div>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      return `
+      <div class="space-y-4">
+        <div class="flex items-center justify-between border-b border-cyan-900/40 pb-2.5">
+          <div class="flex items-center space-x-2">
+            <span class="text-cyan-400 font-bold text-xs">🌳 記憶體即時活體 DOM 樹狀結構 (DOM Tree)</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-950 border border-cyan-800 text-cyan-300">Live In-Memory</span>
+          </div>
+          <span class="text-[11px] text-slate-400">點擊左側規格，此樹狀節點即時連動</span>
+        </div>
+
+        <!-- Hierarchical Tree Diagram (Referencing W3C DOM Spec) -->
+        <div class="overflow-x-auto custom-scrollbar pb-2">
+          <div class="min-w-[480px] flex flex-col items-center space-y-2 text-[11px] font-mono select-none">
+            
+            <!-- Document Root -->
+            <div class="dom-node px-3 py-1 bg-slate-800 border border-slate-600 text-slate-200 rounded-md shadow">
+              Document
+            </div>
+            <div class="w-0.5 h-3 bg-slate-700"></div>
+
+            <!-- Root Element: html -->
+            <div class="dom-node px-3 py-1 bg-slate-800/90 border border-slate-600 text-cyan-200 rounded-md">
+              Root Element: &lt;html&gt;
+            </div>
+            <div class="w-0.5 h-3 bg-slate-700"></div>
+
+            <!-- Branches: head & body -->
+            <div class="flex items-start justify-center space-x-12 relative">
+              <div class="flex flex-col items-center">
+                <div class="dom-node px-2.5 py-1 bg-slate-900 border border-slate-700 text-slate-400 rounded">
+                  Element: &lt;head&gt;
+                </div>
+                <div class="w-0.5 h-2.5 bg-slate-800"></div>
+                <div class="text-[10px] px-2 py-0.5 bg-slate-950 border border-slate-800 text-slate-500 rounded">
+                  &lt;title&gt; "SoundTech"
+                </div>
+              </div>
+
+              <!-- Main Body Tree -->
+              <div class="flex flex-col items-center">
+                <div class="dom-node px-3 py-1 bg-cyan-950/80 border border-cyan-600 text-cyan-300 rounded shadow">
+                  Element: &lt;body&gt;
+                </div>
+                <div class="w-0.5 h-3 bg-cyan-700"></div>
+
+                <!-- React #root Mount Node -->
+                <div class="dom-node px-3 py-1 bg-indigo-950 border border-indigo-500 text-indigo-200 rounded shadow">
+                  Element: &lt;div id="root"&gt;
+                </div>
+                <div class="w-0.5 h-3 bg-indigo-700"></div>
+
+                <!-- Level 3: Children of Store -->
+                <div class="grid grid-cols-3 gap-3">
+                  
+                  <!-- Node: Header / Cart -->
+                  <div class="flex flex-col items-center">
+                    <div class="dom-node px-2 py-1 bg-slate-900 border border-slate-700 text-slate-300 rounded text-center">
+                      &lt;header&gt;
+                    </div>
+                    <div class="w-0.5 h-2 bg-slate-700"></div>
+                    <div class="px-2 py-0.5 bg-slate-950 border border-slate-800 text-slate-300 rounded text-[10px] text-center">
+                      &lt;button aria-label="購物車"&gt;
+                      <div class="text-amber-400 font-bold">Text: "${cartCount}"</div>
+                    </div>
+                  </div>
+
+                  <!-- Node: Product Title & Price -->
+                  <div class="flex flex-col items-center">
+                    <div class="dom-node px-2 py-1 bg-slate-900 border border-slate-700 text-slate-300 rounded text-center">
+                      &lt;div class="product"&gt;
+                    </div>
+                    <div class="w-0.5 h-2 bg-slate-700"></div>
+                    <div class="px-2 py-0.5 bg-slate-950 border border-slate-800 text-slate-300 rounded text-[10px] text-center">
+                      &lt;h3&gt; "AuraZero"
+                      <div class="text-emerald-400 font-bold border-t border-slate-800 mt-1 pt-0.5">
+                        &lt;span class="price"&gt; NT$ ${price.toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Node: Spec Selection & State (Live reactive!) -->
+                  <div class="flex flex-col items-center">
+                    <div class="dom-node px-2 py-1 bg-cyan-950/90 border border-cyan-500 text-cyan-200 rounded text-center shadow">
+                      &lt;div role="radiogroup"&gt;
+                    </div>
+                    <div class="w-0.5 h-2 bg-cyan-700"></div>
+                    <div class="p-1.5 bg-slate-950 border border-cyan-800 rounded text-[10px] space-y-1">
+                      <div class="px-1.5 py-0.5 rounded ${color === '太空黑' ? 'bg-indigo-900 text-white font-bold border border-indigo-400' : 'text-slate-500'}">
+                        &lt;button aria-checked="${color === '太空黑'}"&gt; 太空黑
+                      </div>
+                      <div class="px-1.5 py-0.5 rounded ${color === '極光銀' ? 'bg-indigo-900 text-white font-bold border border-indigo-400' : 'text-slate-500'}">
+                        &lt;button aria-checked="${color === '極光銀'}"&gt; 極光銀
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                <!-- Input & Buttons Subtree -->
+                <div class="flex items-center space-x-3 mt-3 pt-2 border-t border-slate-800">
+                  <div class="px-2 py-0.5 bg-slate-900 border border-slate-700 rounded text-[10px] text-slate-300">
+                    &lt;input value="${couponApplied ? 'AI2026_OFF500' : ''}"&gt;
+                  </div>
+                  <div class="px-2 py-0.5 bg-emerald-950 border border-emerald-700 rounded text-[10px] text-emerald-300">
+                    &lt;button&gt; "⚡ 立即結帳"
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Node Attributes Inspector Footer -->
+        <div class="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 text-[11px] text-slate-300 flex items-center justify-between">
+          <div><span class="text-slate-500">當前焦點節點：</span> <code class="text-cyan-300">button[aria-checked="true"] &rarr; ${color}</code></div>
+          <div class="text-[10px] text-emerald-400 font-mono">狀態：Runtime In-Memory Synced ✓</div>
+        </div>
+      </div>`;
+    }
+
+    // Render Multimodal Vision: Screenshot Capture + ViT Patches Grid + Token Calculation Breakdown
+    function generateVisionTokenView() {
+      const { color, price, couponApplied, cartCount, snapshotTimestamp } = state;
+
+      return `
+      <div class="space-y-4">
+        <!-- Vision Header & Capture Meta -->
+        <div class="flex flex-wrap items-center justify-between border-b border-amber-900/40 pb-2.5 gap-2">
+          <div class="flex items-center space-x-2">
+            <span class="text-amber-400 font-bold text-xs flex items-center space-x-1.5">
+              <span>📸 無頭瀏覽器視窗截圖 (Viewport Screenshot)</span>
+            </span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800 font-mono">Captured @ ${snapshotTimestamp}</span>
+          </div>
+          <span class="text-[11px] text-slate-400 font-mono">1280 × 800 px (DPR: 2.0)</span>
+        </div>
+
+        <!-- Visual Screenshot Simulation + ViT Patches (Tiles) Grid Overlay -->
+        <div class="relative rounded-xl border-2 border-amber-500/50 bg-slate-900 p-2 overflow-hidden shadow-inner">
+          <div class="text-[10px] font-mono text-amber-400 mb-1.5 flex items-center justify-between">
+            <span>ViT (Vision Transformer) 512×512 圖塊分割網格 (Image Patches)</span>
+            <span class="text-slate-400">[Tile 1 ~ Tile 4]</span>
+          </div>
+          
+          <!-- Mock Viewport Capture Graphic with 4 Patches -->
+          <div class="grid grid-cols-2 gap-1.5 bg-slate-950 p-1.5 rounded-lg border border-slate-800 relative">
+            
+            <!-- Tile 1 -->
+            <div class="relative h-20 rounded border border-dashed border-amber-500/60 bg-amber-950/20 p-2 flex flex-col justify-between overflow-hidden">
+              <span class="absolute top-1 left-1 text-[9px] font-mono px-1 bg-amber-900/80 text-amber-200 rounded">Tile #1 (Top-Left)</span>
+              <div class="mt-4 text-[10px] text-slate-300">
+                <span class="font-bold text-indigo-300">🎧 SoundTech Pro</span>
+                <div class="text-[9px] text-slate-400">AuraZero 降噪無線耳機</div>
+              </div>
+              <div class="text-[9px] font-mono text-amber-400 self-end">170 Tokens</div>
+            </div>
+
+            <!-- Tile 2 -->
+            <div class="relative h-20 rounded border border-dashed border-amber-500/60 bg-amber-950/20 p-2 flex flex-col justify-between overflow-hidden">
+              <span class="absolute top-1 left-1 text-[9px] font-mono px-1 bg-amber-900/80 text-amber-200 rounded">Tile #2 (Top-Right)</span>
+              <div class="mt-4 text-[10px] text-slate-300 flex justify-end">
+                <span class="px-2 py-0.5 bg-indigo-900/80 text-indigo-200 rounded text-[9px]">🛒 購物車 (${cartCount})</span>
+              </div>
+              <div class="text-[9px] font-mono text-amber-400 self-end">170 Tokens</div>
+            </div>
+
+            <!-- Tile 3 -->
+            <div class="relative h-20 rounded border border-dashed border-amber-500/60 bg-amber-950/20 p-2 flex flex-col justify-between overflow-hidden">
+              <span class="absolute top-1 left-1 text-[9px] font-mono px-1 bg-amber-900/80 text-amber-200 rounded">Tile #3 (Bottom-Left)</span>
+              <div class="mt-3 text-[10px] space-y-0.5">
+                <div class="text-emerald-400 font-bold">NT$ ${price.toLocaleString()}</div>
+                <div class="text-[9px] text-slate-300">已選: <span class="text-cyan-300">${color}</span></div>
+              </div>
+              <div class="text-[9px] font-mono text-amber-400 self-end">170 Tokens</div>
+            </div>
+
+            <!-- Tile 4 -->
+            <div class="relative h-20 rounded border border-dashed border-amber-500/60 bg-amber-950/20 p-2 flex flex-col justify-between overflow-hidden">
+              <span class="absolute top-1 left-1 text-[9px] font-mono px-1 bg-amber-900/80 text-amber-200 rounded">Tile #4 (Bottom-Right)</span>
+              <div class="mt-3 flex flex-col items-end space-y-1">
+                <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">${couponApplied ? 'AI2026_OFF500' : '折扣券'}</span>
+                <span class="text-[9px] px-2 py-0.5 rounded bg-emerald-600 text-white font-bold">⚡ 立即結帳</span>
+              </div>
+              <div class="text-[9px] font-mono text-amber-400 self-end">170 Tokens</div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Vision Tokenization Math Calculation Formula -->
+        <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 font-mono text-xs space-y-2">
+          <div class="text-slate-300 font-bold flex items-center justify-between">
+            <span class="text-amber-400">🧮 視覺圖像如何轉換為 LLM Tokens？ (計算拆解)</span>
+            <span class="text-[10px] text-slate-400">OpenAI / Claude 標準演算法</span>
+          </div>
+
+          <div class="space-y-1 text-[11px] text-slate-300 border-t border-slate-800 pt-2 leading-relaxed">
+            <div class="flex justify-between">
+              <span class="text-slate-400">1. 視窗原始解析度：</span>
+              <span>1280 × 800 (等比縮放為 2×2 個 512×512 切片)</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">2. 基礎概觀 Tokens (Base Overview)：</span>
+              <span class="text-indigo-300">85 Tokens</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">3. 高解析圖塊 (4 Tiles × 170 Tokens)：</span>
+              <span class="text-indigo-300">680 Tokens</span>
+            </div>
+            <div class="flex justify-between border-t border-slate-800 pt-1 font-bold text-amber-400">
+              <span>🟰 本次截圖總消耗 (Total Vision Tokens)：</span>
+              <span>85 + 680 = 765 Tokens</span>
+            </div>
+          </div>
+          <div class="text-[10px] text-slate-400 pt-1">
+            💡 <strong>核心價值：</strong> 透過截圖，AI 無需知道 HTML 結構或 React 虛擬 DOM，即便程式碼混淆或防爬蟲阻擋，也能直接依據像素位置（Click x:425, y:340）完成點擊！
+          </div>
+        </div>
+      </div>`;
+    }
+
+    // Helper function to build dynamic AI View Output based on mode & current user interaction
+    function generateAiInputView() {
+      const { mode, color, price, couponApplied, cartCount, lastAction } = state;
+
+      if (mode === 'text') {
+        return `<pre><code>&lt;!-- [1. 純文字與清理後的 HTML / Markdown - 靜態字串 (String)] --&gt;
+&lt;!-- 特色：不執行客戶端 JavaScript，直接從 HTTP Response 透過正則或 BeautifulSoup 剔除標籤 --&gt;
+
+# SoundTech Pro 官方商城
+
+## AuraZero 沉浸式降噪無線耳機
+- **產品特點**：智慧音場主動消噪，續航力 45 小時，神經降噪晶片 5.0。
+- **當前定價**：NT$ ${price.toLocaleString()} ${couponApplied ? '(促銷券 AI2026_OFF500 已生效折抵 $500)' : ''}
+- **目前選取規格**：${color}
+- **庫存狀態**：現貨充足 (24H出貨)
+- **購物車件數**：${cartCount} 件
+
+### 頁面主要操作選項
+1. 顏色規格：[太空黑 (已選)] | [極光銀]
+2. 促銷代碼輸入框：[${couponApplied ? 'AI2026_OFF500' : '輸入折扣碼'}] &rarr; [套用折扣按鈕]
+3. 購物操作按鈕：[加入購物車] | [立即下單結帳]</code></pre>`;
+      }
+
+      if (mode === 'dom') {
+        // Mode 2: Real Graphic DOM Tree Diagram
+        return generateDomTreeDiagram();
+      }
+
+      if (mode === 'vision') {
+        // Mode 3: Screenshot + ViT Patches + Token Calculation
+        return generateVisionTokenView();
+      }
+    }
+
+    function generateAiActionView() {
+      const { mode, color, price, couponApplied, cartCount, lastAction } = state;
+
+      const cotMap = {
+        INITIAL_LOAD: "模型已解析頁面架構，完成初始狀態感知，待命執行任務。",
+        SELECT_COLOR: `決策變更顏色規格為「${color}」。渲染後的 DOM / 視覺標籤已鎖定該按鈕並觸發狀態變更。`,
+        APPLY_COUPON: `執行折扣碼提交。鎖定輸入框填入 'AI2026_OFF500' 並觸發套用，計算最新總價 NT$ ${price}。`,
+        ADD_CART: `將現有規格加入購物車。觸發客戶端狀態更新，購物車件數遞增為 ${cartCount}。`,
+        CHECKOUT: `發動終極下單。鎖定 Primary Checkout 按鈕，發送 CDP 導航指令至付款流程。`
+      };
+
+      const playwrightMap = {
+        INITIAL_LOAD: `// 等待 DOM 與前端 JavaScript 渲染完畢\nawait page.waitForLoadState('networkidle');`,
+        SELECT_COLOR: `// 動態 DOM 樹驅動\nawait page.getByRole('button', { name: '${color}' }).click();`,
+        APPLY_COUPON: `// 定位輸入框並套用優惠代碼\nawait page.locator('#storeCouponInput').fill('AI2026_OFF500');\nawait page.getByRole('button', { name: '套用折扣' }).click();`,
+        ADD_CART: `// 加入購物車\nawait page.getByRole('button', { name: '加入購物車' }).click();`,
+        CHECKOUT: `// 鎖定結帳按鈕並點擊跳轉\nawait Promise.all([\n  page.waitForNavigation(),\n  page.getByRole('button', { name: '立即下單結帳' }).click()\n]);`
+      };
+
+      return `<pre><code>// === 1. Chain-of-Thought (思考鏈推論) ===
+💭 ${cotMap[lastAction] || cotMap.INITIAL_LOAD}
+
+// === 2. 產生的自動化執行代碼 (Playwright / CDP) ===
+${playwrightMap[lastAction] || playwrightMap.INITIAL_LOAD}
+
+// === 3. 系統即時遙測 (Telemetry) ===
+{
+  "active_mode": "${mode}",
+  "mode_description": "${modeConfig[mode].name}",
+  "selected_color": "${color}",
+  "cart_quantity": ${cartCount},
+  "current_total": ${price},
+  "confidence_score": 0.988
+}</code></pre>`;
+    }
+
+    // Refresh the console display
+    function updateAiConsole() {
+      const container = document.getElementById('aiConsoleViewer');
+      const content = state.subView === 'input' ? generateAiInputView() : generateAiActionView();
+      container.innerHTML = content;
+
+      // Update badge & telemetry metrics
+      const cfg = modeConfig[state.mode];
+      const badge = document.getElementById('aiActiveModeBadge');
+      badge.textContent = cfg.name;
+      badge.className = `px-2.5 py-0.5 rounded-full text-xs font-mono font-bold border ${cfg.badgeClass}`;
+
+      document.getElementById('aiStreamMime').textContent = cfg.mime;
+      document.getElementById('metricTokenUsage').textContent = `~${cfg.baseTokens + (state.cartCount * 8)}`;
+      document.getElementById('metricLatencyUsage').textContent = cfg.latency;
+      document.getElementById('modeInsightCard').innerHTML = cfg.insight;
+
+      // Show / hide SPA diff compare button
+      const spaToggleContainer = document.getElementById('spaDiffToggleContainer');
+      if (spaToggleContainer) {
+        if (state.mode === 'dom' && state.subView === 'input') {
+          spaToggleContainer.classList.remove('hidden');
+        } else {
+          spaToggleContainer.classList.add('hidden');
+        }
+      }
+
+      // Show / hide Vision Snapshot button
+      const visionSnapshotBtn = document.getElementById('visionSnapshotBtnContainer');
+      if (visionSnapshotBtn) {
+        if (state.mode === 'vision' && state.subView === 'input') {
+          visionSnapshotBtn.classList.remove('hidden');
+        } else {
+          visionSnapshotBtn.classList.add('hidden');
+        }
+      }
+
+      // Update browser badges & overlays
+      document.getElementById('browserModeBadge').textContent = cfg.browserBadge;
+      document.getElementById('browserModeBadge').className = `text-[10px] font-mono px-2 py-0.5 rounded ${cfg.browserBadgeClass}`;
+
+      ['a11yOverlay', 'visionOverlay'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+      });
+      if (cfg.overlayId) {
+        const target = document.getElementById(cfg.overlayId);
+        if (target) target.classList.remove('hidden');
+      }
+    }
+
+    // Change active mode tab
+    function setPerceptionMode(mode) {
+      state.mode = mode;
+      state.showSpaHtmlGhost = false; // reset SPA compare
+      const btnSpa = document.getElementById('btnSpaCompare');
+      if (btnSpa) {
+        btnSpa.className = "px-2.5 py-1 text-[11px] font-mono rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition flex items-center space-x-1";
+        btnSpa.innerHTML = "<span>⚡ 對照：SPA 原始 HTML 空殼</span>";
+      }
+
+      // If switching to vision mode, flash shutter
+      if (mode === 'vision') {
+        triggerCameraFlash();
+      }
+
+      document.querySelectorAll('[id^="tab-mode-"]').forEach(btn => {
+        btn.className = "flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center space-x-2 bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700";
+      });
+      const activeBtn = document.getElementById(`tab-mode-${mode}`);
+      if (activeBtn) {
+        if (mode === 'text') activeBtn.className = "flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center space-x-2 bg-emerald-600/20 border-emerald-500 text-emerald-300 shadow-sm";
+        if (mode === 'dom') activeBtn.className = "flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center space-x-2 bg-cyan-600/20 border-cyan-500 text-cyan-300 shadow-sm";
+        if (mode === 'vision') activeBtn.className = "flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center space-x-2 bg-amber-600/20 border-amber-500 text-amber-300 shadow-sm";
+      }
+      updateAiConsole();
+      showToast(`已切換為「${modeConfig[mode].name}」`);
+    }
+
+    // User Interactive Click in Mock Store
+    function userClickAction(type) {
+      const btnBlack = document.getElementById('btnColorBlack');
+      const btnSilver = document.getElementById('btnColorSilver');
+      const priceDisplay = document.getElementById('storePriceDisplay');
+      const discountTag = document.getElementById('storeDiscountTag');
+      const cartBadge = document.getElementById('mockCartCount');
+
+      if (state.mode === 'vision') {
+        triggerCameraFlash();
+      }
+
+      if (type === 'select_black') {
+        state.color = '太空黑';
+        state.lastAction = 'SELECT_COLOR';
+        btnBlack.className = "px-3 py-2 rounded-lg text-xs font-medium border border-indigo-600 bg-indigo-50 text-indigo-950 flex items-center justify-between transition";
+        btnBlack.innerHTML = "<span>太空黑 (已選)</span><span class='text-[10px] bg-indigo-200 text-indigo-900 px-1.5 py-0.5 rounded'>現貨充足</span>";
+        btnSilver.className = "px-3 py-2 rounded-lg text-xs font-medium border border-slate-200 bg-white text-slate-700 hover:border-indigo-300 flex items-center justify-between transition";
+        btnSilver.innerHTML = "<span>極光銀</span><span class='text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded'>庫存 3</span>";
+        showToast("已選擇規格：太空黑");
+      } else if (type === 'select_silver') {
+        state.color = '極光銀';
+        state.lastAction = 'SELECT_COLOR';
+        btnSilver.className = "px-3 py-2 rounded-lg text-xs font-medium border border-indigo-600 bg-indigo-50 text-indigo-950 flex items-center justify-between transition";
+        btnSilver.innerHTML = "<span>極光銀 (已選)</span><span class='text-[10px] bg-indigo-200 text-indigo-900 px-1.5 py-0.5 rounded'>庫存 3</span>";
+        btnBlack.className = "px-3 py-2 rounded-lg text-xs font-medium border border-slate-200 bg-white text-slate-700 hover:border-indigo-300 flex items-center justify-between transition";
+        btnBlack.innerHTML = "<span>太空黑</span><span class='text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded'>現貨充足</span>";
+        showToast("已選擇規格：極光銀");
+      } else if (type === 'apply_coupon') {
+        state.lastAction = 'APPLY_COUPON';
+        if (!state.couponApplied) {
+          state.couponApplied = true;
+          state.price = 7490;
+          priceDisplay.textContent = "NT$ 7,490";
+          discountTag.classList.remove('hidden');
+          showToast("促銷代碼 AI2026_OFF500 已生效！現折 $500");
+        } else {
+          showToast("促銷代碼已套用，重複提交已更新狀態");
+        }
+      } else if (type === 'add_cart') {
+        state.lastAction = 'ADD_CART';
+        state.cartCount += 1;
+        cartBadge.textContent = state.cartCount;
+        showToast(`已加入購物車！目前件數：${state.cartCount}`);
+      } else if (type === 'checkout') {
+        state.lastAction = 'CHECKOUT';
+        showToast("已發送 CDP 導航指令：跳轉前往安全結帳金流！");
+      } else if (type === 'cart_icon') {
+        state.lastAction = 'VIEW_CART';
+        showToast(`檢視購物車清單（${state.cartCount} 件商品）`);
+      }
+
+      updateAiConsole();
+    }
+
+    // Auto Simulation Workflow
+    function toggleAutoPlay() {
+      if (state.isAutoPlaying) {
+        stopAutoPlay();
+      } else {
+        startAutoPlay();
+      }
+    }
+
+    function startAutoPlay() {
+      resetSimulation();
+      state.isAutoPlaying = true;
+      document.getElementById('labelAutoPlay').textContent = "停止自動模擬";
+      document.getElementById('iconAutoPlay').innerHTML = '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>';
+      showToast("🚀 啟動 4 步驟自動瀏覽與操作模擬...");
+
+      const cursor = document.getElementById('virtualCursor');
+      cursor.classList.remove('opacity-0');
+      cursor.classList.add('opacity-100');
+
+      executeNextAutoStep(1);
+    }
+
+    function stopAutoPlay() {
+      state.isAutoPlaying = false;
+      if (state.autoPlayTimer) clearTimeout(state.autoPlayTimer);
+      document.getElementById('labelAutoPlay').textContent = "一鍵自動模擬 (4步驟)";
+      document.getElementById('iconAutoPlay').innerHTML = '<path d="M4.5 3.5v13l11-6.5-11-6.5z"/>';
+      const cursor = document.getElementById('virtualCursor');
+      cursor.classList.add('opacity-0');
+      showToast("自動模擬已停止");
+    }
+
+    function setStepIndicator(step, text) {
+      document.getElementById('autoStepIndicator').textContent = text;
+      for (let i = 1; i <= 4; i++) {
+        const dot = document.getElementById(`step-dot-${i}`);
+        if (i < step) {
+          dot.className = "px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800";
+        } else if (i === step) {
+          dot.className = "px-2 py-0.5 rounded bg-indigo-600 text-white font-bold animate-pulse";
+        } else {
+          dot.className = "px-2 py-0.5 rounded bg-slate-800 text-slate-500";
+        }
+      }
+    }
+
+    function executeNextAutoStep(step) {
+      if (!state.isAutoPlaying) return;
+      const cursor = document.getElementById('virtualCursor');
+      const container = document.getElementById('mockBrowserContainer');
+      const rect = container.getBoundingClientRect();
+
+      if (step === 1) {
+        setStepIndicator(1, "步驟 1/4: 瀏覽商品頁面，模型進行網頁 DOM 與視覺錨定...");
+        cursor.style.left = "40px";
+        cursor.style.top = "60px";
+        state.lastAction = 'INITIAL_LOAD';
+        updateAiConsole();
+
+        state.autoPlayTimer = setTimeout(() => executeNextAutoStep(2), 1600);
+      } else if (step === 2) {
+        setStepIndicator(2, "步驟 2/4: 鎖定極光銀規格按鈕並發送點擊事件...");
+        const targetBtn = document.getElementById('btnColorSilver');
+        const tRect = targetBtn.getBoundingClientRect();
+        cursor.style.left = `${targetBtn.offsetLeft + 40}px`;
+        cursor.style.top = `${targetBtn.offsetTop + 15}px`;
+
+        state.autoPlayTimer = setTimeout(() => {
+          userClickAction('select_silver');
+          state.autoPlayTimer = setTimeout(() => executeNextAutoStep(3), 1600);
+        }, 600);
+      } else if (step === 3) {
+        setStepIndicator(3, "步驟 3/4: 填入折價券代碼 'AI2026_OFF500' 並觸發套用...");
+        const couponBtn = document.getElementById('btnApplyCoupon');
+        cursor.style.left = `${couponBtn.offsetLeft + 20}px`;
+        cursor.style.top = `${couponBtn.offsetTop + 10}px`;
+
+        state.autoPlayTimer = setTimeout(() => {
+          userClickAction('apply_coupon');
+          state.autoPlayTimer = setTimeout(() => executeNextAutoStep(4), 1600);
+        }, 600);
+      } else if (step === 4) {
+        setStepIndicator(4, "步驟 4/4: 鎖定主結帳按鈕，發送 CDP 導航指令結帳下單！");
+        const checkoutBtn = document.getElementById('btnCheckout');
+        cursor.style.left = `${checkoutBtn.offsetLeft + 40}px`;
+        cursor.style.top = `${checkoutBtn.offsetTop + 15}px`;
+
+        state.autoPlayTimer = setTimeout(() => {
+          userClickAction('checkout');
+          showToast("🎉 自動模擬 4 步驟執行完畢！");
+          setStepIndicator(5, "完成 (點擊重設或再次模擬)");
+          state.autoPlayTimer = setTimeout(() => stopAutoPlay(), 2000);
+        }, 600);
+      }
+    }
+
+    function resetSimulation() {
+      if (state.autoPlayTimer) clearTimeout(state.autoPlayTimer);
+      state.isAutoPlaying = false;
+      state.color = '太空黑';
+      state.price = 7990;
+      state.couponApplied = false;
+      state.cartCount = 1;
+      state.lastAction = 'INITIAL_LOAD';
+      state.showSpaHtmlGhost = false;
+
+      // Reset store UI
+      document.getElementById('storePriceDisplay').textContent = "NT$ 7,990";
+      document.getElementById('storeDiscountTag').classList.add('hidden');
+      document.getElementById('mockCartCount').textContent = "1";
+      document.getElementById('storeCouponInput').value = "AI2026_OFF500";
+      
+      const btnBlack = document.getElementById('btnColorBlack');
+      const btnSilver = document.getElementById('btnColorSilver');
+      btnBlack.className = "px-3 py-2 rounded-lg text-xs font-medium border border-indigo-600 bg-indigo-50 text-indigo-950 flex items-center justify-between transition";
+      btnBlack.innerHTML = "<span>太空黑 (已選)</span><span class='text-[10px] bg-indigo-200 text-indigo-900 px-1.5 py-0.5 rounded'>現貨充足</span>";
+      btnSilver.className = "px-3 py-2 rounded-lg text-xs font-medium border border-slate-200 bg-white text-slate-700 hover:border-indigo-300 flex items-center justify-between transition";
+      btnSilver.innerHTML = "<span>極光銀</span><span class='text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded'>庫存 3</span>";
+
+      document.getElementById('labelAutoPlay').textContent = "一鍵自動模擬 (4步驟)";
+      document.getElementById('iconAutoPlay').innerHTML = '<path d="M4.5 3.5v13l11-6.5-11-6.5z"/>';
+      const cursor = document.getElementById('virtualCursor');
+      cursor.classList.add('opacity-0');
+      cursor.style.left = "40px";
+      cursor.style.top = "40px";
+
+      setStepIndicator(0, "待命 (可點選元件或啟動一鍵模擬)");
+      updateAiConsole();
+      showToast("模擬環境已重設為初始狀態");
+    }
+
+    // Copy AI Output to Clipboard
+    function copyCurrentAiOutput() {
+      const text = state.subView === 'input' ? generateAiInputView() : generateAiActionView();
+      // Decode html entities for clipboard
+      const temp = document.createElement('textarea');
+      temp.innerHTML = text;
+      const cleanText = temp.value;
+
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = cleanText;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast("已成功複製 AI Payload / 指令代碼！");
+      } catch (err) {
+        showToast("複製失敗，請手動選取複製");
+      }
+    }
+
+    // Cleaning Pipeline Stage Switcher
+    const pipelineData = {
+      1: {
+        title: "1. 完整原始 HTTP Response (未經處理)",
+        tokens: "~14,200",
+        noise: "89.4%",
+        tabClass: "border-indigo-500 bg-indigo-950/40 text-indigo-400",
+        content: `&lt;!DOCTYPE html&gt;&lt;html lang="zh-TW"&gt;&lt;head&gt;&lt;meta charset="utf-8"&gt;
+&lt;script src="https://cdn.segment.io/analytics.js/v1/ad_tracker.js"&gt;&lt;/script&gt;
+&lt;script&gt;window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-XXXXXX');&lt;/script&gt;
+&lt;style&gt;.btn-checkout{display:flex;align-items:center;padding:12px;background:#10b981;font-weight:700}.ad-banner{position:fixed;bottom:0;width:100vw;height:60px;z-index:9999;background:red}&lt;/style&gt;
+&lt;link rel="stylesheet" href="/assets/tailwind.min.css"&gt;
+&lt;link rel="stylesheet" href="/assets/font-awesome.css"&gt;
+&lt;/head&gt;&lt;body&gt;
+&lt;!-- 廣告聯播網與 Cookie 授權彈窗 (高達 15KB) --&gt;
+&lt;div id="cookie-consent-modal" class="modal-overlay"&gt;
+  &lt;p&gt;我們使用 Cookie 提供最佳化推薦，請點擊同意。&lt;/p&gt;
+  &lt;button id="accept-all-btn"&gt;全部同意&lt;/button&gt;
+&lt;/div&gt;
+&lt;header&gt;&lt;nav class="nav-links"&gt;... (50+ 導覽分類連結與 SVG 圖示)&lt;/nav&gt;&lt;/header&gt;
+&lt;main&gt;
+  &lt;h1&gt;AuraZero 沉浸式降噪無線耳機&lt;/h1&gt;
+  &lt;span class="price"&gt;NT$ 7,990&lt;/span&gt;
+  &lt;p&gt;智慧音場主動消噪，續航力長達 45 小時，支援高解析無損傳輸。&lt;/p&gt;
+&lt;/main&gt;
+&lt;footer&gt;... (頁尾免責聲明、著作權、各國社群連結)&lt;/footer&gt;
+&lt;script src="/chunk-vendors.29d8a2.js"&gt;&lt;/script&gt;
+&lt;script src="/app.67c8b1.js"&gt;&lt;/script&gt;
+&lt;/body&gt;&lt;/html&gt;`,
+        insight: "🚨 <strong>雜訊警示：</strong> 未經清洗的 HTML 充滿了 CSS 樣式、JavaScript Bundle 與 Google Analytics 追蹤碼，直接餵給 LLM 不僅浪費 90% 以上的 Token 費用，更會稀釋 Attention 機制，造成模型理解關鍵商品內容時產生幻覺。"
+      },
+      2: {
+        title: "2. 標籤剔除 (DOM Sanitization - 移除 script/style/svg)",
+        tokens: "~3,100",
+        noise: "34.0%",
+        tabClass: "border-indigo-500 bg-indigo-950/40 text-indigo-400",
+        content: `&lt;!-- 已透過 BeautifulSoup / DOMParser 移除 &lt;script&gt;, &lt;style&gt;, &lt;svg&gt;, &lt;iframe&gt; 等雜訊 --&gt;
+&lt;div id="cookie-consent-modal"&gt;
+  &lt;p&gt;我們使用 Cookie 提供最佳化推薦，請點擊同意。&lt;/p&gt;
+  &lt;button&gt;全部同意&lt;/button&gt;
+&lt;/div&gt;
+&lt;header&gt;
+  &lt;div&gt;SoundTech Pro 旗艦館&lt;/div&gt;
+  &lt;button&gt;購物車 (1)&lt;/button&gt;
+&lt;/header&gt;
+&lt;main&gt;
+  &lt;div&gt;2026 新品 - 神經降噪晶片 5.0&lt;/div&gt;
+  &lt;h1&gt;AuraZero 沉浸式降噪無線耳機&lt;/h1&gt;
+  &lt;p&gt;智慧音場主動消噪，續航力長達 45 小時，支援高解析無損傳輸。&lt;/p&gt;
+  &lt;div&gt;NT$ 7,990 &lt;s&gt;NT$ 9,500&lt;/s&gt;&lt;/div&gt;
+  &lt;div&gt;
+    &lt;span&gt;規格顏色選擇：&lt;/span&gt;
+    &lt;button&gt;太空黑 (已選)&lt;/button&gt;
+    &lt;button&gt;極光銀&lt;/button&gt;
+  &lt;/div&gt;
+  &lt;div&gt;
+    &lt;input value="AI2026_OFF500" /&gt;
+    &lt;button&gt;套用折扣&lt;/button&gt;
+  &lt;/div&gt;
+  &lt;button&gt;加入購物車&lt;/button&gt;
+  &lt;button&gt;⚡ 立即下單結帳&lt;/button&gt;
+&lt;/main&gt;`,
+        insight: "⚡ <strong>過濾成效：</strong> 剔除掉 script 與 style 後體積立刻減少 78%，但頁首、頁尾、廣告彈窗等非核心雜訊依然存在。"
+      },
+      3: {
+        title: "3. 語意結構化 (Readability / Markdown 轉化)",
+        tokens: "~210",
+        noise: "0.5%",
+        tabClass: "border-indigo-500 bg-indigo-950/40 text-indigo-400",
+        content: `# AuraZero 沉浸式降噪無線耳機
+- **售價**：NT$ 7,990 (原價 NT$ 9,500)
+- **產品特點**：智慧音場主動消噪，續航力 45 小時，神經降噪晶片 5.0。
+- **可選規格**：太空黑 (已選) | 極光銀
+- **促銷代碼**：AI2026_OFF500 (現折 $500)
+- **購買操作**：[加入購物車] [立即結帳]`,
+        insight: "🏆 <strong>極致瘦身：</strong> 透過 Mozilla Readability 演算法只保留核心內容，並轉換為乾淨的 Markdown 格式，Token 消耗暴跌 93%！這是目前所有檢索增強生成（RAG）與搜尋摘要系統的首選架構。"
+      }
+    };
+
+    function switchPipelineStep(step) {
+      const data = pipelineData[step];
+      document.getElementById('pipelineStepTitle').textContent = data.title;
+      document.getElementById('pipelineTokensBadge').textContent = data.tokens;
+      document.getElementById('pipelineNoiseBadge').textContent = data.noise;
+      document.getElementById('pipelineContentArea').innerHTML = `<code>${data.content}</code>`;
+      document.getElementById('pipelineInsightBox').innerHTML = data.insight;
+
+      for (let i = 1; i <= 3; i++) {
+        const tab = document.getElementById(`pipe-tab-${i}`);
+        if (i === step) {
+          tab.className = "p-3.5 rounded-xl border border-indigo-500 bg-indigo-950/40 text-left transition";
+          tab.querySelector('div:first-child').className = "text-xs font-bold text-indigo-400";
+        } else {
+          tab.className = "p-3.5 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition hover:border-slate-700";
+          tab.querySelector('div:first-child').className = "text-xs font-bold text-slate-300";
+        }
+      }
+      showToast(`已切換至清洗管線：步驟 ${step}`);
+    }
+
+    // Interactive Token & Cost Calculator
+    function updateCalculator() {
+      const complexity = parseInt(document.getElementById('complexitySlider').value);
+      const requests = parseInt(document.getElementById('requestsSlider').value);
+
+      const complexityLabels = {
+        1: "輕量部落格 / 文章頁面 (~2,000 DOM 節點)",
+        2: "中型電商 / 企業官網 (~8,000 DOM 節點)",
+        3: "大型 SPA / 複雜後台系統 (~25,000 DOM 節點)"
+      };
+      document.getElementById('pageComplexityLabel').textContent = complexityLabels[complexity];
+      document.getElementById('requestsLabel').textContent = `${requests.toLocaleString()} 次 / 天`;
+
+      // Token multipliers based on complexity
+      const textTokens = [180, 350, 600][complexity - 1];
+      const domTokens = [900, 1600, 3200][complexity - 1];
+      const visionTokens = [800, 1200, 2400][complexity - 1];
+
+      // Cost per 1M tokens (standard 2026 pricing benchmark)
+      const textCostPerM = 0.30;
+      const domCostPerM = 0.30;
+      const visionCostPerM = 1.50; // Vision is higher
+
+      const dailyText = ((requests * textTokens) / 1000000) * textCostPerM;
+      const dailyDom = ((requests * domTokens) / 1000000) * domCostPerM;
+      const dailyVision = ((requests * visionTokens) / 1000000) * visionCostPerM;
+
+      document.getElementById('markdownDailyCost').textContent = `$${dailyText.toFixed(2)} / 天`;
+      document.getElementById('a11yDailyCost').textContent = `$${dailyDom.toFixed(2)} / 天`;
+      document.getElementById('visionDailyCost').textContent = `$${dailyVision.toFixed(2)} / 天`;
+    }
+
+    // Set up calculator event listeners
+    document.getElementById('complexitySlider').addEventListener('input', updateCalculator);
+    document.getElementById('requestsSlider').addEventListener('input', updateCalculator);
+
+    // Initialization hook
+    window.onload = function() {
+      setPerceptionMode('text');
+      switchPipelineStep(1);
+      updateCalculator();
+    };
+  </script>
+</body>
+</html>
