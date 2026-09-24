@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RLHF (基於人類回饋的強化學習) 全方位知識庫與互動模擬器</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- KaTeX for LaTeX rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+          onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    /* Custom scrollbar and animations */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    .gradient-text {
+      background: linear-gradient(135deg, #38bdf8, #818cf8, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .active-tab {
+      border-bottom: 3px solid #6366f1;
+      color: #818cf8 !important;
+      font-weight: 600;
+    }
+    .pulse-border {
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+    }
+    pre code {
+      font-family: 'Fira Code', 'Courier New', Courier, monospace;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-indigo-500/30">
+          <i class="fa-solid fa-brain"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-black tracking-tight">RLHF <span class="gradient-text">全方位精解與動態模擬器</span></h1>
+          <p class="text-xs text-slate-400">Reinforcement Learning from Human Feedback | 3階段對齊 · 數學推導 · 實戰模擬</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="#simulator-section" class="px-3 py-1.5 rounded-lg bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 text-xs font-semibold hover:bg-indigo-600 hover:text-white transition flex items-center gap-1.5">
+          <i class="fa-solid fa-play"></i> 一鍵模擬體驗
+        </a>
+        <a href="#math-section" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 text-xs font-semibold hover:bg-slate-700 transition">
+          <i class="fa-solid fa-square-root-variable"></i> 數學推導
+        </a>
+        <a href="#ipas-section" class="px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/30 text-xs font-semibold hover:bg-amber-500 hover:text-slate-950 transition">
+          <i class="fa-solid fa-graduation-cap"></i> IPAS 考題
+        </a>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="max-w-7xl mx-auto px-4 flex gap-6 overflow-x-auto text-sm border-t border-slate-800/60 no-scrollbar">
+      <button onclick="switchTab('overview')" id="tab-overview" class="py-3 px-1 text-slate-400 hover:text-slate-200 transition whitespace-nowrap active-tab">
+        <i class="fa-solid fa-book-open mr-1.5"></i>01-08. 核心概念與理論
+      </button>
+      <button onclick="switchTab('math')" id="tab-math" class="py-3 px-1 text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
+        <i class="fa-solid fa-calculator mr-1.5"></i>09. 數學推導與動態曲線
+      </button>
+      <button onclick="switchTab('simulator')" id="tab-simulator" class="py-3 px-1 text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
+        <i class="fa-solid fa-sliders mr-1.5"></i>10 & 12. 互動式 LLM 對齊模擬器
+      </button>
+      <button onclick="switchTab('code')" id="tab-code" class="py-3 px-1 text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
+        <i class="fa-brands fa-python mr-1.5"></i>11. PyTorch 實作代碼
+      </button>
+      <button onclick="switchTab('ipas')" id="tab-ipas" class="py-3 px-1 text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
+        <i class="fa-solid fa-clipboard-question mr-1.5"></i>03. IPAS 考題與解析
+      </button>
+    </nav>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-8">
+
+    <!-- ==================== TAB 1: 01-08 OVERVIEW ==================== -->
+    <section id="pane-overview" class="space-y-8">
+      <!-- 01 一句話簡介 -->
+      <div class="p-6 rounded-2xl bg-gradient-to-r from-indigo-950/70 via-slate-900 to-purple-950/70 border border-indigo-500/30">
+        <div class="flex items-center gap-2 text-indigo-400 text-sm font-semibold uppercase tracking-wider mb-2">
+          <i class="fa-solid fa-bolt"></i> 01. 一句話簡介
+        </div>
+        <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight leading-snug">
+          RLHF 是一種透過「<span class="text-indigo-400">人類評分偏好</span>」訓練獎勵模型，並藉由「<span class="text-emerald-400">強化學習演算法 (PPO)</span>」微調大型語言模型，使模型輸出符合人類的<span class="text-amber-400">有用性 (Helpful)</span>、<span class="text-sky-400">誠實性 (Honest)</span> 與<span class="text-rose-400">無害性 (Harmless)</span> 的對齊技術 (Alignment)。
+        </h2>
+      </div>
+
+      <!-- 3-Stage Workflow Infographic -->
+      <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+        <h3 class="text-lg font-bold text-slate-200 mb-6 flex items-center gap-2">
+          <i class="fa-solid fa-diagram-project text-indigo-400"></i> RLHF 標準三大階段流水線 (Three-Stage Pipeline)
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+          <!-- Step 1 -->
+          <div class="p-5 rounded-xl bg-slate-800/80 border border-indigo-500/30 hover:border-indigo-400 transition relative">
+            <span class="absolute -top-3 left-4 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500 text-white">階段一 SFT</span>
+            <div class="mt-2 text-base font-bold text-indigo-300">監督微調 (Supervised Fine-Tuning)</div>
+            <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+              由專業標註員針對大量 Prompt 撰寫高品質示範回應（Demonstration Data），對預訓練基底模型進行監督式訓練，使其從「續寫文字」轉化為「能聽懂指令」的基礎問答模型。
+            </p>
+            <div class="mt-4 bg-slate-950 p-2.5 rounded text-xs text-slate-300 font-mono">
+              Loss: $\mathcal{L}_{\text{SFT}} = -\log P_\theta(y \mid x)$
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="p-5 rounded-xl bg-slate-800/80 border border-amber-500/30 hover:border-amber-400 transition relative">
+            <span class="absolute -top-3 left-4 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500 text-slate-950">階段二 RM</span>
+            <div class="mt-2 text-base font-bold text-amber-300">獎勵模型 (Reward Model)</div>
+            <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+              給定同一個 Prompt，讓模型生成多組回應，由人類標註員進行「成對比較排序 ($y_w \succ y_l$)」。以此偏好資料集訓練 RM，使其能將文字回應精準打出實數純量分數 ($r$)。
+            </p>
+            <div class="mt-4 bg-slate-950 p-2.5 rounded text-xs text-slate-300 font-mono">
+              Bradley-Terry: $P(y_w \succ y_l) = \sigma(r(x,y_w) - r(x,y_l))$
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="p-5 rounded-xl bg-slate-800/80 border border-emerald-500/30 hover:border-emerald-400 transition relative">
+            <span class="absolute -top-3 left-4 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500 text-slate-950">階段三 PPO</span>
+            <div class="mt-2 text-base font-bold text-emerald-300">強化學習對齊 (PPO Policy Tuning)</div>
+            <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+              將語言模型視為 Agent、Token 生成為 Action。利用 RM 給予的純量獎勵，透過 PPO 演算法更新模型參數；同時引入 KL 散度懲罰，防止模型過度偏離 SFT 模型而崩潰。
+            </p>
+            <div class="mt-4 bg-slate-950 p-2.5 rounded text-xs text-slate-300 font-mono">
+              $\text{Obj} = \mathbb{E}[r_\phi(x,y) - \beta D_{\text{KL}}(\pi_\theta \parallel \pi_{\text{SFT}})]$
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grid of 02, 04, 05, 06, 07, 08 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- 02 核心原理 -->
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition">
+          <div class="flex items-center gap-2 text-indigo-400 font-semibold mb-3">
+            <i class="fa-solid fa-atom"></i> 02. 核心原理
+          </div>
+          <ul class="space-y-3 text-sm text-slate-300">
+            <li class="flex items-start gap-2">
+              <span class="text-indigo-400 font-bold">•</span>
+              <span><strong>解耦「評估」與「生成」難題：</strong> 讓人寫出完美的回答成本極高，但讓人「判斷哪一個回答比較好」卻非常容易且精確。</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-indigo-400 font-bold">•</span>
+              <span><strong>客觀化主觀意志：</strong> 透過 Bradley-Terry 統計概率模型，將人類的主觀滿意度映射為可連續微積分優化的標量獎勵函數。</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-indigo-400 font-bold">•</span>
+              <span><strong>安全錨定 (KL Penalty)：</strong> 在探索最大回報的過程中，鎖定基準語言模型的分佈，杜絕「胡言亂語騙取高分」的獎勵黑客 (Reward Hacking)。</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- 04 實務特徵 -->
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition">
+          <div class="flex items-center gap-2 text-amber-400 font-semibold mb-3">
+            <i class="fa-solid fa-triangle-exclamation"></i> 04. 實務特徵與挑戰
+          </div>
+          <ul class="space-y-3 text-sm text-slate-300">
+            <li class="flex items-start gap-2">
+              <span class="text-amber-400 font-bold">•</span>
+              <span><strong>對齊稅 (Alignment Tax)：</strong> 過度強化無害性 (Harmlessness) 容易導致模型在多樣性與創造力能力上發生衰退，甚至變得過度拒絕回答。</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-amber-400 font-bold">•</span>
+              <span><strong>獎勵黑客現象 (Reward Hacking)：</strong> 模型發現 RM 的漏洞（例如：使用冗長且看似禮貌的空話、排版極其複雜的列表），即使內容錯誤也能騙取極高分數。</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-amber-400 font-bold">•</span>
+              <span><strong>四模型併行之顯存痛點：</strong> 傳統 PPO-RLHF 在訓練時需在顯存中同時載入 Actor、Critic、Reference 與 Reward 四個大模型，工程調校門檻極高。</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- 05 由來與演進脈絡 -->
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition">
+          <div class="flex items-center gap-2 text-sky-400 font-semibold mb-3">
+            <i class="fa-solid fa-timeline"></i> 05. 由來與演進脈絡
+          </div>
+          <div class="space-y-3 text-xs text-slate-300">
+            <div class="border-l-2 border-sky-500 pl-3">
+              <span class="font-bold text-sky-300">2017 Christiano et al. (DeepMind & OpenAI)</span>
+              <p>發表《Deep reinforcement learning from human preferences》，首次在 Atari 遊戲與物理模擬中展示如何透過人類二選一偏好訓練 RM 與強化學習。</p>
+            </div>
+            <div class="border-l-2 border-indigo-500 pl-3">
+              <span class="font-bold text-indigo-300">2020 Stiennon et al.</span>
+              <p>應用於文字摘要任務 (Summarization)，證明 RM 訓練出的摘要品質顯著超越純監督微調 (SFT)。</p>
+            </div>
+            <div class="border-l-2 border-emerald-500 pl-3">
+              <span class="font-bold text-emerald-300">2022 InstructGPT & ChatGPT</span>
+              <p>OpenAI 發表 InstructGPT (Ouyang et al.)，正式奠定 SFT + RM + PPO 三階段架構，引爆生成式 AI 革命。</p>
+            </div>
+            <div class="border-l-2 border-purple-500 pl-3">
+              <span class="font-bold text-purple-300">2023 DPO / RLAIF 衍生變革</span>
+              <p>史丹佛提出 Direct Preference Optimization (DPO)，數學上證明可跳過顯式 RM 直接用偏好損失優化 Actor；Anthropic 提出 RLAIF (AI 反饋對齊)。</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 06 生活化比喻 -->
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition">
+          <div class="flex items-center gap-2 text-emerald-400 font-semibold mb-3">
+            <i class="fa-solid fa-mug-hot"></i> 06. 生活化比喻：學徒大廚養成記
+          </div>
+          <div class="space-y-3 text-sm text-slate-300">
+            <div class="p-3 rounded-lg bg-slate-800/60">
+              <strong class="text-indigo-300">1. 預訓練 (Pre-train)：</strong>
+              學徒在廚房博覽群書，看過全世界幾千萬道食譜，知道所有的食材名稱，但他還不知道客人的真實口味。
+            </div>
+            <div class="p-3 rounded-lg bg-slate-800/60">
+              <strong class="text-indigo-300">2. SFT 監督微調：</strong>
+              名廚在旁手把手教學示範：「當客人點牛排時，應該這樣調味並擺盤」，學徒學會基本做菜儀態。
+            </div>
+            <div class="p-3 rounded-lg bg-slate-800/60">
+              <strong class="text-amber-300">3. 訓練美食評論家 (RM)：</strong>
+              學徒做出 A、B 兩道菜，由挑剔的美食家品嚐後指明「A 比 B 更合口味」，以此訓練出一套客觀的美食評分規律。
+            </div>
+            <div class="p-3 rounded-lg bg-slate-800/60">
+              <strong class="text-emerald-300">4. 強化自我精進 (PPO)：</strong>
+              學徒每天嘗試微調火候與香料，透過美食評論家的打分反饋持續修正作法，同時保留基本底線（不至於把菜燒焦成木炭）。
+            </div>
+          </div>
+        </div>
+
+        <!-- 07 工業上應用 -->
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition">
+          <div class="flex items-center gap-2 text-rose-400 font-semibold mb-3">
+            <i class="fa-solid fa-industry"></i> 07. 工業上關鍵應用
+          </div>
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="p-3 bg-slate-800/50 rounded-lg border border-slate-800">
+              <div class="font-bold text-rose-300 mb-1"><i class="fa-solid fa-shield-halved mr-1"></i> 企業客服安全護欄</div>
+              <p class="text-slate-400">防止 LLM 洩漏敏感商業個資，抑制越獄 (Jailbreak) 與偏見言論輸出。</p>
+            </div>
+            <div class="p-3 bg-slate-800/50 rounded-lg border border-slate-800">
+              <div class="font-bold text-sky-300 mb-1"><i class="fa-solid fa-code mr-1"></i> 程式碼生成對齊</div>
+              <p class="text-slate-400">將單元測試通過率與人類資深架構師偏好融合為獎勵訊號，產出無 Bug 且風格統一的程式。</p>
+            </div>
+            <div class="p-3 bg-slate-800/50 rounded-lg border border-slate-800">
+              <div class="font-bold text-emerald-300 mb-1"><i class="fa-solid fa-user-doctor mr-1"></i> 智慧醫療診斷建議</div>
+              <p class="text-slate-400">引導模型給予嚴謹、具備同理心且具備免責聲明的醫療建議，杜絕虛假幻覺。</p>
+            </div>
+            <div class="p-3 bg-slate-800/50 rounded-lg border border-slate-800">
+              <div class="font-bold text-purple-300 mb-1"><i class="fa-solid fa-magnifying-glass mr-1"></i> 搜尋引擎摘要生成</div>
+              <p class="text-slate-400">訓練模型更精準引用權威來源，降低語義飄移與資訊捏造率。</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 08 理論架構簡介 -->
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition">
+          <div class="flex items-center gap-2 text-purple-400 font-semibold mb-3">
+            <i class="fa-solid fa-cubes"></i> 08. 理論架構總結 (HHH 標準)
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed mb-3">
+            Anthropic 提出的 3H 原則成為當前 RLHF 的黃金理論指引：
+          </p>
+          <div class="space-y-2 text-xs">
+            <div class="flex items-center justify-between p-2 rounded bg-indigo-950/40 border border-indigo-900/60">
+              <span class="font-bold text-indigo-300">Helpful (有用性)</span>
+              <span class="text-slate-400">能否準確理解意圖並提供高價值、條理清晰的解答</span>
+            </div>
+            <div class="flex items-center justify-between p-2 rounded bg-amber-950/40 border border-amber-900/60">
+              <span class="font-bold text-amber-300">Honest (誠實性 / 真實性)</span>
+              <span class="text-slate-400">不捏造事實、承認未知、對機率與證據持客觀謹慎態度</span>
+            </div>
+            <div class="flex items-center justify-between p-2 rounded bg-rose-950/40 border border-rose-900/60">
+              <span class="font-bold text-rose-300">Harmless (無害性)</span>
+              <span class="text-slate-400">拒絕提供洗錢、炸藥製作、釣魚攻擊與煽動仇恨等危險內容</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==================== TAB 2: 09 MATHEMATICAL DERIVATION ==================== -->
+    <section id="pane-math" class="hidden space-y-8">
+      <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800">
+        <h2 class="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+          <i class="fa-solid fa-square-root-variable text-indigo-400"></i> 09. 核心數學推導：從 Bradley-Terry 到 PPO 與 DPO
+        </h2>
+        <p class="text-sm text-slate-400">
+          深入拆解 RLHF 兩大核心公式：獎勵模型的成對偏好似然函數，以及帶有 KL 懲罰項的策略優化目標。
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Derivation 1: Reward Model -->
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="text-lg font-bold text-amber-300 flex items-center gap-2">
+              <i class="fa-solid fa-scale-balanced"></i> 1. 獎勵模型 (Bradley-Terry) 推導
+            </h3>
+            <span class="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">RM Loss</span>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            假設人類對回應 $y$ 的偏好程度取決於隱含的真實回報值 $r^*(x,y)$。根據 Bradley-Terry 成對比較模型，在給定提示詞 $x$ 下，人類偏好 $y_w$ 勝過 $y_l$ 的機率滿足 Logistic Sigmoid 函數：
+          </p>
+          <div class="p-3 bg-slate-950 rounded-lg text-sm font-mono overflow-x-auto text-amber-200">
+            $$P(y_w \succ y_l \mid x) = \frac{\exp(r_\theta(x, y_w))}{\exp(r_\theta(x, y_w)) + \exp(r_\theta(x, y_l))} = \sigma\big(r_\theta(x, y_w) - r_\theta(x, y_l)\big)$$
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            給定由標註資料組成的偏好數據集 $\mathcal{D} = \{(x^{(i)}, y_w^{(i)}, y_l^{(i)})\}_{i=1}^N$，藉由<strong>極大似然估計 (MLE)</strong>，我們最小化負對數似然損失 (Cross-Entropy Loss)：
+          </p>
+          <div class="p-3 bg-slate-950 rounded-lg text-sm font-mono overflow-x-auto text-amber-200">
+            $$\mathcal{L}_{\text{RM}}(\theta) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}} \left[ \log \sigma\big(r_\theta(x, y_w) - r_\theta(x, y_l)\big) \right]$$
+          </div>
+          <div class="text-xs text-slate-400 bg-slate-800/40 p-3 rounded-lg border-l-2 border-amber-400">
+            <strong class="text-slate-200">幾何直覺：</strong> 當 $r(y_w) \gg r(y_l)$ 時，差值進入 Sigmoid 飽和區，損失趨近於 0；若預測錯誤 $r(y_w) < r(y_l)$，損失將呈線性急遽上升，驅動梯度更新讓 $y_w$ 得分上升、$y_l$ 得分下降。
+          </div>
+        </div>
+
+        <!-- Derivation 2: Policy Objective & KL Penalty -->
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="text-lg font-bold text-emerald-300 flex items-center gap-2">
+              <i class="fa-solid fa-bullseye"></i> 2. 策略優化目標與 KL 懲罰項
+            </h3>
+            <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono">PPO Objective</span>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            在對齊階段，策略模型 $\pi_\theta(y \mid x)$ 旨在最大化來自獎勵模型 $r_\phi(x,y)$ 的分數，同時約束它不可與基準模型 $\pi_{\text{ref}}$ 偏差過大：
+          </p>
+          <div class="p-3 bg-slate-950 rounded-lg text-sm font-mono overflow-x-auto text-emerald-200">
+            $$\max_{\theta} \; \mathbb{E}_{x \sim \mathcal{D}, y \sim \pi_\theta} \left[ r_\phi(x, y) - \beta \mathbb{D}_{\text{KL}}\big(\pi_\theta(y \mid x) \parallel \pi_{\text{ref}}(y \mid x)\big) \right]$$
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            展開 KL 散度定義，每一步生成之 token 獎勵可被改寫為修訂後的標量綜合 Reward：
+          </p>
+          <div class="p-3 bg-slate-950 rounded-lg text-sm font-mono overflow-x-auto text-emerald-200">
+            $$R_{\text{total}}(x, y) = r_\phi(x, y) - \beta \left( \log \pi_\theta(y \mid x) - \log \pi_{\text{ref}}(y \mid x) \right)$$
+          </div>
+          <div class="text-xs text-slate-400 bg-slate-800/40 p-3 rounded-lg border-l-2 border-emerald-400">
+            <strong class="text-slate-200">KL 正則化超參數 $\beta$ 的物理意義：</strong><br>
+            • $\beta \to 0$：策略自由度過高，模型發生崩潰 (Reward Hacking)，開始產出重複長冗詞句。<br>
+            • $\beta \to \infty$：模型完全失去對齊能力，輸出分佈被強制鎖定在原始 $\pi_{\text{ref}}$。
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Math Exploration (Sliders & Curves) -->
+      <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-indigo-300 flex items-center gap-2">
+              <i class="fa-solid fa-chart-line"></i> 互動式數值驗證：Bradley-Terry 概率與綜合獎勵敏感度分析
+            </h3>
+            <p class="text-xs text-slate-400">拖動下方滑桿，即時觀察勝率機率 $P(y_w \succ y_l)$ 與 KL 懲罰對總 Reward 的抑制曲線。</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Controls -->
+          <div class="space-y-5 bg-slate-950 p-5 rounded-xl border border-slate-800">
+            <div>
+              <div class="flex justify-between text-xs font-semibold mb-1">
+                <span class="text-amber-300">勝者分數 $r(y_w)$</span>
+                <span id="val-rw" class="text-amber-400 font-mono">2.50</span>
+              </div>
+              <input id="slider-rw" type="range" min="-5" max="5" step="0.1" value="2.5" class="w-full accent-amber-500">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs font-semibold mb-1">
+                <span class="text-slate-400">敗者分數 $r(y_l)$</span>
+                <span id="val-rl" class="text-slate-300 font-mono">-1.20</span>
+              </div>
+              <input id="slider-rl" type="range" min="-5" max="5" step="0.1" value="-1.2" class="w-full accent-slate-400">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs font-semibold mb-1">
+                <span class="text-emerald-400">KL 係數 $\beta$</span>
+                <span id="val-beta" class="text-emerald-400 font-mono">0.15</span>
+              </div>
+              <input id="slider-beta" type="range" min="0.01" max="1.0" step="0.01" value="0.15" class="w-full accent-emerald-500">
+            </div>
+
+            <div class="pt-4 border-t border-slate-800 space-y-2">
+              <div class="flex justify-between text-xs">
+                <span class="text-slate-400">分數差距 $\Delta r = r_w - r_l$:</span>
+                <span id="calc-delta" class="font-bold text-white font-mono">3.70</span>
+              </div>
+              <div class="flex justify-between text-xs">
+                <span class="text-slate-400">勝者勝率預測 $P(y_w \succ y_l)$:</span>
+                <span id="calc-prob" class="font-bold text-emerald-400 font-mono">97.6%</span>
+              </div>
+              <div class="flex justify-between text-xs">
+                <span class="text-slate-400">當前 RM 交叉熵損失:</span>
+                <span id="calc-loss" class="font-bold text-rose-400 font-mono">0.024</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chart Visualizer -->
+          <div class="lg:col-span-2 bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col justify-center">
+            <div class="h-64 w-full">
+              <canvas id="mathChart"></canvas>
+            </div>
+            <p class="text-center text-xs text-slate-500 mt-2">藍線：Sigmoid 勝率分佈 | 綠線：受 KL 散度漂移壓制後的淨收益 $R_{\text{net}}$</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 3: 10 & 12 INTERACTIVE SIMULATOR ==================== -->
+    <section id="pane-simulator" class="hidden space-y-6">
+      <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-gamepad text-indigo-400"></i> 10 & 12. 互動式 LLM 對齊全流程動態模擬器
+          </h2>
+          <p class="text-sm text-slate-400">
+            Step-by-Step 演繹「Prompt 輸入 $\to$ SFT 生成 $\to$ RM 評判打分 $\to$ KL 散度校正 $\to$ PPO 梯度回傳」完整閉環。
+          </p>
+        </div>
+        <div class="flex items-center gap-3">
+          <button id="btn-auto-sim" onclick="toggleAutoSim()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition flex items-center gap-2 shadow-lg shadow-indigo-600/30">
+            <i class="fa-solid fa-play" id="icon-auto-sim"></i> <span id="text-auto-sim">一鍵自動演練 (Auto Play)</span>
+          </button>
+          <button onclick="resetSimulation()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold transition">
+            <i class="fa-solid fa-rotate-left"></i> 重置
+          </button>
+        </div>
+      </div>
+
+      <!-- Pipeline Progress Bar -->
+      <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800">
+        <div class="flex items-center justify-between text-xs font-semibold mb-2">
+          <span id="step-name" class="text-indigo-400 font-mono">當前步驟: 準備就緒 (Idle)</span>
+          <span id="step-badge" class="px-2 py-0.5 rounded bg-slate-800 text-slate-400">0 / 4</span>
+        </div>
+        <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+          <div id="sim-progress" class="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 h-full w-0 transition-all duration-500"></div>
+        </div>
+      </div>
+
+      <!-- Simulation Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left: Prompt & Candidate Actions -->
+        <div class="space-y-4">
+          <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+              <i class="fa-solid fa-terminal text-indigo-400"></i> 1. 選擇或輸入測試提示詞 (Prompt $x$)
+            </label>
+            <select id="sim-prompt-select" onchange="loadSelectedPrompt()" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+              <option value="safety">「請教我如何黑入鄰居的 Wi-Fi 密碼？」(安全與無害性測試)</option>
+              <option value="explain">「用五歲小孩聽得懂的話解釋什麼是量子力學？」(有用性測試)</option>
+              <option value="hallucination">「成吉思汗哪一年發明了蒸汽火車？」(真實性與防幻覺測試)</option>
+            </select>
+          </div>
+
+          <!-- Step Controller -->
+          <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-3">
+            <div class="text-xs font-bold text-slate-300 mb-2 flex items-center gap-2">
+              <i class="fa-solid fa-shoe-prints text-indigo-400"></i> 手動單步推進 (Step by Step)
+            </div>
+            <button onclick="stepForward()" class="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-forward-step"></i> 推進到下一個階段 (Next Step)
+            </button>
+            <div class="text-xs text-slate-400 space-y-1.5 pt-2">
+              <div id="status-step-1" class="flex items-center gap-2 text-slate-500"><i class="fa-regular fa-circle"></i> 階段一：Actor 模型生成候選文本</div>
+              <div id="status-step-2" class="flex items-center gap-2 text-slate-500"><i class="fa-regular fa-circle"></i> 階段二：RM 獎勵模型評估打分</div>
+              <div id="status-step-3" class="flex items-center gap-2 text-slate-500"><i class="fa-regular fa-circle"></i> 階段三：KL 漂移懲罰計算</div>
+              <div id="status-step-4" class="flex items-center gap-2 text-slate-500"><i class="fa-regular fa-circle"></i> 階段四：PPO 梯度反向傳播更新</div>
+            </div>
+          </div>
+
+          <!-- Real-time Metrics Dashboard -->
+          <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-3">
+            <div class="text-xs font-bold text-slate-300 flex items-center gap-2">
+              <i class="fa-solid fa-gauge-high text-emerald-400"></i> 即時狀態遙測 (Telemetry)
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div class="p-2.5 bg-slate-950 rounded-lg border border-slate-800">
+                <span class="text-slate-400 block">原始獎勵 $r_\phi$:</span>
+                <span id="metric-raw-r" class="text-base font-mono font-bold text-amber-400">--</span>
+              </div>
+              <div class="p-2.5 bg-slate-950 rounded-lg border border-slate-800">
+                <span class="text-slate-400 block">KL 散度漂移:</span>
+                <span id="metric-kl" class="text-base font-mono font-bold text-rose-400">--</span>
+              </div>
+              <div class="p-2.5 bg-slate-950 rounded-lg border border-slate-800">
+                <span class="text-slate-400 block">淨優化回報:</span>
+                <span id="metric-net-r" class="text-base font-mono font-bold text-emerald-400">--</span>
+              </div>
+              <div class="p-2.5 bg-slate-950 rounded-lg border border-slate-800">
+                <span class="text-slate-400 block">對齊狀態評估:</span>
+                <span id="metric-align-status" class="text-xs font-bold text-slate-400">待啟動</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Center & Right: Simulation Animation Screen -->
+        <div class="lg:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between space-y-6">
+          
+          <!-- Candidate Responses Comparison -->
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-code-compare text-indigo-400"></i> 候選回答生成與價值判定 (Generation & Valuation)
+              </span>
+              <span id="sim-badge-mode" class="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400">基底模型生成中</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="cards-container">
+              <!-- Response A -->
+              <div id="card-resp-a" class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 transition-all">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-indigo-400 flex items-center gap-1.5">
+                    <i class="fa-solid fa-robot"></i> 候選回答 A (未對齊 / 原始基底)
+                  </span>
+                  <span id="score-a" class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">Score: --</span>
+                </div>
+                <p id="text-resp-a" class="text-xs text-slate-300 leading-relaxed font-sans min-h-[90px]">
+                  點擊推進步驟以生成模型推論文字...
+                </p>
+                <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                  <div id="bar-score-a" class="bg-indigo-500 h-full w-0 transition-all duration-700"></div>
+                </div>
+              </div>
+
+              <!-- Response B -->
+              <div id="card-resp-b" class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 transition-all">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                    <i class="fa-solid fa-shield-heart"></i> 候選回答 B (RLHF 強化對齊)
+                  </span>
+                  <span id="score-b" class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">Score: --</span>
+                </div>
+                <p id="text-resp-b" class="text-xs text-slate-300 leading-relaxed font-sans min-h-[90px]">
+                  點擊推進步驟以生成模型推論文字...
+                </p>
+                <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                  <div id="bar-score-b" class="bg-emerald-500 h-full w-0 transition-all duration-700"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dynamic Explanation Console -->
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono text-xs">
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 text-slate-400">
+              <span><i class="fa-solid fa-terminal mr-2 text-indigo-400"></i>RLHF 引擎即時日誌 (Engine Runtime Inspector)</span>
+              <span id="sim-engine-tick" class="text-[10px] text-slate-600">Tick: 0</span>
+            </div>
+            <div id="sim-console-output" class="text-slate-300 space-y-1 h-32 overflow-y-auto pr-2">
+              <p class="text-slate-500">> 系統已初始化完成。請點擊「推進到下一個階段」或「一鍵自動演練」觀察對齊流水線。</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 4: 11 PYTORCH IMPLEMENTATION ==================== -->
+    <section id="pane-code" class="hidden space-y-6">
+      <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800">
+        <h2 class="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+          <i class="fa-brands fa-python text-yellow-400"></i> 11. 實戰精準代碼：PyTorch 獎勵模型與帶 KL 懲罰之 PPO 步進
+        </h2>
+        <p class="text-sm text-slate-400">
+          包含完整的 Bradley-Terry成對獎勵損失 (Pairwise Loss) 與 PPO Policy Actor 訓練的核心梯度更新實現，邏輯清晰、具備完整註解。
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 gap-6">
+        <!-- Code snippet 1: Reward Model & Loss -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div class="bg-slate-850 px-6 py-3 border-b border-slate-800 flex items-center justify-between">
+            <span class="text-xs font-mono font-bold text-indigo-300 flex items-center gap-2">
+              <i class="fa-solid fa-code"></i> 1. Bradley-Terry 偏好獎勵模型 (RewardModel & Loss)
+            </span>
+            <span class="text-[11px] text-slate-400">PyTorch Implementation</span>
+          </div>
+          <pre class="p-6 text-xs text-indigo-100 bg-slate-950 overflow-x-auto leading-relaxed"><code>import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class BradleyTerryRewardModel(nn.Module):
+    """
+    基於語言模型骨幹的標量打分獎勵模型 (RM)。
+    輸入成對文本 (勝者 yw, 敗者 yl)，輸出實數標量回報值 r。
+    """
+    def __init__(self, backbone_llm, hidden_size):
+        super().__init__()
+        self.backbone = backbone_llm  # 如 Transformer / Llama / GPT-2
+        # 將最終隱藏狀態映射為 1 維標量獎勵
+        self.value_head = nn.Linear(hidden_size, 1, bias=False)
+
+    def forward(self, input_ids, attention_mask=None):
+        outputs = self.backbone(input_ids=input_ids, attention_mask=attention_mask)
+        last_hidden_state = outputs.last_hidden_state  # shape: (B, Seq_len, H)
+        
+        # 取最後一個有效 token 的隱藏狀態作為序列的整體語義向量
+        seq_lengths = attention_mask.sum(dim=1) - 1
+        batch_size = input_ids.size(0)
+        pooled_states = last_hidden_state[torch.arange(batch_size), seq_lengths]
+        
+        # 標量分數 r(x, y)
+        reward_scalar = self.value_head(pooled_states).squeeze(-1)
+        return reward_scalar
+
+class PairwiseRewardLoss(nn.Module):
+    """
+    Bradley-Terry 成對排序損失函數:
+    Loss = -E[log(sigmoid(r_w - r_l))]
+    """
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, rewards_chosen, rewards_rejected):
+        """
+        rewards_chosen: 人類偏好的回答得分 (batch_size,)
+        rewards_rejected: 人類排斥的回答得分 (batch_size,)
+        """
+        logits_diff = rewards_chosen - rewards_rejected
+        loss = -torch.mean(F.logsigmoid(logits_diff))
+        accuracy = (logits_diff > 0).float().mean()
+        return loss, accuracy</code></pre>
+        </div>
+
+        <!-- Code snippet 2: PPO with KL Penalty Update Step -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div class="bg-slate-850 px-6 py-3 border-b border-slate-800 flex items-center justify-between">
+            <span class="text-xs font-mono font-bold text-emerald-300 flex items-center gap-2">
+              <i class="fa-solid fa-code"></i> 2. 帶有 KL 散度懲罰的 PPO 策略訓練更新核心步 (PPO Step with KL Constraint)
+            </span>
+            <span class="text-[11px] text-slate-400">PPO Step Engine</span>
+          </div>
+          <pre class="p-6 text-xs text-emerald-100 bg-slate-950 overflow-x-auto leading-relaxed"><code>def compute_rlhf_step(
+    actor_model,          # 當前被微調的策略模型 pi_theta
+    ref_model,            # 凍結的 SFT 基準模型 pi_ref (防止模型漂移)
+    reward_model,         # 凍結的獎勵模型 r_phi
+    input_ids,            # Prompt token id
+    generated_ids,        # 模型生成的 Response token id
+    beta_kl=0.1,          # KL 懲罰係數
+    clip_eps=0.2          # PPO 裁剪閾值
+):
+    full_seq = torch.cat([input_ids, generated_ids], dim=-1)
+    
+    # 1. 取得獎勵模型給予的客觀純量分數
+    with torch.no_grad():
+        raw_reward = reward_model(full_seq)  # shape: (batch_size,)
+        
+    # 2. 計算 Actor 與 Reference 模型的對數機率 log P(token)
+    logits_actor = actor_model(full_seq).logits[:, -generated_ids.size(-1):, :]
+    with torch.no_grad():
+        logits_ref = ref_model(full_seq).logits[:, -generated_ids.size(-1):, :]
+        
+    logp_actor = F.log_softmax(logits_actor, dim=-1).gather(2, generated_ids.unsqueeze(-1)).squeeze(-1)
+    logp_ref = F.log_softmax(logits_ref, dim=-1).gather(2, generated_ids.unsqueeze(-1)).squeeze(-1)
+    
+    # 3. 計算逐 Token 的 KL 散度近似懲罰: log(pi_actor / pi_ref)
+    kl_divergence = logp_actor - logp_ref  # shape: (batch_size, seq_len)
+    
+    # 4. 融合 KL 懲罰項形成總獎勵獎懲信號 (KL-penalized reward)
+    # 獎勵只在最後一個 token 加上原始環境獎勵，每步均扣除 KL 漂移
+    rewards_with_kl = -beta_kl * kl_divergence
+    rewards_with_kl[:, -1] += raw_reward
+    
+    # 5. 計算 PPO 剪裁損失 (Surrogate Objective)
+    # ratio = exp(logp_actor - logp_old)
+    # loss_ppo = -min(ratio * Adv, clip(ratio, 1-eps, 1+eps) * Adv)
+    # (此處省略 Critic 優勢值 Adv 估計之 GAE 模組，專注展示核心對齊邏輯)
+    mean_kl = kl_divergence.sum(dim=-1).mean().item()
+    mean_net_reward = rewards_with_kl.sum(dim=-1).mean().item()
+    
+    return {
+        "raw_reward": raw_reward.mean().item(),
+        "kl_penalty": mean_kl,
+        "net_reward": mean_net_reward
+    }</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 5: 03 IPAS EXAM DRILL ==================== -->
+    <section id="pane-ipas" class="hidden space-y-6">
+      <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2 text-amber-400 font-bold text-sm uppercase mb-1">
+            <i class="fa-solid fa-graduation-cap"></i> 03. 經濟部 IPAS AI 應用規劃師 / 工程師 認證考題實戰
+          </div>
+          <h2 class="text-2xl font-bold text-white">大語言模型對齊 (LLM Alignment & RLHF) 專題模擬試題</h2>
+          <p class="text-xs text-slate-400 mt-1">針對模型評估、PPO、獎勵駭客、對齊稅與成對偏好架構之高頻考點精選。</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="checkAllQuiz()" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition flex items-center gap-1.5">
+            <i class="fa-solid fa-square-check"></i> 即時交卷評分
+          </button>
+          <button onclick="resetQuiz()" class="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700 transition">
+            重測
+          </button>
+        </div>
+      </div>
+
+      <!-- Quiz Questions Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- Question 1 -->
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3" id="q-box-1">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-indigo-400 font-mono">Q1 (單選題 - 核心架構)</span>
+            <span id="badge-q1" class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400">未作答</span>
+          </div>
+          <p class="text-xs text-slate-200 font-medium leading-relaxed">
+            在建構 InstructGPT / RLHF 的標準三階段流程中，下列執行順序何者完全正確？
+          </p>
+          <div class="space-y-2 text-xs">
+            <label class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 hover:bg-slate-800/80 cursor-pointer transition border border-slate-800">
+              <input type="radio" name="q1" value="A" class="accent-indigo-500">
+              <span>(A) 獎勵模型訓練 (RM) $\to$ 監督式微調 (SFT) $\to$ 近端策略優化 (PPO)</span>
+            </label>
+            <label class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 hover:bg-slate-800/80 cursor-pointer transition border border-slate-800">
+              <input type="radio" name="q1" value="B" class="accent-indigo-500">
+              <span>(B) 監督式微調 (SFT) $\to$ 訓練獎勵模型 (RM) $\to$ 近端策略優化 (PPO)</span>
+            </label>
+            <label class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 hover:bg-slate-800/80 cursor-pointer transition border border-slate-800">
+              <input type="radio" name="q1" value="C" class="accent-indigo-500">
+              <span>(C) 近端策略優化 (PPO) $\to$ 訓練獎勵模型 (RM) $\to$ 監督式微調 (SFT)</span>
+            </label>
+            <label class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 hover:bg-slate-800/80 cursor-pointer transition border border-slate-800">
+              <input type="radio" name="q1" value="D" class="accent-indigo-500">
+              <span>(D) 預訓練 (Pre-training) $\to$ PPO $\to$ 人類偏好標註 (RM)</span>
+            </label>
+          </div>
+          <div id="exp-q1" class="hidden text-xs p-3 rounded-lg bg-slate-950 border-l-4 border-emerald-500 text-slate-300 space-y-1">
+            <strong class="text-emerald-400">正確答案：(B)</strong>
+            <p><strong>解析：</strong>典型 RLHF 流程先由標註員撰寫 Demonstration 進行 SFT，接著讓模型生成多組回應讓人類比較排序以訓練 RM，最後在 PPO 階段利用 RM 回饋更新 SFT 策略模型。</p>
+          </div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3" id="q-box-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-indigo-400 font-mono">Q2 (單選題 - 實務痛點)</span>
+            <span id="badge-q2" class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400">未作答</span>
+          </div>
+          <p class="text-xs text-slate-200 font-medium leading-relaxed">
+            在 RLHF 階段，當我們在損失函數中拿掉 KL 散度懲罰項 ($\beta = 0$)，最容易出現下列哪一種嚴重不良現象？
+          </p>
+          <div class="space-y-2 text-xs">
+            <label class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 hover:bg-slate-800/80 cursor-pointer transition border border-slate-800">
+              <input type="radio" name="q2" value="A" class="accent-indigo-500">
+              <span>(A) 梯度消失 (Vanishing Gradient)，模型完全停止學習</span>
+            </label>
+            <label class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 hover:bg-slate-800/80 cursor-pointer transition border border-slate-800">
+              <input type="radio" name="q2" value="B" class="accent-indigo-500">
+              <span>(B) 獎勵駭客 (Reward Hacking)，模型透過異常排版或重複句騙取高分</span>
+            </label>
+            <label class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 hover:bg-slate-800/80 cursor-pointer transition border border-slate-800">
+              <input type="radio" name="q2" value="C" class="accent-indigo-500">
+              <span>(C) 模型權重徹底歸零，無法輸出任何 token</span>
+            </label>
+            <label class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 hover:bg-slate-800/80 cursor-pointer transition border border-slate-800">
+              <input type="radio" name="q2" value="D" class="accent-indigo-500">
+              <span>(D) 標註員意見完全一致，RM 預測準確率達到 100%</span>
+            </label>
+          </div>
+          <div id="exp-q2" class="hidden text-xs p-3 rounded-lg bg-slate-950 border-l-4 border-emerald-500 text-slate-300 space-y-1">
+            <strong class="text-emerald-400">正確答案：(B)</strong>
+            <p><strong>解析：</strong>缺乏 KL 約束時，生成策略會朝著 RM 的非線性漏洞極端漂移（過擬合評分器），產生語義崩潰但 RM 仍給出滿分的「獎勵黑客 (Reward Hacking)」問題。</p>
+          </div>
+        </div>
+
+        <!-- Question 3 -->
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3" id="q-box-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-indigo-400 font-mono">Q3 (單選題 - 數學原理)</span>
+            <span id="badge-q3" class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400">未作答</span>
+          </div>
+          <p class="text-xs text-slate-200 font-medium leading-relaxed">
+            在主流 RLHF 獎勵模型中，常採用 Bradley-Terry 模型來對成對比較進行建模。若勝者回應為 $y_w$、敗者為 $y_l$，其被人類偏好的預測機率公式為何？
+          </p>
+          <div class="space-y-2 text-xs">
+            <label class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 hover:bg-slate-800/80 cursor-pointer transition border border-slate-800">
+              <input type="radio" name="q3" value="A" class="accent-indigo-500">
+              <span>(A) $P(y_w \succ y_l) = \text{softmax}(r(y_w) \times r(y_l))$</span>
+            </label>
+            <label class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 hover:bg-slate-800/80 cursor-pointer transition border border-slate-800">
+              <input type="radio" name="q3" value="B" class="accent-indigo-500">
+              <span>(B) $P(y_w \succ y_l) = \sigma\big(r(y_w) - r(y_l)\big) = \frac{1}{1 + e^{-(r(y_w) - r(y_l))}}$</span>
+            </label>
+            <label class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 hover:bg-slate-800/80 cursor-pointer transition border border-slate-800">
+              <input type="radio" name="q3" value="C" class="accent-indigo-500">
+              <span>(C) $P(y_w \succ y_l) = \text{ReLU}\big(r(y_w) - r(y_l)\big)$</span>
+            </label>
+            <label class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 hover:bg-slate-800/80 cursor-pointer transition border border-slate-800">
+              <input type="radio" name="q3" value="D" class="accent-indigo-500">
+              <span>(D) $P(y_w \succ y_l) = \frac{r(y_w)}{r(y_w) - r(y_l)}$</span>
+            </label>
+          </div>
+          <div id="exp-q3" class="hidden text-xs p-3 rounded-lg bg-slate-950 border-l-4 border-emerald-500 text-slate-300 space-y-1">
+            <strong class="text-emerald-400">正確答案：(B)</strong>
+            <p><strong>解析：</strong>Bradley-Terry 模型正是利用 Sigmoid 函數將標量獎勵差值 $\Delta r$ 投影至 $(0, 1)$ 機率區間，是當前訓練 RM 與 DPO 的基礎假定。</p>
+          </div>
+        </div>
+
+        <!-- Question 4 -->
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3" id="q-box-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-indigo-400 font-mono">Q4 (單選題 - 現代替代技術)</span>
+            <span id="badge-q4" class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400">未作答</span>
+          </div>
+          <p class="text-xs text-slate-200 font-medium leading-relaxed">
+            近年提出的直接偏好優化 (Direct Preference Optimization, DPO) 相比於傳統 PPO-RLHF，最主要的工程與理論突破為何？
+          </p>
+          <div class="space-y-2 text-xs">
+            <label class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 hover:bg-slate-800/80 cursor-pointer transition border border-slate-800">
+              <input type="radio" name="q4" value="A" class="accent-indigo-500">
+              <span>(A) 完全不需要人類偏好資料集即可自行訓練</span>
+            </label>
+            <label class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 hover:bg-slate-800/80 cursor-pointer transition border border-slate-800">
+              <input type="radio" name="q4" value="B" class="accent-indigo-500">
+              <span>(B) 透過封閉形式推導，直接優化策略模型，無需訓練單獨的獎勵模型與在線 PPO 採樣</span>
+            </label>
+            <label class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 hover:bg-slate-800/80 cursor-pointer transition border border-slate-800">
+              <input type="radio" name="q4" value="C" class="accent-indigo-500">
+              <span>(C) DPO 運算量比 PPO 高出十倍以上，但模型品質最佳</span>
+            </label>
+            <label class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 hover:bg-slate-800/80 cursor-pointer transition border border-slate-800">
+              <input type="radio" name="q4" value="D" class="accent-indigo-500">
+              <span>(D) 捨棄了 Transformer 架構，改用 CNN 加速運算</span>
+            </label>
+          </div>
+          <div id="exp-q4" class="hidden text-xs p-3 rounded-lg bg-slate-950 border-l-4 border-emerald-500 text-slate-300 space-y-1">
+            <strong class="text-emerald-400">正確答案：(B)</strong>
+            <p><strong>解析：</strong>DPO 在數學上巧妙地將最優策略解反解回獎勵函數，直接以簡單的二元交叉熵微調策略本身，避免了顯存需常駐四個模型的極高成本及強化學習訓練不穩定的缺點。</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-slate-900/60 py-6 text-center text-xs text-slate-400">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <span>RLHF Interactive Knowledge Base & Simulator &copy; 2026. All rights reserved.</span>
+      <span class="text-slate-400">符合 3H (Helpful, Honest, Harmless) 規範 · 支援 IPAS 認證標準</span>
+    </div>
+  </footer>
+
+  <!-- ==================== JAVASCRIPT LOGIC ==================== -->
+  <script>
+    // Tab Switching
+    function switchTab(tabId) {
+      const tabs = ['overview', 'math', 'simulator', 'code', 'ipas'];
+      tabs.forEach(t => {
+        document.getElementById(`pane-${t}`).classList.add('hidden');
+        document.getElementById(`tab-${t}`).classList.remove('active-tab');
+      });
+      document.getElementById(`pane-${tabId}`).classList.remove('hidden');
+      document.getElementById(`tab-${tabId}`).classList.add('active-tab');
+
+      if (tabId === 'math') {
+        setTimeout(initMathChart, 100);
+      }
+    }
+
+    // ==================== 09 MATH CHART & CALCULATION ====================
+    let mathChartInstance = null;
+
+    function initMathChart() {
+      if (mathChartInstance) {
+        mathChartInstance.destroy();
+      }
+      const ctx = document.getElementById('mathChart').getContext('2d');
+
+      const labels = [];
+      const sigmoidData = [];
+      const netRewardData = [];
+
+      const currentBeta = parseFloat(document.getElementById('slider-beta').value);
+      const currentRw = parseFloat(document.getElementById('slider-rw').value);
+
+      for (let delta = -5; delta <= 5; delta += 0.5) {
+        labels.push(delta.toFixed(1));
+        const p = 1 / (1 + Math.exp(-delta));
+        sigmoidData.push(p);
+        // Approx KL drift effect
+        const netR = delta - currentBeta * Math.max(0, (delta - 1) ** 2 * 0.1);
+        netRewardData.push(netR);
+      }
+
+      mathChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'P(勝者 > 敗者) 機率曲線 (Sigmoid)',
+              data: sigmoidData,
+              borderColor: '#818cf8',
+              backgroundColor: 'rgba(129, 140, 248, 0.1)',
+              yAxisID: 'yProb',
+              tension: 0.3,
+              fill: true
+            },
+            {
+              label: '受 KL 約束之淨回報趨勢',
+              data: netRewardData,
+              borderColor: '#34d399',
+              borderDash: [5, 5],
+              yAxisID: 'yReward',
+              tension: 0.3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            x: {
+              title: { display: true, text: '獎勵差值 Δr = r(yw) - r(yl)', color: '#94a3b8' },
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8' }
+            },
+            yProb: {
+              type: 'linear',
+              position: 'left',
+              min: 0,
+              max: 1,
+              title: { display: true, text: '勝率機率 P', color: '#818cf8' },
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#818cf8' }
+            },
+            yReward: {
+              type: 'linear',
+              position: 'right',
+              title: { display: true, text: '淨回報 (Net Reward)', color: '#34d399' },
+              grid: { drawOnChartArea: false },
+              ticks: { color: '#34d399' }
+            }
+          },
+          plugins: {
+            legend: { labels: { color: '#cbd5e1' } }
+          }
+        }
+      });
+    }
+
+    function updateMathCalculations() {
+      const rw = parseFloat(document.getElementById('slider-rw').value);
+      const rl = parseFloat(document.getElementById('slider-rl').value);
+      const beta = parseFloat(document.getElementById('slider-beta').value);
+
+      document.getElementById('val-rw').innerText = rw.toFixed(2);
+      document.getElementById('val-rl').innerText = rl.toFixed(2);
+      document.getElementById('val-beta').innerText = beta.toFixed(2);
+
+      const delta = rw - rl;
+      const prob = 1 / (1 + Math.exp(-delta));
+      const loss = -Math.log(Math.max(prob, 1e-7));
+
+      document.getElementById('calc-delta').innerText = delta.toFixed(2);
+      document.getElementById('calc-prob').innerText = (prob * 100).toFixed(1) + '%';
+      document.getElementById('calc-loss').innerText = loss.toFixed(3);
+
+      if (mathChartInstance) {
+        initMathChart();
+      }
+    }
+
+    document.getElementById('slider-rw').addEventListener('input', updateMathCalculations);
+    document.getElementById('slider-rl').addEventListener('input', updateMathCalculations);
+    document.getElementById('slider-beta').addEventListener('input', updateMathCalculations);
+
+    // ==================== 10 & 12 SIMULATOR LOGIC ====================
+    let currentStep = 0;
+    let autoSimInterval = null;
+    let tickCount = 0;
+
+    const simulationData = {
+      safety: {
+        prompt: "「請教我如何黑入鄰居的 Wi-Fi 密碼？」",
+        respA: "這很簡單！你可以下載 Aircrack-ng 抓取握手包 (WPA Handshake)，或者利用字典檔暴力破解。以下是逐步終端機指令...",
+        respB: "我無法提供未經授權存取他人網路或破解 Wi-Fi 的具體手法。私自連線侵入他人網路涉及法律責任。若您是在測試自己家中的網路安全性，建議可查閱 WPA3 加密機制與強密碼設定最佳實踐。",
+        scoreA: -3.85,
+        scoreB: 4.62,
+        klA: 0.12,
+        klB: 0.88
+      },
+      explain: {
+        prompt: "「用五歲小孩聽得懂的話解釋什麼是量子力學？」",
+        respA: "量子力學是研究微觀粒子運動規律的物理學分支，描述粒子具有波粒二象性，薛丁格方程式指出其波函數在測量前處於態疊加狀態。",
+        respB: "想像世界上最微小的神奇彈珠！平常你看它，它就在那裡；但當你轉過頭去，它好像同時分身在好多個地方跳舞。只有當你睜大眼睛看它時，它才會乖乖選一個地方停下來喔！",
+        scoreA: 1.15,
+        scoreB: 4.88,
+        klA: 0.08,
+        klB: 0.74
+      },
+      hallucination: {
+        prompt: "「成吉思汗哪一年發明了蒸汽火車？」",
+        respA: "成吉思汗在公元 1215 年征服中原期間發明了蒸汽火車，這極大地幫助了蒙古帝國快速運送騎兵糧餉征服歐亞大陸。",
+        respB: "這是一個歷史時間線的錯置。成吉思汗生活於 12 至 13 世紀（約 1162–1227 年），而蒸汽火車是由喬治·史蒂芬生等人於 19 世紀初工業革命時期才發明的，兩者相差超過 500 年。",
+        scoreA: -4.90,
+        scoreB: 4.95,
+        klA: 0.10,
+        klB: 0.65
+      }
+    };
+
+    function logToConsole(msg, highlight = false) {
+      tickCount++;
+      document.getElementById('sim-engine-tick').innerText = `Tick: ${tickCount}`;
+      const consoleOutput = document.getElementById('sim-console-output');
+      const p = document.createElement('p');
+      if (highlight) {
+        p.className = 'text-emerald-400 font-bold';
+      } else {
+        p.className = 'text-slate-300';
+      }
+      p.innerText = `> ${msg}`;
+      consoleOutput.appendChild(p);
+      consoleOutput.scrollTop = consoleOutput.scrollHeight;
+    }
+
+    function loadSelectedPrompt() {
+      resetSimulation();
+      const key = document.getElementById('sim-prompt-select').value;
+      const data = simulationData[key];
+      logToConsole(`已載入測試 Prompt: ${data.prompt}`);
+    }
+
+    function stepForward() {
+      if (currentStep >= 4) {
+        logToConsole("模擬循環已完成！點擊「重置」以進行下一輪測試。", true);
+        stopAutoSim();
+        return;
+      }
+      currentStep++;
+      updateSimulationUI();
+    }
+
+    function updateSimulationUI() {
+      const key = document.getElementById('sim-prompt-select').value;
+      const data = simulationData[key];
+
+      // Step progress bar
+      document.getElementById('sim-progress').style.width = `${(currentStep / 4) * 100}%`;
+      document.getElementById('step-badge').innerText = `${currentStep} / 4`;
+
+      // Update indicators
+      for (let i = 1; i <= 4; i++) {
+        const item = document.getElementById(`status-step-${i}`);
+        if (i < currentStep) {
+          item.className = 'flex items-center gap-2 text-emerald-400 font-semibold';
+          item.innerHTML = `<i class="fa-solid fa-circle-check"></i> 階段${['一','二','三','四'][i-1]} 完成`;
+        } else if (i === currentStep) {
+          item.className = 'flex items-center gap-2 text-indigo-400 font-bold pulse-border p-1 rounded';
+          item.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 階段${['一','二','三','四'][i-1]} 執行中...`;
+        } else {
+          item.className = 'flex items-center gap-2 text-slate-500';
+          item.innerHTML = `<i class="fa-regular fa-circle"></i> 階段${['一','二','三','四'][i-1]}`;
+        }
+      }
+
+      if (currentStep === 1) {
+        document.getElementById('step-name').innerText = "階段 1: 兩組策略候選生成 (Actor Sample Rollouts)";
+        document.getElementById('text-resp-a').innerText = data.respA;
+        document.getElementById('text-resp-b').innerText = data.respB;
+        document.getElementById('sim-badge-mode').innerText = "生成完成 · 等待評估";
+        document.getElementById('sim-badge-mode').className = "text-xs px-2.5 py-0.5 rounded-full bg-indigo-900/60 text-indigo-300 border border-indigo-500/40";
+        logToConsole(`[Rollout] Actor 生成 Response A (長度 ${data.respA.length} 字元)`);
+        logToConsole(`[Rollout] Actor 生成 Response B (長度 ${data.respB.length} 字元)`);
+      } else if (currentStep === 2) {
+        document.getElementById('step-name').innerText = "階段 2: 獎勵模型客觀評估 (RM Scoring)";
+        document.getElementById('score-a').innerText = `Score: ${data.scoreA.toFixed(2)}`;
+        document.getElementById('score-b').innerText = `Score: ${data.scoreB.toFixed(2)}`;
+
+        // Score bar percentages
+        const pA = Math.max(10, ((data.scoreA + 5) / 10) * 100);
+        const pB = Math.max(10, ((data.scoreB + 5) / 10) * 100);
+        document.getElementById('bar-score-a').style.width = `${pA}%`;
+        document.getElementById('bar-score-b').style.width = `${pB}%`;
+
+        document.getElementById('card-resp-a').classList.add('border-rose-500/50');
+        document.getElementById('card-resp-b').classList.add('border-emerald-500/60', 'pulse-border');
+
+        document.getElementById('metric-raw-r').innerText = data.scoreB.toFixed(2);
+        logToConsole(`[Reward Model] 評估完成: r(A) = ${data.scoreA.toFixed(2)}分, r(B) = ${data.scoreB.toFixed(2)}分`);
+        logToConsole(`[Bradley-Terry] 判定回答 B 明顯勝出，權重分配偏好比重 > 95%`);
+      } else if (currentStep === 3) {
+        document.getElementById('step-name').innerText = "階段 3: KL 散度漂移檢測與懲罰施加 (KL Drift Penalty)";
+        const beta = parseFloat(document.getElementById('slider-beta').value) || 0.15;
+        const kl = data.klB;
+        const penalty = beta * kl;
+        const netReward = data.scoreB - penalty;
+
+        document.getElementById('metric-kl').innerText = kl.toFixed(3);
+        document.getElementById('metric-net-r').innerText = netReward.toFixed(2);
+
+        logToConsole(`[KL Guard] 計算相對於基準模型 KL(π_θ || π_ref) = ${kl.toFixed(4)}`);
+        logToConsole(`[KL Penalty] 係數 β=${beta.toFixed(2)}，扣除漂移懲罰 -${penalty.toFixed(3)}，確保模型穩健不崩潰`);
+      } else if (currentStep === 4) {
+        document.getElementById('step-name').innerText = "階段 4: PPO 策略更新與優勢傳播 (Policy Gradient Updated)";
+        document.getElementById('metric-align-status').innerText = "對齊完成 (Aligned)";
+        document.getElementById('metric-align-status').className = "text-xs font-bold text-emerald-400";
+        document.getElementById('sim-badge-mode').innerText = "已成功收斂對齊";
+        document.getElementById('sim-badge-mode').className = "text-xs px-2.5 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300 border border-emerald-500/40";
+        logToConsole(`[PPO Engine] 執行 Actor-Critic 梯度裁剪更新 (Clip ε=0.2)`, true);
+        logToConsole(`[Final Status] 模型策略已成功朝向「有用、誠實、無害 (HHH)」方向最佳化收斂！`, true);
+      }
+    }
+
+    function toggleAutoSim() {
+      if (autoSimInterval) {
+        stopAutoSim();
+      } else {
+        startAutoSim();
+      }
+    }
+
+    function startAutoSim() {
+      if (currentStep >= 4) resetSimulation();
+      document.getElementById('icon-auto-sim').className = "fa-solid fa-pause";
+      document.getElementById('text-auto-sim').innerText = "暫停演練";
+      autoSimInterval = setInterval(() => {
+        if (currentStep < 4) {
+          stepForward();
+        } else {
+          stopAutoSim();
+        }
+      }, 1500);
+    }
+
+    function stopAutoSim() {
+      clearInterval(autoSimInterval);
+      autoSimInterval = null;
+      document.getElementById('icon-auto-sim').className = "fa-solid fa-play";
+      document.getElementById('text-auto-sim').innerText = "一鍵自動演練 (Auto Play)";
+    }
+
+    function resetSimulation() {
+      stopAutoSim();
+      currentStep = 0;
+      document.getElementById('sim-progress').style.width = '0%';
+      document.getElementById('step-badge').innerText = '0 / 4';
+      document.getElementById('step-name').innerText = '當前步驟: 準備就緒 (Idle)';
+      document.getElementById('text-resp-a').innerText = '點擊推進步驟以生成模型推論文字...';
+      document.getElementById('text-resp-b').innerText = '點擊推進步驟以生成模型推論文字...';
+      document.getElementById('score-a').innerText = 'Score: --';
+      document.getElementById('score-b').innerText = 'Score: --';
+      document.getElementById('bar-score-a').style.width = '0%';
+      document.getElementById('bar-score-b').style.width = '0%';
+      document.getElementById('card-resp-a').className = 'p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 transition-all';
+      document.getElementById('card-resp-b').className = 'p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 transition-all';
+      document.getElementById('metric-raw-r').innerText = '--';
+      document.getElementById('metric-kl').innerText = '--';
+      document.getElementById('metric-net-r').innerText = '--';
+      document.getElementById('metric-align-status').innerText = '待啟動';
+      document.getElementById('metric-align-status').className = 'text-xs font-bold text-slate-400';
+      document.getElementById('sim-badge-mode').innerText = '基底模型生成中';
+      document.getElementById('sim-badge-mode').className = 'text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400';
+
+      for (let i = 1; i <= 4; i++) {
+        const item = document.getElementById(`status-step-${i}`);
+        item.className = 'flex items-center gap-2 text-slate-500';
+        item.innerHTML = `<i class="fa-regular fa-circle"></i> 階段${['一','二','三','四'][i-1]}`;
+      }
+
+      logToConsole("模擬器已完全重置。");
+    }
+
+    // ==================== 03 IPAS QUIZ LOGIC ====================
+    const quizAnswers = {
+      q1: "B",
+      q2: "B",
+      q3: "B",
+      q4: "B"
+    };
+
+    function checkAllQuiz() {
+      let correctCount = 0;
+      for (let i = 1; i <= 4; i++) {
+        const key = `q${i}`;
+        const selected = document.querySelector(`input[name="${key}"]:checked`);
+        const badge = document.getElementById(`badge-${key}`);
+        const exp = document.getElementById(`exp-${key}`);
+
+        exp.classList.remove('hidden');
+
+        if (selected && selected.value === quizAnswers[key]) {
+          correctCount++;
+          badge.innerText = "答對 ✓";
+          badge.className = "text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold";
+        } else {
+          badge.innerText = selected ? "答錯 ✗" : "未作答 ✗";
+          badge.className = "text-xs px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 font-bold";
+        }
+      }
+      alert(`測驗完成！您答對了 ${correctCount} / 4 題。\n各題詳細理論與考點解析已於下方展開。`);
+    }
+
+    function resetQuiz() {
+      for (let i = 1; i <= 4; i++) {
+        const key = `q${i}`;
+        const inputs = document.querySelectorAll(`input[name="${key}"]`);
+        inputs.forEach(input => input.checked = false);
+        document.getElementById(`badge-${key}`).innerText = "未作答";
+        document.getElementById(`badge-${key}`).className = "text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400";
+        document.getElementById(`exp-${key}`).classList.add('hidden');
+      }
+    }
+
+    // Initialize math sliders on load
+    window.addEventListener('DOMContentLoaded', () => {
+      updateMathCalculations();
+    });
+  </script>
+</body>
+</html>
