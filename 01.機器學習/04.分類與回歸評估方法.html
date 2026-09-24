@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>機器學習評估指標全景指南：分類 (Classification) 與迴歸 (Regression) 評估方法與動態實驗室</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            900: '#064e3b',
+                        },
+                        navy: {
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- KaTeX CDN for mathematical formulas -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+        onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true},{left: '$', right: '$', display: false}]});"></script>
+
+    <style>
+        /* Custom scrollbar and glass effect */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.82);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .metric-card {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.5);
+        }
+        .slider-thumb::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #10b981;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-navy-950 text-slate-100 font-sans antialiased min-h-screen selection:bg-emerald-500 selection:text-white">
+
+    <!-- Sticky Navigation Header -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-slate-800/80">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <span class="p-2 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25">
+                    <i class="fa-solid fa-chart-pie text-xl"></i>
+                </span>
+                <div>
+                    <span class="font-bold text-lg bg-gradient-to-r from-white via-slate-200 to-emerald-400 bg-clip-text text-transparent">
+                        Evaluation Masterclass
+                    </span>
+                    <span class="text-xs ml-2 px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono">
+                        分類 vs 迴歸指標全景
+                    </span>
+                </div>
+            </div>
+            
+            <nav class="hidden md:flex items-center space-x-1 text-sm font-medium text-slate-300">
+                <a href="#confusion-matrix" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-slate-800/60 transition">混淆矩陣</a>
+                <a href="#classification-metrics" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-slate-800/60 transition">分類評估</a>
+                <a href="#roc-pr-curves" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-slate-800/60 transition">ROC / PR 曲線</a>
+                <a href="#regression-metrics" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-slate-800/60 transition">迴歸指標</a>
+                <a href="#classification-lab" class="px-3 py-1.5 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/40 border border-emerald-800/50 transition">
+                    <i class="fa-solid fa-flask mr-1"></i>分類模擬器
+                </a>
+                <a href="#regression-lab" class="px-3 py-1.5 rounded-lg text-teal-400 hover:text-teal-300 hover:bg-teal-950/40 border border-teal-800/50 transition">
+                    <i class="fa-solid fa-sliders mr-1"></i>迴歸模擬器
+                </a>
+                <a href="#decision-tree-guide" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-slate-800/60 transition">指標挑選矩陣</a>
+                <a href="#ipas-exam" class="px-3 py-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-950/40 border border-amber-800/50 transition">
+                    <i class="fa-solid fa-graduation-cap mr-1"></i>iPAS 考題
+                </a>
+            </nav>
+            
+            <a href="#classification-lab" class="px-4 py-2 text-xs font-semibold rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-md shadow-emerald-500/20 transition transform active:scale-95">
+                動態模擬體驗
+            </a>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="relative pt-12 pb-16 overflow-hidden">
+        <div class="absolute inset-0 -z-10 opacity-20 pointer-events-none">
+            <div class="absolute top-1/4 left-1/2 -translate-x-1/2 w-[850px] h-[360px] bg-gradient-to-tr from-emerald-600 via-teal-600 to-blue-600 rounded-full blur-3xl"></div>
+        </div>
+        <div class="max-w-6xl mx-auto px-4 text-center">
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-800/80 border border-slate-700 text-xs text-slate-300 mb-6">
+                <i class="fa-solid fa-award text-amber-400"></i> 符合經濟部 iPAS AI 應用規劃師與工程師檢定規範・必考核心
+            </div>
+            <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white mb-4">
+                機器學習<span class="text-emerald-400">「分類」</span>與<span class="text-teal-400">「迴歸」</span>評估方法全景指南
+            </h1>
+            <p class="text-slate-400 max-w-3xl mx-auto text-sm sm:text-base leading-relaxed">
+                模型訓練完成後，我們如何客觀衡量它的好壞？為什麼 Accuracy 99% 可能是災難？MAE 與 MSE 對離群值有何截然不同的態度？
+                本篇涵蓋混淆矩陣、ROC/AUC、PR 曲線、F-beta、MAE/MSE/RMSE/MAPE 以及決定係數 $R^2$ 的完整數學推導與動態互動實驗室。
+            </p>
+
+            <!-- Quick Stats / Core Value Banner -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 max-w-4xl mx-auto">
+                <div class="glass-panel p-4 rounded-xl text-left border-l-4 border-emerald-500">
+                    <div class="text-xs text-slate-400">分類離散評估</div>
+                    <div class="text-lg font-bold text-emerald-400 mt-1">Accuracy / F1 / AUC</div>
+                    <div class="text-xs text-slate-500 mt-1">查準與查全的動態權衡</div>
+                </div>
+                <div class="glass-panel p-4 rounded-xl text-left border-l-4 border-teal-500">
+                    <div class="text-xs text-slate-400">連續變數評估</div>
+                    <div class="text-lg font-bold text-teal-400 mt-1">MAE / RMSE / R²</div>
+                    <div class="text-xs text-slate-500 mt-1">殘差平方和 vs 絕對值</div>
+                </div>
+                <div class="glass-panel p-4 rounded-xl text-left border-l-4 border-amber-500">
+                    <div class="text-xs text-slate-400">實務痛點攻克</div>
+                    <div class="text-lg font-bold text-amber-400 mt-1">類別極度不平衡</div>
+                    <div class="text-xs text-slate-500 mt-1">罕見疾病 / 刷卡詐欺偵測</div>
+                </div>
+                <div class="glass-panel p-4 rounded-xl text-left border-l-4 border-cyan-500">
+                    <div class="text-xs text-slate-400">檢定實戰演練</div>
+                    <div class="text-lg font-bold text-cyan-400 mt-1">iPAS 歷年考點</div>
+                    <div class="text-xs text-slate-500 mt-1">互動答題與深度解析</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 00: 生活化直覺比喻與第一型/第二型錯誤 -->
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="glass-panel p-6 sm:p-8 rounded-2xl border border-slate-800">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-lg border border-amber-500/30">
+                    <i class="fa-solid fa-lightbulb"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-bold text-white">00. 直觀生活比喻：狼來了與機場安檢</h2>
+                    <p class="text-xs sm:text-sm text-slate-400">用童話故事與生活常識，秒懂「第一型錯誤」與「第二型錯誤」</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Analogy 1: 狼來了 -->
+                <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-800 hover:border-slate-700 transition">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm font-semibold text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-wolf-pack-white"></i> 童話比喻：放羊的孩子（狼來了）
+                        </span>
+                        <span class="text-xs px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800">經典統計學範例</span>
+                    </div>
+                    <p class="text-sm text-slate-300 leading-relaxed">
+                        假設<strong>正例（Positive）=「狼真的來了」</strong>，<strong>負例（Negative）=「天下太平沒有狼」</strong>：
+                    </p>
+                    <div class="mt-4 space-y-2.5 text-xs sm:text-sm">
+                        <div class="p-2.5 rounded-lg bg-red-950/40 border border-red-900/60 text-red-200">
+                            <strong>第一型錯誤 (Type I Error, FP 偽正例 / 棄真)：</strong><br>
+                            明明<strong>沒有狼</strong>，孩子卻大喊「狼來了！」。村民拿著武器白跑一趟（虛驚一場）。
+                        </div>
+                        <div class="p-2.5 rounded-lg bg-purple-950/40 border border-purple-900/60 text-purple-200">
+                            <strong>第二型錯誤 (Type II Error, FN 偽負例 / 取偽)：</strong><br>
+                            <strong>狼真的來了</strong>，村民卻以為沒事不相信。羊群全部被吃光（造成致命毀滅損失！）。
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analogy 2: 商業抉擇 -->
+                <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-800 hover:border-slate-700 transition">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm font-semibold text-emerald-400 flex items-center gap-2">
+                            <i class="fa-solid fa-scale-balanced"></i> 工業與商業決策：你要保命還是要省錢？
+                        </span>
+                        <span class="text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">指標選定核心</span>
+                    </div>
+                    <div class="space-y-3 text-xs sm:text-sm text-slate-300">
+                        <div class="p-3 rounded-lg bg-slate-800/80 border border-slate-700">
+                            <span class="font-bold text-teal-300"><i class="fa-solid fa-shield-virus mr-1"></i>場景 A：癌症篩檢 / 機場金屬探測門（寧濫勿缺）</span>
+                            <p class="mt-1 text-slate-400">
+                                寧可多複檢 10 個人（FP 提高），也<strong>絕對不能放過任何一個真患者或攜帶炸彈者（FN 必須趨近於 0）</strong>。<br>
+                                👉 <strong>此時追求最大化【召回率 (Recall)】！</strong>
+                            </p>
+                        </div>
+                        <div class="p-3 rounded-lg bg-slate-800/80 border border-slate-700">
+                            <span class="font-bold text-blue-300"><i class="fa-solid fa-inbox mr-1"></i>場景 B：垃圾郵件過濾 / 法律死刑判決（寧缺勿濫）</span>
+                            <p class="mt-1 text-slate-400">
+                                寧可放過幾封垃圾郵件到收件匣（FN 提高），也<strong>絕對不能把客戶的重要合約誤當垃圾郵件丟進垃圾桶（FP 必須趨近於 0）</strong>。<br>
+                                👉 <strong>此時追求最大化【精確率 (Precision)】！</strong>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 01: 混淆矩陣 (Confusion Matrix) 結構與四象限解析 -->
+    <section id="confusion-matrix" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="glass-panel p-6 sm:p-8 rounded-2xl border border-slate-800">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-lg border border-emerald-500/30">
+                        01
+                    </div>
+                    <div>
+                        <h2 class="text-xl sm:text-2xl font-bold text-white">分類靈魂基石：混淆矩陣 (Confusion Matrix)</h2>
+                        <p class="text-xs sm:text-sm text-slate-400">一切分類指標（Accuracy, Precision, Recall, F1, ROC, AUC）的發源地</p>
+                    </div>
+                </div>
+                <span class="text-xs px-3 py-1 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 font-mono">
+                    2×2 二元矩陣
+                </span>
+            </div>
+
+            <!-- Confusion Matrix Visual Table -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-center border-collapse">
+                    <thead>
+                        <tr>
+                            <th colspan="2" rowspan="2" class="p-3 bg-slate-900/60 border border-slate-800 text-slate-400 text-xs">
+                                總樣本數 $N = TP+FP+FN+TN$
+                            </th>
+                            <th colspan="2" class="p-3 bg-emerald-950/40 border border-emerald-800/60 text-emerald-300 font-bold text-sm">
+                                預測值 (Predicted Class)
+                            </th>
+                            <th rowspan="2" class="p-3 bg-slate-900/60 border border-slate-800 text-slate-300 font-bold text-xs">
+                                橫向指標 (Row Metric)
+                            </th>
+                        </tr>
+                        <tr>
+                            <th class="p-2.5 bg-emerald-900/30 border border-emerald-800/40 text-emerald-200 text-xs">
+                                預測為正例 (Predicted Positive)
+                            </th>
+                            <th class="p-2.5 bg-slate-800/40 border border-slate-700 text-slate-300 text-xs">
+                                預測為負例 (Predicted Negative)
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th rowspan="2" class="p-3 bg-teal-950/40 border border-teal-800/60 text-teal-300 font-bold text-sm [writing-mode:vertical-rl] rotate-180">
+                                實際值 (Actual)
+                            </th>
+                            <th class="p-2.5 bg-teal-900/30 border border-teal-800/40 text-teal-200 text-xs">
+                                實際為正例<br>(Actual Positive: P)
+                            </th>
+                            <!-- TP -->
+                            <td class="p-4 bg-emerald-950/50 border border-emerald-700/60 text-left">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-base font-extrabold text-emerald-400">TP (真正例)</span>
+                                    <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-900 text-emerald-200">True Positive</span>
+                                </div>
+                                <p class="text-xs text-slate-300 mt-1">實際是有病，模型預測也是有病（預測正確命中！）</p>
+                            </td>
+                            <!-- FN -->
+                            <td class="p-4 bg-purple-950/50 border border-purple-800/60 text-left">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-base font-extrabold text-purple-400">FN (偽負例)</span>
+                                    <span class="text-[10px] px-2 py-0.5 rounded bg-purple-900 text-purple-200">Type II Error</span>
+                                </div>
+                                <p class="text-xs text-slate-300 mt-1">實際是有病，模型卻漏抓預測沒病（嚴重的漏報！）</p>
+                            </td>
+                            <!-- Row Metric 1: Recall -->
+                            <td class="p-4 bg-slate-900/80 border border-slate-800 text-left text-xs">
+                                <span class="font-bold text-cyan-300">召回率 / 靈敏度 (Recall / Sensitivity)</span><br>
+                                <span class="font-mono text-emerald-400">$\text{TPR} = \frac{TP}{TP + FN}$</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="p-2.5 bg-slate-800/40 border border-slate-700 text-slate-300 text-xs">
+                                實際為負例<br>(Actual Negative: N)
+                            </th>
+                            <!-- FP -->
+                            <td class="p-4 bg-amber-950/50 border border-amber-800/60 text-left">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-base font-extrabold text-amber-400">FP (偽正例)</span>
+                                    <span class="text-[10px] px-2 py-0.5 rounded bg-amber-900 text-amber-200">Type I Error</span>
+                                </div>
+                                <p class="text-xs text-slate-300 mt-1">實際是健康，模型卻誤判為有病（誤報、虛驚一場）</p>
+                            </td>
+                            <!-- TN -->
+                            <td class="p-4 bg-slate-900/90 border border-slate-700 text-left">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-base font-extrabold text-slate-300">TN (真負例)</span>
+                                    <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">True Negative</span>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-1">實際是健康，模型也預測健康（正確排除）</p>
+                            </td>
+                            <!-- Row Metric 2: Specificity -->
+                            <td class="p-4 bg-slate-900/80 border border-slate-800 text-left text-xs">
+                                <span class="font-bold text-slate-300">特異度 (Specificity / TNR)</span><br>
+                                <span class="font-mono text-slate-300">$\text{TNR} = \frac{TN}{TN + FP}$</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th colspan="2" class="p-3 bg-slate-900/60 border border-slate-800 text-slate-300 font-bold text-xs">
+                                縱向指標 (Column Metric)
+                            </th>
+                            <!-- Col Metric 1: Precision -->
+                            <td class="p-3 bg-slate-900/80 border border-slate-800 text-left text-xs">
+                                <span class="font-bold text-emerald-300">精確率 (Precision / 查準率)</span><br>
+                                <span class="font-mono text-emerald-400">$\text{Precision} = \frac{TP}{TP + FP}$</span>
+                            </td>
+                            <!-- Col Metric 2: NPV -->
+                            <td class="p-3 bg-slate-900/80 border border-slate-800 text-left text-xs">
+                                <span class="font-bold text-slate-400">陰性預測值 (NPV)</span><br>
+                                <span class="font-mono text-slate-400">$\text{NPV} = \frac{TN}{TN + FN}$</span>
+                            </td>
+                            <!-- Global Metric: Accuracy -->
+                            <td class="p-3 bg-emerald-950/70 border border-emerald-700 text-left text-xs font-bold text-emerald-300">
+                                總準確率 (Accuracy)<br>
+                                $\frac{TP + TN}{TP + TN + FP + FN}$
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 02: 分類評估核心指標公式與痛點解析 -->
+    <section id="classification-metrics" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="glass-panel p-6 sm:p-8 rounded-2xl border border-slate-800">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold text-lg border border-teal-500/30">
+                    02
+                </div>
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-bold text-white">分類四大核心指標與 $F_\beta$ Score 深度推導</h2>
+                    <p class="text-xs sm:text-sm text-slate-400">全面剖析公式原理、調和平均數的數學真理與不平衡資料陷阱</p>
+                </div>
+            </div>
+
+            <!-- Cards Grid: 4 Metrics -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                <!-- Accuracy -->
+                <div class="metric-card bg-slate-900/90 p-5 rounded-xl border border-slate-800">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-base font-bold text-white">準確率 (Accuracy)</span>
+                        <i class="fa-solid fa-bullseye text-blue-400"></i>
+                    </div>
+                    <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 my-2 text-center text-sm font-mono text-blue-300">
+                        $$\text{Acc} = \frac{TP + TN}{N}$$
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        <strong>物理意義：</strong>全體樣本中，預測正確的比例。
+                    </p>
+                    <div class="mt-3 p-2.5 rounded bg-red-950/30 border border-red-900/40 text-[11px] text-red-300">
+                        <i class="fa-solid fa-triangle-exclamation mr-1"></i><strong>致命缺陷：</strong>當正負樣本比例為 1:99 時，模型只要「全部猜負例」，Accuracy 就高達 99%，但對真目標（正例）完全無預測能力！
+                    </div>
+                </div>
+
+                <!-- Precision -->
+                <div class="metric-card bg-slate-900/90 p-5 rounded-xl border border-slate-800">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-base font-bold text-white">精確率 (Precision)</span>
+                        <i class="fa-solid fa-crosshairs text-emerald-400"></i>
+                    </div>
+                    <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 my-2 text-center text-sm font-mono text-emerald-300">
+                        $$\text{Precision} = \frac{TP}{TP + FP}$$
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        <strong>物理意義：</strong>又稱「查準率」。模型說是正例的當中，到底有多少是真正的正例？
+                    </p>
+                    <div class="mt-3 p-2.5 rounded bg-emerald-950/30 border border-emerald-900/40 text-[11px] text-emerald-300">
+                        <i class="fa-solid fa-check mr-1"></i><strong>適用時機：</strong>誤報成本極高之場景（如垃圾郵件過濾、人臉解鎖、投資推薦）。
+                    </div>
+                </div>
+
+                <!-- Recall -->
+                <div class="metric-card bg-slate-900/90 p-5 rounded-xl border border-slate-800">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-base font-bold text-white">召回率 (Recall)</span>
+                        <i class="fa-solid fa-magnifying-glass-chart text-teal-400"></i>
+                    </div>
+                    <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 my-2 text-center text-sm font-mono text-teal-300">
+                        $$\text{Recall} = \frac{TP}{TP + FN}$$
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        <strong>物理意義：</strong>又稱「查全率」或「靈敏度 (Sensitivity)」。真正的正例中，被模型成功抓出了多少？
+                    </p>
+                    <div class="mt-3 p-2.5 rounded bg-teal-950/30 border border-teal-900/40 text-[11px] text-teal-300">
+                        <i class="fa-solid fa-check mr-1"></i><strong>適用時機：</strong>漏報代價極其慘重之場景（如惡性腫瘤篩檢、半導體晶圓致命缺陷、地震警報）。
+                    </div>
+                </div>
+
+                <!-- F1-Score -->
+                <div class="metric-card bg-slate-900/90 p-5 rounded-xl border border-slate-800">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-base font-bold text-white">F1 分數 (F1-Score)</span>
+                        <i class="fa-solid fa-scale-balanced text-amber-400"></i>
+                    </div>
+                    <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 my-2 text-center text-sm font-mono text-amber-300">
+                        $$F_1 = 2 \cdot \frac{P \cdot R}{P + R} = \frac{2TP}{2TP + FP + FN}$$
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        <strong>物理意義：</strong>Precision 與 Recall 的「調和平均數 (Harmonic Mean)」。
+                    </p>
+                    <div class="mt-3 p-2.5 rounded bg-amber-950/30 border border-amber-900/40 text-[11px] text-amber-300">
+                        <i class="fa-solid fa-question-circle mr-1"></i><strong>為何不用算術平均？</strong>若 $P=1.0, R=0.0$，算術平均為 0.5（掩蓋致命缺陷），而調和平均為 0！
+                    </div>
+                </div>
+            </div>
+
+            <!-- Extended: F-beta Score Deep Dive -->
+            <div class="mt-6 bg-slate-900/90 p-5 rounded-xl border border-slate-800">
+                <h3 class="text-base font-bold text-white flex items-center gap-2 mb-2">
+                    <i class="fa-solid fa-sliders text-emerald-400"></i> 進階指標：$F_\beta$ Score（權重偏向調整）
+                </h3>
+                <p class="text-sm text-slate-300 leading-relaxed">
+                    在工程實務中，我們很少能同時將 Precision 與 Recall 都提升到 100%（兩者往往存在 Trade-off 蹺蹺板關係）。
+                    $F_\beta$ 分數允許我們透過參數 $\beta$ 來決定更看重哪一方：
+                </p>
+                <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 my-3 text-center font-mono text-emerald-400 text-sm">
+                    $$F_\beta = (1 + \beta^2) \cdot \frac{\text{Precision} \cdot \text{Recall}}{(\beta^2 \cdot \text{Precision}) + \text{Recall}}$$
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                    <div class="p-3 rounded-lg bg-slate-800/80 border border-slate-700">
+                        <div class="font-bold text-emerald-400">$\beta = 1$ ($F_1$ Score)</div>
+                        <p class="text-slate-400 mt-1">Precision 與 Recall 權重完全相等，常用於標準評估基準。</p>
+                    </div>
+                    <div class="p-3 rounded-lg bg-slate-800/80 border border-slate-700">
+                        <div class="font-bold text-teal-400">$\beta = 2$ ($F_2$ Score)</div>
+                        <p class="text-slate-400 mt-1"><strong>Recall 權重是 Precision 的 2 倍！</strong>極端重視召回（如罕見傳染病快篩）。</p>
+                    </div>
+                    <div class="p-3 rounded-lg bg-slate-800/80 border border-slate-700">
+                        <div class="font-bold text-blue-400">$\beta = 0.5$ ($F_{0.5}$ Score)</div>
+                        <p class="text-slate-400 mt-1"><strong>Precision 權重高於 Recall！</strong>極端重視準確性（如搜尋引擎首頁推薦、高頻自動交易）。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 03: 臨界值分析：ROC 曲線、AUC 與 PR 曲線 -->
+    <section id="roc-pr-curves" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="glass-panel p-6 sm:p-8 rounded-2xl border border-slate-800">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-lg border border-cyan-500/30">
+                    03
+                </div>
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-bold text-white">模型全視角：ROC 曲線、AUC 與 PR 曲線</h2>
+                    <p class="text-xs sm:text-sm text-slate-400">擺脫單一閾值（Threshold）束縛，全方位評估模型分類排序能力</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- ROC Curve -->
+                <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-800">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-base font-bold text-cyan-300">ROC 曲線與 AUC (Area Under Curve)</span>
+                        <span class="text-xs px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">受試者工作特徵</span>
+                    </div>
+                    <div class="space-y-3 text-xs sm:text-sm text-slate-300 leading-relaxed">
+                        <p>
+                            <strong>軸線定義：</strong>
+                            <ul class="list-disc list-inside ml-2 text-slate-400 space-y-1">
+                                <li><strong>橫軸 (X 軸)：</strong>$\text{FPR} = \frac{FP}{FP + TN} = 1 - \text{Specificity}$（偽陽性率）</li>
+                                <li><strong>縱軸 (Y 軸)：</strong>$\text{TPR} = \frac{TP}{TP + FN} = \text{Recall}$（真正例率 / 靈敏度）</li>
+                            </ul>
+                        </p>
+                        <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 font-mono text-cyan-400 text-xs">
+                            AUC 數值評級：<br>
+                            • AUC = 1.0：完美分類器（曲線上凸至左上角頂點 (0, 1)）<br>
+                            • AUC = 0.5：隨機盲猜（對角線基準線）<br>
+                            • AUC < 0.5：反向預測（顛倒標籤即變成優良模型）
+                        </div>
+                        <p class="text-xs text-slate-400">
+                            <strong>物理機率意義：</strong>若從資料集中隨機挑選 1 個正樣本與 1 個負樣本，模型將「正樣本打分高於負樣本」的機率就是 AUC！
+                        </p>
+                    </div>
+                </div>
+
+                <!-- PR Curve -->
+                <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-800">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-base font-bold text-emerald-300">PR 曲線 (Precision-Recall Curve)</span>
+                        <span class="text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">極不平衡資料首選</span>
+                    </div>
+                    <div class="space-y-3 text-xs sm:text-sm text-slate-300 leading-relaxed">
+                        <p>
+                            <strong>軸線定義：</strong>
+                            <ul class="list-disc list-inside ml-2 text-slate-400 space-y-1">
+                                <li><strong>橫軸 (X 軸)：</strong>Recall（召回率 / 查全率）</li>
+                                <li><strong>縱軸 (Y 軸)：</strong>Precision（精確率 / 查準率）</li>
+                            </ul>
+                        </p>
+                        <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 text-amber-300 text-xs">
+                            <i class="fa-solid fa-star mr-1"></i><strong>iPAS 核心必考對比：何時用 PR 代替 ROC？</strong><br>
+                            在正樣本極少（如 0.1% 信用卡盜刷）時，由於負樣本 TN 數量過於龐大，導致 FPR（分母含 TN）即便誤判很多 FP 仍然極低，使 <strong>ROC 曲線呈現虛假繁榮（AUC 高達 0.98）</strong>。<br>
+                            此時 <strong>PR 曲線因為完全不依賴 TN，能真實揭露極端少數類別的真實表現！</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 04: 動態實驗室 A：分類閥值 (Threshold) 與混淆矩陣連動模擬器 -->
+    <section id="classification-lab" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="glass-panel p-6 sm:p-8 rounded-2xl border-2 border-emerald-500/40 shadow-2xl shadow-emerald-950/50">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div class="flex items-center gap-3">
+                    <span class="p-2.5 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30">
+                        <i class="fa-solid fa-flask text-xl"></i>
+                    </span>
+                    <div>
+                        <h2 class="text-xl sm:text-2xl font-bold text-white">互動實驗室 A：分類決策門檻 (Threshold) 動態模擬器</h2>
+                        <p class="text-xs sm:text-sm text-slate-400">滑動調整門檻 $\theta$，即時觀察正負類別機率分佈、混淆矩陣四象限變化與指標連動</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="resetClassificationLab()" class="px-3 py-1.5 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+                        <i class="fa-solid fa-rotate-left mr-1"></i>重設預設值
+                    </button>
+                </div>
+            </div>
+
+            <!-- Lab Controls -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6 p-4 rounded-xl bg-slate-900/90 border border-slate-800">
+                <!-- Control 1: Threshold Slider -->
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-xs font-semibold text-emerald-300">
+                            <i class="fa-solid fa-scissors mr-1"></i>分類決策閥值 (Threshold $\theta$)
+                        </label>
+                        <span id="thresholdVal" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
+                            0.50
+                        </span>
+                    </div>
+                    <input type="range" id="thresholdSlider" min="0.05" max="0.95" step="0.01" value="0.50"
+                           class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer slider-thumb"
+                           oninput="updateClassificationLab()">
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                        <span>0.05 (寬鬆：高 Recall)</span>
+                        <span>0.95 (嚴苛：高 Precision)</span>
+                    </div>
+                </div>
+
+                <!-- Control 2: Imbalance Ratio -->
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-xs font-semibold text-slate-300">
+                            <i class="fa-solid fa-scale-unbalanced mr-1"></i>樣本分佈比例 (正樣本佔比)
+                        </label>
+                        <span id="ratioVal" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-200">
+                            50% (平衡)
+                        </span>
+                    </div>
+                    <select id="ratioSelect" onchange="updateClassificationLab()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+                        <option value="0.5">正負平衡 (50% 正例 : 50% 負例)</option>
+                        <option value="0.2">輕度不平衡 (20% 正例 : 80% 負例)</option>
+                        <option value="0.05">極度不平衡 (5% 正例 : 95% 負例 - 刷卡詐欺/罕見病)</option>
+                    </select>
+                </div>
+
+                <!-- Control 3: Model Separability -->
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-xs font-semibold text-slate-300">
+                            <i class="fa-solid fa-arrows-split-up-and-left mr-1"></i>模型區分能力 (Separability d')
+                        </label>
+                        <span id="sepVal" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-200">
+                            良好 (d'=2.0)
+                        </span>
+                    </div>
+                    <select id="sepSelect" onchange="updateClassificationLab()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+                        <option value="2.8">優異分類器 (d'=2.8，重疊極少)</option>
+                        <option value="2.0" selected>普通分類器 (d'=2.0，部分重疊)</option>
+                        <option value="0.8">弱分類器 (d'=0.8，高度混雜重疊)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Visual Canvas & Metrics Split -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Left: Distribution Canvas -->
+                <div class="lg:col-span-7 bg-slate-900/90 p-4 rounded-xl border border-slate-800">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-slate-300">
+                            預測機率分佈雙峰圖 (機率密度 PDF)
+                        </span>
+                        <div class="flex items-center gap-3 text-[11px]">
+                            <span class="flex items-center gap-1 text-slate-400">
+                                <span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span> 實際負例
+                            </span>
+                            <span class="flex items-center gap-1 text-emerald-400">
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> 實際正例
+                            </span>
+                            <span class="flex items-center gap-1 text-amber-400">
+                                <span class="w-2 h-2 border-r-2 border-amber-400 inline-block"></span> 門檻 $\theta$
+                            </span>
+                        </div>
+                    </div>
+                    <canvas id="distCanvas" width="600" height="260" class="w-full bg-slate-950 rounded-lg border border-slate-800"></canvas>
+                    <div class="flex justify-between text-[11px] text-slate-400 mt-2 px-1">
+                        <span>預測為 0 (負例預測區間)</span>
+                        <span class="text-amber-400 font-mono">當前臨界線 $\theta = <span id="currentThresholdText">0.50</span>$</span>
+                        <span>預測為 1 (正例預測區間)</span>
+                    </div>
+                </div>
+
+                <!-- Right: Dynamic Confusion Matrix & Real-time Metrics -->
+                <div class="lg:col-span-5 flex flex-col justify-between gap-4">
+                    <!-- Real-time 2x2 Table -->
+                    <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800">
+                        <div class="text-xs font-bold text-slate-300 mb-2 flex items-center justify-between">
+                            <span>即時混淆矩陣 (基數 N=1000)</span>
+                            <span class="text-[10px] text-slate-500 font-mono">動態計算結果</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-center">
+                            <div class="p-2.5 rounded-lg bg-emerald-950/60 border border-emerald-700/60">
+                                <div class="text-[10px] text-emerald-300 font-semibold">TP (真正例)</div>
+                                <div id="calcTP" class="text-lg font-extrabold text-emerald-400 font-mono">0</div>
+                            </div>
+                            <div class="p-2.5 rounded-lg bg-amber-950/60 border border-amber-700/60">
+                                <div class="text-[10px] text-amber-300 font-semibold">FP (偽正例 / 誤報)</div>
+                                <div id="calcFP" class="text-lg font-extrabold text-amber-400 font-mono">0</div>
+                            </div>
+                            <div class="p-2.5 rounded-lg bg-purple-950/60 border border-purple-700/60">
+                                <div class="text-[10px] text-purple-300 font-semibold">FN (偽負例 / 漏報)</div>
+                                <div id="calcFN" class="text-lg font-extrabold text-purple-400 font-mono">0</div>
+                            </div>
+                            <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                                <div class="text-[10px] text-slate-400 font-semibold">TN (真負例)</div>
+                                <div id="calcTN" class="text-lg font-extrabold text-slate-300 font-mono">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Metrics Dashboard -->
+                    <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800">
+                        <div class="text-xs font-bold text-slate-300 mb-2">效能指標即時指針</div>
+                        <div class="space-y-2.5 text-xs">
+                            <div>
+                                <div class="flex justify-between text-slate-300 mb-1">
+                                    <span>準確率 (Accuracy)</span>
+                                    <span id="metricAcc" class="font-mono font-bold text-blue-400">0.0%</span>
+                                </div>
+                                <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                    <div id="barAcc" class="h-full bg-blue-500 rounded-full" style="width: 0%;"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-slate-300 mb-1">
+                                    <span>精確率 (Precision)</span>
+                                    <span id="metricPrec" class="font-mono font-bold text-emerald-400">0.0%</span>
+                                </div>
+                                <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                    <div id="barPrec" class="h-full bg-emerald-500 rounded-full" style="width: 0%;"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-slate-300 mb-1">
+                                    <span>召回率 (Recall)</span>
+                                    <span id="metricRec" class="font-mono font-bold text-teal-400">0.0%</span>
+                                </div>
+                                <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                    <div id="barRec" class="h-full bg-teal-500 rounded-full" style="width: 0%;"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-slate-300 mb-1">
+                                    <span>F1 分數 (F1-Score)</span>
+                                    <span id="metricF1" class="font-mono font-bold text-amber-400">0.000</span>
+                                </div>
+                                <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                    <div id="barF1" class="h-full bg-amber-500 rounded-full" style="width: 0%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 05: 迴歸評估指標核心理論 (MAE, MSE, RMSE, MAPE, R^2, Adjusted R^2) -->
+    <section id="regression-metrics" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="glass-panel p-6 sm:p-8 rounded-2xl border border-slate-800">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold text-lg border border-teal-500/30">
+                    04
+                </div>
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-bold text-white">連續目標度量：迴歸評估指標 (Regression Metrics)</h2>
+                    <p class="text-xs sm:text-sm text-slate-400">如何衡量「預測數值」與「真實標籤」之間的殘差距離與變異解釋量</p>
+                </div>
+            </div>
+
+            <!-- Comparison Table for Regression Metrics -->
+            <div class="overflow-x-auto mb-8">
+                <table class="w-full text-left text-xs sm:text-sm border-collapse">
+                    <thead>
+                        <tr class="bg-slate-900 border-b border-slate-800 text-slate-300">
+                            <th class="p-3">評估指標</th>
+                            <th class="p-3">數學定義公式</th>
+                            <th class="p-3">單位量綱</th>
+                            <th class="p-3">對離群值 (Outliers) 敏感度</th>
+                            <th class="p-3">最佳適用情境</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/60 text-slate-300">
+                        <tr class="hover:bg-slate-800/30">
+                            <td class="p-3 font-bold text-white">
+                                MAE<br><span class="text-xs text-slate-400 font-normal">平均絕對誤差</span>
+                            </td>
+                            <td class="p-3 font-mono text-emerald-400 text-xs">
+                                $$\text{MAE} = \frac{1}{n}\sum_{i=1}^n |y_i - \hat{y}_i|$$
+                            </td>
+                            <td class="p-3">與目標 $y$ 相同</td>
+                            <td class="p-3 text-emerald-400 font-semibold"><i class="fa-solid fa-shield mr-1"></i>低（具強穩健性）</td>
+                            <td class="p-3 text-xs text-slate-400">資料含有較多異常噪聲、不希望少數極端值左右模型時。</td>
+                        </tr>
+                        <tr class="hover:bg-slate-800/30">
+                            <td class="p-3 font-bold text-white">
+                                MSE<br><span class="text-xs text-slate-400 font-normal">均方誤差</span>
+                            </td>
+                            <td class="p-3 font-mono text-teal-400 text-xs">
+                                $$\text{MSE} = \frac{1}{n}\sum_{i=1}^n (y_i - \hat{y}_i)^2$$
+                            </td>
+                            <td class="p-3 font-mono text-xs">單位平方 ($y^2$)</td>
+                            <td class="p-3 text-red-400 font-semibold"><i class="fa-solid fa-triangle-exclamation mr-1"></i>極高（平方重罰）</td>
+                            <td class="p-3 text-xs text-slate-400">作為神經網路損失函數（平滑且處處可微），欲強力遏制大誤差時。</td>
+                        </tr>
+                        <tr class="hover:bg-slate-800/30">
+                            <td class="p-3 font-bold text-white">
+                                RMSE<br><span class="text-xs text-slate-400 font-normal">均方根誤差</span>
+                            </td>
+                            <td class="p-3 font-mono text-blue-400 text-xs">
+                                $$\text{RMSE} = \sqrt{\text{MSE}}$$
+                            </td>
+                            <td class="p-3">與目標 $y$ 相同</td>
+                            <td class="p-3 text-amber-400 font-semibold"><i class="fa-solid fa-bolt mr-1"></i>高（懲罰大誤差）</td>
+                            <td class="p-3 text-xs text-slate-400">業界最通用基準，兼具大誤差重度懲罰與物理單位可讀性。</td>
+                        </tr>
+                        <tr class="hover:bg-slate-800/30">
+                            <td class="p-3 font-bold text-white">
+                                MAPE<br><span class="text-xs text-slate-400 font-normal">平均絕對百分比誤差</span>
+                            </td>
+                            <td class="p-3 font-mono text-purple-400 text-xs">
+                                $$\frac{100\%}{n}\sum_{i=1}^n \left|\frac{y_i - \hat{y}_i}{y_i}\right|$$
+                            </td>
+                            <td class="p-3 font-bold text-purple-300">百分比 (%)</td>
+                            <td class="p-3 text-amber-400">中等（$y_i$ 接近 0 易爆炸）</td>
+                            <td class="p-3 text-xs text-slate-400">向非技術高層簡報、跨不同規模產品（如千元與百萬元商品）對比時。</td>
+                        </tr>
+                        <tr class="hover:bg-slate-800/30">
+                            <td class="p-3 font-bold text-amber-400">
+                                $R^2$ Score<br><span class="text-xs text-slate-400 font-normal">決定係數</span>
+                            </td>
+                            <td class="p-3 font-mono text-amber-300 text-xs">
+                                $$1 - \frac{\sum (y_i - \hat{y}_i)^2}{\sum (y_i - \bar{y})^2}$$
+                            </td>
+                            <td class="p-3">無量綱 (常態 0~1)</td>
+                            <td class="p-3 text-slate-300">取決於殘差平方和</td>
+                            <td class="p-3 text-xs text-slate-400">衡量模型相較於「盲猜平均值 $\bar{y}$」，多解釋了多少目標變異量。</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Deep Dive: R^2 and Adjusted R^2 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-800">
+                    <h3 class="text-base font-bold text-amber-400 mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-infinity"></i> 決定係數 $R^2$ 的本質：變異解釋力
+                    </h3>
+                    <p class="text-xs sm:text-sm text-slate-300 leading-relaxed mb-3">
+                        總平方和（$\text{SS}_{\text{tot}}$）代表原始資料本身固有的變異量；殘差平方和（$\text{SS}_{\text{res}}$）代表模型尚未解釋的殘餘誤差：
+                    </p>
+                    <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 text-center font-mono text-xs text-slate-300">
+                        $$R^2 = 1 - \frac{\text{SS}_{\text{res}}}{\text{SS}_{\text{tot}}} = \frac{\text{SS}_{\text{reg}}}{\text{SS}_{\text{tot}}}$$
+                    </div>
+                    <ul class="text-xs text-slate-400 space-y-1.5 mt-3">
+                        <li>• <strong>$R^2 = 1.0$：</strong>模型預測完全命中，殘差為 0。</li>
+                        <li>• <strong>$R^2 = 0.0$：</strong>模型的預測力等同於直接猜資料平均值 $\bar{y}$。</li>
+                        <li>• <strong>$R^2 < 0.0$：</strong>模型預測比直接猜平均值還糟糕！常出現在非線性模型或未擬合截距項時。</li>
+                    </ul>
+                </div>
+
+                <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-800">
+                    <h3 class="text-base font-bold text-teal-400 mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-scale-unbalanced-flip"></i> 校正決定係數 (Adjusted $R^2$)：懲罰灌水特徵
+                    </h3>
+                    <p class="text-xs sm:text-sm text-slate-300 leading-relaxed mb-3">
+                        <strong>陷阱：</strong>多元線性迴歸中，每加入一個新特徵（即便該特徵完全是隨機噪音），普通 $R^2$ <strong>只會上升或持平，絕對不會下降！</strong>
+                    </p>
+                    <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 text-center font-mono text-xs text-teal-300">
+                        $$R^2_{\text{adj}} = 1 - \left[ \frac{(1 - R^2)(n - 1)}{n - p - 1} \right]$$
+                    </div>
+                    <p class="text-xs text-slate-400 mt-3 leading-relaxed">
+                        其中 $n$ 為樣本數，$p$ 為自變數特徵數量。<br>
+                        👉 <strong>若新增特徵對模型的解釋力貢獻無法抵消其增加的自由度懲罰，Adjusted $R^2$ 便會下降！</strong>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 06: 動態實驗室 B：迴歸指標與離群值 (Outliers) 敏感度對決實驗室 -->
+    <section id="regression-lab" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="glass-panel p-6 sm:p-8 rounded-2xl border-2 border-teal-500/40 shadow-2xl shadow-teal-950/50">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div class="flex items-center gap-3">
+                    <span class="p-2.5 rounded-xl bg-gradient-to-tr from-teal-500 to-cyan-500 text-white shadow-lg shadow-teal-500/30">
+                        <i class="fa-solid fa-sliders text-xl"></i>
+                    </span>
+                    <div>
+                        <h2 class="text-xl sm:text-2xl font-bold text-white">互動實驗室 B：迴歸指標與離群值衝擊對決</h2>
+                        <p class="text-xs sm:text-sm text-slate-400">手動調大單一離群點的偏差值，即時觀察 MAE vs MSE vs RMSE 的崩潰臨界點</p>
+                    </div>
+                </div>
+                <button onclick="resetRegressionLab()" class="px-3 py-1.5 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+                    <i class="fa-solid fa-rotate-left mr-1"></i>重設數據
+                </button>
+            </div>
+
+            <!-- Outlier Controls -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 rounded-xl bg-slate-900/90 border border-slate-800 mb-6">
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-xs font-semibold text-teal-300">
+                            <i class="fa-solid fa-radiation mr-1"></i>離群值偏離程度 (Outlier Noise Scale)
+                        </label>
+                        <span id="outlierScaleText" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-teal-950 text-teal-300 border border-teal-800">
+                            0 (無離群值)
+                        </span>
+                    </div>
+                    <input type="range" id="outlierSlider" min="0" max="60" step="2" value="0"
+                           class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer slider-thumb"
+                           oninput="updateRegressionLab()">
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                        <span>0 (純淨數據)</span>
+                        <span>30 (中等離群)</span>
+                        <span>60 (極端離群巨獸)</span>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-xs font-semibold text-slate-300">
+                            <i class="fa-solid fa-fingerprint mr-1"></i>離群點數量
+                        </label>
+                        <span id="outlierCountText" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-200">
+                            1 個極端點
+                        </span>
+                    </div>
+                    <select id="outlierCountSelect" onchange="updateRegressionLab()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500">
+                        <option value="1" selected>1 個極端噪聲點 (佔 5%)</option>
+                        <option value="3">3 個極端噪聲點 (佔 15%)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Canvas & Metrics Display -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Canvas Left -->
+                <div class="lg:col-span-7 bg-slate-900/90 p-4 rounded-xl border border-slate-800">
+                    <div class="flex items-center justify-between mb-2 text-xs text-slate-400">
+                        <span>散佈圖與擬合直線 ($y = 2x + 10$)</span>
+                        <div class="flex items-center gap-3 text-[11px]">
+                            <span class="flex items-center gap-1 text-slate-300"><span class="w-2.5 h-2.5 rounded-full bg-sky-400 inline-block"></span> 正常樣本 (20筆)</span>
+                            <span class="flex items-center gap-1 text-red-400"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> 離群點</span>
+                        </div>
+                    </div>
+                    <canvas id="regCanvas" width="600" height="260" class="w-full bg-slate-950 rounded-lg border border-slate-800"></canvas>
+                </div>
+
+                <!-- Right: Comparison Metrics -->
+                <div class="lg:col-span-5 grid grid-cols-2 gap-3.5">
+                    <!-- Metric MAE -->
+                    <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between">
+                        <div class="flex justify-between items-start">
+                            <span class="text-xs font-bold text-slate-300">MAE (絕對誤差)</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400">L1 範數</span>
+                        </div>
+                        <div id="valMAE" class="text-2xl font-black text-emerald-400 font-mono my-2">0.00</div>
+                        <p class="text-[11px] text-slate-400">增幅平緩，對離群點耐受度最高</p>
+                    </div>
+
+                    <!-- Metric MSE -->
+                    <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between">
+                        <div class="flex justify-between items-start">
+                            <span class="text-xs font-bold text-slate-300">MSE (均方誤差)</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-red-950 text-red-400">L2 範數</span>
+                        </div>
+                        <div id="valMSE" class="text-2xl font-black text-red-400 font-mono my-2">0.00</div>
+                        <p class="text-[11px] text-slate-400">平方爆炸級增長，受極端值強烈支配</p>
+                    </div>
+
+                    <!-- Metric RMSE -->
+                    <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between">
+                        <div class="flex justify-between items-start">
+                            <span class="text-xs font-bold text-slate-300">RMSE (均方根)</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-950 text-blue-400">開根號</span>
+                        </div>
+                        <div id="valRMSE" class="text-2xl font-black text-blue-400 font-mono my-2">0.00</div>
+                        <p class="text-[11px] text-slate-400">量綱與 $y$ 相同，易於業務解讀</p>
+                    </div>
+
+                    <!-- Metric R^2 -->
+                    <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between">
+                        <div class="flex justify-between items-start">
+                            <span class="text-xs font-bold text-slate-300">決定係數 $R^2$</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-950 text-amber-400">解釋度</span>
+                        </div>
+                        <div id="valR2" class="text-2xl font-black text-amber-400 font-mono my-2">0.00</div>
+                        <p class="text-[11px] text-slate-400">若離群值過大，甚至會暴跌為負值！</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 07: 工業與商業實戰：評估指標挑選決策樹 (Decision Flowchart) -->
+    <section id="decision-tree-guide" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="glass-panel p-6 sm:p-8 rounded-2xl border border-slate-800">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-lg border border-amber-500/30">
+                    05
+                </div>
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-bold text-white">實戰指南：AI 應用指標挑選決策心法</h2>
+                    <p class="text-xs sm:text-sm text-slate-400">依據業務目標、損失成本與資料型態，精準選定最適合的衡量標準</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Classification Decision Tree -->
+                <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-800">
+                    <h3 class="text-base font-bold text-emerald-400 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-sitemap"></i> 分類問題 (Classification) 挑選決策路徑
+                    </h3>
+                    <div class="space-y-3 text-xs sm:text-sm">
+                        <div class="p-3 rounded-lg bg-slate-800/80 border border-slate-700">
+                            <span class="font-bold text-white">1. 資料類別是否大致均衡（如 45% vs 55%）？</span>
+                            <p class="text-slate-400 mt-1">
+                                • 是 👉 可採用 <strong>Accuracy（準確率）</strong> 作為初步快評指標。<br>
+                                • 否 👉 <strong>嚴禁使用單純 Accuracy！</strong>進入第 2 步。
+                            </p>
+                        </div>
+                        <div class="p-3 rounded-lg bg-slate-800/80 border border-slate-700">
+                            <span class="font-bold text-white">2. 誤報 (FP) 與 漏報 (FN) 哪種代價更慘重？</span>
+                            <p class="text-slate-400 mt-1">
+                                • <strong>漏報 FN 慘重</strong>（如醫療、工安）👉 優先採用 <strong>Recall (召回率)</strong> 或 $F_2$ 分數。<br>
+                                • <strong>誤報 FP 慘重</strong>（如合約垃圾郵件、起訴）👉 優先採用 <strong>Precision (精確率)</strong> 或 $F_{0.5}$ 分數。<br>
+                                • 兩者皆重要 👉 採用 <strong>$F_1$-Score</strong>。
+                            </p>
+                        </div>
+                        <div class="p-3 rounded-lg bg-slate-800/80 border border-slate-700">
+                            <span class="font-bold text-white">3. 需要評估排序能力或決定最佳門檻值？</span>
+                            <p class="text-slate-400 mt-1">
+                                • 一般樣本分佈 👉 繪製 <strong>ROC 曲線</strong> 並計算 <strong>AUC</strong>。<br>
+                                • 極度不平衡資料（如 1:999 罕見故障）👉 必須採用 <strong>PR 曲線 (Precision-Recall AUC)</strong>！
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Regression Decision Tree -->
+                <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-800">
+                    <h3 class="text-base font-bold text-teal-400 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-sitemap"></i> 迴歸問題 (Regression) 挑選決策路徑
+                    </h3>
+                    <div class="space-y-3 text-xs sm:text-sm">
+                        <div class="p-3 rounded-lg bg-slate-800/80 border border-slate-700">
+                            <span class="font-bold text-white">1. 是否對大誤差極度敏感（大失誤會破產）？</span>
+                            <p class="text-slate-400 mt-1">
+                                • 是 👉 採用 <strong>RMSE 或 MSE</strong>（平方放大懲罰大偏差）。<br>
+                                • 否（異常值只是感測器偶發雜訊）👉 採用 <strong>MAE（平均絕對誤差）</strong>。
+                            </p>
+                        </div>
+                        <div class="p-3 rounded-lg bg-slate-800/80 border border-slate-700">
+                            <span class="font-bold text-white">2. 需要跨不同維度/尺度的商品相互比較？</span>
+                            <p class="text-slate-400 mt-1">
+                                • 需要百分比指標 👉 採用 <strong>MAPE</strong>（無量綱，非技術主管易懂，但注意目標值不可為 0）。
+                            </p>
+                        </div>
+                        <div class="p-3 rounded-lg bg-slate-800/80 border border-slate-700">
+                            <span class="font-bold text-white">3. 評估整體模型的變異解釋程度與特徵多寡？</span>
+                            <p class="text-slate-400 mt-1">
+                                • 單純評估擬合優度 👉 檢視 <strong>決定係數 $R^2$</strong>。<br>
+                                • 進行多元迴歸特徵篩選時 👉 務必檢視 <strong>校正決定係數 (Adjusted $R^2$)</strong> 避免虛高。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 08: iPAS 檢定精選考題與互動詳解 -->
+    <section id="ipas-exam" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="glass-panel p-6 sm:p-8 rounded-2xl border border-amber-500/30">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-lg border border-amber-500/30">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-bold text-white">經濟部 iPAS AI 應用規劃師/工程師精選檢定題庫</h2>
+                    <p class="text-xs sm:text-sm text-slate-400">歷年高頻必考真題模擬，點擊選項立即檢測實力並查看深度詳解</p>
+                </div>
+            </div>
+
+            <!-- Quiz Questions Grid -->
+            <div class="space-y-6">
+                <!-- Q1 -->
+                <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-800">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">考點：混淆矩陣與指標計算</span>
+                        <span class="text-xs text-slate-500">iPAS 規劃師考古精選</span>
+                    </div>
+                    <p class="text-sm font-semibold text-slate-100 mb-3">
+                        【Q1】某二元分類模型對 100 筆測試資料進行預測，混淆矩陣結果為：真正例 TP = 40，偽正例 FP = 10，真負例 TN = 40，偽負例 FN = 10。請問該模型的精確率 (Precision) 與召回率 (Recall) 分別為何？
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <button onclick="checkAnswer(1, 'A')" class="quiz-btn text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300">
+                            (A) Precision = 0.80, Recall = 0.80
+                        </button>
+                        <button onclick="checkAnswer(1, 'B')" class="quiz-btn text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300">
+                            (B) Precision = 0.80, Recall = 0.50
+                        </button>
+                        <button onclick="checkAnswer(1, 'C')" class="quiz-btn text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300">
+                            (C) Precision = 0.50, Recall = 0.80
+                        </button>
+                        <button onclick="checkAnswer(1, 'D')" class="quiz-btn text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300">
+                            (D) Precision = 0.67, Recall = 0.67
+                        </button>
+                    </div>
+                    <div id="ans-1" class="hidden mt-3 p-3 rounded-lg bg-emerald-950/40 border border-emerald-800/60 text-xs text-emerald-200">
+                        <strong>正確答案：(A)</strong><br>
+                        <strong>深度解析：</strong><br>
+                        • 精確率 Precision = $\frac{TP}{TP + FP} = \frac{40}{40 + 10} = \frac{40}{50} = 0.80$ (80%)<br>
+                        • 召回率 Recall = $\frac{TP}{TP + FN} = \frac{40}{40 + 10} = \frac{40}{50} = 0.80$ (80%)<br>
+                        故兩者皆為 0.80。
+                    </div>
+                </div>
+
+                <!-- Q2 -->
+                <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-800">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800">考點：極度不平衡資料評估</span>
+                        <span class="text-xs text-slate-500">iPAS 工程師高頻題</span>
+                    </div>
+                    <p class="text-sm font-semibold text-slate-100 mb-3">
+                        【Q2】在金融信用卡交易盜刷偵測系統中，正樣本（盜刷交易）僅佔總交易量的 0.05%。若要客觀評估模型效能，下列哪一項指標「最不適合」作為主要優化指標？
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <button onclick="checkAnswer(2, 'A')" class="quiz-btn text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300">
+                            (A) 準確率 (Accuracy)
+                        </button>
+                        <button onclick="checkAnswer(2, 'B')" class="quiz-btn text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300">
+                            (B) F1-Score
+                        </button>
+                        <button onclick="checkAnswer(2, 'C')" class="quiz-btn text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300">
+                            (C) PR-AUC (Precision-Recall 曲線下面積)
+                        </button>
+                        <button onclick="checkAnswer(2, 'D')" class="quiz-btn text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300">
+                            (D) 召回率 (Recall)
+                        </button>
+                    </div>
+                    <div id="ans-2" class="hidden mt-3 p-3 rounded-lg bg-emerald-950/40 border border-emerald-800/60 text-xs text-emerald-200">
+                        <strong>正確答案：(A)</strong><br>
+                        <strong>深度解析：</strong><br>
+                        當正樣本極少時，模型就算盲猜「全部正常」，準確率 Accuracy 依然高達 99.95%，但完全無法抓出任何盜刷交易！因此在極度不平衡場景下，Accuracy 會產生嚴重的效能虛假繁榮，最不適合採用。應改用 PR-AUC、Recall 或 F1 分數。
+                    </div>
+                </div>
+
+                <!-- Q3 -->
+                <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-800">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold px-2 py-0.5 rounded bg-teal-950 text-teal-400 border border-teal-800">考點：迴歸評估指標與離群值</span>
+                        <span class="text-xs text-slate-500">iPAS 規劃師必考題</span>
+                    </div>
+                    <p class="text-sm font-semibold text-slate-100 mb-3">
+                        【Q3】某工廠訓練溫度預測模型，資料集中偶爾會因傳感器雜訊而產生極端離群值（Outliers）。若希望評估指標「不易受少數極端離群值過度拉抬牽制」，應優先選用下列何者？
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <button onclick="checkAnswer(3, 'A')" class="quiz-btn text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300">
+                            (A) MSE (均方誤差)
+                        </button>
+                        <button onclick="checkAnswer(3, 'B')" class="quiz-btn text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300">
+                            (B) MAE (平均絕對誤差)
+                        </button>
+                        <button onclick="checkAnswer(3, 'C')" class="quiz-btn text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300">
+                            (C) RMSE (均方根誤差)
+                        </button>
+                        <button onclick="checkAnswer(3, 'D')" class="quiz-btn text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300">
+                            (D) $R^2$ 決定係數
+                        </button>
+                    </div>
+                    <div id="ans-3" class="hidden mt-3 p-3 rounded-lg bg-emerald-950/40 border border-emerald-800/60 text-xs text-emerald-200">
+                        <strong>正確答案：(B)</strong><br>
+                        <strong>深度解析：</strong><br>
+                        MSE 與 RMSE 採用殘差平方 $(y - \hat{y})^2$，會將極端離群值的誤差放大平方倍數，極度敏感；而 MAE 採用絕對值 $|y - \hat{y}|$（L1 範數），誤差隨偏差線性增長，具有極高的強韌性（Robustness），最不易受少數離群值左右。
+                    </div>
+                </div>
+
+                <!-- Q4 -->
+                <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-800">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold px-2 py-0.5 rounded bg-blue-950 text-blue-400 border border-blue-800">考點：決定係數 R 平方定義</span>
+                        <span class="text-xs text-slate-500">iPAS 規劃師精選題</span>
+                    </div>
+                    <p class="text-sm font-semibold text-slate-100 mb-3">
+                        【Q4】關於迴歸分析中的決定係數 $R^2$ (R-squared)，下列敘述何者「錯誤」？
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <button onclick="checkAnswer(4, 'A')" class="quiz-btn text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300">
+                            (A) $R^2$ 代表目標變數的總變異量中，能被迴歸模型所解釋的比例
+                        </button>
+                        <button onclick="checkAnswer(4, 'B')" class="quiz-btn text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300">
+                            (B) 在一般線性迴歸下，$R^2$ 數值介於 0 到 1 之間
+                        </button>
+                        <button onclick="checkAnswer(4, 'C')" class="quiz-btn text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300">
+                            (C) 線性模型中只要加入更多特徵變數，$R^2$ 一定會隨之增加或持平
+                        </button>
+                        <button onclick="checkAnswer(4, 'D')" class="quiz-btn text-left p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300">
+                            (D) 任何情況下 $R^2$ 的數值絕對不可能小於 0
+                        </button>
+                    </div>
+                    <div id="ans-4" class="hidden mt-3 p-3 rounded-lg bg-emerald-950/40 border border-emerald-800/60 text-xs text-emerald-200">
+                        <strong>正確答案：(D)</strong><br>
+                        <strong>深度解析：</strong><br>
+                        $R^2 = 1 - \frac{\text{SS}_{\text{res}}}{\text{SS}_{\text{tot}}}$。當模型預測效果比直接盲猜平均值 $\bar{y}$ 還要差時（即殘差平方和大於總平方和），$R^2$ 便會出現<strong>負數</strong>！故選項 (D) 敘述錯誤，為本題正解。
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 09: Python / Scikit-Learn 程式碼實務範本 -->
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="glass-panel p-6 sm:p-8 rounded-2xl border border-slate-800">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-slate-800 text-emerald-400 flex items-center justify-center font-bold text-lg border border-slate-700">
+                        <i class="fa-brands fa-python"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl sm:text-2xl font-bold text-white">Scikit-Learn 實務評估實作範例</h2>
+                        <p class="text-xs sm:text-sm text-slate-400">一行程式碼搞定完整分類報告與迴歸指標計算</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Code Block 1: Classification -->
+                <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-emerald-400">分類評估 (Classification Report & ROC)</span>
+                        <span class="text-[10px] text-slate-500 font-mono">python</span>
+                    </div>
+                    <pre class="bg-slate-950 p-3.5 rounded-lg border border-slate-800 text-[11px] font-mono text-slate-200 overflow-x-auto leading-relaxed">
+<span class="text-purple-400">from</span> sklearn.metrics <span class="text-purple-400">import</span> (
+    classification_report, 
+    confusion_matrix, 
+    roc_auc_score, 
+    f1_score
+)
+
+<span class="text-slate-500"># y_true: 真實標籤, y_pred: 預測類別 (0 or 1), y_prob: 正類預測機率</span>
+cm = confusion_matrix(y_true, y_pred)
+print(<span class="text-emerald-300">"混淆矩陣:\n"</span>, cm)
+
+<span class="text-slate-500"># 一鍵生成 Precision, Recall, F1 與 Support</span>
+print(classification_report(y_true, y_pred, target_names=[<span class="text-emerald-300">'正常'</span>, <span class="text-emerald-300">'異常'</span>]))
+
+<span class="text-slate-500"># 計算 ROC-AUC 分數</span>
+auc = roc_auc_score(y_true, y_prob)
+print(<span class="text-emerald-300">f"ROC-AUC Score: {auc:.4f}"</span>)</pre>
+                </div>
+
+                <!-- Code Block 2: Regression -->
+                <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-teal-400">迴歸評估 (MAE, MSE, RMSE, R²)</span>
+                        <span class="text-[10px] text-slate-500 font-mono">python</span>
+                    </div>
+                    <pre class="bg-slate-950 p-3.5 rounded-lg border border-slate-800 text-[11px] font-mono text-slate-200 overflow-x-auto leading-relaxed">
+<span class="text-purple-400">from</span> sklearn.metrics <span class="text-purple-400">import</span> (
+    mean_absolute_error, 
+    mean_squared_error, 
+    r2_score
+)
+<span class="text-purple-400">import</span> numpy <span class="text-purple-400">as</span> np
+
+<span class="text-slate-500"># 計算 MAE, MSE, RMSE</span>
+mae = mean_absolute_error(y_true, y_pred)
+mse = mean_squared_error(y_true, y_pred)
+rmse = np.sqrt(mse)
+r2 = r2_score(y_true, y_pred)
+
+print(<span class="text-emerald-300">f"MAE: {mae:.2f}"</span>)
+print(<span class="text-emerald-300">f"RMSE: {rmse:.2f}"</span>)
+print(<span class="text-emerald-300">f"R² 決定係數: {r2:.4f}"</span>)
+
+<span class="text-slate-500"># 計算 Adjusted R²</span>
+n, p = len(y_true), X.shape[1]
+adj_r2 = 1 - (1 - r2) * (n - 1) / (n - p - 1)
+print(<span class="text-emerald-300">f"Adjusted R²: {adj_r2:.4f}"</span>)</pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/80 bg-slate-950 py-8 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4">
+            <p class="mb-2">AI應用規劃師 (IPAS) 筆記整理系列・機器學習評估指標全景指南</p>
+            <p>Designed with <i class="fa-solid fa-heart text-emerald-500"></i> by Rido ・ Built for AI Engineers & Data Scientists</p>
+        </div>
+    </footer>
+
+    <!-- Interactive Labs Logic Scripts -->
+    <script>
+        // ==========================================
+        // 實驗室 A: 分類門檻動態模擬器
+        // ==========================================
+        const distCanvas = document.getElementById('distCanvas');
+        const distCtx = distCanvas.getContext('2d');
+
+        function normalPdf(x, mean, std) {
+            return (1 / (std * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / std, 2));
+        }
+
+        function updateClassificationLab() {
+            const threshold = parseFloat(document.getElementById('thresholdSlider').value);
+            const ratio = parseFloat(document.getElementById('ratioSelect').value);
+            const sep = parseFloat(document.getElementById('sepSelect').value);
+
+            document.getElementById('thresholdVal').innerText = threshold.toFixed(2);
+            document.getElementById('currentThresholdText').innerText = threshold.toFixed(2);
+
+            const ratioTextMap = { '0.5': '50% (平衡)', '0.2': '20% (輕度不平衡)', '0.05': '5% (極度不平衡)' };
+            document.getElementById('ratioVal').innerText = ratioTextMap[ratio.toString()];
+
+            const sepTextMap = { '2.8': '優異 (d\'=2.8)', '2.0': '普通 (d\'=2.0)', '0.8': '弱 (d\'=0.8)' };
+            document.getElementById('sepVal').innerText = sepTextMap[sep.toString()];
+
+            // 負類分佈（以 0.35 為中心），正類分佈（中心向右位移 sep）
+            const mean0 = 0.5 - (sep * 0.1);
+            const mean1 = 0.5 + (sep * 0.1);
+            const std0 = 0.12;
+            const std1 = 0.12;
+
+            const totalN = 1000;
+            const actualP = Math.round(totalN * ratio);
+            const actualN = totalN - actualP;
+
+            // 數值積分計算混淆矩陣
+            let tpArea = 0, fnArea = 0, fpArea = 0, tnArea = 0;
+            const step = 0.005;
+
+            for (let x = 0; x <= 1.0; x += step) {
+                const pdf0 = normalPdf(x, mean0, std0) * step;
+                const pdf1 = normalPdf(x, mean1, std1) * step;
+
+                if (x >= threshold) {
+                    fpArea += pdf0;
+                    tpArea += pdf1;
+                } else {
+                    tnArea += pdf0;
+                    fnArea += pdf1;
+                }
+            }
+
+            // 標準化至真實樣本數
+            const scale0 = actualN / (fpArea + tnArea || 1);
+            const scale1 = actualP / (tpArea + fnArea || 1);
+
+            const TP = Math.round(tpArea * scale1);
+            const FN = Math.max(0, actualP - TP);
+            const FP = Math.round(fpArea * scale0);
+            const TN = Math.max(0, actualN - FP);
+
+            document.getElementById('calcTP').innerText = TP;
+            document.getElementById('calcFP').innerText = FP;
+            document.getElementById('calcFN').innerText = FN;
+            document.getElementById('calcTN').innerText = TN;
+
+            // 計算指標
+            const acc = (TP + TN) / totalN;
+            const prec = (TP + FP) > 0 ? TP / (TP + FP) : 0;
+            const rec = (TP + FN) > 0 ? TP / (TP + FN) : 0;
+            const f1 = (prec + rec) > 0 ? (2 * prec * rec) / (prec + rec) : 0;
+
+            document.getElementById('metricAcc').innerText = (acc * 100).toFixed(1) + '%';
+            document.getElementById('barAcc').style.width = (acc * 100) + '%';
+
+            document.getElementById('metricPrec').innerText = (prec * 100).toFixed(1) + '%';
+            document.getElementById('barPrec').style.width = (prec * 100) + '%';
+
+            document.getElementById('metricRec').innerText = (rec * 100).toFixed(1) + '%';
+            document.getElementById('barRec').style.width = (rec * 100) + '%';
+
+            document.getElementById('metricF1').innerText = f1.toFixed(3);
+            document.getElementById('barF1').style.width = (f1 * 100) + '%';
+
+            // 繪製分佈曲線
+            drawDistribution(mean0, std0, mean1, std1, threshold);
+        }
+
+        function drawDistribution(mean0, std0, mean1, std1, threshold) {
+            const w = distCanvas.width;
+            const h = distCanvas.height;
+            distCtx.clearRect(0, 0, w, h);
+
+            const padX = 40;
+            const padY = 30;
+            const drawW = w - 2 * padX;
+            const drawH = h - 2 * padY;
+
+            // 找最大 PDF 供正規化高度
+            const maxPdf = Math.max(normalPdf(mean0, mean0, std0), normalPdf(mean1, mean1, std1));
+
+            // 繪製座標底線
+            distCtx.strokeStyle = '#334155';
+            distCtx.lineWidth = 1;
+            distCtx.beginPath();
+            distCtx.moveTo(padX, h - padY);
+            distCtx.lineTo(w - padX, h - padY);
+            distCtx.stroke();
+
+            // 繪製曲線輔助函數
+            function plotCurve(mean, std, strokeColor, fillColor) {
+                distCtx.beginPath();
+                distCtx.moveTo(padX, h - padY);
+                for (let px = 0; px <= drawW; px += 2) {
+                    const xVal = px / drawW;
+                    const yPdf = normalPdf(xVal, mean, std);
+                    const py = (h - padY) - (yPdf / maxPdf) * drawH;
+                    distCtx.lineTo(padX + px, py);
+                }
+                distCtx.lineTo(w - padX, h - padY);
+                distCtx.closePath();
+                distCtx.fillStyle = fillColor;
+                distCtx.fill();
+                distCtx.strokeStyle = strokeColor;
+                distCtx.lineWidth = 2;
+                distCtx.stroke();
+            }
+
+            // 負類 (藍色)
+            plotCurve(mean0, std0, '#38bdf8', 'rgba(56, 189, 248, 0.15)');
+            // 正類 (綠色)
+            plotCurve(mean1, std1, '#10b981', 'rgba(16, 185, 129, 0.2)');
+
+            // 繪製 Threshold 臨界垂直線
+            const threshPx = padX + threshold * drawW;
+            distCtx.strokeStyle = '#f59e0b';
+            distCtx.lineWidth = 2.5;
+            distCtx.setLineDash([5, 4]);
+            distCtx.beginPath();
+            distCtx.moveTo(threshPx, padY - 10);
+            distCtx.lineTo(threshPx, h - padY + 15);
+            distCtx.stroke();
+            distCtx.setLineDash([]);
+
+            // 門檻圓球標記
+            distCtx.fillStyle = '#f59e0b';
+            distCtx.beginPath();
+            distCtx.arc(threshPx, padY - 10, 5, 0, Math.PI * 2);
+            distCtx.fill();
+        }
+
+        function resetClassificationLab() {
+            document.getElementById('thresholdSlider').value = 0.50;
+            document.getElementById('ratioSelect').value = '0.5';
+            document.getElementById('sepSelect').value = '2.0';
+            updateClassificationLab();
+        }
+
+        // ==========================================
+        // 實驗室 B: 迴歸指標與離群值衝擊模擬器
+        // ==========================================
+        const regCanvas = document.getElementById('regCanvas');
+        const regCtx = regCanvas.getContext('2d');
+
+        // 基準資料點 (20 點)
+        const basePoints = [
+            {x: 2, y: 14}, {x: 4, y: 18}, {x: 6, y: 22}, {x: 8, y: 25}, {x: 10, y: 31},
+            {x: 12, y: 33}, {x: 14, y: 39}, {x: 16, y: 41}, {x: 18, y: 47}, {x: 20, y: 50},
+            {x: 22, y: 53}, {x: 24, y: 59}, {x: 26, y: 61}, {x: 28, y: 67}, {x: 30, y: 70},
+            {x: 32, y: 73}, {x: 34, y: 79}, {x: 36, y: 81}, {x: 38, y: 87}, {x: 40, y: 91}
+        ];
+
+        function updateRegressionLab() {
+            const noiseScale = parseFloat(document.getElementById('outlierSlider').value);
+            const outlierCount = parseInt(document.getElementById('outlierCountSelect').value);
+
+            document.getElementById('outlierScaleText').innerText = noiseScale === 0 ? '0 (無離群值)' : `+${noiseScale} 偏差`;
+            document.getElementById('outlierCountText').innerText = `${outlierCount} 個極端點`;
+
+            // 複製並加入離群值
+            const currentPoints = basePoints.map(p => ({...p}));
+            if (noiseScale > 0) {
+                // 將中間點偏移成離群值
+                currentPoints[9].y -= noiseScale; // x=20
+                if (outlierCount >= 3) {
+                    currentPoints[4].y += noiseScale; // x=10
+                    currentPoints[14].y -= noiseScale * 0.8; // x=30
+                }
+            }
+
+            // 計算真實回歸擬合 (y = 2x + 10)
+            const n = currentPoints.length;
+            let sumAbs = 0;
+            let sumSq = 0;
+            let sumY = 0;
+
+            currentPoints.forEach(p => {
+                sumY += p.y;
+            });
+            const meanY = sumY / n;
+
+            let ssTot = 0;
+            let ssRes = 0;
+
+            currentPoints.forEach(p => {
+                const yPred = 2 * p.x + 10;
+                const err = p.y - yPred;
+                sumAbs += Math.abs(err);
+                sumSq += err * err;
+                ssTot += (p.y - meanY) * (p.y - meanY);
+                ssRes += err * err;
+            });
+
+            const mae = sumAbs / n;
+            const mse = sumSq / n;
+            const rmse = Math.sqrt(mse);
+            const r2 = 1 - (ssRes / (ssTot || 1));
+
+            document.getElementById('valMAE').innerText = mae.toFixed(2);
+            document.getElementById('valMSE').innerText = mse.toFixed(1);
+            document.getElementById('valRMSE').innerText = rmse.toFixed(2);
+            document.getElementById('valR2').innerText = r2.toFixed(3);
+
+            // 繪製迴歸畫布
+            drawRegressionCanvas(currentPoints, noiseScale, outlierCount);
+        }
+
+        function drawRegressionCanvas(points, noiseScale, outlierCount) {
+            const w = regCanvas.width;
+            const h = regCanvas.height;
+            regCtx.clearRect(0, 0, w, h);
+
+            const padX = 40;
+            const padY = 30;
+            const maxX = 45;
+            const maxY = 110;
+
+            function mapX(x) { return padX + (x / maxX) * (w - 2 * padX); }
+            function mapY(y) { return (h - padY) - (y / maxY) * (h - 2 * padY); }
+
+            // 網格與座標軸
+            regCtx.strokeStyle = '#1e293b';
+            regCtx.lineWidth = 1;
+            for (let x = 0; x <= maxX; x += 10) {
+                regCtx.beginPath();
+                regCtx.moveTo(mapX(x), padY);
+                regCtx.lineTo(mapX(x), h - padY);
+                regCtx.stroke();
+            }
+            for (let y = 0; y <= maxY; y += 20) {
+                regCtx.beginPath();
+                regCtx.moveTo(padX, mapY(y));
+                regCtx.lineTo(w - padX, mapY(y));
+                regCtx.stroke();
+            }
+
+            // 繪製擬合線 y = 2x + 10
+            regCtx.strokeStyle = '#10b981';
+            regCtx.lineWidth = 2.5;
+            regCtx.beginPath();
+            regCtx.moveTo(mapX(0), mapY(10));
+            regCtx.lineTo(mapX(45), mapY(2 * 45 + 10));
+            regCtx.stroke();
+
+            // 繪製數據點與殘差虛線
+            points.forEach((p, idx) => {
+                const isOutlier = (noiseScale > 0) && (idx === 9 || (outlierCount >= 3 && (idx === 4 || idx === 14)));
+                const yPred = 2 * p.x + 10;
+
+                // 殘差線
+                regCtx.strokeStyle = isOutlier ? 'rgba(239, 68, 68, 0.7)' : 'rgba(56, 189, 248, 0.25)';
+                regCtx.lineWidth = isOutlier ? 2 : 1;
+                regCtx.setLineDash(isOutlier ? [3, 2] : [2, 2]);
+                regCtx.beginPath();
+                regCtx.moveTo(mapX(p.x), mapY(p.y));
+                regCtx.lineTo(mapX(p.x), mapY(yPred));
+                regCtx.stroke();
+                regCtx.setLineDash([]);
+
+                // 點本身
+                regCtx.fillStyle = isOutlier ? '#ef4444' : '#38bdf8';
+                regCtx.beginPath();
+                regCtx.arc(mapX(p.x), mapY(p.y), isOutlier ? 6 : 4, 0, Math.PI * 2);
+                regCtx.fill();
+                if (isOutlier) {
+                    regCtx.strokeStyle = '#ffffff';
+                    regCtx.lineWidth = 1.5;
+                    regCtx.stroke();
+                }
+            });
+        }
+
+        function resetRegressionLab() {
+            document.getElementById('outlierSlider').value = 0;
+            document.getElementById('outlierCountSelect').value = '1';
+            updateRegressionLab();
+        }
+
+        // ==========================================
+        // iPAS 答題反饋互動邏輯
+        // ==========================================
+        const correctAnswers = { 1: 'A', 2: 'A', 3: 'B', 4: 'D' };
+
+        function checkAnswer(qNum, selected) {
+            const ansDiv = document.getElementById(`ans-${qNum}`);
+            ansDiv.classList.remove('hidden');
+
+            const isCorrect = (selected === correctAnswers[qNum]);
+            if (isCorrect) {
+                ansDiv.classList.remove('bg-red-950/40', 'border-red-800/60', 'text-red-200');
+                ansDiv.classList.add('bg-emerald-950/40', 'border-emerald-800/60', 'text-emerald-200');
+            } else {
+                ansDiv.classList.remove('bg-emerald-950/40', 'border-emerald-800/60', 'text-emerald-200');
+                ansDiv.classList.add('bg-red-950/40', 'border-red-800/60', 'text-red-200');
+            }
+        }
+
+        // 初始化所有實驗室畫布
+        window.addEventListener('DOMContentLoaded', () => {
+            updateClassificationLab();
+            updateRegressionLab();
+        });
+    </script>
+</body>
+</html>
