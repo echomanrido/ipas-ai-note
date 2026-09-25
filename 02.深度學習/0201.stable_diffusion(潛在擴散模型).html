@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stable Diffusion 核心架構解析與互動模擬 (CLIP, UNet, VAE)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- KaTeX for LaTeX Math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+          onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    .gradient-border {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2));
+      border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+    .glow-effect {
+      box-shadow: 0 0 25px -5px rgba(124, 58, 237, 0.3);
+    }
+    /* Syntax Highlighting Tokens */
+    .token-comment { color: #64748b; font-style: italic; }
+    .token-keyword { color: #ec4899; font-weight: 600; }
+    .token-class   { color: #38bdf8; font-weight: bold; }
+    .token-fn-key  { color: #facc15; font-weight: bold; text-shadow: 0 0 10px rgba(250, 204, 21, 0.25); }
+    .token-fn-call { color: #60a5fa; }
+    .token-string  { color: #34d399; }
+    .token-number  { color: #fb923c; }
+    .token-param   { color: #c084fc; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen selection:bg-purple-600 selection:text-white">
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-xl shadow-lg">
+          <i data-lucide="sparkles" class="w-6 h-6 text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400">
+            Stable Diffusion 全景解析
+          </h1>
+          <p class="text-xs text-slate-400">CLIP · UNet · VAE 三合一跨模態架構</p>
+        </div>
+      </div>
+      <nav class="hidden md:flex items-center gap-1 text-sm text-slate-300">
+        <a href="#overview" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition">01-02 原理</a>
+        <a href="#ipas" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition">03 IPAS考題</a>
+        <a href="#application" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition">04-07 應用與由來</a>
+        <a href="#math" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition">08-09 數學推導</a>
+        <a href="#simulator" class="px-3 py-1.5 rounded-lg bg-purple-600/30 text-purple-300 border border-purple-500/40 hover:bg-purple-600/50 transition font-medium">10, 12 互動模擬器</a>
+        <a href="#pytorch" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition">11 PyTorch實作</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+    <!-- 01 & 02: 一句話簡介與核心原理 -->
+    <section id="overview" class="space-y-6">
+      <div class="p-6 md:p-8 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl relative overflow-hidden">
+        <div class="absolute -right-20 -top-20 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="flex items-center gap-3 text-purple-400 font-semibold text-sm mb-2">
+          <i data-lucide="zap" class="w-4 h-4"></i>
+          <span>01. 一句話簡介 & 02. 核心原理</span>
+        </div>
+        <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-4">
+          什麼是 Stable Diffusion（潛在擴散模型，LDM）？
+        </h2>
+        <div class="p-4 bg-purple-950/40 border-l-4 border-purple-500 rounded-r-xl text-lg text-purple-200 mb-6 leading-relaxed">
+          <strong class="text-white">一句話簡介：</strong> 
+          Stable Diffusion 是一種<strong>潛在擴散模型 (Latent Diffusion Model)</strong>，利用 <strong>VAE</strong> 將高維像素壓縮至低維潛在空間，並藉由 <strong>CLIP</strong> 將文字提示轉為語意引導向量，最後透過 <strong>UNet</strong> 執行多步逆向去噪，以極高的計算效率實現「以文生圖 (Text-to-Image)」。
+        </div>
+
+        <!-- 全流程視覺化 SVG 架構流程圖 -->
+        <div class="mb-8 p-5 md:p-6 rounded-xl bg-slate-950/90 border border-slate-800 shadow-inner">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+            <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+              <i data-lucide="git-merge" class="w-4 h-4 text-purple-400"></i>
+              Stable Diffusion (LDM) 端到端完整架構流程圖（含 VAE Encoder 與 Decoder）
+            </h3>
+            <span class="text-[11px] text-slate-400 bg-slate-800/80 px-2.5 py-1 rounded-full border border-slate-700">
+              雙向轉換: 像素 [512×512×3] $\rightleftharpoons$ VAE $\rightleftharpoons$ 潛在空間 [64×64×4]
+            </span>
+          </div>
+
+          <div class="w-full overflow-x-auto">
+            <svg viewBox="0 0 1180 440" class="w-full min-w-[960px] h-auto drop-shadow-md select-none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <!-- Gradients -->
+                <linearGradient id="grad-clip" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#9333ea" />
+                  <stop offset="100%" stop-color="#6366f1" />
+                </linearGradient>
+                <linearGradient id="grad-unet" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#4f46e5" />
+                  <stop offset="100%" stop-color="#ec4899" />
+                </linearGradient>
+                <linearGradient id="grad-vae-enc" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#0284c7" />
+                  <stop offset="100%" stop-color="#2563eb" />
+                </linearGradient>
+                <linearGradient id="grad-vae-dec" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#059669" />
+                  <stop offset="100%" stop-color="#0d9488" />
+                </linearGradient>
+                <linearGradient id="grad-noise" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#334155" />
+                  <stop offset="100%" stop-color="#1e293b" />
+                </linearGradient>
+
+                <!-- Glow Filter -->
+                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+
+                <!-- Markers / Arrows -->
+                <marker id="arrow-purple" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#c084fc" />
+                </marker>
+                <marker id="arrow-cyan" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#38bdf8" />
+                </marker>
+                <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#34d399" />
+                </marker>
+                <marker id="arrow-pink" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#f472b6" />
+                </marker>
+                <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#fbbf24" />
+                </marker>
+              </defs>
+
+              <!-- Latent Space Background Box -->
+              <rect x="440" y="25" width="415" height="395" rx="16" fill="#0b1120" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.85"/>
+              <text x="455" y="48" fill="#60a5fa" font-size="11" font-weight="bold" letter-spacing="1">LATENT SPACE (低維潛在空間 64×64×4，算力節省 48x)</text>
+
+              <!-- ================= 1. VAE ENCODER BRANCH (TOP-LEFT) ================= -->
+              <!-- Training Image / Img2Img Source -->
+              <g transform="translate(20, 25)">
+                <rect width="180" height="85" rx="12" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+                <text x="14" y="24" fill="#f1f5f9" font-size="12" font-weight="bold">真實輸入影像 $x$</text>
+                <text x="14" y="44" fill="#94a3b8" font-size="10">訓練數據 / 圖生圖 (img2img)</text>
+                <rect x="14" y="54" width="150" height="22" rx="6" fill="#0f172a"/>
+                <text x="22" y="69" fill="#38bdf8" font-size="10" font-family="monospace">512 × 512 × 3 RGB 像素</text>
+              </g>
+
+              <!-- Arrow: Image x -> VAE Encoder -->
+              <path d="M 200 68 L 245 68" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow-cyan)"/>
+
+              <!-- VAE Encoder Box -->
+              <g transform="translate(250, 20)">
+                <rect width="165" height="95" rx="14" fill="url(#grad-vae-enc)" filter="url(#glow)" opacity="0.95"/>
+                <text x="14" y="26" fill="#ffffff" font-size="13" font-weight="bold">VAE Encoder $\mathcal{E}$</text>
+                <text x="14" y="46" fill="#bfdbfe" font-size="10">8倍空間下採樣與降維壓縮</text>
+                <rect x="12" y="58" width="140" height="24" rx="6" fill="#172554" opacity="0.8"/>
+                <text x="18" y="74" fill="#93c5fd" font-size="10" font-family="monospace">輸出 $z_0 = \mathcal{E}(x)$</text>
+              </g>
+
+              <!-- Forward Diffusion Node (加噪節點 q) -->
+              <g transform="translate(460, 65)">
+                <rect width="165" height="60" rx="10" fill="#1e1b4b" stroke="#818cf8" stroke-width="1.2"/>
+                <text x="12" y="20" fill="#e0e7ff" font-size="11" font-weight="bold">前向加噪過程 $q$</text>
+                <text x="12" y="36" fill="#a5b4fc" font-size="9">加噪至時間步 $t$：</text>
+                <text x="12" y="50" fill="#38bdf8" font-size="9" font-family="monospace">$z_t = \sqrt{\bar{\alpha}_t}z_0 + \sqrt{1-\bar{\alpha}_t}\epsilon$</text>
+              </g>
+
+              <!-- Arrow: VAE Encoder -> Forward Noise -->
+              <path d="M 415 68 L 435 68 L 435 95 L 455 95" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow-cyan)"/>
+              <text x="420" y="86" fill="#93c5fd" font-size="9" font-family="monospace">z_0</text>
+
+              <!-- Arrow: Forward Noise -> UNet -->
+              <path d="M 540 125 L 540 185" stroke="#818cf8" stroke-width="2" marker-end="url(#arrow-cyan)"/>
+              <text x="548" y="155" fill="#a5b4fc" font-size="9" font-family="monospace">帶噪 $z_t$ (訓練)</text>
+
+              <!-- ================= 2. CLIP TEXT ENCODER BRANCH (MIDDLE-LEFT) ================= -->
+              <!-- Prompt Input -->
+              <g transform="translate(20, 160)">
+                <rect width="180" height="70" rx="12" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+                <text x="14" y="26" fill="#f8fafc" font-size="12" font-weight="bold">文字提示詞 $y$ (Prompt)</text>
+                <text x="14" y="46" fill="#94a3b8" font-size="10">"Cyberpunk skyline..."</text>
+                <circle cx="160" cy="35" r="4" fill="#a855f7"/>
+              </g>
+
+              <!-- Arrow: Prompt -> CLIP -->
+              <path d="M 200 195 L 245 195" stroke="#c084fc" stroke-width="2" marker-end="url(#arrow-purple)"/>
+
+              <!-- CLIP Text Encoder Box -->
+              <g transform="translate(250, 150)">
+                <rect width="165" height="88" rx="14" fill="url(#grad-clip)" filter="url(#glow)" opacity="0.95"/>
+                <text x="14" y="26" fill="#ffffff" font-size="13" font-weight="bold">CLIP Text Encoder</text>
+                <text x="14" y="46" fill="#e9d5ff" font-size="10">ViT-L/14 對比語意萃取</text>
+                <rect x="12" y="55" width="140" height="22" rx="6" fill="#1e1b4b" opacity="0.75"/>
+                <text x="18" y="70" fill="#d8b4fe" font-size="10" font-family="monospace">特徵 $\tau(y)$: 77×768</text>
+              </g>
+
+              <!-- Arrow: CLIP -> UNet Cross-Attention -->
+              <path d="M 415 195 L 450 195 L 450 250 L 590 250" stroke="#c084fc" stroke-width="2" stroke-dasharray="4,2" marker-end="url(#arrow-purple)"/>
+              <text x="458" y="242" fill="#e9d5ff" font-size="9" font-family="monospace">K, V (語意引導矩陣)</text>
+
+              <!-- ================= 3. PURE NOISE INFERENCE BRANCH (BOTTOM-LEFT) ================= -->
+              <!-- Random Gaussian Noise z_T -->
+              <g transform="translate(20, 275)">
+                <rect width="180" height="95" rx="12" fill="url(#grad-noise)" stroke="#64748b" stroke-width="1.5"/>
+                <text x="14" y="24" fill="#f8fafc" font-size="12" font-weight="bold">隨機純高斯噪聲 $z_T$</text>
+                <text x="14" y="44" fill="#94a3b8" font-size="10">純文生圖 (Text-to-Image)</text>
+                <text x="14" y="62" fill="#94a3b8" font-size="9">採樣自 $\mathcal{N}(0, \mathbf{I})$</text>
+                <rect x="14" y="70" width="150" height="18" rx="4" fill="#0f172a"/>
+                <text x="22" y="83" fill="#38bdf8" font-size="9" font-family="monospace">維度: 64 × 64 × 4</text>
+              </g>
+
+              <!-- Arrow: Initial Noise -> UNet Input -->
+              <path d="M 200 320 L 475 320" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow-cyan)"/>
+              <text x="280" y="312" fill="#38bdf8" font-size="10" font-family="monospace">文生圖初始態 z_T (t=1000)</text>
+
+              <!-- ================= 4. UNet CORE ENGINE ================= -->
+              <g transform="translate(480, 195)">
+                <rect width="350" height="195" rx="14" fill="#111827" stroke="#6366f1" stroke-width="2"/>
+                <rect x="0" y="0" width="350" height="32" rx="14" fill="url(#grad-unet)" opacity="0.85"/>
+                <text x="14" y="21" fill="#ffffff" font-size="13" font-weight="bold">UNet 條件去噪循環引擎</text>
+                <text x="260" y="21" fill="#fbcfe8" font-size="10" font-weight="bold">T=20~50 步</text>
+
+                <!-- Sub-blocks -->
+                <rect x="14" y="42" width="90" height="46" rx="8" fill="#1e1b4b" stroke="#4338ca"/>
+                <text x="22" y="60" fill="#a5b4fc" font-size="10" font-weight="bold">Down-Blocks</text>
+                <text x="22" y="76" fill="#818cf8" font-size="9">空間特徵下採樣</text>
+
+                <rect x="120" y="42" width="110" height="46" rx="8" fill="#311042" stroke="#a21caf"/>
+                <text x="128" y="60" fill="#f0abfc" font-size="10" font-weight="bold">Cross-Attention</text>
+                <text x="128" y="76" fill="#e879f9" font-size="9">Q:圖像 | K,V:文字</text>
+
+                <rect x="246" y="42" width="90" height="46" rx="8" fill="#1e1b4b" stroke="#4338ca"/>
+                <text x="254" y="60" fill="#a5b4fc" font-size="10" font-weight="bold">Up-Blocks</text>
+                <text x="254" y="76" fill="#818cf8" font-size="9">空間特徵上採樣</text>
+
+                <!-- Skip Connections -->
+                <path d="M 60 42 Q 175 16 290 42" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-dasharray="3,3"/>
+                <text x="145" y="32" fill="#818cf8" font-size="9">Skip Connections</text>
+
+                <!-- UNet internal prediction math -->
+                <rect x="14" y="100" width="322" height="44" rx="6" fill="#0f172a" stroke="#334155"/>
+                <text x="22" y="118" fill="#f43f5e" font-size="10" font-family="monospace">預測噪聲: ε_θ(z_t, t, τ(y))</text>
+                <text x="22" y="134" fill="#94a3b8" font-size="9">經由 Scheduler (Euler/DDIM) 計算去噪步階 $z_{t-1}$</text>
+              </g>
+
+              <!-- Self-Loop: Iterative Denoising -->
+              <path d="M 720 390 C 720 425, 560 425, 560 390" fill="none" stroke="#f472b6" stroke-width="2" marker-end="url(#arrow-pink)"/>
+              <text x="590" y="422" fill="#f472b6" font-size="10" font-weight="bold">循環去噪迭代 t = T ➔ 0</text>
+
+              <!-- Arrow: Latent z0 -> VAE Decoder -->
+              <path d="M 830 290 L 890 290" stroke="#38bdf8" stroke-width="2.5" marker-end="url(#arrow-cyan)"/>
+              <text x="836" y="280" fill="#38bdf8" font-size="10" font-family="monospace">乾淨 z_0</text>
+
+              <!-- ================= 5. VAE DECODER (RIGHT) ================= -->
+              <g transform="translate(895, 235)">
+                <rect width="145" height="110" rx="14" fill="url(#grad-vae-dec)" filter="url(#glow)" opacity="0.95"/>
+                <text x="14" y="26" fill="#ffffff" font-size="13" font-weight="bold">VAE Decoder $\mathcal{D}$</text>
+                <text x="14" y="46" fill="#ccfbf1" font-size="10">8倍空間升採樣重構</text>
+                <rect x="12" y="60" width="120" height="34" rx="6" fill="#064e3b" opacity="0.8"/>
+                <text x="16" y="76" fill="#a7f3d0" font-size="9" font-family="monospace">64×64×4 潛在張量</text>
+                <text x="16" y="89" fill="#a7f3d0" font-size="9" font-family="monospace">➔ 512×512×3 像素</text>
+              </g>
+
+              <!-- Arrow: VAE Decoder -> Final Image -->
+              <path d="M 1040 290 L 1075 290" stroke="#34d399" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+
+              <!-- ================= 6. FINAL RGB IMAGE ================= -->
+              <g transform="translate(1080, 220)">
+                <rect width="85" height="140" rx="12" fill="#1e293b" stroke="#10b981" stroke-width="2"/>
+                <rect x="8" y="10" width="69" height="75" rx="6" fill="#0f172a"/>
+                <!-- Skyline silhouette inside mini image -->
+                <path d="M 12 75 L 22 55 L 32 55 L 32 75 L 42 45 L 56 45 L 56 75 L 68 58 L 74 58 L 74 75 Z" fill="#6366f1" opacity="0.75"/>
+                <circle cx="65" cy="28" r="7" fill="#ec4899" opacity="0.7"/>
+                <text x="10" y="105" fill="#f8fafc" font-size="10" font-weight="bold">輸出圖像</text>
+                <text x="10" y="122" fill="#34d399" font-size="9" font-family="monospace">512×512</text>
+                <text x="10" y="133" fill="#94a3b8" font-size="8">RGB 像素</text>
+              </g>
+            </svg>
+          </div>
+
+          <!-- Flowchart Component Footnote -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-4 pt-3 border-t border-slate-800 text-xs">
+            <div class="flex items-center gap-2 text-slate-300">
+              <span class="w-2.5 h-2.5 rounded-full bg-sky-500 shrink-0"></span>
+              <span><strong>VAE Encoder ($\mathcal{E}$)：</strong>將 $512\times 512$ 像素壓縮為 $64\times 64$ 潛在特徵 $z_0$</span>
+            </div>
+            <div class="flex items-center gap-2 text-slate-300">
+              <span class="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0"></span>
+              <span><strong>文字流 (CLIP)：</strong>提取高階語意為 Cross-Attention 的 Key、Value 引導</span>
+            </div>
+            <div class="flex items-center gap-2 text-slate-300">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0"></span>
+              <span><strong>潛在流 (UNet)：</strong>在 64×64 壓縮空間執行多步噪聲預測與反向去噪</span>
+            </div>
+            <div class="flex items-center gap-2 text-slate-300">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+              <span><strong>VAE Decoder ($\mathcal{D}$)：</strong>將去噪完成之 $z_0$ 放大 8 倍還原回真實 RGB 影像</span>
+            </div>
+          </div>
+        </div>
+
+        <h3 class="text-lg font-bold text-slate-200 mb-3 flex items-center gap-2">
+          <i data-lucide="layers" class="w-5 h-5 text-indigo-400"></i> 三大核心組件協同工作原理
+        </h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- VAE -->
+          <div class="p-5 rounded-xl bg-slate-800/60 border border-slate-700/60 hover:border-indigo-500/50 transition">
+            <div class="flex items-center justify-between mb-3">
+              <span class="px-2.5 py-1 text-xs font-semibold rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">編碼 $\mathcal{E}$ 與解碼 $\mathcal{D}$</span>
+              <i data-lucide="minimize-2" class="w-5 h-5 text-indigo-400"></i>
+            </div>
+            <h4 class="text-lg font-bold text-white mb-2">1. VAE (變分自編碼器)</h4>
+            <p class="text-sm text-slate-300 leading-relaxed">
+              <strong>職責：空間壓縮（Encoder $\mathcal{E}$）與像素重構（Decoder $\mathcal{D}$）。</strong><br>
+              <strong>• VAE Encoder：</strong>在模型訓練及圖生圖 (img2img) 任務中，負責將高維影像（$512 \times 512 \times 3$）壓縮成 $64 \times 64 \times 4$ 潛在特徵張量 $z_0 = \mathcal{E}(x)$，實現 48 倍資訊降維；<br>
+              <strong>• VAE Decoder：</strong>去噪循環完畢後，Decoder $\mathcal{D}$ 將潛在特徵 $z_0$ 放大 8 倍升採樣，還原成高畫質 RGB 影像。
+            </p>
+          </div>
+
+          <!-- CLIP -->
+          <div class="p-5 rounded-xl bg-slate-800/60 border border-slate-700/60 hover:border-purple-500/50 transition">
+            <div class="flex items-center justify-between mb-3">
+              <span class="px-2.5 py-1 text-xs font-semibold rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30">跨模態引導</span>
+              <i data-lucide="message-square" class="w-5 h-5 text-purple-400"></i>
+            </div>
+            <h4 class="text-lg font-bold text-white mb-2">2. CLIP (文字編碼器)</h4>
+            <p class="text-sm text-slate-300 leading-relaxed">
+              <strong>職責：語意特徵提取。</strong><br>
+              使用對比學習訓練出的 CLIP Text Encoder（ViT-L/14），將人類輸入的 Prompt（文字提示詞）轉換為高維文字嵌入向量（$77 \times 768$），作為後續去噪時 Cross-Attention 的 Key 和 Value 引導訊號。
+            </p>
+          </div>
+
+          <!-- UNet -->
+          <div class="p-5 rounded-xl bg-slate-800/60 border border-slate-700/60 hover:border-pink-500/50 transition">
+            <div class="flex items-center justify-between mb-3">
+              <span class="px-2.5 py-1 text-xs font-semibold rounded-md bg-pink-500/20 text-pink-300 border border-pink-500/30">核心去噪引擎</span>
+              <i data-lucide="activity" class="w-5 h-5 text-pink-400"></i>
+            </div>
+            <h4 class="text-lg font-bold text-white mb-2">3. UNet + Cross-Attention</h4>
+            <p class="text-sm text-slate-300 leading-relaxed">
+              <strong>職責：噪聲預測與條件引導。</strong><br>
+              包含下採樣、中間瓶頸層與上採樣架構，並包含跳躍連接 (Skip Connections)。其內部嵌入了交叉注意力機制 (Cross-Attention)，在每個去噪步階 $t$ 預測當前潛在張量中的噪聲 $\epsilon_\theta$。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03: IPAS AI 實務考題 (台灣經濟部人才能力鑑定風格) -->
+    <section id="ipas" class="space-y-6">
+      <div class="p-6 md:p-8 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl">
+        <div class="flex items-center gap-3 text-emerald-400 font-semibold text-sm mb-2">
+          <i data-lucide="check-circle" class="w-4 h-4"></i>
+          <span>03. IPAS AI 應用工程師評測考題</span>
+        </div>
+        <h2 class="text-2xl font-bold text-white mb-2">IPAS 深度學習與生成式 AI 認證考題精選</h2>
+        <p class="text-sm text-slate-400 mb-6">點擊選項立即檢測答案與觀念解析，符合經濟部 IPAS AI 應用工程師能力鑑定規範：</p>
+
+        <div class="space-y-6">
+          <!-- Question 1 -->
+          <div class="p-5 rounded-xl bg-slate-800/50 border border-slate-700" id="q1-box">
+            <div class="flex items-start gap-3">
+              <span class="bg-indigo-600/30 text-indigo-300 px-2 py-0.5 rounded text-xs font-mono font-bold mt-1">單選題 1</span>
+              <div class="flex-1">
+                <p class="font-medium text-slate-100 mb-3">
+                  傳統擴散模型（如 DDPM）在 Pixel Space 進行前向與逆向去噪，而 Stable Diffusion 採用 Latent Diffusion Architecture。請問其在架構設計上引入 VAE（Variational Autoencoder）的主要技術目的是什麼？
+                </p>
+                <div class="space-y-2 text-sm text-slate-300">
+                  <button onclick="checkAnswer(1, 'A')" class="w-full text-left p-3 rounded-lg bg-slate-900/60 hover:bg-slate-700 transition flex items-center justify-between option-btn" data-opt="A">
+                    <span>(A) 將影像色彩空間從 RGB 轉換為 CMYK 以提升印刷精準度</span>
+                  </button>
+                  <button onclick="checkAnswer(1, 'B')" class="w-full text-left p-3 rounded-lg bg-slate-900/60 hover:bg-slate-700 transition flex items-center justify-between option-btn" data-opt="B">
+                    <span>(B) 降低資料空間維度，在保留語意結構的同時大幅減少去噪計算量與顯存消耗</span>
+                  </button>
+                  <button onclick="checkAnswer(1, 'C')" class="w-full text-left p-3 rounded-lg bg-slate-900/60 hover:bg-slate-700 transition flex items-center justify-between option-btn" data-opt="C">
+                    <span>(C) 取代 Transformer 中的 Self-Attention 機制以加快收斂速度</span>
+                  </button>
+                  <button onclick="checkAnswer(1, 'D')" class="w-full text-left p-3 rounded-lg bg-slate-900/60 hover:bg-slate-700 transition flex items-center justify-between option-btn" data-opt="D">
+                    <span>(D) 負責比對文字提示詞與圖像向量的餘弦相似度 (Cosine Similarity)</span>
+                  </button>
+                </div>
+                <div id="q1-expl" class="hidden mt-3 p-3 rounded-lg text-xs leading-relaxed"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Question 2 -->
+          <div class="p-5 rounded-xl bg-slate-800/50 border border-slate-700" id="q2-box">
+            <div class="flex items-start gap-3">
+              <span class="bg-indigo-600/30 text-indigo-300 px-2 py-0.5 rounded text-xs font-mono font-bold mt-1">單選題 2</span>
+              <div class="flex-1">
+                <p class="font-medium text-slate-100 mb-3">
+                  在 Stable Diffusion 的條件生成中，文字 Prompt 是透過何種數學運算機制注入到 UNet 內部，使其能夠在每個去噪步驟精準控制生成內容？
+                </p>
+                <div class="space-y-2 text-sm text-slate-300">
+                  <button onclick="checkAnswer(2, 'A')" class="w-full text-left p-3 rounded-lg bg-slate-900/60 hover:bg-slate-700 transition flex items-center justify-between option-btn" data-opt="A">
+                    <span>(A) 在 UNet 輸出層直接進行矩陣 Element-wise 加法</span>
+                  </button>
+                  <button onclick="checkAnswer(2, 'B')" class="w-full text-left p-3 rounded-lg bg-slate-900/60 hover:bg-slate-700 transition flex items-center justify-between option-btn" data-opt="B">
+                    <span>(B) 透過交叉注意力機制 (Cross-Attention)，以影像特徵為 Query (Q)，文字嵌入為 Key (K) 與 Value (V)</span>
+                  </button>
+                  <button onclick="checkAnswer(2, 'C')" class="w-full text-left p-3 rounded-lg bg-slate-900/60 hover:bg-slate-700 transition flex items-center justify-between option-btn" data-opt="C">
+                    <span>(C) 使用卷積核卷積文字與圖像張量後進行降採樣</span>
+                  </button>
+                  <button onclick="checkAnswer(2, 'D')" class="w-full text-left p-3 rounded-lg bg-slate-900/60 hover:bg-slate-700 transition flex items-center justify-between option-btn" data-opt="D">
+                    <span>(D) 透過 AdamW 優化器即時反向傳播更新文字 Prompt</span>
+                  </button>
+                </div>
+                <div id="q2-expl" class="hidden mt-3 p-3 rounded-lg text-xs leading-relaxed"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04, 05, 06: 實務特徵、由來與生活化例子 -->
+    <section id="application" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- 04 實務特徵 -->
+      <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl flex flex-col justify-between">
+        <div>
+          <div class="flex items-center gap-2 text-amber-400 font-semibold text-sm mb-2">
+            <i data-lucide="sliders" class="w-4 h-4"></i>
+            <span>04. 實務特徵 (Key Characteristics)</span>
+          </div>
+          <h3 class="text-xl font-bold text-white mb-3">工程落地三大關鍵</h3>
+          <ul class="space-y-3 text-sm text-slate-300">
+            <li class="flex items-start gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-emerald-400 mt-1 shrink-0"></i>
+              <span><strong>消費級 GPU 普及：</strong>因為去噪在 $64\times 64$ 潛在空間進行，僅需 4GB~8GB VRAM 即可推論生成 512px 或 1024px 影像。</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-emerald-400 mt-1 shrink-0"></i>
+              <span><strong>無引導擴散分類器 (CFG)：</strong>透過調節 Classifier-Free Guidance Scale，平衡多樣性（Creativity）與符合提示詞（Prompt Fidelity）。</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-emerald-400 mt-1 shrink-0"></i>
+              <span><strong>生態模組化擴展：</strong>支持 LoRA 微調、ControlNet 邊緣/骨架控制、IP-Adapter 圖像提示等周邊技術。</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 05 由來 -->
+      <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl flex flex-col justify-between">
+        <div>
+          <div class="flex items-center gap-2 text-sky-400 font-semibold text-sm mb-2">
+            <i data-lucide="history" class="w-4 h-4"></i>
+            <span>05. 由來 (History & Origins)</span>
+          </div>
+          <h3 class="text-xl font-bold text-white mb-3">學術到開源的爆炸演變</h3>
+          <p class="text-sm text-slate-300 leading-relaxed mb-3">
+            源自非平衡熱力學原理（Sohl-Dickstein et al., 2015），由 <strong>DDPM</strong>（Ho et al., 2020）確立去噪架構。
+          </p>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            2021~2022 年慕尼黑大學 (LMU Munich) 的 Robin Rombach 與 Patrick Esser 發表了 <em>High-Resolution Image Synthesis with Latent Diffusion Models</em>。隨後由 <strong>Stability AI</strong>、Runway 與 LAION 社群資助開源釋出權重，徹底打破 OpenAI DALL-E 的閉源壟斷。
+          </p>
+        </div>
+      </div>
+
+      <!-- 06 生活化例子 -->
+      <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl flex flex-col justify-between">
+        <div>
+          <div class="flex items-center gap-2 text-rose-400 font-semibold text-sm mb-2">
+            <i data-lucide="coffee" class="w-4 h-4"></i>
+            <span>06. 生活化例子 (Analogy)</span>
+          </div>
+          <h3 class="text-xl font-bold text-white mb-3">「盲人雕刻家與建築草圖」</h3>
+          <ul class="space-y-3 text-sm text-slate-300">
+            <li>
+              <strong>VAE 是縮圖草稿本：</strong>不直接在十公尺巨型花崗岩上細雕，而是先在小黏土模型上設計細節，完工後放大。
+            </li>
+            <li>
+              <strong>CLIP 是設計師旁白：</strong>委託人在旁邊唸：「請雕一隻戴著水手帽的柴犬」，CLIP 翻譯成工匠聽得懂的專業術語。
+            </li>
+            <li>
+              <strong>UNet 是一次次的精雕刮除：</strong>從一塊滿是粗糙顆粒的雜亂石頭開始，每一斧頭都刮掉一圈多餘雜質，直到輪廓清晰浮現。
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07: 工業上應用 -->
+    <section class="p-6 md:p-8 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl">
+      <div class="flex items-center gap-2 text-blue-400 font-semibold text-sm mb-2">
+        <i data-lucide="briefcase" class="w-4 h-4"></i>
+        <span>07. 工業上應用 (Industrial Applications)</span>
+      </div>
+      <h2 class="text-2xl font-bold text-white mb-6">跨產業垂直落地實踐</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="p-4 rounded-xl bg-slate-800/40 border border-slate-700/50">
+          <div class="w-10 h-10 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center mb-3">
+            <i data-lucide="gamepad-2" class="w-5 h-5"></i>
+          </div>
+          <h4 class="font-bold text-white mb-1">遊戲與動漫概念美術</h4>
+          <p class="text-xs text-slate-300">角色設計、場景 Mood Board 快速原型迭代；產出高精細貼圖，大幅縮短 70% 初期美術發想週期。</p>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-800/40 border border-slate-700/50">
+          <div class="w-10 h-10 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center mb-3">
+            <i data-lucide="shirt" class="w-5 h-5"></i>
+          </div>
+          <h4 class="font-bold text-white mb-1">電商虛擬試衣與廣告</h4>
+          <p class="text-xs text-slate-300">配合 ControlNet 進行人體姿勢替換與商品風格轉移，免實體攝影棚即可生成百變行銷素材。</p>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-800/40 border border-slate-700/50">
+          <div class="w-10 h-10 rounded-lg bg-pink-500/20 text-pink-400 flex items-center justify-center mb-3">
+            <i data-lucide="box" class="w-5 h-5"></i>
+          </div>
+          <h4 class="font-bold text-white mb-1">工業與建築 3D 渲染</h4>
+          <p class="text-xs text-slate-300">建築手繪草圖轉擬真光影渲染圖、室內設計風格切換，並衍生出 2D 擴散圖反投影重建 3D Mesh。</p>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-800/40 border border-slate-700/50">
+          <div class="w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-3">
+            <i data-lucide="microscope" class="w-5 h-5"></i>
+          </div>
+          <h4 class="font-bold text-white mb-1">生醫顯影與資料擴增</h4>
+          <p class="text-xs text-slate-300">生成罕見病症 CT/MRI 影像補充訓練集，或針對低解析度病理顯微切片進行條件式去噪超解析度重建。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 08 & 09: 理論簡介與互動數學推導 -->
+    <section id="math" class="p-6 md:p-8 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-6">
+      <div class="flex items-center gap-2 text-cyan-400 font-semibold text-sm mb-1">
+        <i data-lucide="function-square" class="w-4 h-4"></i>
+        <span>08. 理論簡介 & 09. 數學推導（互動式探討）</span>
+      </div>
+      <h2 class="text-2xl font-bold text-white">潛在擴散模型 (LDM) 數學核心推導</h2>
+      
+      <p class="text-slate-300 text-sm leading-relaxed">
+        擴散模型本質是馬可夫鏈 (Markov Chain)，由兩大過程構成：<strong>前向加噪過程 (Forward Process $q$)</strong> 與 <strong>逆向去噪過程 (Reverse Process $p_\theta$)</strong>。
+      </p>
+
+      <!-- Step 1: Forward -->
+      <div class="p-5 rounded-xl bg-slate-800/60 border border-slate-700 space-y-3">
+        <h3 class="text-base font-bold text-indigo-300 flex items-center gap-2">
+          <span>1. 前向加噪閉式解 (Forward Diffusion Trick)</span>
+        </h3>
+        <p class="text-sm text-slate-300">
+          令潛在變數 $z_0 = \mathcal{E}(x)$，每一步加噪：$q(z_t | z_{t-1}) = \mathcal{N}(z_t; \sqrt{1 - \beta_t} z_{t-1}, \beta_t \mathbf{I})$。令 $\alpha_t = 1 - \beta_t$，且 $\bar{\alpha}_t = \prod_{i=1}^t \alpha_i$。透過高斯分佈可加性重參數化技巧，可直接從 $z_0$ 一步採樣任意時刻 $t$ 的 $z_t$：
+        </p>
+        <div class="p-4 bg-slate-950 rounded-lg text-center overflow-x-auto text-cyan-300 font-mono text-sm">
+          $$z_t = \sqrt{\bar{\alpha}_t} z_0 + \sqrt{1 - \bar{\alpha}_t} \epsilon, \quad \epsilon \sim \mathcal{N}(0, \mathbf{I})$$
+        </div>
+        <p class="text-xs text-slate-400">
+          當 $t \to T$（如 $t=1000$）時，$\bar{\alpha}_T \approx 0$，$z_T$ 幾乎退化為標準純高斯白噪聲 $\mathcal{N}(0, \mathbf{I})$。
+        </p>
+      </div>
+
+      <!-- Step 2: UNet Loss -->
+      <div class="p-5 rounded-xl bg-slate-800/60 border border-slate-700 space-y-3">
+        <h3 class="text-base font-bold text-purple-300 flex items-center gap-2">
+          <span>2. UNet 訓練目標函數 (Simplified Variational Bound Loss)</span>
+        </h3>
+        <p class="text-sm text-slate-300">
+          UNet 不直接預測乾淨圖像 $z_0$，而是學習預測當前步階所加入的標準高斯噪聲 $\epsilon$。其文字條件訓練損失為均方誤差 (MSE)：
+        </p>
+        <div class="p-4 bg-slate-950 rounded-lg text-center overflow-x-auto text-purple-300 font-mono text-sm">
+          $$\mathcal{L}_{\text{LDM}} = \mathbb{E}_{\mathcal{E}(x),\, y,\, \epsilon \sim \mathcal{N}(0,\mathbf{I}),\, t} \left[ \left\| \epsilon - \epsilon_\theta(z_t, t, \tau_\theta(y)) \right\|^2 \right]$$
+        </div>
+        <p class="text-xs text-slate-400">
+          其中 $\tau_\theta(y)$ 為 CLIP 文字編碼器對文字 $y$ 提取的特徵矩陣，藉由 Cross-Attention $Q=W_Q z_t$, $K=W_K \tau_\theta(y)$, $V=W_V \tau_\theta(y)$ 注入特徵：$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$。
+        </p>
+      </div>
+
+      <!-- Step 3: CFG -->
+      <div class="p-5 rounded-xl bg-slate-800/60 border border-slate-700 space-y-3">
+        <h3 class="text-base font-bold text-pink-300 flex items-center gap-2">
+          <span>3. 無分類器引導 (Classifier-Free Guidance, CFG)</span>
+        </h3>
+        <p class="text-sm text-slate-300">
+          推論時，UNet 會同時執行兩次預測：包含文字引導的預測 $\epsilon_\theta(z_t, t, c)$ 與無條件 (空字串) 的預測 $\epsilon_\theta(z_t, t, \emptyset)$。最終引導噪聲為：
+        </p>
+        <div class="p-4 bg-slate-950 rounded-lg text-center overflow-x-auto text-pink-300 font-mono text-sm">
+          $$\tilde{\epsilon}_\theta(z_t, t, c) = \epsilon_\theta(z_t, t, \emptyset) + s \cdot \Big( \epsilon_\theta(z_t, t, c) - \epsilon_\theta(z_t, t, \emptyset) \Big)$$
+        </div>
+        <p class="text-xs text-slate-400">
+          $s \ge 1$ 為 CFG Scale。當 $s$ 越大，模型越嚴格遵守文字提示詞，但過高可能導致色彩過飽和 (Saturation Artifacts)。
+        </p>
+      </div>
+
+      <!-- Interactive Math Exploration Widget -->
+      <div class="p-5 rounded-xl bg-slate-950 border border-indigo-500/30">
+        <div class="flex items-center justify-between mb-4">
+          <h4 class="font-bold text-indigo-300 text-sm flex items-center gap-2">
+            <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+            即時動態推導模擬：時間步階 $t$ 與訊噪比 (Signal-to-Noise Ratio, SNR)
+          </h4>
+          <span class="text-xs text-slate-400">線性 Noise Schedule ($\beta_1=0.00085, \beta_T=0.012$)</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+          <div class="space-y-4">
+            <div>
+              <div class="flex justify-between text-sm mb-1">
+                <span class="text-slate-300">時間步階 $t$ (0 = 純影像, 1000 = 純噪聲):</span>
+                <span id="math-t-val" class="font-mono text-purple-400 font-bold">500</span>
+              </div>
+              <input type="range" id="math-t-slider" min="0" max="1000" value="500" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 text-xs font-mono">
+              <div class="p-3 bg-slate-900 rounded-lg border border-slate-800">
+                <span class="text-slate-400 block mb-1">影像信號加權係數 $\sqrt{\bar{\alpha}_t}$:</span>
+                <span id="math-signal-coef" class="text-base text-emerald-400 font-bold">0.707</span>
+              </div>
+              <div class="p-3 bg-slate-900 rounded-lg border border-slate-800">
+                <span class="text-slate-400 block mb-1">噪聲加權係數 $\sqrt{1 - \bar{\alpha}_t}$:</span>
+                <span id="math-noise-coef" class="text-base text-rose-400 font-bold">0.707</span>
+              </div>
+              <div class="p-3 bg-slate-900 rounded-lg border border-slate-800">
+                <span class="text-slate-400 block mb-1">累積信號保持率 $\bar{\alpha}_t$:</span>
+                <span id="math-alpha-cum" class="text-base text-cyan-400 font-bold">0.500</span>
+              </div>
+              <div class="p-3 bg-slate-900 rounded-lg border border-slate-800">
+                <span class="text-slate-400 block mb-1">訊噪比 $\text{SNR} = \frac{\bar{\alpha}_t}{1-\bar{\alpha}_t}$:</span>
+                <span id="math-snr" class="text-base text-amber-400 font-bold">1.000 (0 dB)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-4 bg-slate-900 rounded-xl border border-slate-800 flex flex-col justify-center">
+            <h5 class="text-xs font-semibold text-slate-400 mb-2">訊號 vs. 噪聲能量佔比長條圖：</h5>
+            <div class="w-full h-6 bg-slate-800 rounded-full overflow-hidden flex shadow-inner">
+              <div id="bar-signal" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full transition-all duration-150 flex items-center justify-center text-[10px] font-bold text-slate-950" style="width: 50%;">信號 50%</div>
+              <div id="bar-noise" class="bg-gradient-to-r from-pink-500 to-rose-500 h-full transition-all duration-150 flex items-center justify-center text-[10px] font-bold text-white" style="width: 50%;">噪聲 50%</div>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-3 leading-relaxed">
+              <strong>觀察：</strong>在擴散初期 ($t \approx 1000$)，訊噪比接近 0，UNet 負責宏觀構圖（主要色彩塊與輪廓）；在擴散末期 ($t \to 0$)，訊噪比極高，UNet 專注於微調細微紋理與高頻細節。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 & 12: 深度學習範疇 - 互動網頁模擬器 (Step by step & 一鍵自動模擬) -->
+    <section id="simulator" class="p-6 md:p-8 rounded-2xl bg-slate-900 border border-purple-500/40 shadow-2xl glow-effect space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2 text-purple-400 font-semibold text-sm mb-1">
+            <i data-lucide="play-circle" class="w-4 h-4"></i>
+            <span>10. 深度學習視覺生成 & 12. 互動視覺模擬</span>
+          </div>
+          <h2 class="text-2xl font-extrabold text-white">Stable Diffusion 全流程去噪視覺化模擬器</h2>
+          <p class="text-sm text-slate-400">實時觀察 CLIP 語意編碼、UNet 潛在特徵去噪迭代、以及 VAE 解碼還原影像過程</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btn-reset" class="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1.5">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> 重置重來
+          </button>
+          <button id="btn-step" class="px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5">
+            <i data-lucide="step-forward" class="w-3.5 h-3.5"></i> 單步去噪 (Step)
+          </button>
+          <button id="btn-auto" class="px-5 py-2 text-xs font-bold rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg transition flex items-center gap-1.5">
+            <i data-lucide="play" class="w-3.5 h-3.5"></i> 一鍵自動去噪模擬
+          </button>
+        </div>
+      </div>
+
+      <!-- Controls Row -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-xl bg-slate-950 border border-slate-800">
+        <!-- Prompt Select -->
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5 flex items-center gap-1">
+            <i data-lucide="type" class="w-3.5 h-3.5 text-purple-400"></i> 文字提示詞 (CLIP Prompt)
+          </label>
+          <select id="sim-prompt-select" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500">
+            <option value="cyberpunk">A futuristic cyberpunk skyline with neon rain</option>
+            <option value="astronaut">A cute red panda wearing an astronaut helmet on Mars</option>
+            <option value="castle">An enchanted floating castle in golden hour clouds</option>
+          </select>
+        </div>
+        <!-- CFG Scale -->
+        <div>
+          <div class="flex justify-between items-center text-xs mb-1.5">
+            <span class="text-slate-300 flex items-center gap-1">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5 text-pink-400"></i> 引導比例 (CFG Scale):
+            </span>
+            <span id="sim-cfg-val" class="font-mono text-pink-400 font-bold">7.5</span>
+          </div>
+          <input type="range" id="sim-cfg-slider" min="1.0" max="15.0" step="0.5" value="7.5" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-pink-500">
+        </div>
+        <!-- Sampling Steps -->
+        <div>
+          <div class="flex justify-between items-center text-xs mb-1.5">
+            <span class="text-slate-300 flex items-center gap-1">
+              <i data-lucide="layers" class="w-3.5 h-3.5 text-indigo-400"></i> 採樣步數 (Total Steps):
+            </span>
+            <span class="font-mono text-indigo-400 font-bold">20 步</span>
+          </div>
+          <div class="w-full bg-slate-800 h-2 rounded-lg overflow-hidden mt-3">
+            <div id="sim-progress-bar" class="bg-gradient-to-r from-indigo-500 to-pink-500 h-full w-0 transition-all duration-200"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pipeline Visualization Canvas / Blocks -->
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 items-stretch">
+        <!-- 1. CLIP Embeddings -->
+        <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-purple-300">1. CLIP 語意投影</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-purple-900/40 text-purple-300 border border-purple-700/50">77x768</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mb-3">文字透過 Transformer 轉為密集 Attention 特徵引導向量：</p>
+          <div class="flex-1 bg-slate-900 rounded-lg p-2.5 flex flex-col justify-center gap-2 border border-slate-800">
+            <div class="text-[11px] text-slate-300 font-mono break-all p-2 bg-slate-950 rounded border border-slate-800/80">
+              <span class="text-purple-400 font-bold">[Token IDs]:</span>
+              <span id="clip-token-preview">49406, 320, 2453, 1894, ...</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 block mb-1">Cross-Attention 熱力分佈 (Simulated):</span>
+              <div class="grid grid-cols-8 gap-1" id="clip-heatmap">
+                <!-- 64 heatmap cells generated via JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. UNet Latent Space (Canvas) -->
+        <div class="lg:col-span-2 p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col items-center">
+          <div class="w-full flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-indigo-300">2. UNet 潛在特徵空間去噪 (Latent Space 64x64x4)</span>
+            <span id="sim-step-badge" class="text-[10px] px-2 py-0.5 rounded bg-indigo-900/40 text-indigo-300 border border-indigo-700/50">
+              Step: 0 / 20 ($t=1000$)
+            </span>
+          </div>
+          <div class="relative w-full aspect-square max-w-[280px] sm:max-w-[320px] rounded-lg overflow-hidden border border-slate-800 bg-slate-900 shadow-inner flex items-center justify-center">
+            <canvas id="latent-canvas" width="256" height="256" class="w-full h-full object-contain"></canvas>
+            <div id="sim-status-overlay" class="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px] flex flex-col items-center justify-center text-center p-4">
+              <i data-lucide="wand-2" class="w-8 h-8 text-purple-400 mb-2 animate-bounce"></i>
+              <p class="text-xs text-white font-medium">點擊「單步去噪」或「一鍵自動模擬」</p>
+              <p class="text-[10px] text-slate-400 mt-1">目前處於初始隨機高斯噪聲態 $\mathcal{N}(0, \mathbf{I})$</p>
+            </div>
+          </div>
+          <div class="w-full flex justify-between items-center text-[11px] text-slate-400 mt-3 px-1">
+            <span>噪聲預測 $\epsilon_\theta(z_t, t, c)$</span>
+            <span>$z_{t-1} = \frac{1}{\sqrt{\alpha_t}}\left(z_t - \frac{\beta_t}{\sqrt{1-\bar{\alpha}_t}}\tilde{\epsilon}_\theta\right)$</span>
+          </div>
+        </div>
+
+        <!-- 3. VAE Decoder (Pixel Space Output) -->
+        <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-pink-300">3. VAE 解碼 (512x512)</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-pink-900/40 text-pink-300 border border-pink-700/50">Pixel Space</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mb-3">Decoder 將 $64\times 64\times 4$ 潛在特徵還原為高解析度 RGB 影像：</p>
+          <div class="flex-1 bg-slate-900 rounded-lg border border-slate-800 p-2 flex flex-col items-center justify-center relative overflow-hidden">
+            <canvas id="pixel-canvas" width="256" height="256" class="w-full aspect-square rounded object-cover"></canvas>
+            <div id="vae-badge" class="absolute bottom-3 right-3 text-[10px] px-2 py-0.5 rounded bg-slate-950/80 text-emerald-400 border border-emerald-500/40 hidden">
+              VAE 8x 重構完成
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11: Python / PyTorch 實作 -->
+    <section id="pytorch" class="p-6 md:p-8 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2 text-emerald-400 font-semibold text-sm">
+          <i data-lucide="code-2" class="w-4 h-4"></i>
+          <span>11. Python / PyTorch 核心演算法實作代碼</span>
+        </div>
+        <button onclick="copyCode()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition flex items-center gap-1 border border-slate-700">
+          <i data-lucide="copy" class="w-3.5 h-3.5"></i> 複製代碼
+        </button>
+      </div>
+      <h2 class="text-xl font-bold text-white">使用 Diffusers 與 PyTorch 實現底層去噪循環邏輯</h2>
+      <p class="text-xs text-slate-400">這段代碼完整揭示了 CLIP 嵌入、隨機潛在噪聲生成、UNet 逐步去噪與 CFG 運算，最後透過 VAE Decode 產出圖片：</p>
+
+      <!-- Function Color Legend -->
+      <div class="flex flex-wrap gap-2 text-[11px] p-3 rounded-lg bg-slate-950/80 border border-slate-800">
+        <span class="text-slate-400 font-semibold mr-1 flex items-center gap-1">
+          <i data-lucide="palette" class="w-3.5 h-3.5 text-indigo-400"></i> 色彩圖例：
+        </span>
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 font-mono font-bold">
+          <span class="w-2 h-2 rounded-full bg-yellow-400"></span> 核心關鍵函式 (Key Core Methods)
+        </span>
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 text-blue-300 font-mono">
+          <span class="w-2 h-2 rounded-full bg-blue-400"></span> 一般輔助/張量操作函式
+        </span>
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/30 text-sky-300 font-mono">
+          <span class="w-2 h-2 rounded-full bg-sky-400"></span> 類別與模型架構
+        </span>
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-pink-500/10 border border-pink-500/30 text-pink-300 font-mono">
+          <span class="w-2 h-2 rounded-full bg-pink-400"></span> 語法關鍵字 (Keywords)
+        </span>
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span> 字串與提示詞
+        </span>
+      </div>
+
+      <div class="relative bg-slate-950 rounded-xl p-4 overflow-x-auto border border-slate-800 font-mono text-xs text-slate-300">
+        <!-- Toast Notification for Copying -->
+        <div id="copy-toast" class="hidden absolute top-4 right-4 bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-sans shadow-lg transition-all z-10">
+          代碼已成功複製至剪貼簿！
+        </div>
+        <pre><code id="code-block"><span class="token-keyword">import</span> torch
+<span class="token-keyword">from</span> transformers <span class="token-keyword">import</span> <span class="token-class">CLIPTextModel</span>, <span class="token-class">CLIPTokenizer</span>
+<span class="token-keyword">from</span> diffusers <span class="token-keyword">import</span> <span class="token-class">AutoencoderKL</span>, <span class="token-class">UNet2DConditionModel</span>, <span class="token-class">PNDMScheduler</span>
+<span class="token-keyword">from</span> PIL <span class="token-keyword">import</span> <span class="token-class">Image</span>
+
+<span class="token-comment"># 1. 載入三大關鍵模組 (CLIP, UNet, VAE)</span>
+device = <span class="token-string">"cuda"</span> <span class="token-keyword">if</span> torch.cuda.<span class="token-fn-call">is_available</span>() <span class="token-keyword">else</span> <span class="token-string">"cpu"</span>
+model_id = <span class="token-string">"runwayml/stable-diffusion-v1-5"</span>
+
+tokenizer = <span class="token-class">CLIPTokenizer</span>.<span class="token-fn-key">from_pretrained</span>(model_id, <span class="token-param">subfolder</span>=<span class="token-string">"tokenizer"</span>)
+text_encoder = <span class="token-class">CLIPTextModel</span>.<span class="token-fn-key">from_pretrained</span>(model_id, <span class="token-param">subfolder</span>=<span class="token-string">"text_encoder"</span>).<span class="token-fn-call">to</span>(device)
+vae = <span class="token-class">AutoencoderKL</span>.<span class="token-fn-key">from_pretrained</span>(model_id, <span class="token-param">subfolder</span>=<span class="token-string">"vae"</span>).<span class="token-fn-call">to</span>(device)
+unet = <span class="token-class">UNet2DConditionModel</span>.<span class="token-fn-key">from_pretrained</span>(model_id, <span class="token-param">subfolder</span>=<span class="token-string">"unet"</span>).<span class="token-fn-call">to</span>(device)
+scheduler = <span class="token-class">PNDMScheduler</span>.<span class="token-fn-key">from_pretrained</span>(model_id, <span class="token-param">subfolder</span>=<span class="token-string">"scheduler"</span>)
+
+<span class="token-comment"># 2. 準備文字 Prompt 並經由 CLIP Text Encoder 提取引導向量</span>
+prompt = [<span class="token-string">"A futuristic cyberpunk skyline with neon rain"</span>]
+negative_prompt = [<span class="token-string">""</span>]  <span class="token-comment"># 無條件 (CFG 基準)</span>
+
+<span class="token-comment"># 編碼正面與負面提示詞 (CLIP 語意編碼)</span>
+tokens = <span class="token-fn-key">tokenizer</span>(prompt, <span class="token-param">padding</span>=<span class="token-string">"max_length"</span>, <span class="token-param">max_length</span>=tokenizer.model_max_length, <span class="token-param">return_tensors</span>=<span class="token-string">"pt"</span>).input_ids.<span class="token-fn-call">to</span>(device)
+cond_embeddings = <span class="token-fn-key">text_encoder</span>(tokens)[<span class="token-number">0</span>]
+
+uncond_tokens = <span class="token-fn-key">tokenizer</span>(negative_prompt, <span class="token-param">padding</span>=<span class="token-string">"max_length"</span>, <span class="token-param">max_length</span>=tokenizer.model_max_length, <span class="token-param">return_tensors</span>=<span class="token-string">"pt"</span>).input_ids.<span class="token-fn-call">to</span>(device)
+uncond_embeddings = <span class="token-fn-key">text_encoder</span>(uncond_tokens)[<span class="token-number">0</span>]
+
+<span class="token-comment"># 拼接文字特徵供 CFG 批次計算 [2, 77, 768]</span>
+text_embeddings = torch.<span class="token-fn-call">cat</span>([uncond_embeddings, cond_embeddings])
+
+<span class="token-comment"># 3. 初始化潛在空間純高斯白噪聲 z_T (64x64x4)</span>
+batch_size = <span class="token-number">1</span>
+height, width = <span class="token-number">512</span>, <span class="token-number">512</span>
+latents = torch.<span class="token-fn-call">randn</span>((batch_size, unet.config.in_channels, height // <span class="token-number">8</span>, width // <span class="token-number">8</span>), <span class="token-param">device</span>=device)
+latents = latents * scheduler.init_noise_sigma
+
+<span class="token-comment"># 4. 逆向擴散去噪循環 (Sampling Loop)</span>
+scheduler.<span class="token-fn-key">set_timesteps</span>(<span class="token-param">num_inference_steps</span>=<span class="token-number">20</span>)
+cfg_scale = <span class="token-number">7.5</span>
+
+<span class="token-keyword">for</span> t <span class="token-keyword">in</span> scheduler.timesteps:
+    <span class="token-comment"># 複製 latents 供 CFG 平行計算條件與無條件輸出</span>
+    latent_model_input = torch.<span class="token-fn-call">cat</span>([latents] * <span class="token-number">2</span>)
+    latent_model_input = scheduler.<span class="token-fn-key">scale_model_input</span>(latent_model_input, t)
+
+    <span class="token-comment"># UNet 核心前向推論預測噪聲 (Cross-Attention 語意注入)</span>
+    <span class="token-keyword">with</span> torch.<span class="token-fn-call">no_grad</span>():
+        noise_pred = <span class="token-fn-key">unet</span>(latent_model_input, t, <span class="token-param">encoder_hidden_states</span>=text_embeddings).sample
+
+    <span class="token-comment"># 執行 Classifier-Free Guidance (CFG) 數學引導合成</span>
+    noise_pred_uncond, noise_pred_text = noise_pred.<span class="token-fn-call">chunk</span>(<span class="token-number">2</span>)
+    noise_pred = noise_pred_uncond + cfg_scale * (noise_pred_text - noise_pred_uncond)
+
+    <span class="token-comment"># 調度器 (Scheduler) 依當前噪聲計算前一時刻潛在向量 z_{t-1}</span>
+    latents = scheduler.<span class="token-fn-key">step</span>(noise_pred, t, latents).prev_sample
+
+<span class="token-comment"># 5. VAE Decoder 將 64x64x4 潛在向量解碼回 512x512x3 像素空間 (Pixel Space)</span>
+latents = <span class="token-number">1</span> / <span class="token-number">0.18215</span> * latents
+<span class="token-keyword">with</span> torch.<span class="token-fn-call">no_grad</span>():
+    image = vae.<span class="token-fn-key">decode</span>(latents).sample
+
+<span class="token-comment"># 後處理為標準 RGB 影像</span>
+image = (image / <span class="token-number">2</span> + <span class="token-number">0.5</span>).<span class="token-fn-call">clamp</span>(<span class="token-number">0</span>, <span class="token-number">1</span>)
+image = image.<span class="token-fn-call">cpu</span>().<span class="token-fn-call">permute</span>(<span class="token-number">0</span>, <span class="token-number">2</span>, <span class="token-number">3</span>, <span class="token-number">1</span>).<span class="token-fn-call">float</span>().<span class="token-fn-call">numpy</span>()[<span class="token-number">0</span>]
+image = (image * <span class="token-number">255</span>).<span class="token-fn-call">round</span>().<span class="token-fn-call">astype</span>(<span class="token-string">"uint8"</span>)
+pil_img = <span class="token-class">Image</span>.<span class="token-fn-call">fromarray</span>(image)
+pil_img.<span class="token-fn-call">save</span>(<span class="token-string">"generated_cyberpunk.png"</span>)
+<span class="token-fn-call">print</span>(<span class="token-string">"Stable Diffusion 生成完成！"</span>)</code></pre>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="mt-16 border-t border-slate-900 py-8 text-center text-xs text-slate-400">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <p>Stable Diffusion (CLIP · UNet · VAE) 核心技術全架構與模擬教學平台</p>
+      <p class="text-slate-400">符合 IPAS AI 應用工程師評測知識體系 · 交互式生成演示</p>
+    </div>
+  </footer>
+
+  <!-- Script for Interactive Simulation, Math Sliders, and IPAS Quiz -->
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    /* ========================================================
+       03. IPAS Quiz Logic
+    ======================================================== */
+    const quizAnswers = {
+      1: {
+        correct: 'B',
+        text: '正確答案是 (B)。傳統擴散模型在 Pixel Space (512x512x3) 上計算高維卷積，計算量過於龐大。Stable Diffusion 引入 VAE Encoder 將維度降至 64x64x4，在壓縮潛在空間 (Latent Space) 中進行去噪，降低了 48~64 倍的算力與顯存需求，最後再由 VAE Decoder 還原。'
+      },
+      2: {
+        correct: 'B',
+        text: '正確答案是 (B)。Stable Diffusion 利用 Transformer 的 Cross-Attention (交叉注意力機制) 注入條件。影像特徵經過線性映射產生 Query (Q)，而 CLIP 編碼出的 Text Token Embeddings 則映射為 Key (K) 和 Value (V)，藉此動態控制每層特徵圖的生成走向。'
+      }
+    };
+
+    function checkAnswer(qNum, selected) {
+      const q = quizAnswers[qNum];
+      const box = document.getElementById(`q${qNum}-box`);
+      const expl = document.getElementById(`q${qNum}-expl`);
+      const btns = box.querySelectorAll('.option-btn');
+
+      btns.forEach(btn => {
+        btn.disabled = true;
+        const opt = btn.getAttribute('data-opt');
+        if (opt === q.correct) {
+          btn.classList.add('bg-emerald-950/70', 'border', 'border-emerald-500', 'text-emerald-200');
+        } else if (opt === selected && selected !== q.correct) {
+          btn.classList.add('bg-rose-950/70', 'border', 'border-rose-500', 'text-rose-200');
+        }
+      });
+
+      expl.classList.remove('hidden');
+      if (selected === q.correct) {
+        expl.className = "mt-3 p-3 rounded-lg text-xs leading-relaxed bg-emerald-950/40 text-emerald-300 border border-emerald-800/60";
+        expl.innerHTML = `<strong>回答正確！</strong> ${q.text}`;
+      } else {
+        expl.className = "mt-3 p-3 rounded-lg text-xs leading-relaxed bg-rose-950/40 text-rose-300 border border-rose-800/60";
+        expl.innerHTML = `<strong>回答錯誤。</strong> ${q.text}`;
+      }
+    }
+
+    /* ========================================================
+       09. Interactive Math Derivation Slider
+    ======================================================== */
+    const mathSlider = document.getElementById('math-t-slider');
+    const mathTVal = document.getElementById('math-t-val');
+    const signalCoef = document.getElementById('math-signal-coef');
+    const noiseCoef = document.getElementById('math-noise-coef');
+    const alphaCum = document.getElementById('math-alpha-cum');
+    const snrVal = document.getElementById('math-snr');
+    const barSignal = document.getElementById('bar-signal');
+    const barNoise = document.getElementById('bar-noise');
+
+    function updateMath(t) {
+      mathTVal.textContent = t;
+      // Linear schedule approximation: beta_1=0.00085, beta_T=0.012
+      // bar_alpha_t decreases from ~1.0 at t=0 to ~0.005 at t=1000
+      const ratio = t / 1000;
+      // Cosine / linear approx for alpha_bar
+      const alpha_bar = Math.max(0.0001, Math.cos((ratio + 0.008) / 1.008 * Math.PI / 2) ** 2);
+      const sqrt_alpha_bar = Math.sqrt(alpha_bar);
+      const sqrt_one_minus = Math.sqrt(1 - alpha_bar);
+      const snr = alpha_bar / (1 - alpha_bar);
+      const snr_db = 10 * Math.log10(snr);
+
+      signalCoef.textContent = sqrt_alpha_bar.toFixed(3);
+      noiseCoef.textContent = sqrt_one_minus.toFixed(3);
+      alphaCum.textContent = alpha_bar.toFixed(3);
+      snrVal.textContent = `${snr.toFixed(3)} (${snr_db.toFixed(1)} dB)`;
+
+      const signalPercent = Math.round(alpha_bar * 100);
+      const noisePercent = 100 - signalPercent;
+
+      barSignal.style.width = `${signalPercent}%`;
+      barSignal.textContent = `信號 ${signalPercent}%`;
+      barNoise.style.width = `${noisePercent}%`;
+      barNoise.textContent = `噪聲 ${noisePercent}%`;
+    }
+
+    mathSlider.addEventListener('input', (e) => updateMath(parseInt(e.target.value)));
+    updateMath(500);
+
+    /* ========================================================
+       10 & 12. Visual Denoising Simulator (Step-by-step & Auto)
+    ======================================================== */
+    const latentCanvas = document.getElementById('latent-canvas');
+    const latentCtx = latentCanvas.getContext('2d');
+    const pixelCanvas = document.getElementById('pixel-canvas');
+    const pixelCtx = pixelCanvas.getContext('2d');
+
+    const promptSelect = document.getElementById('sim-prompt-select');
+    const cfgSlider = document.getElementById('sim-cfg-slider');
+    const cfgVal = document.getElementById('sim-cfg-val');
+    const btnReset = document.getElementById('btn-reset');
+    const btnStep = document.getElementById('btn-step');
+    const btnAuto = document.getElementById('btn-auto');
+    const statusOverlay = document.getElementById('sim-status-overlay');
+    const stepBadge = document.getElementById('sim-step-badge');
+    const progressBar = document.getElementById('sim-progress-bar');
+    const vaeBadge = document.getElementById('vae-badge');
+    const clipHeatmap = document.getElementById('clip-heatmap');
+    const clipTokenPreview = document.getElementById('clip-token-preview');
+
+    const TOTAL_STEPS = 20;
+    let currentStep = 0;
+    let autoInterval = null;
+
+    // Build initial random heatmap for CLIP Attention
+    function renderClipHeatmap() {
+      clipHeatmap.innerHTML = '';
+      for (let i = 0; i < 32; i++) {
+        const cell = document.createElement('div');
+        const intensity = Math.floor(Math.random() * 80) + 15;
+        cell.className = 'w-full h-3 rounded-sm transition-all duration-300';
+        cell.style.backgroundColor = `rgba(168, 85, 247, ${intensity / 100})`;
+        clipHeatmap.appendChild(cell);
+      }
+    }
+    renderClipHeatmap();
+
+    // Prompts and target render styling
+    const promptVisuals = {
+      cyberpunk: {
+        tokens: "49406, 320, 14210, 4812, 1928, 49407",
+        palette: ['#0f172a', '#3b0764', '#06b6d4', '#f43f5e', '#a855f7'],
+        drawFinal: (ctx, w, h) => {
+          // Cyberpunk city skyline
+          ctx.fillStyle = '#050515';
+          ctx.fillRect(0, 0, w, h);
+          // Neon glow background
+          const grad = ctx.createLinearGradient(0, 0, 0, h);
+          grad.addColorStop(0, '#1e1035');
+          grad.addColorStop(0.7, '#3b0764');
+          grad.addColorStop(1, '#06b6d4');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, w, h);
+          // Buildings
+          ctx.fillStyle = '#0a0a18';
+          const buildings = [
+            [20, 100, 40, 156], [70, 70, 45, 186], [125, 40, 50, 216], 
+            [185, 80, 40, 176], [230, 120, 30, 136]
+          ];
+          buildings.forEach(([x, y, bw, bh]) => {
+            ctx.fillRect(x, y, bw, bh);
+            // Window lights
+            ctx.fillStyle = Math.random() > 0.5 ? '#f43f5e' : '#38bdf8';
+            for (let wy = y + 10; wy < h - 20; wy += 15) {
+              for (let wx = x + 6; wx < x + bw - 6; wx += 10) {
+                if (Math.sin(wx * wy) > 0.1) {
+                  ctx.fillRect(wx, wy, 4, 6);
+                }
+              }
+            }
+            ctx.fillStyle = '#0a0a18';
+          });
+          // Neon reflection rain lines
+          ctx.strokeStyle = 'rgba(6, 182, 212, 0.4)';
+          ctx.lineWidth = 1;
+          for (let i = 0; i < 30; i++) {
+            const rx = Math.random() * w;
+            const ry = Math.random() * h;
+            ctx.beginPath();
+            ctx.moveTo(rx, ry);
+            ctx.lineTo(rx - 5, ry + 15);
+            ctx.stroke();
+          }
+        }
+      },
+      astronaut: {
+        tokens: "49406, 320, 5219, 2190, 4820, 49407",
+        palette: ['#450a0a', '#b91c1c', '#f97316', '#fdba74', '#ffffff'],
+        drawFinal: (ctx, w, h) => {
+          // Mars red planet & cute astronaut panda
+          const sky = ctx.createLinearGradient(0, 0, 0, h);
+          sky.addColorStop(0, '#1c1917');
+          sky.addColorStop(0.5, '#7c2d12');
+          sky.addColorStop(1, '#ea580c');
+          ctx.fillStyle = sky;
+          ctx.fillRect(0, 0, w, h);
+          // Mars hills
+          ctx.fillStyle = '#991b1b';
+          ctx.beginPath();
+          ctx.arc(128, 280, 180, Math.PI, 0, false);
+          ctx.fill();
+          // Helmet circle
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+          ctx.beginPath();
+          ctx.arc(128, 120, 52, 0, Math.PI * 2);
+          ctx.fill();
+          // Visor with reflection
+          ctx.fillStyle = '#0284c7';
+          ctx.beginPath();
+          ctx.arc(128, 120, 42, 0, Math.PI * 2);
+          ctx.fill();
+          // Red Panda ears
+          ctx.fillStyle = '#ea580c';
+          ctx.beginPath();
+          ctx.moveTo(85, 80); ctx.lineTo(105, 55); ctx.lineTo(115, 80); ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(171, 80); ctx.lineTo(151, 55); ctx.lineTo(141, 80); ctx.fill();
+          // White patches
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(115, 110, 8, 8);
+          ctx.fillRect(133, 110, 8, 8);
+        }
+      },
+      castle: {
+        tokens: "49406, 320, 6801, 3122, 1105, 49407",
+        palette: ['#1e1b4b', '#4338ca', '#e0e7ff', '#fbbf24', '#f59e0b'],
+        drawFinal: (ctx, w, h) => {
+          // Floating castle in sunset clouds
+          const bg = ctx.createLinearGradient(0, 0, 0, h);
+          bg.addColorStop(0, '#312e81');
+          bg.addColorStop(0.4, '#c026d3');
+          bg.addColorStop(0.7, '#f59e0b');
+          bg.addColorStop(1, '#fef08a');
+          ctx.fillStyle = bg;
+          ctx.fillRect(0, 0, w, h);
+          // Sun
+          ctx.fillStyle = 'rgba(254, 240, 138, 0.8)';
+          ctx.beginPath();
+          ctx.arc(128, 110, 35, 0, Math.PI * 2);
+          ctx.fill();
+          // Floating Rock Island
+          ctx.fillStyle = '#374151';
+          ctx.beginPath();
+          ctx.moveTo(60, 140);
+          ctx.lineTo(196, 140);
+          ctx.lineTo(150, 210);
+          ctx.lineTo(128, 230);
+          ctx.lineTo(95, 200);
+          ctx.closePath();
+          ctx.fill();
+          // Castle towers
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(90, 100, 20, 40);
+          ctx.fillRect(146, 100, 20, 40);
+          ctx.fillRect(115, 85, 26, 55);
+          // Tower roofs
+          ctx.fillStyle = '#6366f1';
+          ctx.beginPath(); ctx.moveTo(90, 100); ctx.lineTo(100, 75); ctx.lineTo(110, 100); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(146, 100); ctx.lineTo(156, 75); ctx.lineTo(166, 100); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(115, 85); ctx.lineTo(128, 60); ctx.lineTo(141, 85); ctx.fill();
+        }
+      }
+    };
+
+    // Render noisy/intermediate latent canvas
+    function renderLatentSimulation(progress) {
+      const w = latentCanvas.width;
+      const h = latentCanvas.height;
+      const promptKey = promptSelect.value;
+      const visual = promptVisuals[promptKey];
+
+      // Create offscreen buffer for target image
+      const off = document.createElement('canvas');
+      off.width = w;
+      off.height = h;
+      const offCtx = off.getContext('2d');
+      visual.drawFinal(offCtx, w, h);
+      const targetImgData = offCtx.getImageData(0, 0, w, h);
+
+      // Latent canvas simulates 64x64 coarse blockiness
+      const blockSize = 4; // visual 64x64 grid inside 256x256
+      const imgData = latentCtx.createImageData(w, h);
+      const noiseWeight = 1 - progress;
+
+      for (let y = 0; y < h; y += blockSize) {
+        for (let x = 0; x < w; x += blockSize) {
+          const idx = (y * w + x) * 4;
+          const tr = targetImgData.data[idx];
+          const tg = targetImgData.data[idx + 1];
+          const tb = targetImgData.data[idx + 2];
+
+          // Gaussian-like noise random value
+          const randR = Math.floor(Math.random() * 255);
+          const randG = Math.floor(Math.random() * 255);
+          const randB = Math.floor(Math.random() * 255);
+
+          const r = Math.floor(tr * progress + randR * noiseWeight);
+          const g = Math.floor(tg * progress + randG * noiseWeight);
+          const b = Math.floor(tb * progress + randB * noiseWeight);
+
+          // Fill the 4x4 latent block
+          for (let by = 0; by < blockSize; by++) {
+            for (let bx = 0; bx < blockSize; bx++) {
+              if (y + by < h && x + bx < w) {
+                const bIdx = ((y + by) * w + (x + bx)) * 4;
+                imgData.data[bIdx] = r;
+                imgData.data[bIdx + 1] = g;
+                imgData.data[bIdx + 2] = b;
+                imgData.data[bIdx + 3] = 255;
+              }
+            }
+          }
+        }
+      }
+      latentCtx.putImageData(imgData, 0, 0);
+
+      // Update Pixel Space (VAE preview)
+      if (progress >= 1.0) {
+        // High quality final image
+        visual.drawFinal(pixelCtx, pixelCanvas.width, pixelCanvas.height);
+        vaeBadge.classList.remove('hidden');
+      } else {
+        // Pixel canvas shows smoothed interpolation of latent
+        pixelCtx.imageSmoothingEnabled = true;
+        pixelCtx.drawImage(latentCanvas, 0, 0, pixelCanvas.width, pixelCanvas.height);
+        vaeBadge.classList.add('hidden');
+      }
+
+      // Randomize attention heat slightly on each step
+      const cells = clipHeatmap.children;
+      for (let i = 0; i < cells.length; i++) {
+        const factor = Math.random() * 0.4 + (progress * 0.6);
+        cells[i].style.opacity = factor.toFixed(2);
+      }
+    }
+
+    function resetSimulation() {
+      if (autoInterval) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+        btnAuto.innerHTML = '<i data-lucide="play" class="w-3.5 h-3.5"></i> 一鍵自動去噪模擬';
+        lucide.createIcons();
+      }
+      currentStep = 0;
+      updateUI();
+      statusOverlay.classList.remove('hidden');
+      vaeBadge.classList.add('hidden');
+
+      // Draw pure noise
+      const w = latentCanvas.width;
+      const h = latentCanvas.height;
+      const imgData = latentCtx.createImageData(w, h);
+      for (let i = 0; i < imgData.data.length; i += 4) {
+        const val = Math.floor(Math.random() * 255);
+        imgData.data[i] = val;
+        imgData.data[i + 1] = val;
+        imgData.data[i + 2] = val;
+        imgData.data[i + 3] = 255;
+      }
+      latentCtx.putImageData(imgData, 0, 0);
+      pixelCtx.putImageData(imgData, 0, 0);
+    }
+
+    function stepDenoising() {
+      if (currentStep >= TOTAL_STEPS) return;
+      statusOverlay.classList.add('hidden');
+      currentStep++;
+      const progress = currentStep / TOTAL_STEPS;
+      renderLatentSimulation(progress);
+      updateUI();
+    }
+
+    function toggleAuto() {
+      if (autoInterval) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+        btnAuto.innerHTML = '<i data-lucide="play" class="w-3.5 h-3.5"></i> 一鍵自動去噪模擬';
+        lucide.createIcons();
+      } else {
+        if (currentStep >= TOTAL_STEPS) {
+          resetSimulation();
+        }
+        statusOverlay.classList.add('hidden');
+        btnAuto.innerHTML = '<i data-lucide="pause" class="w-3.5 h-3.5"></i> 暫停去噪';
+        lucide.createIcons();
+
+        autoInterval = setInterval(() => {
+          if (currentStep < TOTAL_STEPS) {
+            stepDenoising();
+          } else {
+            clearInterval(autoInterval);
+            autoInterval = null;
+            btnAuto.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5"></i> 生成完成 (點擊重播)';
+            lucide.createIcons();
+          }
+        }, 180);
+      }
+    }
+
+    function updateUI() {
+      const progressPct = (currentStep / TOTAL_STEPS) * 100;
+      progressBar.style.width = `${progressPct}%`;
+      const currentTimestep = Math.round(1000 * (1 - currentStep / TOTAL_STEPS));
+      stepBadge.textContent = `Step: ${currentStep} / ${TOTAL_STEPS} (t=${currentTimestep})`;
+    }
+
+    // Event listeners
+    btnStep.addEventListener('click', () => {
+      if (currentStep >= TOTAL_STEPS) resetSimulation();
+      stepDenoising();
+    });
+    btnReset.addEventListener('click', resetSimulation);
+    btnAuto.addEventListener('click', toggleAuto);
+
+    cfgSlider.addEventListener('input', (e) => {
+      cfgVal.textContent = parseFloat(e.target.value).toFixed(1);
+    });
+
+    promptSelect.addEventListener('change', () => {
+      const key = promptSelect.value;
+      clipTokenPreview.textContent = promptVisuals[key].tokens;
+      resetSimulation();
+    });
+
+    // Copy Code Utility
+    function copyCode() {
+      const codeElement = document.getElementById('code-block');
+      const codeText = codeElement.textContent || codeElement.innerText;
+      const toast = document.getElementById('copy-toast');
+      
+      const textArea = document.createElement("textarea");
+      textArea.value = codeText;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        if (toast) {
+          toast.classList.remove('hidden');
+          setTimeout(() => { toast.classList.add('hidden'); }, 2500);
+        }
+      } catch (err) {
+        console.error('複製失敗', err);
+      }
+      document.body.removeChild(textArea);
+    }
+
+    // Initial random noise setup on load
+    resetSimulation();
+  </script>
+</body>
+</html>
