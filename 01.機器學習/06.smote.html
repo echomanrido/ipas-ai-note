@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMOTE 演算法全方位互動教學與實驗室</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- MathJax for LaTeX Rendering -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .tab-active {
+      border-bottom: 3px solid #3b82f6;
+      color: #2563eb;
+      font-weight: 600;
+    }
+    canvas {
+      touch-action: none;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-indigo-900 text-white shadow-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center">
+      <div class="flex items-center space-x-3">
+        <span class="p-2 bg-indigo-700 rounded-lg text-xl"><i class="fa-solid fa-chart-pie"></i></span>
+        <div>
+          <h1 class="text-xl font-bold tracking-wide">SMOTE 演算法完整知識庫與互動實驗室</h1>
+          <p class="text-xs text-indigo-200">Synthetic Minority Over-sampling Technique 機器學習不平衡資料處理</p>
+        </div>
+      </div>
+      <nav class="flex space-x-1 mt-2 sm:mt-0 text-sm overflow-x-auto">
+        <button onclick="switchTab('tab-guide')" id="btn-guide" class="px-3 py-2 rounded-md hover:bg-indigo-800 transition tab-active text-white">
+          <i class="fa-solid fa-book-open mr-1"></i> 知識手冊 (01-08)
+        </button>
+        <button onclick="switchTab('tab-math')" id="btn-math" class="px-3 py-2 rounded-md hover:bg-indigo-800 transition text-indigo-200">
+          <i class="fa-solid fa-square-root-variable mr-1"></i> 數學推導 (09)
+        </button>
+        <button onclick="switchTab('tab-sim')" id="btn-sim" class="px-3 py-2 rounded-md hover:bg-indigo-800 transition text-indigo-200">
+          <i class="fa-solid fa-flask-vial mr-1"></i> 互動模擬器 (10, 12)
+        </button>
+        <button onclick="switchTab('tab-code')" id="btn-code" class="px-3 py-2 rounded-md hover:bg-indigo-800 transition text-indigo-200">
+          <i class="fa-solid fa-code mr-1"></i> 程式實作 (11)
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6">
+
+    <!-- ============================================================== -->
+    <!-- TAB 1: 知識手冊 (01 - 08) -->
+    <!-- ============================================================== -->
+    <div id="tab-guide" class="space-y-6">
+      <!-- 01. 一句話簡介與機器學習流程定位 -->
+      <section class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl p-6 text-white shadow-sm">
+        <span class="text-xs uppercase tracking-widest font-semibold bg-white/20 px-2.5 py-1 rounded-full">01. 一句話簡介與流程定位</span>
+        <h2 class="text-2xl font-bold mt-2">什麼是 SMOTE？</h2>
+        <p class="mt-2 text-lg text-blue-50 leading-relaxed font-medium">
+          SMOTE（Synthetic Minority Over-sampling Technique，合成少數類別過採樣技術）是機器學習中用來處理「資料不平衡（Class Imbalance）」的常用過採樣方法。
+        </p>
+
+        <!-- 機器學習核心流程與 SMOTE 定位卡片 -->
+        <div class="mt-4 pt-4 border-t border-white/20 bg-white/10 rounded-lg p-4">
+          <div class="flex items-center space-x-2 text-sm font-bold text-amber-300 mb-2">
+            <i class="fa-solid fa-sitemap"></i>
+            <span>機器學習核心流程中的定位解析</span>
+          </div>
+          <p class="text-xs text-blue-100 leading-relaxed mb-3">
+            機器學習的核心流程主要包含<strong>「資料清洗（前處理與特徵工程）」</strong>、<strong>「模型學習（訓練）」</strong>與<strong>「模型驗證（評估）」</strong>三個關鍵步驟。
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs text-slate-800">
+            <!-- 步驟一：資料清洗 -->
+            <div class="p-3 bg-white rounded-lg shadow-xs border-2 border-amber-400 relative">
+              <div class="flex items-center justify-between mb-1">
+                <span class="font-bold text-indigo-900">步驟 1：資料清洗與前處理</span>
+                <span class="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">SMOTE 所在階段</span>
+              </div>
+              <p class="text-slate-600 text-[11px] leading-relaxed">
+                涵蓋缺失值補齊、離群值檢測、特徵縮放與<strong>資料集類別重採樣（Resampling）</strong>。SMOTE 正是在此步驟中，藉由人工合成少數類特徵以平衡分佈。
+              </p>
+            </div>
+            <!-- 步驟二：模型學習 -->
+            <div class="p-3 bg-white/90 rounded-lg shadow-xs opacity-90">
+              <div class="font-bold text-slate-700 mb-1">步驟 2：模型學習（訓練）</div>
+              <p class="text-slate-600 text-[11px] leading-relaxed">
+                利用前處理後已平衡的訓練數據集，讓分類器演算法（如 Random Forest、XGBoost、SVM）學習特徵邊界與權重。
+              </p>
+            </div>
+            <!-- 步驟三：模型驗證 -->
+            <div class="p-3 bg-white/90 rounded-lg shadow-xs opacity-90">
+              <div class="font-bold text-slate-700 mb-1">步驟 3：模型驗證（評估）</div>
+              <p class="text-slate-600 text-[11px] leading-relaxed">
+                使用原始未加工且未經 SMOTE 的測試集評估模型汎化能力（注意：不可在此階段進行 SMOTE，以免造成資料洩漏！）。
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 02. 核心原理與三步運作流程 -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="flex items-center space-x-2 text-indigo-600 font-bold mb-3">
+              <i class="fa-solid fa-bullseye text-lg"></i>
+              <h3 class="text-lg">02. 核心概念與運作原理</h3>
+            </div>
+            <p class="text-slate-600 text-sm leading-relaxed mb-3">
+              當資料集中的某個類別數量極少（如金融詐欺、罕見疾病），模型容易偏向多數類別。簡單的複製少數樣本會造成<strong>過度擬合（Overfitting）</strong>。SMOTE 透過特徵空間的線性插值「人工合成」新樣本，其三大標準步驟如下：
+            </p>
+            <div class="space-y-2.5 text-xs text-slate-700">
+              <div class="p-2.5 bg-indigo-50/80 rounded-lg border border-indigo-100 flex items-start">
+                <span class="font-bold text-indigo-700 bg-white px-1.5 py-0.5 rounded shadow-xs mr-2 shrink-0">1. 尋找鄰居</span>
+                <span>針對每一個少數類別樣本，利用 <strong>KNN（K-Nearest Neighbors）</strong> 演算法找出其 $k$ 個最近的少數類別鄰居。</span>
+              </div>
+              <div class="p-2.5 bg-blue-50/80 rounded-lg border border-blue-100 flex items-start">
+                <span class="font-bold text-blue-700 bg-white px-1.5 py-0.5 rounded shadow-xs mr-2 shrink-0">2. 隨機選取</span>
+                <span>從這 $k$ 個近鄰中<strong>隨機挑選一個</strong>作為插值目標夥伴。</span>
+              </div>
+              <div class="p-2.5 bg-emerald-50/80 rounded-lg border border-emerald-100 flex items-start">
+                <span class="font-bold text-emerald-700 bg-white px-1.5 py-0.5 rounded shadow-xs mr-2 shrink-0">3. 線性插值</span>
+                <span>在原樣本與被選中的鄰居之間的連線上，<strong>隨機選取一個點</strong>作為全新的合成樣本（$x_{new} = x + \lambda (x_{neighbor} - x)$）。</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 05. 由來 -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="flex items-center space-x-2 text-amber-600 font-bold mb-3">
+              <i class="fa-solid fa-clock-rotate-left text-lg"></i>
+              <h3 class="text-lg">05. 由來與背景</h3>
+            </div>
+            <p class="text-slate-600 text-sm leading-relaxed mb-3">
+              SMOTE 於 <strong>2002 年</strong> 由 <em>Nitesh V. Chawla, Kevin W. Bowyer, Lawrence O. Hall, W. Philip Kegelmeyer</em> 在《Journal of Artificial Intelligence Research (JAIR)》共同發表，論文題目為：
+              <span class="block text-xs font-mono bg-slate-100 p-2 rounded mt-1 text-slate-800">
+                "SMOTE: Synthetic Minority Over-sampling Technique"
+              </span>
+            </p>
+            <p class="text-slate-600 text-sm leading-relaxed">
+              <strong>誕生痛點：</strong> 當時機器學習面對醫療診斷、異常偵測等極度不平衡資料（如 99% vs 1%），若直接複製少數類，決策樹等演算法容易學出過於狹隘且特異的決策規則（Overfitting）；若向下採樣（Under-sampling）又會丟失多數類的關鍵分佈特徵。Chawla 等人受到手寫字符識別中「圖像幾何形變增強」的啟發，提出在<strong>特徵空間進行幾何內插</strong>。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 06 & 07: 生活化例子 & 工業應用 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 06. 生活化例子 -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <div class="flex items-center space-x-2 text-emerald-600 font-bold mb-3">
+            <i class="fa-solid fa-mug-saucer text-lg"></i>
+            <h3 class="text-lg">06. 生活化比喻：品鑑稀世咖啡豆</h3>
+          </div>
+          <p class="text-slate-600 text-sm leading-relaxed">
+            假設你在培訓一位咖啡評鑑師，市面上 99% 是平價曼特寧（多數類），只有 1% 是稀有的藝伎咖啡（少數類）：
+          </p>
+          <div class="mt-3 bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-900 space-y-2">
+            <div><strong>❌ 傳統複製法（Random Over-sampling）：</strong> 讓學徒反覆喝「同一杯」藝伎咖啡 100 次。學徒最終只記住那只杯子的瑕疵或特定烘焙溫度，遇到其他正常的藝伎咖啡反而認不出來（過擬合）。</div>
+            <div><strong>✅ SMOTE 插值法：</strong> 調酒師拿出「檸檬花香藝伎」和「柑橘蜜處理藝伎」兩款，依隨機比例（如 40% : 60%）調配出新風味。這杯新風味具有藝伎家族的真實特徵，學徒能因此學會藝伎特有的核心風味光譜，而非死記硬背單一特例！</div>
+          </div>
+        </div>
+
+        <!-- 07. 工業上應用 -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <div class="flex items-center space-x-2 text-rose-600 font-bold mb-3">
+            <i class="fa-solid fa-industry text-lg"></i>
+            <h3 class="text-lg">07. 工業上的關鍵落地場景</h3>
+          </div>
+          <ul class="space-y-2 text-xs text-slate-600">
+            <li class="p-2 bg-slate-50 rounded border border-slate-100">
+              <strong class="text-slate-800"><i class="fa-solid fa-credit-card text-blue-500 mr-1"></i> 金融風控與盜刷防制：</strong>
+              信用卡交易中盜刷率常小於 $0.05\%$。SMOTE 產生具代表性的偽冒交易特徵向量，大幅提升警示系統的 Recall（召回率）。
+            </li>
+            <li class="p-2 bg-slate-50 rounded border border-slate-100">
+              <strong class="text-slate-800"><i class="fa-solid fa-microchip text-indigo-500 mr-1"></i> 半導體晶圓瑕疵分類（AOI）：</strong>
+              良率高達 $99.9\%$ 的製程中，某些致命物理刮痕極其少見。利用 SMOTE 在瑕疵量測空間增強訓練資料。
+            </li>
+            <li class="p-2 bg-slate-50 rounded border border-slate-100">
+              <strong class="text-slate-800"><i class="fa-solid fa-heart-pulse text-red-500 mr-1"></i> 智慧醫療罕見疾病篩檢：</strong>
+              特定罕見惡性腫瘤在影像檢驗數據中樣本極少，SMOTE 能防止模型偏袒健康群體而導致漏診。
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 04. 實務特徵 & 08. 理論進階 -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <div class="flex items-center space-x-2 text-purple-600 font-bold mb-3">
+          <i class="fa-solid fa-scale-balanced text-lg"></i>
+          <h3 class="text-lg">04 & 08. 實務特徵、使用注意事項與誤區</h3>
+        </div>
+        
+        <!-- 使用注意事項與誤區警示條 -->
+        <div class="mb-4 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-r-lg text-slate-700">
+          <h4 class="text-sm font-bold text-amber-900 flex items-center mb-2">
+            <i class="fa-solid fa-triangle-exclamation mr-1.5 text-amber-600"></i>
+            使用注意事項與常見誤區（防雷指南）
+          </h4>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+            <div class="bg-white/80 p-2.5 rounded border border-amber-200">
+              <strong class="text-amber-900 block mb-1">⚠️ 資料洩漏（Data Leakage）</strong>
+              必須先將資料分割為訓練集與測試集，<strong>只能在訓練集上執行 SMOTE</strong>，絕對不能對整份資料直接處理，否則評估分數會失真虛高。
+            </div>
+            <div class="bg-white/80 p-2.5 rounded border border-amber-200">
+              <strong class="text-amber-900 block mb-1">⚠️ 噪音放大（Noise Amplification）</strong>
+              若少數類別本身包含離群值或噪音，SMOTE 會盲目在其連線上產生大量虛假樣本，反而擴大並固化這些雜訊。
+            </div>
+            <div class="bg-white/80 p-2.5 rounded border border-amber-200">
+              <strong class="text-amber-900 block mb-1">⚠️ 高維度災難（Curse of Dimensionality）</strong>
+              特徵維度過高時，歐氏距離空間會產生稀疏化失真，近鄰搜尋失去幾何意義，此時 SMOTE 效果可能不佳，需先進行降維或特徵篩選。
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div class="p-3 bg-green-50 rounded-lg border border-green-200">
+            <h4 class="font-bold text-green-900 mb-1"><i class="fa-solid fa-thumbs-up mr-1"></i> 實務優勢</h4>
+            <ul class="list-disc list-inside space-y-1 text-green-800">
+              <li>有效改善分類器對少數類別的敏感度（Recall）。</li>
+              <li>比傳統隨機過採樣更不容易產生過擬合。</li>
+              <li>不丟失多數類樣本的寶貴資訊。</li>
+              <li>實作簡單，開源生態系支援完整。</li>
+            </ul>
+          </div>
+          <div class="p-3 bg-amber-50 rounded-lg border border-amber-200">
+            <h4 class="font-bold text-amber-900 mb-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i> 潛在缺點與盲點</h4>
+            <ul class="list-disc list-inside space-y-1 text-amber-800">
+              <li><strong>雜訊放大：</strong> 若少數類中存在離群值或雜訊，會在其間生成大量虛假噪音。</li>
+              <li><strong>類別重疊（Overlap）：</strong> 若少數類深陷在多數類群中，盲目連線會造成決策邊界模糊。</li>
+              <li><strong>類別不平衡盲點：</strong> 無法區分安全點、邊界點與離群點。</li>
+            </ul>
+          </div>
+          <div class="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+            <h4 class="font-bold text-indigo-900 mb-1"><i class="fa-solid fa-code-branch mr-1"></i> 常見衍生演算法</h4>
+            <ul class="list-disc list-inside space-y-1 text-indigo-800">
+              <li><strong>Borderline-SMOTE：</strong> 只針對位於決策邊界附近的危險少數類進行合成。</li>
+              <li><strong>ADASYN：</strong> 根據少數類周邊多數類的比例自適應分配合成權重。</li>
+              <li><strong>SMOTE-Tomek / ENN：</strong> 先做 SMOTE 再用清理演算法剔除重疊邊界樣本。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 03. IPAS AI 考題與解析專區 -->
+      <section class="bg-white p-6 rounded-xl border-2 border-indigo-100 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center space-x-2 text-indigo-800 font-bold">
+            <i class="fa-solid fa-graduation-cap text-xl"></i>
+            <h3 class="text-xl">03. 經濟部 IPAS AI 人工智慧應用工程師 — 經典考題專區</h3>
+          </div>
+          <span class="text-xs bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full font-semibold">鑑定認證實戰</span>
+        </div>
+
+        <div class="space-y-6">
+          <!-- 題目 1 -->
+          <div class="p-4 bg-slate-50 rounded-lg border border-slate-200 text-sm">
+            <p class="font-semibold text-slate-800">
+              【題目 1：單選題】在訓練信用卡異常交易偵測模型時，正負樣本比例為 $1:999$。工程師若選用基本版 SMOTE 演算法進行過採樣，下列敘述何者最符合其運作特性？
+            </p>
+            <div class="mt-2 space-y-1.5 text-slate-600 pl-2">
+              <div>A. 藉由直接複製原始異常交易樣本，直到兩類數量達到 1:1</div>
+              <div>B. 在特徵空間中，找出少數類樣本的 $k$ 個最近鄰居，並於連線上隨機線性插值合成新樣本</div>
+              <div>C. 透過高斯混合模型（GMM）估計少數類的機率密度函數，再進行蒙地卡羅抽樣</div>
+              <div>D. 刪除多數類中與少數類樣本距離過近的樣本點以擴大分類邊界</div>
+            </div>
+            <div class="mt-3 pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between text-xs">
+              <span class="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">正解：B</span>
+              <span class="text-slate-500">解析：A 為隨機過採樣；C 為機率生成採樣；D 為欠採樣（如 Tomek links）。SMOTE 核心是少數類 k-NN 的線性插值。</span>
+            </div>
+          </div>
+
+          <!-- 題目 2 -->
+          <div class="p-4 bg-slate-50 rounded-lg border border-slate-200 text-sm">
+            <p class="font-semibold text-slate-800">
+              【題目 2：多選/實務觀念題】在使用 SMOTE 技術處理極端不平衡資料集時，下列哪些實務操作是正確或建議採取的？（可複選觀念）
+            </p>
+            <div class="mt-2 space-y-1.5 text-slate-600 pl-2">
+              <div>甲、SMOTE 過採樣應僅套用在訓練集（Training Set），切不可在資料切分前對整體資料集進行 SMOTE。</div>
+              <div>乙、若特徵包含類別型變數（Categorical Features），應使用 SMOTE-NC 而非標準 Euclidean 距離的 SMOTE。</div>
+              <div>丙、經過 SMOTE 平衡後，評估模型表現時應以 Accuracy（準確率）作為唯一判定標準。</div>
+              <div>丁、當少數類中存在大量雜訊或離群點時，標準 SMOTE 可能會產生「雜訊橋接（Noise bridging）」現象。</div>
+            </div>
+            <div class="mt-3 pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between text-xs">
+              <span class="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">正解：甲、乙、丁 為正確描述</span>
+              <span class="text-slate-500">解析：資料洩漏（Data Leakage）是致命考點（甲正確）；類別型需用 SMOTE-NC（乙正確）；不平衡資料評估應看 PR-AUC、Recall、F1，不可單看 Accuracy（丙錯誤）；丁為 SMOTE 知名缺陷。</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- TAB 2: 數學推導 (09) -->
+    <!-- ============================================================== -->
+    <div id="tab-math" class="hidden space-y-6">
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h2 class="text-2xl font-bold text-slate-800 flex items-center space-x-2">
+          <i class="fa-solid fa-square-root-variable text-indigo-600"></i>
+          <span>09. SMOTE 數學推導與幾何向量演繹</span>
+        </h2>
+        <p class="text-slate-600 text-sm mt-1">
+          深入理解 SMOTE 特徵空間中各向量的線性幾何關係。
+        </p>
+
+        <!-- 數學公式分解 -->
+        <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <div class="space-y-4">
+            <div class="p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+              <h4 class="font-bold text-indigo-900 text-sm mb-2">1. 歐氏距離計算（k-NN 近鄰搜尋）</h4>
+              <p class="text-xs text-indigo-800 leading-relaxed">
+                對於少數類集合 $S_{min}$ 中的任意樣本 $x_i \in \mathbb{R}^d$，計算與其他少數類樣本 $x_j$ 的歐幾里得距離：
+              </p>
+              <div class="my-2 text-center text-sm font-serif">
+                $$d(x_i, x_j) = \|x_i - x_j\|_2 = \sqrt{\sum_{m=1}^{d} (x_{im} - x_{jm})^2}$$
+              </div>
+              <p class="text-xs text-indigo-800">
+                從中挑選距離最近的 $K$ 個樣本構成近鄰集合 $\mathcal{N}_K(x_i)$。
+              </p>
+            </div>
+
+            <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 class="font-bold text-blue-900 text-sm mb-2">2. 線性內插生成公式</h4>
+              <p class="text-xs text-blue-800 leading-relaxed">
+                從 $\mathcal{N}_K(x_i)$ 中隨機均勻挑選一個近鄰點 $x_{zi}$，並自均勻分佈抽樣權重參數 $\lambda$：
+              </p>
+              <div class="my-2 text-center text-sm font-serif">
+                $$\lambda \sim \mathcal{U}(0, 1)$$
+              </div>
+              <p class="text-xs text-blue-800 leading-relaxed">
+                新合成樣本 $x_{new}$ 為起點向量加上位移差量向量的按比例縮放：
+              </p>
+              <div class="my-2 text-center text-sm font-serif bg-white p-2 rounded border border-blue-200 font-bold text-blue-700">
+                $$x_{new} = x_i + \lambda \cdot (x_{zi} - x_i)$$
+              </div>
+              <p class="text-xs text-blue-800">
+                同義改寫為凸組合（Convex Combination）形式：
+                $$x_{new} = (1 - \lambda) x_i + \lambda x_{zi}$$
+                這證明了 $x_{new}$ 必然落在連結 $x_i$ 與 $x_{zi}$ 的線段凸集上。
+              </p>
+            </div>
+          </div>
+
+          <!-- 互動式向量 Playground -->
+          <div class="bg-slate-50 p-5 rounded-xl border border-slate-300">
+            <h4 class="font-bold text-slate-800 text-sm mb-1 flex items-center justify-between">
+              <span><i class="fa-solid fa-gamepad text-indigo-500 mr-1"></i> 互動式幾何向量驗證</span>
+              <span class="text-xs font-normal text-slate-500">拖動滑桿調整 $\lambda$</span>
+            </h4>
+            <p class="text-xs text-slate-500 mb-3">觀察 $\lambda$ 變化如何即時推導 $x_{new}$ 座標。</p>
+
+            <div class="flex items-center space-x-3 mb-3">
+              <label class="text-xs font-semibold text-slate-700">插值權重 $\lambda$：</label>
+              <input type="range" id="math-lambda" min="0" max="1" step="0.01" value="0.5" class="flex-grow cursor-pointer" oninput="updateMathVectorDemo()">
+              <span id="math-lambda-val" class="text-xs font-mono font-bold bg-white px-2 py-1 rounded border border-slate-300 w-12 text-center">0.50</span>
+            </div>
+
+            <canvas id="mathVectorCanvas" width="400" height="260" class="w-full bg-white border border-slate-200 rounded-lg shadow-inner"></canvas>
+
+            <div class="mt-3 p-3 bg-white rounded border border-slate-200 text-xs font-mono space-y-1">
+              <div class="text-indigo-600 font-semibold" id="calc-origin">基準點 $x_i$: (100, 180)</div>
+              <div class="text-rose-600 font-semibold" id="calc-neighbor">近鄰點 $x_{zi}$: (320, 60)</div>
+              <div class="text-slate-500" id="calc-diff">差值向量 $\Delta = x_{zi} - x_i$: (220, -120)</div>
+              <div class="text-emerald-600 font-bold border-t pt-1" id="calc-result">合成點 $x_{new}$: (210, 120)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- TAB 3: 互動模擬器 (10, 12) -->
+    <!-- ============================================================== -->
+    <div id="tab-sim" class="hidden space-y-4">
+      <!-- 說明列 -->
+      <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-xs text-indigo-900 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-circle-info text-indigo-600 text-sm"></i>
+          <span><strong>10 & 12 互動模擬：</strong> 屬於「機器學習特徵預處理（ML Preprocessing）」範疇。下方提供 2D 特徵分佈的逐步執行與自動模擬。</span>
+        </div>
+        <div class="flex items-center space-x-3">
+          <span class="inline-flex items-center"><span class="w-3 h-3 rounded-full bg-slate-400 mr-1"></span> 多數類（Class 0）</span>
+          <span class="inline-flex items-center"><span class="w-3 h-3 rounded-full bg-rose-500 mr-1"></span> 少數類原始點（Class 1）</span>
+          <span class="inline-flex items-center"><span class="w-3 h-3 rounded-full bg-emerald-500 mr-1"></span> SMOTE 合成點（New）</span>
+        </div>
+      </div>
+
+      <!-- 控制面板與畫布主體 -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- 控制面板 -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+          <h3 class="font-bold text-slate-800 text-sm flex items-center">
+            <i class="fa-solid fa-sliders text-indigo-600 mr-2"></i> 模擬參數控制
+          </h3>
+
+          <!-- K 值設定 -->
+          <div>
+            <div class="flex justify-between text-xs text-slate-600 mb-1">
+              <span>近鄰數 $K$ (k-neighbors)：</span>
+              <span id="val-k" class="font-bold font-mono">5</span>
+            </div>
+            <input type="range" id="param-k" min="1" max="10" value="5" class="w-full" oninput="document.getElementById('val-k').textContent = this.value">
+          </div>
+
+          <!-- 少數類比例 -->
+          <div>
+            <div class="flex justify-between text-xs text-slate-600 mb-1">
+              <span>少數類原始比例：</span>
+              <span id="val-ratio" class="font-bold font-mono">10%</span>
+            </div>
+            <input type="range" id="param-ratio" min="5" max="25" step="5" value="10" class="w-full" oninput="document.getElementById('val-ratio').textContent = this.value + '%'">
+          </div>
+
+          <!-- 雜訊程度 -->
+          <div>
+            <div class="flex justify-between text-xs text-slate-600 mb-1">
+              <span>邊界交疊 / 雜訊 (Noise Level)：</span>
+              <span id="val-noise" class="font-bold font-mono">中等</span>
+            </div>
+            <input type="range" id="param-noise" min="1" max="3" value="2" class="w-full" oninput="document.getElementById('val-noise').textContent = ['低', '中等', '高'][this.value-1]">
+          </div>
+
+          <!-- 操作按鈕 -->
+          <div class="pt-2 space-y-2 border-t border-slate-100">
+            <button onclick="resetSimulation()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition flex items-center justify-center">
+              <i class="fa-solid fa-rotate-left mr-1.5"></i> 重置生成資料集
+            </button>
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="stepSmote()" class="py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition flex items-center justify-center">
+                <i class="fa-solid fa-forward-step mr-1.5"></i> Step-by-Step 逐步
+              </button>
+              <button id="btn-auto" onclick="toggleAutoSimulate()" class="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition flex items-center justify-center">
+                <i class="fa-solid fa-play mr-1.5"></i> 一鍵自動模擬
+              </button>
+            </div>
+          </div>
+
+          <!-- 即時統計狀態 -->
+          <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-2">
+            <div class="font-semibold text-slate-700 border-b pb-1">當前數據集狀態</div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">多數類樣本數：</span>
+              <span id="stat-maj" class="font-mono font-bold text-slate-700">180</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">少數類原始數：</span>
+              <span id="stat-min" class="font-mono font-bold text-rose-600">20</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">SMOTE 合成數：</span>
+              <span id="stat-syn" class="font-mono font-bold text-emerald-600">0</span>
+            </div>
+            <div class="flex justify-between border-t pt-1">
+              <span class="text-slate-500">不平衡比例 (Maj:Min)：</span>
+              <span id="stat-imb" class="font-mono font-bold text-indigo-600">9.0 : 1</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 畫布視覺化展示 -->
+        <div class="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+          <div class="flex justify-between items-center mb-2">
+            <h4 class="font-bold text-slate-800 text-sm flex items-center">
+              <i class="fa-solid fa-braille text-indigo-600 mr-2"></i> 2D 特徵空間合成即時投影
+            </h4>
+            <span id="sim-status" class="text-xs bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full font-mono">就緒</span>
+          </div>
+
+          <div class="relative flex-grow flex items-center justify-center bg-slate-900 rounded-xl overflow-hidden shadow-inner min-h-[380px]">
+            <canvas id="simCanvas" width="600" height="420" class="w-full h-full"></canvas>
+            <div id="sim-overlay-info" class="absolute bottom-3 left-3 bg-slate-800/80 backdrop-blur text-white text-[11px] px-3 py-1.5 rounded-lg pointer-events-none font-mono">
+              等待觸發 SMOTE 插值...
+            </div>
+          </div>
+
+          <!-- 決策邊界效果直觀解釋 -->
+          <div class="mt-3 text-xs text-slate-500 flex items-center justify-between">
+            <span><i class="fa-solid fa-lightbulb text-amber-500 mr-1"></i> 提示：高亮黃圈為當前錨點 $x_i$，藍線為其至 $k$ 個近鄰的連線，綠星為最新合成點。</span>
+            <button onclick="openClassifierModal()" class="text-indigo-600 hover:text-indigo-800 font-semibold flex items-center">
+              <i class="fa-solid fa-circle-question mr-1"></i> 評估分類邊界影響
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- TAB 4: 程式實作 (11) -->
+    <!-- ============================================================== -->
+    <div id="tab-code" class="hidden space-y-6">
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h2 class="text-2xl font-bold text-slate-800 flex items-center space-x-2">
+          <i class="fa-solid fa-code text-indigo-600"></i>
+          <span>11. Python / Imbalanced-Learn 與 PyTorch 實作專區</span>
+        </h2>
+        <p class="text-slate-600 text-sm mt-1">
+          涵蓋業界標準函式庫調用、底層純 NumPy 手寫實作，以及 PyTorch 批次張量插值實作。
+        </p>
+
+        <!-- 程式碼切換 Tabs -->
+        <div class="mt-4 border-b border-slate-200 flex space-x-4 text-xs font-semibold">
+          <button onclick="switchCodeSnippet('code-imblearn')" id="cbtn-imblearn" class="py-2 border-b-2 border-indigo-600 text-indigo-600">
+            標準庫 (imbalanced-learn)
+          </button>
+          <button onclick="switchCodeSnippet('code-numpy')" id="cbtn-numpy" class="py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800">
+            底層算法從零實作 (Pure Python/NumPy)
+          </button>
+          <button onclick="switchCodeSnippet('code-pytorch')" id="cbtn-pytorch" class="py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800">
+            PyTorch Batch 向量化實作
+          </button>
+        </div>
+
+        <!-- 程式碼塊 1: imbalanced-learn -->
+        <div id="code-imblearn" class="mt-4">
+          <div class="bg-slate-900 rounded-lg p-4 font-mono text-xs text-slate-200 overflow-x-auto leading-relaxed">
+            <span class="text-slate-500"># 步驟 1: 安裝套件：pip install imbalanced-learn scikit-learn</span><br>
+            <span class="text-purple-400">from</span> imblearn.over_sampling <span class="text-purple-400">import</span> SMOTE<br>
+            <span class="text-purple-400">from</span> sklearn.model_selection <span class="text-purple-400">import</span> train_test_split<br>
+            <span class="text-purple-400">from</span> sklearn.ensemble <span class="text-purple-400">import</span> RandomForestClassifier<br>
+            <span class="text-purple-400">from</span> sklearn.metrics <span class="text-purple-400">import</span> classification_report, roc_auc_score<br><br>
+
+            <span class="text-slate-500"># 假設有特徵矩陣 X 與極度不平衡標籤 y (例如 99:1)</span><br>
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=<span class="text-emerald-400">0.2</span>, stratify=y, random_state=<span class="text-emerald-400">42</span>)<br><br>
+
+            <span class="text-slate-500"># 【重要防雷】：SMOTE 只能對訓練集（Train set）進行 fit_resample，嚴禁套用至測試集！</span><br>
+            smote = SMOTE(sampling_strategy=<span class="text-amber-300">'auto'</span>, k_neighbors=<span class="text-emerald-400">5</span>, random_state=<span class="text-emerald-400">42</span>)<br>
+            X_train_res, y_train_res = smote.fit_resample(X_train, y_train)<br><br>
+
+            <span class="text-slate-500"># 訓練模型並評估</span><br>
+            clf = RandomForestClassifier(random_state=<span class="text-emerald-400">42</span>)<br>
+            clf.fit(X_train_res, y_train_res)<br>
+            y_pred = clf.predict(X_test)<br><br>
+
+            <span class="text-cyan-400">print</span>(<span class="text-amber-300">"=== 測試集評估報告（重點觀察少數類之 Recall 與 F1-score）==="</span>)<br>
+            <span class="text-cyan-400">print</span>(classification_report(y_test, y_pred))
+          </div>
+        </div>
+
+        <!-- 程式碼塊 2: Pure NumPy -->
+        <div id="code-numpy" class="hidden mt-4">
+          <div class="bg-slate-900 rounded-lg p-4 font-mono text-xs text-slate-200 overflow-x-auto leading-relaxed">
+            <span class="text-purple-400">import</span> numpy <span class="text-purple-400">as</span> np<br>
+            <span class="text-purple-400">from</span> sklearn.neighbors <span class="text-purple-400">import</span> NearestNeighbors<br><br>
+
+            <span class="text-purple-400">def</span> <span class="text-blue-400">custom_smote</span>(X_min, n_samples_to_generate, k=<span class="text-emerald-400">5</span>):<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-500">"""純手寫 SMOTE 核心邏輯"""</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;n_minority = len(X_min)<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-500"># 建立 k-NN 模型</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;knn = NearestNeighbors(n_neighbors=k + <span class="text-emerald-400">1</span>, metric=<span class="text-amber-300">'euclidean'</span>).fit(X_min)<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;_, indices = knn.kneighbors(X_min)<br><br>
+
+            &nbsp;&nbsp;&nbsp;&nbsp;synthetic_samples = []<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-purple-400">for</span> _ <span class="text-purple-400">in</span> <span class="text-cyan-400">range</span>(n_samples_to_generate):<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-500"># 隨機挑選一個少數類基底樣本 i</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;i = np.random.randint(<span class="text-emerald-400">0</span>, n_minority)<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-500"># 從其 k 個近鄰中隨機挑選 1 個（排除自己 index 0）</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;neighbor_idx = np.random.choice(indices[i][<span class="text-emerald-400">1</span>:])<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-500"># 線性插值權重 λ ~ U(0, 1)</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lam = np.random.uniform(<span class="text-emerald-400">0</span>, <span class="text-emerald-400">1</span>)<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;diff = X_min[neighbor_idx] - X_min[i]<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;x_new = X_min[i] + lam * diff<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;synthetic_samples.append(x_new)<br><br>
+
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-purple-400">return</span> np.array(synthetic_samples)
+          </div>
+        </div>
+
+        <!-- 程式碼塊 3: PyTorch -->
+        <div id="code-pytorch" class="hidden mt-4">
+          <div class="bg-slate-900 rounded-lg p-4 font-mono text-xs text-slate-200 overflow-x-auto leading-relaxed">
+            <span class="text-purple-400">import</span> torch<br><br>
+
+  <!-- 模態視窗 (Modal UI, 替代原生 alert) -->
+  <div id="classifierModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
+      <div class="flex items-center space-x-2 text-indigo-600 font-bold mb-3">
+        <i class="fa-solid fa-chart-line text-lg"></i>
+        <h3 class="text-base">SMOTE 對決策邊界之影響分析</h3>
+      </div>
+      <div class="text-xs text-slate-600 space-y-3 leading-relaxed">
+        <p>
+          <strong>1. 原始少數類傾斜：</strong><br>
+          當少數類樣本稀疏時，分類演算法（如 SVM、Logistic Regression、決策樹）的決策超平面會被龐大的多數類推向少數類，造成高漏判率（Low Recall）。
+        </p>
+        <p>
+          <strong>2. 凸包擴展與召回率提升：</strong><br>
+          執行 SMOTE 插值後，少數類的凸包幾何空間有效延伸，驅使決策邊界向外擴張，大幅改善少數類的偵測能力。
+        </p>
+        <p class="p-2 bg-amber-50 rounded border border-amber-200 text-amber-800">
+          <strong>3. 防範高維與雜訊陷阱：</strong><br>
+          務必落實「訓練集獨立執行」，若發現合成點侵蝕多數類的核心領域，可串聯 Borderline-SMOTE 或 Tomek Links 進行二次邊界清理！
+        </p>
+      </div>
+      <div class="mt-5 flex justify-end">
+        <button onclick="closeClassifierModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition shadow-sm">
+          我知道了
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 邏輯與互動腳本 -->
+  <script>
+    // Tab 切換
+    function switchTab(tabId) {
+      ['tab-guide', 'tab-math', 'tab-sim', 'tab-code'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+      document.getElementById(tabId).classList.remove('hidden');
+
+      ['btn-guide', 'btn-math', 'btn-sim', 'btn-code'].forEach(id => {
+        const btn = document.getElementById(id);
+        btn.classList.remove('tab-active', 'text-white');
+        btn.classList.add('text-indigo-200');
+      });
+      
+      const activeBtn = document.getElementById('btn-' + tabId.replace('tab-', ''));
+      activeBtn.classList.add('tab-active', 'text-white');
+      activeBtn.classList.remove('text-indigo-200');
+
+      if (tabId === 'tab-math') updateMathVectorDemo();
+      if (tabId === 'tab-sim') renderSim();
+    }
+
+    function switchCodeSnippet(codeId) {
+      ['code-imblearn', 'code-numpy', 'code-pytorch'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+      document.getElementById(codeId).classList.remove('hidden');
+
+      ['cbtn-imblearn', 'cbtn-numpy', 'cbtn-pytorch'].forEach(id => {
+        const btn = document.getElementById(id);
+        btn.className = "py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800";
+      });
+      document.getElementById('cbtn-' + codeId.replace('code-', '')).className = "py-2 border-b-2 border-indigo-600 text-indigo-600";
+    }
+
+    // ==========================================
+    // 09. 數學推導 Canvas 繪製邏輯
+    // ==========================================
+    function updateMathVectorDemo() {
+      const canvas = document.getElementById('mathVectorCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const lambdaVal = parseFloat(document.getElementById('math-lambda').value);
+      document.getElementById('math-lambda-val').textContent = lambdaVal.toFixed(2);
+
+      const p1 = { x: 70, y: 190 };
+      const p2 = { x: 330, y: 60 };
+      const pNew = {
+        x: p1.x + lambdaVal * (p2.x - p1.x),
+        y: p1.y + lambdaVal * (p2.y - p1.y)
+      };
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 繪製格線
+      ctx.strokeStyle = '#f1f5f9';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < canvas.width; x += 25) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += 25) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      }
+
+      // 繪製連接線
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([5, 5]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 繪製插值區段
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(pNew.x, pNew.y);
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
+      // 繪製起點 x_i
+      ctx.beginPath();
+      ctx.arc(p1.x, p1.y, 7, 0, Math.PI * 2);
+      ctx.fillStyle = '#4f46e5';
+      ctx.fill();
+      ctx.fillStyle = '#1e1b4b';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText('x_i (基準點)', p1.x - 25, p1.y + 22);
+
+      // 繪製近鄰點 x_zi
+      ctx.beginPath();
+      ctx.arc(p2.x, p2.y, 7, 0, Math.PI * 2);
+      ctx.fillStyle = '#e11d48';
+      ctx.fill();
+      ctx.fillStyle = '#1e1b4b';
+      ctx.fillText('x_zi (近鄰點)', p2.x - 20, p2.y - 12);
+
+      // 繪製合成新點 x_new
+      ctx.beginPath();
+      ctx.arc(pNew.x, pNew.y, 8, 0, Math.PI * 2);
+      ctx.fillStyle = '#10b981';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+      ctx.fillStyle = '#065f46';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText(`x_new (λ=${lambdaVal.toFixed(2)})`, pNew.x + 10, pNew.y + 5);
+
+      // 更新下方數值展示
+      document.getElementById('calc-origin').innerHTML = `基準點 $x_i$: (${p1.x.toFixed(0)}, ${(canvas.height - p1.y).toFixed(0)})`;
+      document.getElementById('calc-neighbor').innerHTML = `近鄰點 $x_{zi}$: (${p2.x.toFixed(0)}, ${(canvas.height - p2.y).toFixed(0)})`;
+      document.getElementById('calc-diff').innerHTML = `向量差值 $\\Delta$: (${(p2.x - p1.x).toFixed(0)}, ${(p1.y - p2.y).toFixed(0)})`;
+      document.getElementById('calc-result').innerHTML = `合成點 $x_{new} = x_i + ${lambdaVal.toFixed(2)} \\cdot \\Delta$: (${pNew.x.toFixed(1)}, ${(canvas.height - pNew.y).toFixed(1)})`;
+      if (window.MathJax && MathJax.typeset) MathJax.typeset();
+    }
+
+    // ==========================================
+    // 10 & 12. 機器學習 2D 模擬器
+    // ==========================================
+    let simData = {
+      majority: [],
+      minority: [],
+      synthetic: []
+    };
+    let autoInterval = null;
+    let lastGeneratedStep = null;
+
+    function resetSimulation() {
+      if (autoInterval) toggleAutoSimulate();
+      const canvas = document.getElementById('simCanvas');
+      const w = canvas.width;
+      const h = canvas.height;
+
+      const noiseLevel = parseInt(document.getElementById('param-noise').value);
+      const ratio = parseInt(document.getElementById('param-ratio').value) / 100;
+      const totalPoints = 200;
+      const numMinority = Math.round(totalPoints * ratio);
+      const numMajority = totalPoints - numMinority;
+
+      simData.majority = [];
+      simData.minority = [];
+      simData.synthetic = [];
+      lastGeneratedStep = null;
+
+      // 生成多數類群 (分佈在左上與中央廣泛區域)
+      for (let i = 0; i < numMajority; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = Math.random() * 140 + (Math.random() * 40);
+        const cx = w * 0.38, cy = h * 0.45;
+        const spread = noiseLevel * 12;
+        simData.majority.push({
+          x: cx + Math.cos(angle) * radius + (Math.random() - 0.5) * spread,
+          y: cy + Math.sin(angle) * radius * 0.75 + (Math.random() - 0.5) * spread
+        });
+      }
+
+      // 生成少數類群 (聚集在右下，少數點可能滲透到多數類)
+      for (let i = 0; i < numMinority; i++) {
+        const cx = w * 0.72, cy = h * 0.65;
+        const spread = 45 + noiseLevel * 18;
+        simData.minority.push({
+          x: cx + (Math.random() - 0.5) * spread * 2,
+          y: cy + (Math.random() - 0.5) * spread * 1.6
+        });
+      }
+
+      updateStats();
+      document.getElementById('sim-status').textContent = '資料集已重置';
+      document.getElementById('sim-overlay-info').textContent = '資料集已重置，請點擊「逐步」或「一鍵自動模擬」';
+      renderSim();
+    }
+
+    function euclideanDist(p1, p2) {
+      return Math.hypot(p1.x - p2.x, p1.y - p2.y);
+    }
+
+    function stepSmote() {
+      if (simData.minority.length < 2) return;
+      const k = parseInt(document.getElementById('param-k').value);
+
+      // 1. 隨機選一個少數類基底點
+      const baseIdx = Math.floor(Math.random() * simData.minority.length);
+      const basePoint = simData.minority[baseIdx];
+
+      // 2. 計算與其他少數類點的距離，尋找 k 近鄰
+      const distances = [];
+      simData.minority.forEach((pt, idx) => {
+        if (idx !== baseIdx) {
+          distances.push({ point: pt, dist: euclideanDist(basePoint, pt) });
+        }
+      });
+      distances.sort((a, b) => a.dist - b.dist);
+
+      const actualK = Math.min(k, distances.length);
+      const neighbors = distances.slice(0, actualK);
+
+      // 3. 隨機挑選 1 個近鄰進行線性內插
+      const chosenNeighbor = neighbors[Math.floor(Math.random() * actualK)].point;
+      const lambda = Math.random();
+      const newPt = {
+        x: basePoint.x + lambda * (chosenNeighbor.x - basePoint.x),
+        y: basePoint.y + lambda * (chosenNeighbor.y - basePoint.y)
+      };
+
+      simData.synthetic.push(newPt);
+
+      // 紀錄最新一步以供高亮渲染
+      lastGeneratedStep = {
+        base: basePoint,
+        neighbors: neighbors.map(n => n.point),
+        chosen: chosenNeighbor,
+        synthetic: newPt,
+        lambda: lambda
+      };
+
+      updateStats();
+      document.getElementById('sim-overlay-info').textContent = 
+        `插值完成！基準點: (${basePoint.x.toFixed(0)}, ${basePoint.y.toFixed(0)}) | λ = ${lambda.toFixed(2)}`;
+      renderSim();
+    }
+
+    function toggleAutoSimulate() {
+      const btn = document.getElementById('btn-auto');
+      if (autoInterval) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+        btn.innerHTML = '<i class="fa-solid fa-play mr-1.5"></i> 一鍵自動模擬';
+        btn.classList.replace('bg-rose-600', 'bg-emerald-600');
+        document.getElementById('sim-status').textContent = '已暫停';
+      } else {
+        btn.innerHTML = '<i class="fa-solid fa-pause mr-1.5"></i> 暫停模擬';
+        btn.classList.replace('bg-emerald-600', 'bg-rose-600');
+        document.getElementById('sim-status').textContent = '自動合成中...';
+        autoInterval = setInterval(() => {
+          // 當少數類加合成點等於多數類數量時停止
+          if (simData.minority.length + simData.synthetic.length >= simData.majority.length) {
+            toggleAutoSimulate();
+            document.getElementById('sim-status').textContent = '已達 1:1 完全平衡！';
+            document.getElementById('sim-overlay-info').textContent = '🎉 達成 1:1 完美平衡比例！';
+            return;
+          }
+          stepSmote();
+        }, 120);
+      }
+    }
+
+    function updateStats() {
+      const maj = simData.majority.length;
+      const min = simData.minority.length;
+      const syn = simData.synthetic.length;
+      document.getElementById('stat-maj').textContent = maj;
+      document.getElementById('stat-min').textContent = min;
+      document.getElementById('stat-syn').textContent = syn;
+      const currentRatio = (maj / (min + syn)).toFixed(1);
+      document.getElementById('stat-imb').textContent = `${currentRatio} : 1`;
+    }
+
+    function renderSim() {
+      const canvas = document.getElementById('simCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 背景微弱網格
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < canvas.width; x += 30) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += 30) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      }
+
+      // 繪製多數類點 (灰色圓形)
+      ctx.fillStyle = '#64748b';
+      simData.majority.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // 繪製已合成點 (翠綠色小鑽石)
+      simData.synthetic.forEach(p => {
+        ctx.fillStyle = '#10b981';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // 繪製少數類原始點 (亮桃紅點)
+      simData.minority.forEach(p => {
+        ctx.fillStyle = '#f43f5e';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+
+      // 若有最新一步，標註互動線段與焦點
+      if (lastGeneratedStep) {
+        const { base, neighbors, chosen, synthetic } = lastGeneratedStep;
+
+        // 畫出連往所有 k 近鄰的細藍線
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+        ctx.lineWidth = 1.5;
+        neighbors.forEach(n => {
+          ctx.beginPath();
+          ctx.moveTo(base.x, base.y);
+          ctx.lineTo(n.x, n.y);
+          ctx.stroke();
+        });
+
+        // 畫出被挑中近鄰的強線
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(base.x, base.y);
+        ctx.lineTo(chosen.x, chosen.y);
+        ctx.stroke();
+
+        // 標記基準點
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(base.x, base.y, 9, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 標記最新合成點 (發光星形)
+        ctx.fillStyle = '#34d399';
+        ctx.beginPath();
+        ctx.arc(synthetic.x, synthetic.y, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+
+    // 模態視窗控制函數
+    function openClassifierModal() {
+      const modal = document.getElementById('classifierModal');
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeClassifierModal() {
+      const modal = document.getElementById('classifierModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    // 初始化頁面
+    window.addEventListener('DOMContentLoaded', () => {
+      resetSimulation();
+      updateMathVectorDemo();
+    });
+  </script>
+</body>
+</html>
