@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>K-Fold 交叉驗證：全維度解析與互動模擬系統</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- KaTeX CSS & JS for LaTeX Math Rendering with fallback -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .fold-bar {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 4px;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .toast-anim {
+      animation: toastSlide 0.25s ease-out forwards;
+    }
+    @keyframes toastSlide {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen custom-scrollbar relative">
+
+  <!-- Floating Toast Notification -->
+  <div id="toast-box" class="fixed bottom-6 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-3 px-4 py-3 bg-slate-900 text-white rounded-2xl shadow-2xl border border-slate-700">
+    <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toast-msg" class="text-xs sm:text-sm font-medium">通知訊息</span>
+  </div>
+
+  <!-- Header / Navigation Bar -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-400 text-white flex items-center justify-center font-black text-xl shadow-md">
+          K
+        </div>
+        <div>
+          <h1 class="font-bold text-slate-900 text-sm sm:text-base leading-tight">K-Fold 交叉驗證教學互動系統</h1>
+          <p class="text-xs text-slate-500 font-medium hidden sm:block">理論推導・IPAS 題庫・防過擬合解析・Step-by-Step 模擬</p>
+        </div>
+      </div>
+      <nav class="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-medium">
+        <a href="#pipeline-step" class="px-2.5 sm:px-3 py-1.5 rounded-lg text-brand-600 bg-brand-50 hover:bg-brand-100 transition font-semibold">📍 位於哪步驟？</a>
+        <a href="#analogy-comparison" class="px-2.5 sm:px-3 py-1.5 rounded-lg text-slate-600 hover:text-brand-600 hover:bg-brand-50 transition">生活譬喻 vs 傳統切分</a>
+        <a href="#ipas-quiz" class="hidden sm:inline-block px-2.5 sm:px-3 py-1.5 rounded-lg text-slate-600 hover:text-brand-600 hover:bg-brand-50 transition">IPAS 考題</a>
+        <a href="#theory-math" class="hidden md:inline-block px-2.5 sm:px-3 py-1.5 rounded-lg text-slate-600 hover:text-brand-600 hover:bg-brand-50 transition">推導與權衡</a>
+        <a href="#simulator" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition shadow-sm font-semibold">一鍵模擬</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+    <!-- 01 & 02: 一句話簡介 & 核心原理摘要 Banner -->
+    <section id="overview" class="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-10 text-white shadow-xl relative overflow-hidden">
+      <div class="absolute -right-8 -bottom-8 opacity-10 pointer-events-none text-9xl font-black select-none">
+        K-FOLD
+      </div>
+      <div class="relative z-10 max-w-4xl space-y-4">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold">
+          <i class="fa-solid fa-compass"></i> 01. 一句話簡介
+        </div>
+        <h2 class="text-xl sm:text-3xl font-extrabold tracking-tight text-white leading-snug">
+          K-Fold（K折交叉驗證）就是把資料平均切成 <span class="text-brand-400 font-mono underline decoration-brand-400/50 underline-offset-4">K 份</span>，輪流拿其中 <span class="text-rose-400 font-mono underline decoration-rose-400/50 underline-offset-4">1 份</span>當驗證集、其餘 <span class="text-emerald-400 font-mono underline decoration-emerald-400/50 underline-offset-4">K-1 份</span>當訓練集，重複 <span class="text-brand-400 font-mono underline decoration-brand-400/50 underline-offset-4">K 次</span>並將結果平均，來公平且穩定地評估模型好壞。
+        </h2>
+        <div class="pt-3 border-t border-slate-700/70">
+          <span class="text-xs font-semibold text-brand-300 uppercase tracking-wider block mb-1">02. 核心原理</span>
+          <p class="text-slate-300 leading-relaxed text-sm sm:text-base">
+            將全體訓練樣本隨機劃分為 $K$ 個大小相等的互斥子集（Folds）。依序輪流以其中的 <strong>1 個 Fold 作為驗證集（Validation Set）</strong>，其餘 <strong>$K-1$ 個 Folds 合併作為訓練集（Training Set）</strong>，總共進行 $K$ 輪獨立的模型訓練與驗證。最後將 $K$ 次的驗證指標求平均，作為模型在未知資料上泛化能力（Generalization Ability）的無偏估計。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- NEW SECTION: 生活化例子 500 題庫 vs 一試定生死 vs 防死記硬背 (Overfitting) -->
+    <section id="analogy-comparison" class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-8">
+      
+      <!-- Part A: 生活化高中題庫例子 -->
+      <div>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold mb-3">
+          <i class="fa-solid fa-graduation-cap"></i> 06. 生活化例子
+        </div>
+        <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mb-3">
+          這就像高中生為了準備大考，把一本「500 題的題庫」完整刷完 5 遍
+        </h2>
+        <p class="text-slate-600 text-sm sm:text-base leading-relaxed mb-5">
+          你把這本 500 題的題庫平均分成 5 個單元（每單元 100 題，$K=5$），每次模擬考的備戰節奏如下：
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 hover:border-brand-300 transition">
+            <div class="flex items-center justify-between mb-2">
+              <span class="px-2 py-0.5 rounded bg-brand-100 text-brand-700 font-mono font-bold text-xs">第一輪</span>
+              <span class="text-xs text-rose-600 font-semibold"><i class="fa-solid fa-pen-ruler"></i> 模擬考</span>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+              自習讀<strong>第 1 到 4 單元</strong>（訓練集 400 題），保留<strong>第 5 單元</strong>作為盲測試卷（驗證集 100 題）。
+            </p>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 hover:border-brand-300 transition">
+            <div class="flex items-center justify-between mb-2">
+              <span class="px-2 py-0.5 rounded bg-brand-100 text-brand-700 font-mono font-bold text-xs">第二輪</span>
+              <span class="text-xs text-rose-600 font-semibold"><i class="fa-solid fa-pen-ruler"></i> 輪替考卷</span>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+              改讀<strong>第 1、2、3、5 單元</strong>，換拿<strong>第 4 單元</strong>作為本次模擬考題。
+            </p>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-200 hover:border-indigo-300 transition">
+            <div class="flex items-center justify-between mb-2">
+              <span class="px-2 py-0.5 rounded bg-indigo-200 text-indigo-800 font-mono font-bold text-xs">依此類推（5 輪）</span>
+              <span class="text-xs text-emerald-600 font-bold"><i class="fa-solid fa-circle-check"></i> 總算無偏</span>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+              輪流考過每一個單元。算出的 <strong>5 次模擬考平均分數</strong>，最精準、毫無偏見地反映你的真實應考實力！
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-t border-slate-200"></div>
+
+      <!-- Part B: 核心差別比較表格 -->
+      <div>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div>
+            <h3 class="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-code-compare text-brand-600"></i>
+              傳統一試定生死 (Train/Test Split) vs K-Fold 交叉驗證
+            </h3>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">本質結構差異讓 K-Fold 成為檢驗真實實力、打破運氣偏誤的標準工具</p>
+          </div>
+          <span class="text-xs px-3 py-1 rounded-full bg-slate-100 text-slate-600 font-medium self-start sm:self-auto">核心架構對照</span>
+        </div>
+
+        <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+          <table class="w-full text-left text-xs sm:text-sm">
+            <thead class="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-xs">
+              <tr>
+                <th class="p-3.5 sm:p-4 w-1/5">比較項目</th>
+                <th class="p-3.5 sm:p-4 w-2/5 text-slate-600 bg-slate-50">傳統一試定生死 (Train/Test Split)</th>
+                <th class="p-3.5 sm:p-4 w-2/5 text-brand-800 bg-brand-50/70 font-black">K-Fold 交叉驗證 (K-Fold CV)</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-slate-700">
+              <tr>
+                <td class="p-3.5 sm:p-4 font-bold bg-slate-50/50 text-slate-800">切分方式</td>
+                <td class="p-3.5 sm:p-4">資料只切一次，固定比例（如 80% 訓練、20% 驗證）。</td>
+                <td class="p-3.5 sm:p-4 bg-brand-50/20 font-semibold text-brand-900">資料均分 K 份，輪流當驗證集，重複測試 K 次。</td>
+              </tr>
+              <tr>
+                <td class="p-3.5 sm:p-4 font-bold bg-slate-50/50 text-slate-800">資料利用率</td>
+                <td class="p-3.5 sm:p-4 text-rose-700">驗證集裡的那 20% 資料，模型永遠沒機會在訓練時讀到。</td>
+                <td class="p-3.5 sm:p-4 bg-brand-50/20 font-semibold text-emerald-700">100% 榨乾價值：每筆資料都既當過訓練集，也當過驗證集。</td>
+              </tr>
+              <tr>
+                <td class="p-3.5 sm:p-4 font-bold bg-slate-50/50 text-slate-800">運算成本</td>
+                <td class="p-3.5 sm:p-4 text-emerald-700 font-medium">極低，模型只需要訓練 1 次。</td>
+                <td class="p-3.5 sm:p-4 bg-brand-50/20 font-semibold text-amber-700">較高，模型需重新訓練 K 次（耗時放大為 K 倍）。</td>
+              </tr>
+              <tr>
+                <td class="p-3.5 sm:p-4 font-bold bg-slate-50/50 text-slate-800">結果穩定度</td>
+                <td class="p-3.5 sm:p-4 text-rose-700">看運氣。若切分時剛好把「簡單的題」分到驗證集，分數就會虛高。</td>
+                <td class="p-3.5 sm:p-4 bg-brand-50/20 font-semibold text-emerald-800">極高。透過 K 次測驗平均，消除了單次切分的運氣成分。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Part C: 防範模型死記硬背（Overfitting）的角色 -->
+      <div class="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white shadow-lg space-y-4">
+        <div class="flex items-center gap-2">
+          <span class="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold text-sm border border-rose-500/30">
+            <i class="fa-solid fa-shield-virus"></i>
+          </span>
+          <h3 class="font-bold text-base sm:text-lg text-white">它在防範模型「死記硬背（Overfitting）」上扮演的角色</h3>
+        </div>
+        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+          當模型出現過擬合（Overfitting）時，代表它把訓練集的「雜訊」或「特定規律」死記硬背了下來，導致它遇到沒見過的題目就完全不會寫。K-Fold 在這裡扮演了<strong>「最嚴格的模擬考官」</strong>角色：
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+          <div class="p-4 rounded-xl bg-slate-800/80 border border-slate-700 space-y-2">
+            <h4 class="font-bold text-sm text-rose-400 flex items-center gap-2">
+              <i class="fa-solid fa-magnifying-glass-chart"></i> 1. 戳破死記硬背的假象
+            </h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              若只用一試定生死，模型可能會針對這固定的 80% 資料進行「特訓」，並在剩下的 20% 資料拿到好分數（可能只是剛好賽到）。但 K-Fold 逼模型要在 $K$ 個完全不同的題目組合中都拿到高分，一旦模型在某個單元是靠死記硬背的，在其他輪的模擬考中就會立刻現形，平均分數就會被拉低。
+            </p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-800/80 border border-slate-700 space-y-2">
+            <h4 class="font-bold text-sm text-emerald-400 flex items-center gap-2">
+              <i class="fa-solid fa-hand"></i> 2. 提供穩定的「停損指標」
+            </h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              在調整模型參數（如決定決策樹要長多深、神經網路要訓練幾輪 Epochs）時，我們需要一個客觀指標判斷模型何時開始死背。K-Fold 提供了一個沒有偏見的平均分數。當這個平均分數開始下降，就代表模型已經開始在死記硬背了，這時就是最佳的停損點（Early Stopping）。
+            </p>
+          </div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-indigo-950/70 border border-indigo-500/30 text-xs text-indigo-200 flex items-center gap-2">
+          <i class="fa-solid fa-quote-left text-brand-400"></i>
+          <span>
+            <strong>核心警語：</strong> 一試定生死像是只做了一份模擬試卷就上考場；而 K-Fold 則是刷遍整本題庫的每個角落，確保模型學到的是<strong>「真正的邏輯」</strong>，而不是<strong>「死背特定題目的答案」</strong>。
+          </span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- 機器學習生命週期定位（資料清洗 vs 學習 vs 驗證） -->
+    <section id="pipeline-step" class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm">
+      <div class="pb-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold mb-2">
+            <i class="fa-solid fa-map-pin"></i> 關鍵定位與流程架構
+          </div>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900">K-Fold 到底位於機器學習的「哪個步驟」？</h2>
+          <p class="text-xs sm:text-sm text-slate-500 mt-1">從「資料清洗」、「模型學習 (訓練)」到「驗證評估」的生命週期全景解析</p>
+        </div>
+        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-brand-700 font-mono text-xs font-bold">
+          <i class="fa-solid fa-arrows-rotate animate-spin"></i> 學習 ⟷ 驗證的交織循環
+        </span>
+      </div>
+
+      <!-- Core Answer Highlight Box -->
+      <div class="mt-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-50 via-indigo-50 to-emerald-50 border border-indigo-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div class="space-y-1">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">一句話定論</div>
+          <div class="text-base sm:text-lg font-black text-slate-900 leading-snug">
+            K-Fold <span class="text-rose-600 underline decoration-rose-300 underline-offset-4">不在資料清洗</span>；它的終極目標是<span class="text-indigo-600 underline decoration-indigo-300 underline-offset-4">「驗證 (Validation)」</span>，但實體手段是驅動了 $K$ 輪的<span class="text-emerald-600 underline decoration-emerald-300 underline-offset-4">「學習 (Learning)」</span>！
+          </div>
+        </div>
+        <div class="flex-shrink-0 text-xs text-slate-600 bg-white/80 backdrop-blur px-3 py-2 rounded-xl border border-slate-200">
+          <strong>生命週期角色：</strong> 模型評估、超參數選擇 (Tuning)
+        </div>
+      </div>
+
+      <!-- 3-Step Lifecycle Visual Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mt-6">
+        
+        <!-- Step 1: 資料清洗 -->
+        <div class="p-5 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-white hover:shadow-md transition">
+          <div class="flex items-center justify-between mb-3">
+            <span class="w-8 h-8 rounded-xl bg-slate-200 text-slate-700 font-black text-xs flex items-center justify-center">1</span>
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700">❌ K-Fold 不在此處</span>
+          </div>
+          <h3 class="font-bold text-slate-900 text-base mb-1.5 flex items-center gap-1.5">
+            <i class="fa-solid fa-broom text-slate-500"></i> 資料清洗 (Cleaning)
+          </h3>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            包含缺漏值填補、重複值過濾、離群值剃除、文字斷詞清洗等。
+          </p>
+          <div class="mt-3 p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800">
+            <strong>⚠️ 嚴禁洩漏：</strong> 標準化 (StandardScaler) 等特徵工程<strong>不可</strong>在清洗時做在全量資料上！必須延後至各 Fold 的 Train Set 做 fit。
+          </div>
+        </div>
+
+        <!-- Step 2: 模型學習 -->
+        <div class="p-5 rounded-2xl border border-indigo-200 bg-indigo-50/50 hover:bg-white hover:shadow-md transition relative">
+          <div class="flex items-center justify-between mb-3">
+            <span class="w-8 h-8 rounded-xl bg-indigo-600 text-white font-black text-xs flex items-center justify-center">2</span>
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">🔄 深度參與 (手段)</span>
+          </div>
+          <h3 class="font-bold text-slate-900 text-base mb-1.5 flex items-center gap-1.5">
+            <i class="fa-solid fa-brain text-brand-600"></i> 模型學習 (Learning)
+          </h3>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            演算法透過損失函數最小化與反向傳播（梯度下降 / 決策樹劃分）更新權重參數。
+          </p>
+          <div class="mt-3 p-2.5 bg-indigo-100/70 border border-indigo-200 rounded-xl text-xs text-indigo-900">
+            <strong>⚙️ K-Fold 角色：</strong> 每一輪將 <strong>$K-1$ 個 Folds</strong> 合併為訓練集，總共執行 $K$ 次全新初始化或擬合，驅動模型的學習。
+          </div>
+        </div>
+
+        <!-- Step 3: 驗證評估 -->
+        <div class="p-5 rounded-2xl border border-emerald-300 bg-emerald-50/40 hover:bg-white hover:shadow-md transition">
+          <div class="flex items-center justify-between mb-3">
+            <span class="w-8 h-8 rounded-xl bg-emerald-600 text-white font-black text-xs flex items-center justify-center">3</span>
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">🎯 核心所在 (目的)</span>
+          </div>
+          <h3 class="font-bold text-slate-900 text-base mb-1.5 flex items-center gap-1.5">
+            <i class="fa-solid fa-chart-line text-emerald-600"></i> 驗證評估 (Validation)
+          </h3>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            評估模型在未見過資料上的泛化指標（Accuracy, ROC-AUC, F1, Loss 等），用於超參數搜尋（GridSearch）與模型篩選。
+          </p>
+          <div class="mt-3 p-2.5 bg-emerald-100/80 border border-emerald-200 rounded-xl text-xs text-emerald-950">
+            <strong>🏆 K-Fold 角色：</strong> 每一輪保留的 <strong>1 個 Fold</strong> 即為驗證集。5 次指標平均消除隨機偏誤，給出最具公信力的評估分數。
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Step vs Pipeline Modern Responsive Flowchart -->
+      <div class="mt-8 rounded-3xl bg-slate-900 border border-slate-800 p-5 sm:p-7 shadow-xl">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-6 border-b border-slate-800 gap-2">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm font-bold border border-cyan-500/30">
+              <i class="fa-solid fa-diagram-project"></i>
+            </div>
+            <div>
+              <h3 class="text-white font-bold text-sm sm:text-base">工業界標準工作流視覺圖解</h3>
+              <p class="text-[11px] sm:text-xs text-slate-400">清晰透視 K-Fold 在真實專案各管線（Pipeline）中的精準定位</p>
+            </div>
+          </div>
+          <span class="self-start sm:self-auto text-[11px] px-2.5 py-1 rounded-full bg-slate-800 text-cyan-300 font-mono border border-slate-700">
+            響應式架構流
+          </span>
+        </div>
+
+        <div class="space-y-4 max-w-4xl mx-auto">
+          
+          <!-- Node 1: Raw Data & Cleaning -->
+          <div class="p-4 sm:p-5 rounded-2xl bg-slate-800/90 border border-slate-700 shadow-md">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded-md bg-slate-700 text-slate-200 text-[11px] font-bold font-mono">步驟 01</span>
+                <span class="font-bold text-white text-xs sm:text-sm flex items-center gap-1.5">
+                  <i class="fa-solid fa-database text-blue-400"></i> 原始數據清洗與盲測封存
+                </span>
+              </div>
+              <span class="text-[11px] px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/30 text-rose-300 font-medium">
+                ❌ K-Fold 不在此
+              </span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed mb-3">
+              剔除異常雜訊、處理缺失值。在啟動任何演算法前，<strong>立即切出一組獨立盲測集並徹底封存</strong>，避免先入為主的資訊污染。
+            </p>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-5 gap-2.5 text-xs">
+              <div class="sm:col-span-4 p-2.5 rounded-xl bg-indigo-950/70 border border-indigo-500/40 text-indigo-200 flex items-center justify-between">
+                <span class="font-medium flex items-center gap-1.5">
+                  <i class="fa-solid fa-sliders text-indigo-400"></i> 剩餘建模數據 (約 80%)
+                </span>
+                <span class="text-[11px] font-mono font-bold text-indigo-300">交由 K-Fold 處理 ➔</span>
+              </div>
+              <div class="sm:col-span-1 p-2.5 rounded-xl bg-amber-950/60 border border-amber-500/40 text-amber-200 flex items-center justify-between">
+                <span class="font-medium flex items-center gap-1">
+                  <i class="fa-solid fa-lock text-amber-400"></i> 獨立測試集 (20%)
+                </span>
+                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-300">封存</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Connector Arrow Down -->
+          <div class="flex justify-center -my-2 relative z-10">
+            <div class="w-8 h-8 rounded-full bg-slate-950 border border-slate-700 flex items-center justify-center text-cyan-400 shadow-md">
+              <i class="fa-solid fa-arrow-down text-xs animate-bounce"></i>
+            </div>
+          </div>
+
+          <!-- Node 2 & 3: K-Fold Core Interactive Cycle -->
+          <div class="p-4 sm:p-6 rounded-2xl bg-gradient-to-b from-indigo-950/60 to-slate-900 border-2 border-indigo-500/50 shadow-2xl relative overflow-hidden">
+            <div class="absolute -right-4 -bottom-4 text-7xl font-black text-indigo-500/10 pointer-events-none select-none">
+              CYCLE
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[11px] font-bold font-mono">步驟 02 & 03</span>
+                <h4 class="font-bold text-white text-sm sm:text-base flex items-center gap-1.5">
+                  <i class="fa-solid fa-arrows-spin text-cyan-400"></i>
+                  K-Fold 核心交織循環區（Learning ⟷ Validation）
+                </h4>
+              </div>
+              <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-bold">
+                🎯 K-Fold 精確坐標
+              </span>
+            </div>
+
+            <p class="text-xs text-slate-300 mb-4 leading-relaxed">
+              在此區間內，模型進行 <strong>$K$ 次重複迴圈</strong>。每一次迴圈均自動切換訓練集（4/5）與驗證集（1/5），確保<strong>「邊學邊檢驗」</strong>且各折隔離：
+            </p>
+
+            <div class="space-y-2 font-mono text-[11px] sm:text-xs">
+              
+              <!-- Fold 1 -->
+              <div class="p-2 rounded-xl bg-slate-800/80 border border-slate-700 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+                <span class="font-bold text-slate-300 w-16 flex-shrink-0">Fold 1 :</span>
+                <div class="flex-grow flex gap-1.5 h-7">
+                  <div class="w-1/5 bg-rose-500/90 text-white rounded-md flex items-center justify-center font-bold text-[10px] shadow-sm">
+                    驗證 1/5
+                  </div>
+                  <div class="w-4/5 bg-indigo-600/80 text-white rounded-md flex items-center justify-center text-[10px]">
+                    模型學習 (Train 4/5)
+                  </div>
+                </div>
+                <span class="text-right text-emerald-400 font-semibold flex-shrink-0 sm:w-24 text-[11px]">得驗證分 $R_1$</span>
+              </div>
+
+              <!-- Fold 2 -->
+              <div class="p-2 rounded-xl bg-slate-800/80 border border-slate-700 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+                <span class="font-bold text-slate-300 w-16 flex-shrink-0">Fold 2 :</span>
+                <div class="flex-grow flex gap-1.5 h-7">
+                  <div class="w-1/5 bg-indigo-600/80 text-white rounded-md flex items-center justify-center text-[10px]">Train</div>
+                  <div class="w-1/5 bg-rose-500/90 text-white rounded-md flex items-center justify-center font-bold text-[10px] shadow-sm">驗證 1/5</div>
+                  <div class="w-3/5 bg-indigo-600/80 text-white rounded-md flex items-center justify-center text-[10px]">Train</div>
+                </div>
+                <span class="text-right text-emerald-400 font-semibold flex-shrink-0 sm:w-24 text-[11px]">得驗證分 $R_2$</span>
+              </div>
+
+              <!-- Fold 3 -->
+              <div class="p-2 rounded-xl bg-slate-800/80 border border-slate-700 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+                <span class="font-bold text-slate-300 w-16 flex-shrink-0">Fold 3 :</span>
+                <div class="flex-grow flex gap-1.5 h-7">
+                  <div class="w-2/5 bg-indigo-600/80 text-white rounded-md flex items-center justify-center text-[10px]">Train</div>
+                  <div class="w-1/5 bg-rose-500/90 text-white rounded-md flex items-center justify-center font-bold text-[10px] shadow-sm">驗證 1/5</div>
+                  <div class="w-2/5 bg-indigo-600/80 text-white rounded-md flex items-center justify-center text-[10px]">Train</div>
+                </div>
+                <span class="text-right text-emerald-400 font-semibold flex-shrink-0 sm:w-24 text-[11px]">得驗證分 $R_3$</span>
+              </div>
+
+              <!-- Fold 4 & 5 Indicator -->
+              <div class="p-2 rounded-xl bg-slate-800/80 border border-slate-700 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+                <span class="font-bold text-slate-300 w-16 flex-shrink-0">Fold 4~5 :</span>
+                <div class="flex-grow flex items-center justify-center bg-slate-900/60 rounded-md text-[11px] text-slate-400 py-1 border border-dashed border-slate-700">
+                  ...依序輪替其餘子集作為驗證折...
+                </div>
+                <span class="text-right text-emerald-400 font-semibold flex-shrink-0 sm:w-24 text-[11px]">得 $R_4, R_5$</span>
+              </div>
+
+            </div>
+
+            <!-- Aggregation Footer Box -->
+            <div class="mt-4 p-3 rounded-xl bg-slate-950/80 border border-indigo-500/30 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <div class="flex items-center gap-2 text-indigo-300">
+                <i class="fa-solid fa-calculator text-cyan-400"></i>
+                <span>綜合評估：$\text{CV Score} = \frac{1}{K}\sum R_k$（消除隨機偏差）</span>
+              </div>
+              <div class="text-[11px] text-amber-300 font-semibold flex items-center gap-1.5">
+                <i class="fa-solid fa-wrench"></i> 用於指導 Hyperparameters 超參數調優 (Optuna / GridSearch)
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Connector Arrow Down -->
+          <div class="flex justify-center -my-2 relative z-10">
+            <div class="w-8 h-8 rounded-full bg-slate-950 border border-slate-700 flex items-center justify-center text-emerald-400 shadow-md">
+              <i class="fa-solid fa-arrow-down text-xs"></i>
+            </div>
+          </div>
+
+          <!-- Node 4: Final Holdout Evaluation & Deployment -->
+          <div class="p-4 sm:p-5 rounded-2xl bg-slate-800/90 border border-slate-700 shadow-md">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded-md bg-emerald-700 text-white text-[11px] font-bold font-mono">步驟 04</span>
+                <span class="font-bold text-white text-xs sm:text-sm flex items-center gap-1.5">
+                  <i class="fa-solid fa-rocket text-emerald-400"></i> 獨立測試集終審評估 ➔ 部署上線
+                </span>
+              </div>
+              <span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium">
+                模型產出終局
+              </span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              在 K-Fold 完成最優模型挑選與參數確定後，解封最初封存的<strong>「獨立盲測集（Test Set）」</strong>做最後一次客觀驗證，確認無過擬合後正式部署上線（Deploy）。
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- 04, 05, 07: 實務特徵、由來、工業應用 -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <!-- 05. 由來 -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+        <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center mb-3">
+          <i class="fa-solid fa-clock-rotate-left text-lg"></i>
+        </div>
+        <h3 class="font-bold text-slate-900 mb-1.5 text-base">05. 由來與演變</h3>
+        <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+          統計學家 <strong>Mervyn Stone</strong> 與 <strong>Seymour Geisser</strong> 於 1974 年正式體系化提出 Cross-Validation 與 Leave-One-Out (LOO)；1995 年 <strong>Ron Kohavi</strong> 發表權威實證論文，證明在偏差與變異數權衡下，<strong>$K=10$</strong> 是絕大多數實務場景的最佳折衷。
+        </p>
+      </div>
+
+      <!-- 04. 實務特徵 -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+        <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center mb-3">
+          <i class="fa-solid fa-shield-halved text-lg"></i>
+        </div>
+        <h3 class="font-bold text-slate-900 mb-1.5 text-base">04. 實務特徵與陷阱</h3>
+        <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+          <strong>優點：</strong>充分榨乾每筆樣本價值，減少抽樣變異。<br>
+          <strong>代價：</strong>訓練耗時提高為 $K$ 倍。<br>
+          <strong>致命陷阱（Data Leakage）：</strong>特徵縮放（Scaling）或特徵工程必須在<strong>每個 Fold 內部獨立 fit</strong>，切勿在切分前全量 fit，否則驗證分數將虛高作弊。
+        </p>
+      </div>
+
+      <!-- 07. 工業上應用 -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+        <div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center mb-3">
+          <i class="fa-solid fa-industry text-lg"></i>
+        </div>
+        <h3 class="font-bold text-slate-900 mb-1.5 text-base">07. 工業真實落地</h3>
+        <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+          <strong>生醫腫瘤良惡性預測：</strong>因臨床樣本稀少（常僅數百例），透過 K-Fold 杜絕過度樂觀估計。<br>
+          <strong>晶圓廠瑕疵檢測：</strong>採用 <strong>Group K-Fold</strong>（以晶圓批次 Batch 分組），避免同晶圓圖像同時存在於訓練與驗證集造成模型偷看。
+        </p>
+      </div>
+    </section>
+
+    <!-- 03. IPAS AI 考題專區 (互動測驗) -->
+    <section id="ipas-quiz" class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-6 border-b border-slate-100 gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 text-rose-600 text-xs font-semibold mb-2">
+            <i class="fa-solid fa-file-signature"></i> 03. 檢定實戰指南
+          </div>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900">經濟部 IPAS 人工智慧應用工程師：精選考題</h2>
+          <p class="text-xs sm:text-sm text-slate-500 mt-1">重點考核模型評估單元中：K-Fold 劃分機制、資料外洩（Data Leakage）與 Stratified 分層防護。</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg font-mono font-semibold">3 題實戰測驗</span>
+          <button onclick="resetQuiz()" class="text-xs px-3 py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg transition">重設測驗</button>
+        </div>
+      </div>
+
+      <div class="mt-6 space-y-6" id="quiz-container">
+        <!-- Question 1 -->
+        <div class="p-5 rounded-2xl border border-slate-200 bg-slate-50/70" data-qid="1">
+          <p class="font-semibold text-slate-800 text-sm sm:text-base mb-3 leading-relaxed">
+            <span class="text-brand-600 font-black mr-1">Q1.</span> 在信用卡詐欺二元分類專案中，詐欺樣本僅佔總量 0.5%（極度不平衡）。若使用標準隨機 K-Fold，可能導致某些 Fold 缺乏正樣本。此時最佳處置應採用下列何種交叉驗證方法？
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
+            <button onclick="checkAnswer(this, 1, 'A', false)" class="quiz-btn text-left p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 transition">A. Leave-One-Out Cross-Validation (LOOCV)</button>
+            <button onclick="checkAnswer(this, 1, 'B', true)" class="quiz-btn text-left p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 transition">B. 分層交叉驗證（Stratified K-Fold）</button>
+            <button onclick="checkAnswer(this, 1, 'C', false)" class="quiz-btn text-left p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 transition">C. 時間序列交叉驗證（TimeSeriesSplit）</button>
+            <button onclick="checkAnswer(this, 1, 'D', false)" class="quiz-btn text-left p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 transition">D. 自助抽樣驗證（Bootstrap 0.632）</button>
+          </div>
+          <div class="quiz-explain hidden mt-3 p-3.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-700"></div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="p-5 rounded-2xl border border-slate-200 bg-slate-50/70" data-qid="2">
+          <p class="font-semibold text-slate-800 text-sm sm:text-base mb-3 leading-relaxed">
+            <span class="text-brand-600 font-black mr-1">Q2.</span> 下列關於機器學習訓練流程的敘述，何者會引發嚴重的「資料外洩（Data Leakage）」，造成驗證指標虛高但實際預測失敗？
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
+            <button onclick="checkAnswer(this, 2, 'A', false)" class="quiz-btn text-left p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 transition">A. 於每個 Fold 的 Training Split 內部計算均值與標準差，再 transform 至該折的 Validation Split</button>
+            <button onclick="checkAnswer(this, 2, 'B', true)" class="quiz-btn text-left p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 transition">B. 在切分 K-Fold 之前，先行對「全量數據集」進行 PCA 降維與特徵標準化</button>
+            <button onclick="checkAnswer(this, 2, 'C', false)" class="quiz-btn text-left p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 transition">C. 使用 scikit-learn 的 Pipeline 同時包裝預處理器與估計器</button>
+            <button onclick="checkAnswer(this, 2, 'D', false)" class="quiz-btn text-left p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 transition">D. 額外保留一組完全不參與交叉驗證的獨立測試集（Holdout Test Set）</button>
+          </div>
+          <div class="quiz-explain hidden mt-3 p-3.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-700"></div>
+        </div>
+
+        <!-- Question 3 -->
+        <div class="p-5 rounded-2xl border border-slate-200 bg-slate-50/70" data-qid="3">
+          <p class="font-semibold text-slate-800 text-sm sm:text-base mb-3 leading-relaxed">
+            <span class="text-brand-600 font-black mr-1">Q3.</span> 某醫療資料集共有 $N = 2,000$ 筆病歷樣本，執行 5-Fold 交叉驗證。在每一輪（Iteration）中，參與「模型訓練」與「模型驗證」的資料筆數分別為何？
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
+            <button onclick="checkAnswer(this, 3, 'A', false)" class="quiz-btn text-left p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 transition">A. 訓練集 400 筆，驗證集 1,600 筆</button>
+            <button onclick="checkAnswer(this, 3, 'B', false)" class="quiz-btn text-left p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 transition">B. 訓練集 1,000 筆，驗證集 1,000 筆</button>
+            <button onclick="checkAnswer(this, 3, 'C', true)" class="quiz-btn text-left p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 transition">C. 訓練集 1,600 筆，驗證集 400 筆</button>
+            <button onclick="checkAnswer(this, 3, 'D', false)" class="quiz-btn text-left p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 transition">D. 訓練集 1,999 筆，驗證集 1 筆</button>
+          </div>
+          <div class="quiz-explain hidden mt-3 p-3.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-700"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 08 & 09: 理論簡介 & 數學推導（含動態曲線互動） -->
+    <section id="theory-math" class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm">
+      <div class="pb-6 border-b border-slate-100">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-xs font-semibold mb-2">
+          <i class="fa-solid fa-square-root-variable"></i> 08. 理論簡介 & 09. 數學推導
+        </div>
+        <h2 class="text-xl sm:text-2xl font-bold text-slate-900">泛化誤差期望值推導與 Bias-Variance Tradeoff</h2>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">
+        <!-- Math content -->
+        <div class="lg:col-span-7 space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
+          <p>
+            給定樣本集 $\mathcal{D} = \{(x_i, y_i)\}_{i=1}^N$，將其均等劃分為 $K$ 個互斥子集 $\mathcal{D}_1, \mathcal{D}_2, \dots, \mathcal{D}_K$，滿足：
+            <div class="p-3 bg-slate-50 rounded-xl font-mono text-center my-2 border border-slate-200 overflow-x-auto text-xs sm:text-sm">
+              $\bigcup_{k=1}^K \mathcal{D}_k = \mathcal{D} \quad \text{且} \quad \mathcal{D}_j \cap \mathcal{D}_k = \emptyset \quad (\forall j \neq k)$
+            </div>
+          </p>
+          <p>
+            設 $f_{-k}$ 代表<strong>不在子集 $\mathcal{D}_k$ 上訓練</strong>，而是在其餘 $K-1$ 個子集之聯集 $\mathcal{D} \setminus \mathcal{D}_k$ 上擬合出的模型。則第 $k$ 折的評估損失為：
+            <div class="p-3 bg-slate-50 rounded-xl font-mono text-center my-2 border border-slate-200 overflow-x-auto text-xs sm:text-sm">
+              $\hat{R}_k = \frac{1}{|\mathcal{D}_k|} \sum_{i \in \mathcal{D}_k} \mathcal{L}\big(f_{-k}(x_i), y_i\big)$
+            </div>
+          </p>
+          <p>
+            整體 <strong>K-Fold 泛化誤差估計值 $\text{CV}_{(K)}$</strong> 為各折損失的算術平均：
+            <div class="p-3 bg-indigo-50/60 rounded-xl font-mono text-center my-2 border border-indigo-100 overflow-x-auto text-xs sm:text-sm font-semibold text-indigo-900">
+              $\text{CV}_{(K)} = \frac{1}{K} \sum_{k=1}^K \hat{R}_k = \frac{1}{N} \sum_{i=1}^N \mathcal{L}\big(f_{-\kappa(i)}(x_i), y_i\big)$
+            </div>
+            其中 $\kappa(i)$ 表示樣本 $i$ 所隸屬的折數編號。
+          </p>
+
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 mt-3">
+            <h4 class="font-bold text-slate-900 mb-2 flex items-center gap-2">
+              <i class="fa-solid fa-scale-balanced text-brand-600"></i>
+              統計推導關鍵：$K$ 折選取的偏差與變異數權衡
+            </h4>
+            <ul class="list-disc list-inside space-y-2 text-xs text-slate-600">
+              <li><strong>偏差（Bias）：</strong> 每輪只使用 $\frac{K-1}{K}N$ 筆資料進行擬合，比實際全量資料少，因此 $\text{CV}_{(K)}$ 對真實誤差估計略偏<strong>悲觀（Pessimistically Biased）</strong>。當 $K$ 越大（例如 $K=N$ 即 LOOCV），偏差趨近於 0。</li>
+              <li><strong>變異數（Variance）：</strong> 當 $K$ 極大時，各輪訓練集重疊度高達 $\frac{K-2}{K-1}$（例如 10 折重疊 8/9），導致各模型輸出高度正相關；跨資料集採樣時，$\text{CV}_{(K)}$ 估計值的變異數反而會放大。因此實證上 <strong>$K=5$ 或 $10$</strong> 能取得均方誤差（MSE）的最佳平衡點。</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Interactive Bias-Variance Dynamic Slider -->
+        <div class="lg:col-span-5 bg-slate-900 rounded-2xl p-6 text-white flex flex-col justify-between shadow-inner">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <span class="text-xs font-semibold uppercase tracking-wider text-brand-400">互動式動態推算</span>
+              <span class="text-xs bg-slate-800 px-2.5 py-1 rounded text-slate-300 font-mono">即時折數探索</span>
+            </div>
+            
+            <label class="block text-xs text-slate-300 mb-2 font-medium">調整 $K$ 折數值：<span id="slider-k-val" class="font-mono text-brand-400 text-lg font-bold">5</span></label>
+            <input id="slider-k" type="range" min="2" max="20" value="5" step="1" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-brand-500">
+            
+            <div class="mt-6 space-y-2.5 font-mono text-xs">
+              <div class="flex justify-between items-center bg-slate-800/80 p-2.5 rounded-lg border border-slate-700">
+                <span class="text-slate-400">訓練集資料佔比:</span>
+                <span id="stat-train-ratio" class="text-emerald-400 font-bold">80.0%</span>
+              </div>
+              <div class="flex justify-between items-center bg-slate-800/80 p-2.5 rounded-lg border border-slate-700">
+                <span class="text-slate-400">估計偏差 (Bias):</span>
+                <span id="stat-bias" class="text-emerald-400 font-bold">適中偏低 (建議區間)</span>
+              </div>
+              <div class="flex justify-between items-center bg-slate-800/80 p-2.5 rounded-lg border border-slate-700">
+                <span class="text-slate-400">各折模型重疊率:</span>
+                <span id="stat-overlap" class="text-cyan-400 font-bold">75.0%</span>
+              </div>
+              <div class="flex justify-between items-center bg-slate-800/80 p-2.5 rounded-lg border border-slate-700">
+                <span class="text-slate-400">計算開銷倍率:</span>
+                <span id="stat-compute" class="text-indigo-400 font-bold">5 次完整訓練</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6 p-3.5 bg-brand-950/60 border border-brand-800/50 rounded-xl text-xs text-brand-200">
+            <i class="fa-solid fa-lightbulb text-brand-400 mr-1"></i>
+            <strong>實務黃金法則：</strong> 若資料筆數 $N < 10,000$，通常選 $K=5$ 或 $10$；若樣本具極端群組性質，切記搭配 <strong>Stratified / Group K-Fold</strong>。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. 屬於哪個範疇：跨領域 (ML / DL / RL / LLM) 互動式沙盒 -->
+    <section id="application-domains" class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm">
+      <div class="pb-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-50 text-cyan-600 text-xs font-semibold mb-2">
+            <i class="fa-solid fa-cubes"></i> 10. 領域範疇映射與動態體驗
+          </div>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900">K-Fold 在 4 大 AI 範疇的特化演繹</h2>
+        </div>
+        <!-- Domain Tabs -->
+        <div class="flex flex-wrap p-1 bg-slate-100 rounded-xl gap-1" id="domain-tabs">
+          <button onclick="switchDomain('ml')" class="domain-tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-white text-slate-900 shadow-sm" data-target="ml">傳統機器學習 (ML)</button>
+          <button onclick="switchDomain('dl')" class="domain-tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-600 hover:text-slate-900" data-target="dl">深度學習 (DL)</button>
+          <button onclick="switchDomain('llm')" class="domain-tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-600 hover:text-slate-900" data-target="llm">大型語言模型 (LLM)</button>
+          <button onclick="switchDomain('rl')" class="domain-tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-600 hover:text-slate-900" data-target="rl">強化學習 (RL)</button>
+        </div>
+      </div>
+
+      <!-- Domain Interactive Content Container -->
+      <div class="mt-6" id="domain-content">
+        <!-- Injected via JavaScript -->
+      </div>
+    </section>
+
+    <!-- 12. 互動視覺化模擬器：Step-by-Step 與一鍵自動模擬 -->
+    <section id="simulator" class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm">
+      <div class="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-100 gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-xs font-semibold mb-2">
+            <i class="fa-solid fa-play"></i> 12. 動態視覺化沙盒
+          </div>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900">K-Fold 交互式模擬器</h2>
+          <p class="text-xs sm:text-sm text-slate-500 mt-1">即時觀察訓練折（Train Folds）與驗證折（Val Fold）的輪動切換與 Out-of-Fold 指標彙整</p>
+        </div>
+        <!-- Simulator Controls -->
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl text-xs">
+            <span class="font-medium text-slate-600 pl-1">Fold 數 (K):</span>
+            <select id="sim-k-select" class="bg-white rounded-lg px-2 py-1 text-slate-800 font-bold border-none focus:ring-2 focus:ring-brand-500 cursor-pointer">
+              <option value="3">3-Fold</option>
+              <option value="5" selected>5-Fold</option>
+              <option value="8">8-Fold</option>
+              <option value="10">10-Fold</option>
+            </select>
+          </div>
+
+          <button id="btn-step" class="px-3.5 py-2 bg-slate-800 text-white rounded-xl text-xs font-semibold hover:bg-slate-700 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-forward-step"></i> 單步執行 (Step)
+          </button>
+          <button id="btn-auto" class="px-4 py-2 bg-brand-600 text-white rounded-xl text-xs font-semibold hover:bg-brand-700 transition flex items-center gap-1.5 shadow-md shadow-brand-500/20">
+            <i class="fa-solid fa-play"></i> 一鍵自動模擬
+          </button>
+          <button id="btn-reset" class="px-3 py-2 bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-300 transition">
+            重設
+          </button>
+        </div>
+      </div>
+
+      <!-- Simulation Visual Area -->
+      <div class="mt-6 space-y-6">
+        <!-- Status Indicator Bar -->
+        <div class="flex flex-wrap items-center justify-between text-xs p-4 bg-slate-50 rounded-2xl border border-slate-200 gap-3">
+          <div class="flex items-center gap-4">
+            <div><span class="text-slate-500">目前輪次：</span><strong id="sim-current-iter" class="text-brand-600 text-sm sm:text-base font-mono">準備就緒</strong></div>
+            <div><span class="text-slate-500">進度狀態：</span><span id="sim-status-badge" class="px-2.5 py-0.5 rounded-full font-medium bg-slate-200 text-slate-700">待命</span></div>
+          </div>
+          <div class="flex items-center gap-4 text-slate-600">
+            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-indigo-500 inline-block shadow-sm"></span> 訓練集 (Train)</div>
+            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-rose-500 inline-block shadow-sm"></span> 驗證集 (Validation)</div>
+            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-slate-200 inline-block"></span> 待評估輪次</div>
+          </div>
+        </div>
+
+        <!-- Dynamic Grid Container for Rows -->
+        <div id="sim-folds-container" class="space-y-3 font-mono text-xs"></div>
+
+        <!-- Metrics Live Table -->
+        <div class="overflow-x-auto border border-slate-200 rounded-2xl bg-white">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100 text-slate-600 font-semibold uppercase tracking-wider">
+              <tr>
+                <th class="p-3">輪次 (Iteration)</th>
+                <th class="p-3">驗證 Fold ID</th>
+                <th class="p-3">驗證 Accuracy</th>
+                <th class="p-3">驗證 Loss (Cross-Entropy)</th>
+                <th class="p-3">狀態</th>
+              </tr>
+            </thead>
+            <tbody id="sim-metrics-tbody" class="divide-y divide-slate-100 text-slate-700"></tbody>
+            <tfoot id="sim-metrics-tfoot" class="bg-slate-50 font-bold text-slate-900 hidden border-t-2 border-slate-200">
+              <tr>
+                <td colspan="2" class="p-3 text-right">綜合平均 (CV Score):</td>
+                <td id="avg-acc" class="p-3 text-emerald-600 font-mono text-sm">--</td>
+                <td id="avg-loss" class="p-3 text-brand-600 font-mono text-sm">--</td>
+                <td class="p-3 text-xs text-slate-500">標準差: <span id="std-acc" class="font-mono text-slate-700">--</span></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11. Python / PyTorch 實作代碼區 -->
+    <section class="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-6 border-b border-slate-800 gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/20 border border-brand-400/30 text-brand-300 text-xs font-semibold mb-2">
+            <i class="fa-brands fa-python"></i> 11. 實戰代碼
+          </div>
+          <h2 class="text-xl sm:text-2xl font-bold text-white">Scikit-Learn (防洩漏) 與 PyTorch 工業級範例</h2>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="toggleCodeTab('sklearn')" id="tab-btn-sklearn" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 text-white">Scikit-Learn (Pipeline)</button>
+          <button onclick="toggleCodeTab('pytorch')" id="tab-btn-pytorch" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:text-white">PyTorch 訓練循環</button>
+        </div>
+      </div>
+
+      <!-- Code Snippets -->
+      <div class="mt-6">
+        <div id="code-sklearn" class="relative">
+          <button onclick="copyCode('code-block-sklearn')" class="absolute top-3 right-3 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1.5 z-10">
+            <i class="fa-regular fa-copy"></i> 複製代碼
+          </button>
+          <pre class="bg-slate-950 p-5 rounded-2xl overflow-x-auto text-xs text-emerald-400 font-mono leading-relaxed"><code id="code-block-sklearn">import numpy as np
+from sklearn.datasets import make_classification
+from sklearn.model_selection import StratifiedKFold
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import roc_auc_score
+
+# 1. 產生高維度不平衡示範數據 (90% 負樣本, 10% 正樣本)
+X, y = make_classification(n_samples=1200, n_features=25, weights=[0.9, 0.1], random_state=42)
+
+# 2. 建立防止資料外洩（Leakage-Free）的 Pipeline
+# 注意：StandardScaler 必須包在 Pipeline 內，才能保證各 Fold 僅以 Train Fold 做 fit！
+pipe = Pipeline([
+    ('scaler', StandardScaler()),
+    ('model', RandomForestClassifier(n_estimators=100, max_depth=6, random_state=42))
+])
+
+# 3. 採用分層 5 折（StratifiedKFold）
+skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+oof_predictions = np.zeros(len(X))  # 保存 Out-of-Fold 預測
+fold_scores = []
+
+for fold, (train_idx, val_idx) in enumerate(skf.split(X, y), start=1):
+    X_train, y_train = X[train_idx], y[train_idx]
+    X_val, y_val = X[val_idx], y[val_idx]
+    
+    # 訓練模型 (Scaler 自動嚴格隔離 Train 與 Val)
+    pipe.fit(X_train, y_train)
+    
+    # 產出該折驗證集的預測機率
+    val_probs = pipe.predict_proba(X_val)[:, 1]
+    oof_predictions[val_idx] = val_probs
+    
+    fold_auc = roc_auc_score(y_val, val_probs)
+    fold_scores.append(fold_auc)
+    print(f"Fold {fold} ROC-AUC: {fold_auc:.4f}")
+
+print("-" * 45)
+print(f"5-Fold 平均 ROC-AUC: {np.mean(fold_scores):.4f} (±{np.std(fold_scores):.4f})")
+print(f"全量 OOF 整合 ROC-AUC: {roc_auc_score(y, oof_predictions):.4f}")</code></pre>
+        </div>
+
+        <div id="code-pytorch" class="relative hidden">
+          <button onclick="copyCode('code-block-pytorch')" class="absolute top-3 right-3 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1.5 z-10">
+            <i class="fa-regular fa-copy"></i> 複製代碼
+          </button>
+          <pre class="bg-slate-950 p-5 rounded-2xl overflow-x-auto text-xs text-cyan-300 font-mono leading-relaxed"><code id="code-block-pytorch">import torch
+import torch.nn as nn
+from torch.utils.data import Dataset, DataLoader, SubsetRandomSampler
+from sklearn.model_selection import KFold
+import numpy as np
+
+# 1. 簡易分類神經網路
+class MLPClassifier(nn.Module):
+    def __init__(self, in_features):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(in_features, 64),
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(64, 1)
+        )
+    def forward(self, x):
+        return self.net(x).squeeze(-1)
+
+# 2. 自定義 Dataset
+class TabularDataset(Dataset):
+    def __init__(self, X, y):
+        self.X = torch.tensor(X, dtype=torch.float32)
+        self.y = torch.tensor(y, dtype=torch.float32)
+    def __len__(self): return len(self.X)
+    def __getitem__(self, idx): return self.X[idx], self.y[idx]
+
+# 3. 5-Fold 交叉驗證訓練循環
+X_dummy = np.random.randn(600, 16)
+y_dummy = np.random.randint(0, 2, size=600)
+dataset = TabularDataset(X_dummy, y_dummy)
+
+kf = KFold(n_splits=5, shuffle=True, random_state=42)
+val_losses = []
+
+for fold, (train_idx, val_idx) in enumerate(kf.split(dataset), start=1):
+    # 使用 SubsetRandomSampler 避免巨量記憶體深拷貝
+    train_loader = DataLoader(dataset, batch_size=32, sampler=SubsetRandomSampler(train_idx))
+    val_loader = DataLoader(dataset, batch_size=32, sampler=SubsetRandomSampler(val_idx))
+    
+    # 關鍵：每一折必須全新實例化模型權重與 Optimizer！
+    model = MLPClassifier(in_features=16)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
+    criterion = nn.BCEWithLogitsLoss()
+    
+    # 單 Fold 訓練循環 (示範 3 Epochs)
+    for epoch in range(3):
+        model.train()
+        for bx, by in train_loader:
+            optimizer.zero_grad()
+            out = model(bx)
+            loss = criterion(out, by)
+            loss.backward()
+            optimizer.step()
+            
+    # 驗證循環
+    model.eval()
+    accum_loss = 0.0
+    with torch.no_grad():
+        for bx, by in val_loader:
+            preds = model(bx)
+            accum_loss += criterion(preds, by).item() * len(by)
+            
+    fold_loss = accum_loss / len(val_idx)
+    val_losses.append(fold_loss)
+    print(f"[Fold {fold}/5] 驗證損失: {fold_loss:.4f}")
+
+print(f"整體 5-Fold 平均驗證損失: {np.mean(val_losses):.4f}")</code></pre>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="bg-white border-t border-slate-200 mt-12 py-8 text-center text-xs text-slate-500">
+    <p>K-Fold 交叉驗證教學互動系統・遵循防資料外洩工業規範・支援 IPAS 人工智慧應用工程師檢定</p>
+  </footer>
+
+  <!-- JavaScript Logic -->
+  <script>
+    // ----------------- Toast Notification System -----------------
+    let toastTimeout = null;
+    function showToast(msg, isSuccess = true) {
+      const toast = document.getElementById('toast-box');
+      const toastMsg = document.getElementById('toast-msg');
+      const toastIcon = document.getElementById('toast-icon');
+
+      if (toastTimeout) clearTimeout(toastTimeout);
+
+      toastMsg.innerText = msg;
+      if (isSuccess) {
+        toastIcon.className = "fa-solid fa-circle-check text-emerald-400";
+      } else {
+        toastIcon.className = "fa-solid fa-circle-exclamation text-amber-400";
+      }
+
+      toast.classList.remove('translate-y-24', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-24', 'opacity-0');
+      }, 2600);
+    }
+
+    // ----------------- Copy Code with Fallback -----------------
+    function copyCode(elementId) {
+      const codeText = document.getElementById(elementId).innerText;
+      
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(codeText).then(() => {
+          showToast("已成功複製範例代碼到剪貼簿！");
+        }).catch(() => {
+          fallbackCopyText(codeText);
+        });
+      } else {
+        fallbackCopyText(codeText);
+      }
+    }
+
+    function fallbackCopyText(text) {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-999999px";
+      textArea.style.top = "-999999px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          showToast("已成功複製範例代碼到剪貼簿！");
+        } else {
+          showToast("複製失敗，請手動選取複製", false);
+        }
+      } catch (err) {
+        showToast("環境限制無法自動複製，請手動複製", false);
+      }
+      document.body.removeChild(textArea);
+    }
+
+    // ----------------- IPAS Quiz Logic -----------------
+    const quizExplanations = {
+      1: "<strong>【詳解】</strong> 面對極度不平衡的資料時，若採用標準隨機抽樣，某些 Fold 可能抽不到稀有類別。<strong>Stratified K-Fold（分層交叉驗證）</strong> 能強制每個 Fold 內的正負樣本比例與全量資料保持嚴格一致，是檢定與實戰中必考解答。",
+      2: "<strong>【詳解】</strong> 在切分資料之前就使用全量資料進行 Standard Scaling 或 PCA 擬合，會把驗證集的統計特徵（均值、方差、主成分向量）預先洩漏給訓練流程，這就是 <strong>資料外洩（Data Leakage）</strong>。正確作法是僅在 Train Fold 做 fit，再 transform 至 Val Fold。",
+      3: "<strong>【詳解】</strong> 資料總量 $N=2000$，分成 5 等份，每份包含 $2000 / 5 = 400$ 筆。每輪會拿其中 1 折（400 筆）作為測試驗證集，其餘 4 折合併（1600 筆）進行模型訓練。"
+    };
+
+    function checkAnswer(btnElement, qid, choice, isCorrect) {
+      const parent = document.querySelector(`[data-qid="${qid}"]`);
+      const buttons = parent.querySelectorAll('.quiz-btn');
+      const explainBox = parent.querySelector('.quiz-explain');
+
+      buttons.forEach(b => {
+        b.disabled = true;
+        b.classList.remove('hover:bg-slate-100');
+      });
+
+      if (isCorrect) {
+        btnElement.classList.add('bg-emerald-100', 'border-emerald-500', 'text-emerald-900', 'font-bold');
+        explainBox.innerHTML = `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-check"></i> 回答正確！</span> ${quizExplanations[qid]}`;
+        showToast(`第 ${qid} 題答對了！`);
+      } else {
+        btnElement.classList.add('bg-rose-100', 'border-rose-500', 'text-rose-900', 'font-semibold');
+        explainBox.innerHTML = `<span class="text-rose-600 font-bold"><i class="fa-solid fa-xmark"></i> 回答錯誤。</span> ${quizExplanations[qid]}`;
+        showToast(`第 ${qid} 題答錯，請查看解析`, false);
+      }
+      explainBox.classList.remove('hidden');
+    }
+
+    function resetQuiz() {
+      document.querySelectorAll('#quiz-container [data-qid]').forEach(card => {
+        const buttons = card.querySelectorAll('.quiz-btn');
+        buttons.forEach(b => {
+          b.disabled = false;
+          b.className = "quiz-btn text-left p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 transition";
+        });
+        const explain = card.querySelector('.quiz-explain');
+        explain.classList.add('hidden');
+        explain.innerHTML = '';
+      });
+      showToast("測驗已重設，可以重新作答");
+    }
+
+    // ----------------- Math Slider Logic -----------------
+    const sliderK = document.getElementById('slider-k');
+    const sliderKVal = document.getElementById('slider-k-val');
+    const statTrainRatio = document.getElementById('stat-train-ratio');
+    const statBias = document.getElementById('stat-bias');
+    const statOverlap = document.getElementById('stat-overlap');
+    const statCompute = document.getElementById('stat-compute');
+
+    sliderK.addEventListener('input', (e) => {
+      const k = parseInt(e.target.value);
+      sliderKVal.innerText = k;
+      const trainRatio = (((k - 1) / k) * 100).toFixed(1);
+      const overlapRatio = (((k - 2) / (k - 1)) * 100).toFixed(1);
+
+      statTrainRatio.innerText = `${trainRatio}%`;
+      statOverlap.innerText = k > 2 ? `${overlapRatio}%` : '0%';
+      statCompute.innerText = `${k} 次完整訓練`;
+
+      if (k <= 3) {
+        statBias.innerText = "高偏差 (訓練樣本明顯不足)";
+        statBias.className = "text-rose-400 font-bold";
+      } else if (k <= 10) {
+        statBias.innerText = "適中偏低 (建議黃金區間)";
+        statBias.className = "text-emerald-400 font-bold";
+      } else if (k <= 15) {
+        statBias.innerText = "極低偏差 (但計算開銷增加)";
+        statBias.className = "text-blue-400 font-bold";
+      } else {
+        statBias.innerText = "趨近 LOOCV (變異數風險升高)";
+        statBias.className = "text-amber-400 font-bold";
+      }
+    });
+
+    // ----------------- Domain Interactive Panels -----------------
+    const domainWidgets = {
+      ml: {
+        title: "機器學習 (ML)：超參數調優與 Out-of-Fold (OOF) Stacking",
+        badge: "工業核心標配",
+        desc: "在傳統表格數據中，K-Fold 核心用於 GridSearch / Optuna 超參數搜尋，以及 Kaggle 必備的 Stacking 集成（用各折 OOF 預測作為 Meta-Model 的輸入特徵）。",
+        interactiveHtml: `
+          <div class="mt-4 p-4 bg-white rounded-xl border border-slate-200">
+            <h5 class="font-bold text-xs text-slate-800 mb-2 flex items-center gap-1.5">
+              <i class="fa-solid fa-sliders text-brand-600"></i>
+              超參數搜尋評估體驗（GridSearch on 5-Fold）
+            </h5>
+            <div class="flex flex-wrap items-center gap-3 text-xs mb-3">
+              <span class="text-slate-600">選擇模型：</span>
+              <button onclick="runMLTrial('rf')" class="px-2.5 py-1 rounded bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200 hover:bg-indigo-100">Random Forest</button>
+              <button onclick="runMLTrial('xgb')" class="px-2.5 py-1 rounded bg-slate-100 text-slate-700 font-semibold border border-slate-200 hover:bg-slate-200">XGBoost</button>
+              <button onclick="runMLTrial('svm')" class="px-2.5 py-1 rounded bg-slate-100 text-slate-700 font-semibold border border-slate-200 hover:bg-slate-200">SVM</button>
+            </div>
+            <div id="ml-demo-result" class="p-3 bg-slate-50 rounded-lg text-xs font-mono text-slate-700 border border-slate-200">
+              點選上方模型，觀察 5-Fold CV 平均得分與標準差...
+            </div>
+          </div>
+        `
+      },
+      dl: {
+        title: "深度學習 (DL)：高成本折衝與 K-Model 模型集成",
+        badge: "資源權衡型應用",
+        desc: "因神經網絡訓練耗時昂貴，百萬級大數據集通常採固定單次切分（如 80/10/10）。但在<strong>醫療影像（CT/MRI）、瑕疵檢測</strong>等小樣本領域，K-Fold 不僅是評估工具，更會把 5 個折次訓練好的權重全部保留，推論時透過 Soft-Voting Ensemble 獲得極高穩定度。",
+        interactiveHtml: `
+          <div class="mt-4 p-4 bg-white rounded-xl border border-slate-200">
+            <h5 class="font-bold text-xs text-slate-800 mb-2 flex items-center gap-1.5">
+              <i class="fa-solid fa-brain text-purple-600"></i>
+              5 個權重 Checkpoint 整合推論模擬 (Ensemble)
+            </h5>
+            <button onclick="simulateDLEnsemble()" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold transition">
+              <i class="fa-solid fa-calculator mr-1"></i> 輸入一張測試切片進行 5 折集成預測
+            </button>
+            <div id="dl-demo-result" class="mt-3 p-3 bg-slate-50 rounded-lg text-xs font-mono text-slate-700 border border-slate-200">
+              點選按鈕進行各 Fold 模型獨立預測與最終投票融合...
+            </div>
+          </div>
+        `
+      },
+      llm: {
+        title: "大型語言模型 (LLM)：Prompt 示範樣本輪替 (Few-Shot K-Fold)",
+        badge: "前沿評測策略",
+        desc: "在 Few-shot In-Context Learning (ICL) 中，LLM 對示範範例（Exemplars）的排列與選取具高度敏感度。K-Fold 在此演繹為 <strong>Prompt Fold 輪替</strong>：輪流抽換範例示範池，評測 Prompt 提示詞的真實 Robustness。",
+        interactiveHtml: `
+          <div class="mt-4 p-4 bg-white rounded-xl border border-slate-200">
+            <h5 class="font-bold text-xs text-slate-800 mb-2 flex items-center gap-1.5">
+              <i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i>
+              Few-shot Prompt 示範池輪替測試器
+            </h5>
+            <div class="flex items-center gap-2 mb-2 text-xs">
+              <span class="text-slate-600">測試輪次：</span>
+              <select id="llm-fold-select" onchange="runLLMFold(this.value)" class="p-1 border border-slate-300 rounded text-xs bg-white">
+                <option value="1">Fold 1（範例 A, B 當 Prompt / 測試 C）</option>
+                <option value="2">Fold 2（範例 B, C 當 Prompt / 測試 A）</option>
+                <option value="3">Fold 3（範例 A, C 當 Prompt / 測試 B）</option>
+              </select>
+            </div>
+            <div id="llm-demo-result" class="p-3 bg-slate-50 rounded-lg text-xs font-mono text-slate-700 border border-slate-200">
+              [Prompt Context] 正在以範例 A, B 建立 System Few-shot...
+            </div>
+          </div>
+        `
+      },
+      rl: {
+        title: "強化學習 (RL)：Trajectory 軌跡切分 (Offline RL)",
+        badge: "序列相依防護",
+        desc: "強化學習的資料是由時間序列 Transitions $(s, a, r, s')$ 組成，具有極強的馬可夫相依性，<strong>絕對不能隨機打散切分</strong>！實務上必須以完整的 <strong>Episode / Trajectory 軌跡</strong> 作為單一單位進行折次切分。",
+        interactiveHtml: `
+          <div class="mt-4 p-4 bg-white rounded-xl border border-slate-200">
+            <h5 class="font-bold text-xs text-slate-800 mb-2 flex items-center gap-1.5">
+              <i class="fa-solid fa-route text-emerald-600"></i>
+              軌跡式 K-Fold 劃分檢驗器
+            </h5>
+            <div class="flex items-center gap-2 mb-2 text-xs">
+              <button onclick="runRLSplitDemo()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition">
+                隨機切分 (錯誤作法) vs 軌跡切分 (正確作法) 對比
+              </button>
+            </div>
+            <div id="rl-demo-result" class="p-3 bg-slate-50 rounded-lg text-xs font-mono text-slate-700 border border-slate-200">
+              點擊查看為什麼隨機打散 Transition 會讓 Policy 產生嚴重資訊洩漏...
+            </div>
+          </div>
+        `
+      }
+    };
+
+    function switchDomain(key) {
+      document.querySelectorAll('.domain-tab-btn').forEach(btn => {
+        if(btn.dataset.target === key) {
+          btn.className = "domain-tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-white text-slate-900 shadow-sm";
+        } else {
+          btn.className = "domain-tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-600 hover:text-slate-900";
+        }
+      });
+
+      const d = domainWidgets[key];
+      const container = document.getElementById('domain-content');
+      container.innerHTML = `
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 sm:p-6 transition-all duration-300">
+          <div class="flex items-center gap-2 mb-2">
+            <h3 class="text-sm sm:text-base font-bold text-slate-900">${d.title}</h3>
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-brand-100 text-brand-700">${d.badge}</span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">${d.desc}</p>
+          ${d.interactiveHtml}
+        </div>
+      `;
+    }
+
+    // Mini interactive handlers for domain widgets
+    window.runMLTrial = function(model) {
+      const box = document.getElementById('ml-demo-result');
+      const configs = {
+        rf: { name: "Random Forest (100 trees)", mean: "0.892", std: "0.015", folds: [0.895, 0.880, 0.910, 0.885, 0.889] },
+        xgb: { name: "XGBoost (max_depth=5)", mean: "0.918", std: "0.011", folds: [0.920, 0.912, 0.935, 0.908, 0.915] },
+        svm: { name: "SVM (RBF kernel, C=1.0)", mean: "0.865", std: "0.024", folds: [0.845, 0.870, 0.890, 0.840, 0.880] }
+      };
+      const c = configs[model];
+      box.innerHTML = `
+        <span class="text-brand-600 font-bold">【${c.name} 5-Fold 評估完成】</span><br>
+        各折 F1-Score: [${c.folds.map(x => x.toFixed(3)).join(', ')}]<br>
+        <strong>CV 平均值: ${c.mean}</strong> (標準差 ±${c.std}) → ${model === 'xgb' ? '✨ 目前最佳超參數組合！' : '仍有調優空間'}
+      `;
+    };
+
+    window.simulateDLEnsemble = function() {
+      const box = document.getElementById('dl-demo-result');
+      const probs = [0.89, 0.94, 0.91, 0.88, 0.93];
+      const avg = (probs.reduce((a, b) => a + b, 0) / probs.length).toFixed(3);
+      box.innerHTML = `
+        輸入樣本：MRI_Scan_Batch_402.png<br>
+        Fold 1 權重預測: 89% (惡性) | Fold 2 權重: 94% | Fold 3: 91% | Fold 4: 88% | Fold 5: 93%<br>
+        <span class="text-purple-600 font-bold">Soft-Voting 融合預測機率: ${(avg * 100).toFixed(1)}% (高信心判定為惡性)</span><br>
+        <span class="text-slate-500 text-xs">特點：單一模型可能受特定雜訊干擾，5 折 Ensemble 大幅提升醫療診斷穩健性。</span>
+      `;
+    };
+
+    window.runLLMFold = function(val) {
+      const box = document.getElementById('llm-demo-result');
+      if (val === "1") {
+        box.innerHTML = `<strong>[Prompt 示範庫]</strong> Example A (醫療分類) + Example B (摘要生成)<br><strong>[測試樣本 C]</strong> 法律條文釋疑 → 輸出精準度: <strong>88.4%</strong>`;
+      } else if (val === "2") {
+        box.innerHTML = `<strong>[Prompt 示範庫]</strong> Example B (摘要生成) + Example C (法律條文)<br><strong>[測試樣本 A]</strong> 醫療分類判定 → 輸出精準度: <strong>91.2%</strong>`;
+      } else {
+        box.innerHTML = `<strong>[Prompt 示範庫]</strong> Example A (醫療分類) + Example C (法律條文)<br><strong>[測試樣本 B]</strong> 摘要生成任務 → 輸出精準度: <strong>86.7%</strong>`;
+      }
+    };
+
+    window.runRLSplitDemo = function() {
+      const box = document.getElementById('rl-demo-result');
+      box.innerHTML = `
+        <span class="text-rose-600 font-bold">❌ 隨機 Transition 切分：</span> 步數 t 在 Train，步數 t+1 在 Val，Policy 直接查表記憶未來狀態，驗證報酬失真爆表。<br>
+        <span class="text-emerald-600 font-bold">✔ 完整 Trajectory K-Fold：</span> Episode 1~80 作為 Train，Episode 81~100 作為 Val，完全避免時間連續洩漏，真實評估 Policy 泛化能力。
+      `;
+    };
+
+    switchDomain('ml');
+
+    // ----------------- Visual Simulator Engine -----------------
+    let simK = 5;
+    let currentStep = 0;
+    let autoPlayInterval = null;
+    const simContainer = document.getElementById('sim-folds-container');
+    const simTbody = document.getElementById('sim-metrics-tbody');
+    const simTfoot = document.getElementById('sim-metrics-tfoot');
+    const simKSelect = document.getElementById('sim-k-select');
+    const simCurrentIter = document.getElementById('sim-current-iter');
+    const simStatusBadge = document.getElementById('sim-status-badge');
+    const btnAuto = document.getElementById('btn-auto');
+    const btnStep = document.getElementById('btn-step');
+
+    let metricsData = [];
+
+    function initSimulator() {
+      stopAutoPlay();
+      simK = parseInt(simKSelect.value);
+      currentStep = 0;
+      metricsData = [];
+      simCurrentIter.innerText = "準備就緒";
+      simStatusBadge.innerText = "待命";
+      simStatusBadge.className = "px-2.5 py-0.5 rounded-full font-medium bg-slate-200 text-slate-700";
+      simTfoot.classList.add('hidden');
+
+      simContainer.innerHTML = '';
+      simTbody.innerHTML = '';
+
+      for (let i = 1; i <= simK; i++) {
+        const row = document.createElement('div');
+        row.id = `sim-row-${i}`;
+        row.className = "p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center gap-2.5";
+        
+        const gridWrapper = document.createElement('div');
+        gridWrapper.className = "flex-grow";
+        gridWrapper.style.display = "grid";
+        gridWrapper.style.gridTemplateColumns = `repeat(${simK}, minmax(0, 1fr))`;
+        gridWrapper.style.gap = "0.5rem";
+
+        for (let f = 1; f <= simK; f++) {
+          const box = document.createElement('div');
+          box.id = `fold-box-${i}-${f}`;
+          box.className = "fold-bar h-9 rounded-lg border border-slate-200 bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs select-none";
+          box.innerText = `Fold ${f}`;
+          gridWrapper.appendChild(box);
+        }
+
+        const label = document.createElement('div');
+        label.className = "w-24 font-bold text-slate-700 flex-shrink-0 text-xs sm:text-sm";
+        label.innerText = `輪次 ${i} :`;
+
+        row.appendChild(label);
+        row.appendChild(gridWrapper);
+        simContainer.appendChild(row);
+      }
+    }
+
+    function executeStep() {
+      if (currentStep >= simK) {
+        showToast("已完成所有 Fold 訓練！", true);
+        return;
+      }
+      currentStep++;
+      simCurrentIter.innerText = `第 ${currentStep} / ${simK} 輪`;
+      simStatusBadge.innerText = `評估驗證 Fold ${currentStep}`;
+      simStatusBadge.className = "px-2.5 py-0.5 rounded-full font-medium bg-indigo-100 text-indigo-700 animate-pulse";
+
+      for (let f = 1; f <= simK; f++) {
+        const box = document.getElementById(`fold-box-${currentStep}-${f}`);
+        if (f === currentStep) {
+          box.className = "fold-bar h-9 rounded-lg border-2 border-rose-500 bg-rose-500 text-white flex items-center justify-center font-black text-xs shadow-md";
+          box.innerText = `Val (${f})`;
+        } else {
+          box.className = "fold-bar h-9 rounded-lg border border-indigo-400 bg-indigo-500 text-white flex items-center justify-center font-bold text-xs";
+          box.innerText = `Train (${f})`;
+        }
+      }
+
+      const foldAcc = (0.865 + (Math.random() * 0.07 - 0.035)).toFixed(3);
+      const foldLoss = (0.310 + (Math.random() * 0.08 - 0.04)).toFixed(3);
+      metricsData.push({ acc: parseFloat(foldAcc), loss: parseFloat(foldLoss) });
+
+      const tr = document.createElement('tr');
+      tr.className = "hover:bg-slate-50 transition";
+      tr.innerHTML = `
+        <td class="p-3 font-mono font-semibold">Iteration ${currentStep}</td>
+        <td class="p-3"><span class="px-2 py-0.5 rounded bg-rose-100 text-rose-700 font-bold">Fold ${currentStep}</span></td>
+        <td class="p-3 font-mono text-emerald-600 font-semibold">${(foldAcc * 100).toFixed(1)}%</td>
+        <td class="p-3 font-mono text-slate-700">${foldLoss}</td>
+        <td class="p-3 text-emerald-600 font-medium"><i class="fa-solid fa-check mr-1"></i>完成</td>
+      `;
+      simTbody.appendChild(tr);
+
+      if (currentStep === simK) {
+        simStatusBadge.innerText = "已完成全部輪次";
+        simStatusBadge.className = "px-2.5 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700";
+        stopAutoPlay();
+        calculateFinalScores();
+      }
+    }
+
+    function calculateFinalScores() {
+      const avgAcc = (metricsData.reduce((a, b) => a + b.acc, 0) / simK) * 100;
+      const avgLoss = metricsData.reduce((a, b) => a + b.loss, 0) / simK;
+      const stdAcc = Math.sqrt(metricsData.map(x => Math.pow(x.acc * 100 - avgAcc, 2)).reduce((a, b) => a + b, 0) / simK);
+
+      document.getElementById('avg-acc').innerText = `${avgAcc.toFixed(2)}%`;
+      document.getElementById('avg-loss').innerText = avgLoss.toFixed(4);
+      document.getElementById('std-acc').innerText = `±${stdAcc.toFixed(2)}%`;
+      simTfoot.classList.remove('hidden');
+      showToast(`評估完成！綜合 CV 得分: ${avgAcc.toFixed(2)}%`);
+    }
+
+    function stopAutoPlay() {
+      if (autoPlayInterval) {
+        clearInterval(autoPlayInterval);
+        autoPlayInterval = null;
+        btnAuto.innerHTML = '<i class="fa-solid fa-play"></i> 一鍵自動模擬';
+      }
+    }
+
+    btnStep.addEventListener('click', () => {
+      stopAutoPlay();
+      executeStep();
+    });
+
+    btnAuto.addEventListener('click', () => {
+      if (autoPlayInterval) {
+        stopAutoPlay();
+        showToast("已暫停模擬");
+      } else {
+        if (currentStep >= simK) {
+          initSimulator();
+        }
+        btnAuto.innerHTML = '<i class="fa-solid fa-pause"></i> 暫停模擬';
+        autoPlayInterval = setInterval(() => {
+          if (currentStep < simK) {
+            executeStep();
+          } else {
+            stopAutoPlay();
+          }
+        }, 600);
+      }
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      initSimulator();
+      showToast("模擬器已重設");
+    });
+
+    simKSelect.addEventListener('change', () => {
+      initSimulator();
+      showToast(`已切換為 ${simKSelect.value}-Fold 模式`);
+    });
+
+    // ----------------- Code Tabs Switcher -----------------
+    function toggleCodeTab(tab) {
+      const sklBtn = document.getElementById('tab-btn-sklearn');
+      const pytBtn = document.getElementById('tab-btn-pytorch');
+      const sklDiv = document.getElementById('code-sklearn');
+      const pytDiv = document.getElementById('code-pytorch');
+
+      if (tab === 'sklearn') {
+        sklBtn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 text-white";
+        pytBtn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:text-white";
+        sklDiv.classList.remove('hidden');
+        pytDiv.classList.add('hidden');
+      } else {
+        pytBtn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 text-white";
+        sklBtn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:text-white";
+        pytDiv.classList.remove('hidden');
+        sklDiv.classList.add('hidden');
+      }
+    }
+
+    // ----------------- KaTeX Safe Loader -----------------
+    function renderMathSafely() {
+      if (window.renderMathInElement) {
+        try {
+          renderMathInElement(document.body, {
+            delimiters: [
+              {left: '$$', right: '$$', display: true},
+              {left: '$', right: '$', display: false}
+            ],
+            throwOnError: false
+          });
+        } catch (err) {
+          console.warn("KaTeX rendering warning: ", err);
+        }
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initSimulator();
+      setTimeout(renderMathSafely, 300);
+      setTimeout(renderMathSafely, 1000);
+    });
+  </script>
+</body>
+</html>
