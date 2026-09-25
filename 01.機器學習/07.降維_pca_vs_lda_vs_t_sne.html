@@ -1,0 +1,2731 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>監督式降維 (LDA) vs PCA vs t-SNE 深度解析與互動實驗室</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- KaTeX for LaTeX Math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+          onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    .tab-active { border-bottom: 3px solid #4f46e5; color: #4338ca; font-weight: 700; }
+    .code-block { font-family: 'Fira Code', Consolas, Monaco, monospace; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between">
+
+  <!-- 頂部導航 -->
+  <header class="bg-indigo-900 text-white shadow-xl sticky top-0 z-50 border-b border-indigo-800">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-400 to-indigo-500 flex items-center justify-center shadow-md">
+          <i class="fa-solid fa-chart-network text-slate-950 text-xl"></i>
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-black tracking-wide flex items-center gap-2">
+            PCA vs LDA vs t-SNE
+            <span class="text-[10px] bg-amber-400 text-slate-950 font-bold px-2 py-0.5 rounded-full uppercase">降維全解指南</span>
+          </h1>
+          <p class="text-xs text-indigo-200">監督式 vs 非監督式 ｜ 線性投影 vs 非線性流形學習</p>
+        </div>
+      </div>
+      
+      <nav class="flex flex-wrap items-center gap-1.5 text-xs">
+        <a href="#summary" class="px-2.5 py-1.5 rounded-lg bg-indigo-800 hover:bg-indigo-700 transition">01. 簡介與原理</a>
+        <a href="#life-metaphor" class="px-2.5 py-1.5 rounded-lg bg-amber-400 text-slate-950 hover:bg-amber-300 font-bold transition flex items-center shadow-sm">
+          <i class="fa-solid fa-lightbulb mr-1 text-xs"></i> 06. 生活比喻與限制
+        </a>
+        <a href="#comparison" class="px-2.5 py-1.5 rounded-lg bg-indigo-800 hover:bg-indigo-700 transition">04. 特徵對比</a>
+        <a href="#wineglass" class="px-2.5 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-400/40 hover:bg-amber-500/30 font-semibold transition flex items-center">
+          <i class="fa-solid fa-wine-glass mr-1"></i> 高腳杯物理圖表
+        </a>
+        <a href="#infographic" class="px-2.5 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-amber-300 font-semibold transition flex items-center">
+          <i class="fa-solid fa-palette mr-1"></i> 藝術海報圖表
+        </a>
+        <a href="#math" class="px-2.5 py-1.5 rounded-lg bg-indigo-800 hover:bg-indigo-700 transition">09. 數學推導</a>
+        <a href="#ipas" class="px-2.5 py-1.5 rounded-lg bg-indigo-800 hover:bg-indigo-700 transition">03. IPAS 考題</a>
+        <a href="#simulator" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition flex items-center shadow">
+          <i class="fa-solid fa-play mr-1"></i> 12. 互動模擬器
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 主內容容器 -->
+  <main class="max-w-7xl mx-auto px-4 py-8 space-y-12 flex-grow w-full">
+
+    <!-- 01. 一句話簡介 & 02. 核心原理 (三大演算法核心卡片) -->
+    <section id="summary" class="space-y-6">
+      <div class="text-center max-w-3xl mx-auto">
+        <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
+          01. 一句話簡介 & 02. 核心原理剖析
+        </span>
+        <h2 class="text-2xl sm:text-3xl font-black text-slate-900 mt-2">三大降維巨頭：看見資料的本質維度</h2>
+        <p class="text-slate-600 text-sm mt-2">從無標籤的能量最大化、有標籤的類別分離，到高維曲面的拓撲攤平。</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- PCA 卡片 -->
+        <div class="bg-white rounded-2xl p-6 shadow-md border-t-4 border-blue-500 flex flex-col justify-between hover:shadow-xl transition">
+          <div>
+            <div class="flex justify-between items-center mb-3">
+              <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-blue-100 text-blue-800">非監督式 · 線性</span>
+              <i class="fa-solid fa-arrows-split-up-and-left text-blue-500 text-lg"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900">PCA (主成分分析)</h3>
+            <p class="text-xs font-mono text-blue-600 font-semibold mt-1">Principal Component Analysis</p>
+            
+            <div class="mt-4 p-3 rounded-xl bg-blue-50/80 border border-blue-100 text-xs">
+              <span class="font-bold text-blue-950 block mb-1">【01. 一句話簡介】</span>
+              <p class="text-slate-700">「不看標籤，尋找能讓資料投影後<strong>變異數（方差）最大</strong>的正交方向，以最少維度保留全域整體能量。」</p>
+            </div>
+
+            <!-- 生活化比喻小框 -->
+            <div class="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200/80 text-xs">
+              <span class="font-bold text-amber-900 flex items-center mb-1">
+                <i class="fa-solid fa-camera mr-1 text-amber-600"></i> 生活化比喻
+              </span>
+              <p class="text-slate-700 font-medium leading-relaxed">
+                就像從各個角度拍一張<strong>全家福</strong>，目的是找一個最好的角度，讓照片能拍到最多的人、保留最多畫面細節。
+              </p>
+            </div>
+
+            <div class="mt-4 text-xs text-slate-600 space-y-2">
+              <strong class="text-slate-900 block text-xs">【02. 核心原理】</strong>
+              <p>透過計算資料的協方差矩陣 $\Sigma$，進行特徵值分解或奇異值分解 (SVD)，取前 $k$ 個最大特徵值對應的正交特徵向量作為新坐標軸。</p>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] font-mono text-slate-500">
+            關鍵目標：$\max_w w^T \Sigma w \quad \text{s.t. } w^T w = 1$
+          </div>
+        </div>
+
+        <!-- LDA 卡片 -->
+        <div class="bg-white rounded-2xl p-6 shadow-md border-t-4 border-emerald-500 flex flex-col justify-between hover:shadow-xl transition">
+          <div>
+            <div class="flex justify-between items-center mb-3">
+              <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800">監督式 · 線性</span>
+              <i class="fa-solid fa-tags text-emerald-500 text-lg"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900">LDA (線性判別分析)</h3>
+            <p class="text-xs font-mono text-emerald-600 font-semibold mt-1">Linear Discriminant Analysis</p>
+            
+            <div class="mt-4 p-3 rounded-xl bg-emerald-50/80 border border-emerald-100 text-xs">
+              <span class="font-bold text-emerald-950 block mb-1">【01. 一句話簡介】</span>
+              <p class="text-slate-700">「緊盯標籤，尋找能讓<strong>類間距離最大化且類內散布最小化</strong>的投影軸，使各類別影子分得最開。」</p>
+            </div>
+
+            <!-- 生活化比喻小框 -->
+            <div class="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200/80 text-xs">
+              <span class="font-bold text-amber-900 flex items-center mb-1">
+                <i class="fa-solid fa-store mr-1 text-amber-600"></i> 生活化比喻
+              </span>
+              <p class="text-slate-700 font-medium leading-relaxed">
+                就像在學校<strong>園遊會分類攤位</strong>，目的是把賣「飲料」和「炸物」的攤位徹底隔開，讓想買的人一眼就能分清楚。
+              </p>
+            </div>
+
+            <div class="mt-4 text-xs text-slate-600 space-y-2">
+              <strong class="text-slate-900 block text-xs">【02. 核心原理】</strong>
+              <p>利用類間散布矩陣 $S_B$ 與類內散布矩陣 $S_W$，最大化 Fisher 判別準則（廣義瑞利商），轉換為求解 $S_W^{-1} S_B$ 的廣義特徵值問題。</p>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] font-mono text-slate-500">
+            關鍵目標：$\max_w \frac{w^T S_B w}{w^T S_W w}$（上限維度 $C-1$）
+          </div>
+        </div>
+
+        <!-- t-SNE 卡片 -->
+        <div class="bg-white rounded-2xl p-6 shadow-md border-t-4 border-purple-500 flex flex-col justify-between hover:shadow-xl transition">
+          <div>
+            <div class="flex justify-between items-center mb-3">
+              <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-purple-100 text-purple-800">非監督式 · 非線性流形</span>
+              <i class="fa-solid fa-project-diagram text-purple-500 text-lg"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900">t-SNE (t-分布隨機鄰居嵌入)</h3>
+            <p class="text-xs font-mono text-purple-600 font-semibold mt-1">t-Distributed Stochastic Neighbor Embedding</p>
+            
+            <div class="mt-4 p-3 rounded-xl bg-purple-50/80 border border-purple-100 text-xs">
+              <span class="font-bold text-purple-950 block mb-1">【01. 一句話簡介】</span>
+              <p class="text-slate-700">「不靠筆直投影，將高維歐氏距離轉為機率，在低維利用 t-分布長尾效應像<strong>攤平橘皮般保留微觀鄰域拓撲</strong>。」</p>
+            </div>
+
+            <!-- 生活化比喻小框 -->
+            <div class="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200/80 text-xs">
+              <span class="font-bold text-amber-900 flex items-center mb-1">
+                <i class="fa-solid fa-earth-americas mr-1 text-amber-600"></i> 生活化比喻
+              </span>
+              <p class="text-slate-700 font-medium leading-relaxed">
+                就像把<strong>立體地球儀畫成平面世界地圖</strong>，雖然遠處的面積變形了，但原本住得近的鄰居在平面上依然會挨在一起。
+              </p>
+            </div>
+
+            <div class="mt-4 text-xs text-slate-600 space-y-2">
+              <strong class="text-slate-900 block text-xs">【02. 核心原理】</strong>
+              <p>高維使用高斯分布對稱聯合機率 $p_{ij}$，低維使用自由度為 1 之 Student-t 分布 $q_{ij}$，透過梯度下降最小化兩者之 KL 散度。</p>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] font-mono text-slate-500">
+            關鍵目標：$\min_Y KL(P || Q) = \sum_{i,j} p_{ij} \log \frac{p_{ij}}{q_{ij}}$
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06-LIFE. 專屬焦點看板：一句話生活比喻精華 + 數學核心與缺點限制深入對比 -->
+    <section id="life-metaphor" class="space-y-6">
+      
+      <!-- 比喻卡片頭部 -->
+      <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-slate-950 rounded-3xl shadow-xl p-6 sm:p-8">
+        <div class="max-w-4xl mx-auto text-center mb-8">
+          <span class="bg-slate-950 text-amber-300 text-xs font-bold uppercase tracking-wider px-3.5 py-1 rounded-full shadow-sm inline-flex items-center">
+            <i class="fa-solid fa-lightbulb mr-1.5"></i> 06. 核心生活化直覺
+          </span>
+          <h3 class="text-2xl sm:text-3xl font-black text-slate-950 mt-3 tracking-tight">
+            這三種降維技術的一句話生活比喻
+          </h3>
+          <p class="text-slate-900/90 font-medium text-xs sm:text-sm mt-1.5">
+            用最貼近日常生活的場景，三十秒徹底搞懂降維演算法的目的與哲學
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <!-- PCA 比喻卡片 -->
+          <div class="bg-white/95 backdrop-blur-sm p-5 sm:p-6 rounded-2xl shadow-lg border border-amber-200/60 flex flex-col justify-between hover:-translate-y-1 transition duration-200">
+            <div>
+              <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-xl mb-4 shadow-sm">
+                <i class="fa-solid fa-camera-retro"></i>
+              </div>
+              <div class="flex items-center justify-between mb-2">
+                <h4 class="font-black text-base text-slate-900">PCA (主成分分析)</h4>
+                <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700">全家福合照</span>
+              </div>
+              <p class="text-xs sm:text-sm text-slate-700 leading-relaxed mt-2 font-medium">
+                就像從各個角度拍一張<strong>全家福</strong>，目的是找一個最好的角度，讓照片能拍到最多的人、保留最多畫面細節。
+              </p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-blue-700 font-semibold flex items-center justify-between">
+              <span>核心：最大化細節（變異數）</span>
+              <i class="fa-solid fa-arrow-right"></i>
+            </div>
+          </div>
+
+          <!-- LDA 比喻卡片 -->
+          <div class="bg-white/95 backdrop-blur-sm p-5 sm:p-6 rounded-2xl shadow-lg border border-amber-200/60 flex flex-col justify-between hover:-translate-y-1 transition duration-200">
+            <div>
+              <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl mb-4 shadow-sm">
+                <i class="fa-solid fa-store"></i>
+              </div>
+              <div class="flex items-center justify-between mb-2">
+                <h4 class="font-black text-base text-slate-900">LDA (線性判別分析)</h4>
+                <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700">園遊會擺攤</span>
+              </div>
+              <p class="text-xs sm:text-sm text-slate-700 leading-relaxed mt-2 font-medium">
+                就像在學校<strong>園遊會分類攤位</strong>，目的是把賣「飲料」和「炸物」的攤位徹底隔開，讓想買的人一眼就能分清楚。
+              </p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-emerald-700 font-semibold flex items-center justify-between">
+              <span>核心：最大化類別間隔</span>
+              <i class="fa-solid fa-arrow-right"></i>
+            </div>
+          </div>
+
+          <!-- t-SNE 比喻卡片 -->
+          <div class="bg-white/95 backdrop-blur-sm p-5 sm:p-6 rounded-2xl shadow-lg border border-amber-200/60 flex flex-col justify-between hover:-translate-y-1 transition duration-200">
+            <div>
+              <div class="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-xl mb-4 shadow-sm">
+                <i class="fa-solid fa-earth-americas"></i>
+              </div>
+              <div class="flex items-center justify-between mb-2">
+                <h4 class="font-black text-base text-slate-900">t-SNE (隨機鄰居嵌入)</h4>
+                <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700">地球儀地圖</span>
+              </div>
+              <p class="text-xs sm:text-sm text-slate-700 leading-relaxed mt-2 font-medium">
+                就像把立體<strong>地球儀畫成平面世界地圖</strong>，雖然遠處的面積變形了，但原本住得近的鄰居在平面上依然會挨在一起。
+              </p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-purple-700 font-semibold flex items-center justify-between">
+              <span>核心：微觀局部鄰近保持</span>
+              <i class="fa-solid fa-arrow-right"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 📊 PCA、LDA、t-SNE 的數學核心與限制對比 精緻儀表板 -->
+      <div class="bg-white rounded-3xl shadow-lg border border-slate-200/80 p-6 lg:p-8 overflow-hidden">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-100">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-xs font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full border border-indigo-100">
+                📊 深度洞察矩陣
+              </span>
+              <span class="text-xs text-slate-500 font-medium">比喻 × 數學底層 × 盲點邊界</span>
+            </div>
+            <h3 class="text-xl sm:text-2xl font-black text-slate-900 mt-2">
+              生活比喻、數學核心概念與缺點限制全面對比
+            </h3>
+            <p class="text-xs sm:text-sm text-slate-600 mt-1">
+              這三個生活比喻不僅能直觀理解它們的功能，更精準對應了背後的數學核心概念與各自的缺點限制。
+            </p>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs sm:text-sm border-collapse">
+            <thead>
+              <tr class="bg-slate-100/80 text-slate-800 border-b border-slate-200">
+                <th class="p-4 font-extrabold w-28 sm:w-36">演算法</th>
+                <th class="p-4 font-extrabold w-48 sm:w-60">生活比喻</th>
+                <th class="p-4 font-extrabold">數學核心概念</th>
+                <th class="p-4 font-extrabold text-rose-700 bg-rose-50/50">缺點與限制（從比喻來看）</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200/80 text-slate-600">
+              <!-- PCA 橫列 -->
+              <tr class="hover:bg-blue-50/30 transition">
+                <td class="p-4 font-black text-blue-900 align-top">
+                  <div class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block shrink-0"></span>
+                    <span class="text-sm sm:text-base">PCA</span>
+                  </div>
+                  <span class="text-[11px] text-slate-400 block mt-0.5 font-normal">主成分分析</span>
+                </td>
+                <td class="p-4 align-top font-semibold text-slate-800">
+                  <div class="flex items-center text-blue-700 font-bold mb-1">
+                    <i class="fa-solid fa-camera mr-1.5"></i> 拍全家福
+                  </div>
+                  <p class="text-xs text-slate-600 leading-relaxed font-normal">
+                    找拍到最多人的角度，盡可能保留最多細節。
+                  </p>
+                </td>
+                <td class="p-4 align-top leading-relaxed">
+                  <strong class="text-slate-900 block font-bold mb-1">最大化變異量 (Variance)</strong>
+                  透過特徵分解（Eigen-decomposition）或奇異值分解（SVD），找出協方差矩陣中特徵值最大的前幾個特徵向量（主成分）。
+                </td>
+                <td class="p-4 align-top bg-rose-50/30 leading-relaxed">
+                  <div class="flex items-center font-bold text-rose-700 mb-1">
+                    <i class="fa-solid fa-circle-xmark mr-1.5"></i> 只看高矮，不看男女
+                  </div>
+                  <p class="text-xs text-slate-700">
+                    因為是「無監督」的，它只管保留最大的畫面細節，可能會把不同類別（如男生、女生）的特徵混在一起，不利於分類。
+                  </p>
+                </td>
+              </tr>
+
+              <!-- LDA 橫列 -->
+              <tr class="hover:bg-emerald-50/30 transition">
+                <td class="p-4 font-black text-emerald-900 align-top">
+                  <div class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shrink-0"></span>
+                    <span class="text-sm sm:text-base">LDA</span>
+                  </div>
+                  <span class="text-[11px] text-slate-400 block mt-0.5 font-normal">線性判別分析</span>
+                </td>
+                <td class="p-4 align-top font-semibold text-slate-800">
+                  <div class="flex items-center text-emerald-700 font-bold mb-1">
+                    <i class="fa-solid fa-store mr-1.5"></i> 園遊會分類攤位
+                  </div>
+                  <p class="text-xs text-slate-600 leading-relaxed font-normal">
+                    把飲料和炸物徹底隔開，讓消費者一眼立判。
+                  </p>
+                </td>
+                <td class="p-4 align-top leading-relaxed">
+                  <strong class="text-slate-900 block font-bold mb-1">最大化類間變異，最小化類內變異</strong>
+                  藉由費雪判別式（Fisher's Linear Discriminant），計算類別間散佈矩陣與類別內散佈矩陣的比值，找出最佳投影軸。
+                </td>
+                <td class="p-4 align-top bg-rose-50/30 leading-relaxed">
+                  <div class="flex items-center font-bold text-rose-700 mb-1">
+                    <i class="fa-solid fa-circle-xmark mr-1.5"></i> 位置被定死，且只能畫直線
+                  </div>
+                  <p class="text-xs text-slate-700">
+                    投影維度受限於「類別數減一」（例如 2 個類別只能降到 1 維）。此外，若兩組攤位本來就交錯呈環狀（非線性），用直線怎麼切都會切錯。
+                  </p>
+                </td>
+              </tr>
+
+              <!-- t-SNE 橫列 -->
+              <tr class="hover:bg-purple-50/30 transition">
+                <td class="p-4 font-black text-purple-900 align-top">
+                  <div class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block shrink-0"></span>
+                    <span class="text-sm sm:text-base">t-SNE</span>
+                  </div>
+                  <span class="text-[11px] text-slate-400 block mt-0.5 font-normal">隨機鄰域嵌入</span>
+                </td>
+                <td class="p-4 align-top font-semibold text-slate-800">
+                  <div class="flex items-center text-purple-700 font-bold mb-1">
+                    <i class="fa-solid fa-earth-americas mr-1.5"></i> 地球儀畫成平面地圖
+                  </div>
+                  <p class="text-xs text-slate-600 leading-relaxed font-normal">
+                    攤平立體球體，讓原本住得近的鄰居在平面上依然挨在一起。
+                  </p>
+                </td>
+                <td class="p-4 align-top leading-relaxed">
+                  <strong class="text-slate-900 block font-bold mb-1">條件機率與 KL 散度 (Kullback-Leibler)</strong>
+                  用高斯分佈計算高維空間的點對鄰近機率，用 t-分佈計算低維空間的機率，並透過梯度下降最小化兩者間的 KL 散度。
+                </td>
+                <td class="p-4 align-top bg-rose-50/30 leading-relaxed">
+                  <div class="flex items-center font-bold text-rose-700 mb-1">
+                    <i class="fa-solid fa-circle-xmark mr-1.5"></i> 遠方的距離失去參考價值
+                  </div>
+                  <p class="text-xs text-slate-700">
+                    它極度擴張了遠處的距離（擁擠問題）。地圖上雖然你和隔壁鄰居靠很近，但台灣到美國的實際距離和比例在平面上會嚴重失真，且每次畫出來的地圖可能長得都不一樣（隨機性高）。
+                  </p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- 04. 實務特徵全面對比表 -->
+    <section id="comparison" class="bg-white rounded-2xl shadow-md p-6 lg:p-8 overflow-hidden">
+      <div class="flex items-center space-x-3 mb-6">
+        <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
+          <i class="fa-solid fa-table-list"></i>
+        </div>
+        <h3 class="text-xl sm:text-2xl font-black text-slate-900">04. 實務特徵全面對比指標看板</h3>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs sm:text-sm border-collapse">
+          <thead>
+            <tr class="bg-slate-100 text-slate-700 border-b border-slate-200">
+              <th class="p-3.5 font-bold">比較維度</th>
+              <th class="p-3.5 text-blue-700 font-bold">PCA (主成分分析)</th>
+              <th class="p-3.5 text-emerald-700 font-bold">LDA (線性判別分析)</th>
+              <th class="p-3.5 text-purple-700 font-bold">t-SNE (t-分布隨機鄰居嵌入)</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 text-slate-600">
+            <tr>
+              <td class="p-3.5 font-bold text-slate-900 bg-slate-50/50">學習範式 (Paradigm)</td>
+              <td class="p-3.5 font-semibold text-blue-800">非監督式 (Unsupervised)</td>
+              <td class="p-3.5 font-semibold text-emerald-800">監督式 (Supervised)</td>
+              <td class="p-3.5 font-semibold text-purple-800">非監督式 (Unsupervised)</td>
+            </tr>
+            <tr>
+              <td class="p-3.5 font-bold text-slate-900 bg-slate-50/50">生活直覺譬喻</td>
+              <td class="p-3.5 font-medium text-slate-800">各角度找最佳全家福拍到最多人</td>
+              <td class="p-3.5 font-medium text-slate-800">園遊會把飲料和炸物攤位徹底隔開</td>
+              <td class="p-3.5 font-medium text-slate-800">立體地球儀攤平為地圖，鄰居仍相鄰</td>
+            </tr>
+            <tr>
+              <td class="p-3.5 font-bold text-slate-900 bg-slate-50/50">盲點與代價</td>
+              <td class="p-3.5 text-rose-600 font-medium">只看高矮不看男女（類別混淆）</td>
+              <td class="p-3.5 text-rose-600 font-medium">維度死限 $C-1$ 且只能畫直線</td>
+              <td class="p-3.5 text-rose-600 font-medium">遠處距離失真且具隨機性</td>
+            </tr>
+            <tr>
+              <td class="p-3.5 font-bold text-slate-900 bg-slate-50/50">映射性質 (Mapping)</td>
+              <td class="p-3.5">線性正交投影 ($z = W^T x$)</td>
+              <td class="p-3.5">線性判別投影 ($z = W^T x$)</td>
+              <td class="p-3.5 text-rose-600 font-semibold">非線性流形學習 (非參數力學優化)</td>
+            </tr>
+            <tr>
+              <td class="p-3.5 font-bold text-slate-900 bg-slate-50/50">最大降維維度上限</td>
+              <td class="p-3.5">可降至原始維度 $d$ 內的任意維度</td>
+              <td class="p-3.5 font-bold text-rose-600">最多只能降至 $C - 1$ 維 ($C$ 為類別數)</td>
+              <td class="p-3.5">理論任意，但實務上專注於 2D 或 3D 視覺化</td>
+            </tr>
+            <tr>
+              <td class="p-3.5 font-bold text-slate-900 bg-slate-50/50">新測試樣本推理 (`transform`)</td>
+              <td class="p-3.5 text-emerald-600 font-bold"><i class="fa-solid fa-check mr-1"></i> 支援 (直接乘矩陣 $W$)</td>
+              <td class="p-3.5 text-emerald-600 font-bold"><i class="fa-solid fa-check mr-1"></i> 支援 (直接乘判別矩陣 $W$)</td>
+              <td class="p-3.5 text-rose-600 font-bold"><i class="fa-solid fa-xmark mr-1"></i> 不支援 (新增資料需全體重新迭代)</td>
+            </tr>
+            <tr>
+              <td class="p-3.5 font-bold text-slate-900 bg-slate-50/50">運算複雜度 (Computational Cost)</td>
+              <td class="p-3.5">低 ($\mathcal{O}(d^3)$ 或 $\mathcal{O}(d^2 n)$，SVD 加速)</td>
+              <td class="p-3.5">低 ($\mathcal{O}(d^3 + d^2 n)$，涉及矩陣求逆)</td>
+              <td class="p-3.5 text-amber-600 font-semibold">極高 ($\mathcal{O}(n^2)$，Barnes-Hut 為 $\mathcal{O}(n \log n)$)</td>
+            </tr>
+            <tr>
+              <td class="p-3.5 font-bold text-slate-900 bg-slate-50/50">距離幾何解釋 (Interpretability)</td>
+              <td class="p-3.5">保留全域幾何變異骨架</td>
+              <td class="p-3.5">專注於類別可分性</td>
+              <td class="p-3.5 text-slate-500">僅保留微觀局部鄰域，大群間距無物理意義</td>
+            </tr>
+            <tr>
+              <td class="p-3.5 font-bold text-slate-900 bg-slate-50/50">超參數敏感度</td>
+              <td class="p-3.5">無（僅需指定目標維度 $k$）</td>
+              <td class="p-3.5">無（只需指定降維維度 $k \le C-1$）</td>
+              <td class="p-3.5 text-amber-600 font-semibold">高 (Perplexity 困惑度與 Learning Rate 影響顯著)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 05. 演算法由來與歷史 -->
+    <section class="bg-white rounded-2xl shadow-md p-6 lg:p-8">
+      <div class="flex items-center space-x-3 mb-4">
+        <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center font-bold">
+          <i class="fa-solid fa-landmark"></i>
+        </div>
+        <h3 class="text-xl sm:text-2xl font-black text-slate-900">05. 演算法由來與歷史脈絡</h3>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs sm:text-sm text-slate-600">
+        <div class="p-4 rounded-xl bg-blue-50/60 border border-blue-100">
+          <h4 class="font-bold text-blue-900 text-sm mb-2 flex items-center">
+            <span class="w-2 h-2 rounded-full bg-blue-500 mr-2"></span> PCA 的誕生 (1901 / 1933)
+          </h4>
+          <p class="leading-relaxed">
+            1901 年由現代統計學之父 <strong>Karl Pearson</strong> 提出，作為力學中「主軸定理」在幾何空間的類比；1933 年 <strong>Harold Hotelling</strong> 獨立發展並正式確立了隨機變數主成分分析的數學架構。
+          </p>
+        </div>
+        <div class="p-4 rounded-xl bg-emerald-50/60 border border-emerald-100">
+          <h4 class="font-bold text-emerald-900 text-sm mb-2 flex items-center">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span> LDA 的誕生 (1936 / 1948)
+          </h4>
+          <p class="leading-relaxed">
+            1936 年英國遺傳統計大師 <strong>Ronald Fisher</strong> 在處理鳶尾花（Iris）品種分類時提出「Fisher's Linear Discriminant」；後由 <strong>C. R. Rao</strong> 於 1948 年推廣至多元分類，成為現代判別分析基石。
+          </p>
+        </div>
+        <div class="p-4 rounded-xl bg-purple-50/60 border border-purple-100">
+          <h4 class="font-bold text-purple-900 text-sm mb-2 flex items-center">
+            <span class="w-2 h-2 rounded-full bg-purple-500 mr-2"></span> t-SNE 的誕生 (2002 / 2008)
+          </h4>
+          <p class="leading-relaxed">
+            圖靈獎得主 <strong>Geoffrey Hinton</strong> 與 Sam Roweis 於 2002 年提出 SNE；2008 年 <strong>Laurens van der Maaten</strong> 與 Hinton 共同發表改良版 t-SNE，引入 Student-t 分布一舉破解流形擠迫問題（Crowding Problem）。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06-WG. 高腳玻璃杯投影專案資訊圖表 (PCA, LDA, t-SNE 三位一體物理實驗室) -->
+    <section id="wineglass" class="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white rounded-3xl shadow-2xl p-6 lg:p-8 border border-amber-500/30">
+      <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-6 mb-8">
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-400 text-slate-950 shadow-sm inline-flex items-center">
+              <i class="fa-solid fa-wine-glass mr-1.5"></i> 核心降維物理譬喻
+            </span>
+            <span class="px-2.5 py-0.5 rounded text-xs font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 font-semibold">
+              PCA · LDA · t-SNE 高腳杯全景資訊圖解
+            </span>
+          </div>
+          <h3 class="text-2xl lg:text-3xl font-black mt-2 tracking-tight text-white flex items-center">
+            高腳玻璃杯降維三重奏：投影、判別與流形展開
+          </h3>
+          <p class="text-xs sm:text-sm text-slate-300 mt-1">
+            同一個高腳杯，在不同降維演算法眼中有著截然不同的幾何命運與觀察哲學！
+          </p>
+        </div>
+
+        <!-- 演算法視角切換器 -->
+        <div class="flex items-center gap-1.5 bg-slate-900/90 p-1.5 rounded-xl border border-slate-800">
+          <button onclick="switchWineGlassMode('pca')" id="wg-mode-pca" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-bold text-xs transition flex items-center shadow">
+            <i class="fa-solid fa-arrows-split-up-and-left mr-1.5"></i> PCA (最大變異投影)
+          </button>
+          <button onclick="switchWineGlassMode('lda')" id="wg-mode-lda" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white font-semibold text-xs transition flex items-center">
+            <i class="fa-solid fa-tags mr-1.5"></i> LDA (雙杯鑑別分離)
+          </button>
+          <button onclick="switchWineGlassMode('tsne')" id="wg-mode-tsne" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white font-semibold text-xs transition flex items-center">
+            <i class="fa-solid fa-project-diagram mr-1.5"></i> t-SNE (表面雕花非線性展開)
+          </button>
+        </div>
+      </div>
+
+      <!-- 互動式投影實驗室主體 -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center mb-8">
+        
+        <!-- 左側：三維物理狀態與操作區 -->
+        <div class="lg:col-span-6 bg-slate-900/90 rounded-2xl p-6 border border-slate-800 flex flex-col justify-between shadow-xl">
+          <div class="flex justify-between items-center mb-4">
+            <h4 id="wg-left-title" class="text-sm font-bold text-amber-300 flex items-center">
+              <i class="fa-solid fa-cube mr-2"></i> 1. 三維空間物理情境
+            </h4>
+            <span id="wg-angle-badge" class="px-2 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              視角: 90° (側視角)
+            </span>
+          </div>
+
+          <!-- SVG 3D 模型渲染區 -->
+          <div class="w-full h-64 bg-slate-950 rounded-xl border border-slate-800 relative overflow-hidden flex items-center justify-center">
+            <svg id="svg-wineglass-3d" class="w-full h-full" viewBox="-120 -120 240 240" xmlns="http://www.w3.org/2000/svg">
+              <line x1="-100" y1="90" x2="100" y2="90" stroke="#334155" stroke-width="1.5" stroke-dasharray="3,3"/>
+              <line x1="0" y1="-100" x2="0" y2="100" stroke="#334155" stroke-width="1.5" stroke-dasharray="3,3"/>
+              <g id="svg-light-beam"></g>
+              <g id="svg-wineglass-body"></g>
+            </svg>
+          </div>
+
+          <!-- 控制面板區塊 (依據當前模式動態調整) -->
+          <div id="wg-ctrl-panel" class="mt-5 space-y-2">
+            <!-- 預設 PCA 滑桿 -->
+            <div id="wg-pca-slider-wrap">
+              <div class="flex justify-between text-xs text-slate-300 font-semibold mb-1">
+                <span class="text-rose-400">0° (頂部垂直俯視 · 錯誤方向)</span>
+                <span class="text-indigo-400">45° (斜角投影)</span>
+                <span class="text-emerald-400">90° (正側視 · PCA 最佳軸)</span>
+              </div>
+              <input type="range" id="wg-slider" min="0" max="90" value="90" oninput="onWineGlassSlider(this.value)" class="w-full accent-amber-400 cursor-pointer">
+              <p class="text-[11px] text-slate-400 text-center font-mono mt-1">
+                滑動滑桿改變投影軸線，觀察右側 2D 牆面影子形狀變化
+              </p>
+            </div>
+            
+            <!-- LDA 專屬按鈕組 -->
+            <div id="wg-lda-ctrl-wrap" class="hidden flex gap-2">
+              <button onclick="setLDAType('pca_fail')" id="btn-lda-pca" class="flex-1 py-2 rounded-lg bg-rose-950 border border-rose-600/50 text-rose-200 text-xs font-bold hover:bg-rose-900 transition">
+                <i class="fa-solid fa-arrows-split-up-and-left mr-1"></i> 按 PCA 軸投影 (兩杯重疊混淆)
+              </button>
+              <button onclick="setLDAType('lda_win')" id="btn-lda-win" class="flex-1 py-2 rounded-lg bg-emerald-950 border border-emerald-500 text-emerald-200 text-xs font-bold hover:bg-emerald-900 transition">
+                <i class="fa-solid fa-tags mr-1"></i> 按 LDA 判別軸投影 (杯型分明)
+              </button>
+            </div>
+
+            <!-- t-SNE 專屬控制組 -->
+            <div id="wg-tsne-ctrl-wrap" class="hidden flex items-center justify-between gap-3">
+              <button onclick="stepTSNEUnfold()" class="flex-1 py-2 rounded-lg bg-purple-900 border border-purple-500 text-purple-200 text-xs font-bold hover:bg-purple-800 transition">
+                <i class="fa-solid fa-scroll mr-1"></i> 逐步展開曲面流形 (Iteration +1)
+              </button>
+              <button onclick="resetTSNEUnfold()" class="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs hover:bg-slate-700 transition">
+                <i class="fa-solid fa-rotate-left"></i> 重置
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右側：二維投影 / 降維嵌入空間 -->
+        <div class="lg:col-span-6 bg-slate-900/90 rounded-2xl p-6 border border-slate-800 flex flex-col justify-between shadow-xl">
+          <div class="flex justify-between items-center mb-4">
+            <h4 id="wg-right-title" class="text-sm font-bold text-cyan-300 flex items-center">
+              <i class="fa-solid fa-cloud-moon mr-2"></i> 2. 降維結果呈現 (二維平面)
+            </h4>
+            <span id="wg-result-status" class="px-2 py-0.5 rounded text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              狀態：完整特徵保留
+            </span>
+          </div>
+
+          <!-- SVG 投影影子畫布 -->
+          <div class="w-full h-64 bg-slate-950 rounded-xl border border-slate-800 relative overflow-hidden flex items-center justify-center">
+            <svg id="svg-wineglass-shadow" class="w-full h-full" viewBox="-120 -120 240 240" xmlns="http://www.w3.org/2000/svg">
+              <radialGradient id="shadowGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.15"/>
+                <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+              </radialGradient>
+              <rect x="-110" y="-110" width="220" height="220" fill="url(#shadowGlow)" rx="10"/>
+              <g id="svg-shadow-content"></g>
+            </svg>
+          </div>
+
+          <!-- 即時結論解說卡 -->
+          <div id="wg-insight-card" class="mt-5 p-3 rounded-xl bg-slate-950 border border-emerald-500/30 text-xs leading-relaxed space-y-1">
+            <div class="font-bold text-emerald-300 flex items-center">
+              <i class="fa-solid fa-check-circle mr-1.5"></i> PCA 第一主成分 (PC1) 最佳投影軸：
+            </div>
+            <p id="wg-insight-desc" class="text-slate-300">
+              沿著垂直於杯身高延伸方向進行側向投影，此時樣本投影變異數最大（$\lambda_1 = \max$）。牆面上清晰展現出杯口、收腰杯身、纖細杯腳與圓形底座，幾何資訊完整保留！
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 三大降維方法「高腳杯故事資訊圖看板」 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
+        <div class="p-4 rounded-xl bg-slate-950/80 border border-blue-500/30 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center space-x-2 text-blue-400 font-bold mb-2 text-sm">
+              <i class="fa-solid fa-arrows-split-up-and-left"></i>
+              <span>PCA 篇：單一物體「形變能量最大化」</span>
+            </div>
+            <p class="text-slate-300 leading-relaxed">
+              <strong>高腳杯問題主角：</strong>這隻杯子沒有標籤。如果你由上往下俯視（0°），高聳立體的高腳杯直接退化坍塌成一個無趣的「同心圓」；只有旋轉 90° 到正側面，影子才能伸展到最大，完整呈現杯口、腰身與長柱。
+            </p>
+          </div>
+          <div class="mt-3 pt-2 border-t border-slate-800 text-[11px] font-mono text-blue-300">
+            核心指標：$\max_w w^T \Sigma w$ (影子方差最大)
+          </div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-950/80 border border-emerald-500/30 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center space-x-2 text-emerald-400 font-bold mb-2 text-sm">
+              <i class="fa-solid fa-tags"></i>
+              <span>LDA 篇：兩隻杯子的「標籤鑑別挑戰」</span>
+            </div>
+            <p class="text-slate-300 leading-relaxed">
+              <strong>高腳杯 vs 矮平威士忌杯：</strong>若盲目按 PCA 最大變異數投影，兩隻杯子的影子可能重疊壓在同一個區域，分類器無法區分；LDA 則依據類別標籤，尋找能把「杯腳長度差異」最大化凸顯的法向量軸，將兩類杯子拉開最大間距！
+            </p>
+          </div>
+          <div class="mt-3 pt-2 border-t border-slate-800 text-[11px] font-mono text-emerald-300">
+            核心指標：$\max_w \frac{w^T S_B w}{w^T S_W w}$ (兩類影子鴻溝最大)
+          </div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-950/80 border border-purple-500/30 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center space-x-2 text-purple-400 font-bold mb-2 text-sm">
+              <i class="fa-solid fa-project-diagram"></i>
+              <span>t-SNE 篇：杯身微觀雕花「非線性流形展開」</span>
+            </div>
+            <p class="text-slate-300 leading-relaxed">
+              <strong>杯壁精細葡萄藤浮雕：</strong>杯子是彎曲的 3D 流形。筆直的光影投影（直線投射）不可避免會讓正面雕花與背面雕花重疊在影子中。t-SNE 拋棄光束投影，宛如把整面玻璃杯壁小心切開攤平成 2D 地圖，正面雕花依然相鄰，背面雕花遠離。
+            </p>
+          </div>
+          <div class="mt-3 pt-2 border-t border-slate-800 text-[11px] font-mono text-purple-300">
+            核心指標：$\min_{Y} KL(P || Q)$ (微觀雕花鄰域拓撲保持)
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06-ART. 藝術風格抽象畫派比喻資訊海報 & 動態 SVG 模擬畫廊 -->
+    <section id="infographic" class="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl shadow-2xl p-6 lg:p-8 border border-indigo-500/30">
+      <div class="flex flex-wrap items-center justify-between gap-4 border-b border-indigo-800/80 pb-6 mb-8">
+        <div>
+          <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-400 text-slate-950 shadow-sm inline-flex items-center">
+            <i class="fa-solid fa-palette mr-1.5"></i> 藝術畫派風格動態模擬
+          </span>
+          <h3 class="text-2xl lg:text-3xl font-black mt-2 tracking-tight text-white flex items-center">
+            藝術畫風 × 降維演算法：SVG 動態模擬畫廊
+          </h3>
+          <p class="text-xs sm:text-sm text-indigo-200 mt-1">
+            以純量向量筆觸（SVG）模擬畫派技法：蒙德里安正交能量、馬蒂斯色彩撕裂、秀拉點描力場演化！
+          </p>
+        </div>
+        
+        <!-- 畫派模式切換器 -->
+        <div class="flex flex-wrap items-center gap-2 bg-slate-950/80 p-1.5 rounded-2xl border border-indigo-500/30">
+          <button onclick="switchArtMode('mondrian')" id="art-mode-mondrian" class="px-3.5 py-1.5 rounded-xl bg-blue-600 text-white font-bold text-xs transition flex items-center shadow">
+            <i class="fa-solid fa-shapes mr-1.5"></i> 蒙德里安 (PCA 正交網格)
+          </button>
+          <button onclick="switchArtMode('matisse')" id="art-mode-matisse" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white font-semibold text-xs transition flex items-center">
+            <i class="fa-solid fa-scissors mr-1.5"></i> 馬蒂斯 (LDA 剪紙分離)
+          </button>
+          <button onclick="switchArtMode('seurat')" id="art-mode-seurat" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white font-semibold text-xs transition flex items-center">
+            <i class="fa-solid fa-droplet mr-1.5"></i> 秀拉 (t-SNE 點描流體)
+          </button>
+          <button onclick="triggerGenerateInfographicAI()" id="btn-gen-ai-infographic" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-rose-500 hover:from-amber-300 hover:to-rose-400 text-slate-950 font-bold text-xs shadow transition flex items-center">
+            <i class="fa-solid fa-sparkles mr-1.5"></i> AI 生成海報
+          </button>
+        </div>
+      </div>
+
+      <!-- 動態 SVG 藝術模擬主畫布與操控區 -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center mb-8">
+        
+        <!-- 左側：SVG 動態藝術海報渲染畫布 -->
+        <div class="lg:col-span-7 bg-slate-950 rounded-2xl p-4 sm:p-6 border border-indigo-500/30 shadow-2xl flex flex-col justify-between relative overflow-hidden">
+          <div class="flex justify-between items-center mb-3">
+            <div class="flex items-center space-x-2">
+              <span id="art-canvas-badge" class="px-2.5 py-1 rounded text-xs font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                Piet Mondrian · Neo-Plasticism
+              </span>
+              <span id="art-canvas-sub" class="text-xs text-slate-400 font-mono hidden sm:inline">
+                PCA 變異數最大正交軸
+              </span>
+            </div>
+            <div class="text-[11px] font-mono text-amber-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-circle-nodes"></i>
+              <span id="art-live-stat">軸旋轉角: 45°</span>
+            </div>
+          </div>
+
+          <!-- 主互動 SVG 容器 -->
+          <div class="w-full aspect-[4/3] sm:h-80 bg-slate-900/90 rounded-xl border border-slate-800 relative overflow-hidden flex items-center justify-center shadow-inner">
+            <svg id="svg-art-canvas" class="w-full h-full" viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg">
+              <!-- 動態內容由 JS 產生 -->
+            </svg>
+          </div>
+
+          <!-- 專屬動態控制面板 -->
+          <div class="mt-4 pt-4 border-t border-slate-800">
+            <!-- 1. 蒙德里安控制 -->
+            <div id="art-ctrl-mondrian" class="space-y-2">
+              <div class="flex justify-between text-xs text-slate-300 font-semibold">
+                <span>旋轉正交主軸 $\theta$: <span id="val-art-angle" class="text-blue-400 font-mono">45°</span></span>
+                <span id="mondrian-var-label" class="text-emerald-400 font-mono">保留變異數: 95.8% (最佳軸)</span>
+              </div>
+              <input type="range" id="slider-art-angle" min="0" max="180" value="45" oninput="onMondrianSlider(this.value)" class="w-full accent-blue-500 cursor-pointer">
+              <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                <span>0° (次要軸)</span>
+                <span>45° (PC1 主對角線最大能量)</span>
+                <span>90° (垂直正交)</span>
+                <span>135° (PC2 次軸)</span>
+                <span>180°</span>
+              </div>
+            </div>
+
+            <!-- 2. 馬蒂斯控制 -->
+            <div id="art-ctrl-matisse" class="hidden space-y-3">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <div class="flex justify-between text-xs text-slate-300 font-semibold mb-1">
+                    <span>類間留白鴻溝 ($S_B$): <span id="val-matisse-sb" class="text-emerald-400 font-mono">80%</span></span>
+                  </div>
+                  <input type="range" id="slider-matisse-sb" min="10" max="100" value="80" oninput="onMatisseSlider()" class="w-full accent-emerald-500 cursor-pointer">
+                </div>
+                <div>
+                  <div class="flex justify-between text-xs text-slate-300 font-semibold mb-1">
+                    <span>剪紙同色捏合 ($S_W$): <span id="val-matisse-sw" class="text-cyan-400 font-mono">85%</span></span>
+                  </div>
+                  <input type="range" id="slider-matisse-sw" min="20" max="100" value="85" oninput="onMatisseSlider()" class="w-full accent-cyan-500 cursor-pointer">
+                </div>
+              </div>
+              <p class="text-[11px] text-slate-400 text-center font-mono">
+                拉大類間鴻溝 ($S_B$) 並捏緊剪紙群 ($S_W$)，體驗 Fisher 準則最大化純色可分性！
+              </p>
+            </div>
+
+            <!-- 3. 秀拉控制 -->
+            <div id="art-ctrl-seurat" class="hidden space-y-2">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <button onclick="stepSeurat()" class="flex-1 py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition flex items-center justify-center shadow">
+                  <i class="fa-solid fa-play mr-1.5"></i> 點描微粒演化 (Iteration +1)
+                </button>
+                <button id="btn-seurat-auto" onclick="toggleSeuratAuto()" class="py-2 px-3.5 rounded-xl bg-indigo-700 hover:bg-indigo-600 text-white font-bold text-xs transition flex items-center shadow">
+                  <i class="fa-solid fa-bolt mr-1.5"></i> 自動演化
+                </button>
+                <button onclick="resetSeurat()" class="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition" title="重置點陣">
+                  <i class="fa-solid fa-rotate-left"></i>
+                </button>
+              </div>
+              <div class="flex justify-between text-[11px] font-mono text-slate-400 pt-1">
+                <span>當前微粒迭代: <strong id="val-seurat-iter" class="text-purple-300">0</strong> / 100</span>
+                <span>長尾柯西排斥力: <span class="text-pink-300 font-bold">t-分布生效中</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右側：藝評家解說與降維幾何對照卡 -->
+        <div class="lg:col-span-5 space-y-4">
+          <div id="art-critique-card" class="bg-slate-900/90 rounded-2xl p-6 border border-blue-500/40 shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h4 id="art-critique-title" class="font-black text-lg text-blue-300 flex items-center">
+                <i class="fa-solid fa-cube mr-2"></i> 蒙德里安 × PCA：正交張力幾何
+              </h4>
+              <span id="art-critique-tag" class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                非監督式 · 線性投影
+              </span>
+            </div>
+
+            <div class="text-xs text-slate-300 leading-relaxed space-y-2">
+              <p id="art-critique-body">
+                <strong>畫派哲學：</strong>蒙德里安徹底拋棄具象輪廓（不理會任何標籤）。畫作中黑色的垂直與水平正交線條，象徵宇宙最純粹的秩序。滑動滑桿改變正交投影軸 $\theta$，紅黃藍色塊如同高維特徵能量，當軸向正對矩形對角線時，投影方差達到最大值！
+              </p>
+            </div>
+
+            <!-- 即時藝評對照條 -->
+            <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 text-xs">
+              <div class="flex justify-between text-slate-400">
+                <span>美學元素：</span>
+                <span id="art-stat-elem" class="text-slate-200 font-semibold">黑線正交網格、三原色塊面</span>
+              </div>
+              <div class="flex justify-between text-slate-400">
+                <span>數學核心：</span>
+                <span id="art-stat-math" class="text-blue-300 font-mono font-bold">$\max_w w^T \Sigma w$ (協方差最大特徵軸)</span>
+              </div>
+              <div class="flex justify-between text-slate-400">
+                <span>降維意義：</span>
+                <span id="art-stat-desc" class="text-slate-300">保留全局變異能量骨架</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 藝術格言看板 -->
+          <div class="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/20 text-xs text-indigo-200 flex items-start space-x-3">
+            <i class="fa-solid fa-quote-left text-amber-400 text-lg mt-0.5 shrink-0"></i>
+            <div>
+              <p id="art-quote-text" class="italic leading-relaxed font-serif">
+                「線條與色彩的平衡，並非複製自然，而是提煉整體能量的軸線。」
+              </p>
+              <span id="art-quote-author" class="block text-[11px] text-amber-300/80 font-mono mt-1 font-bold">
+                — Piet Mondrian（比喻 PCA 之全域特徵提取）
+              </span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 三大畫派靜態資訊圖表精美卡片 (快速橫向對照) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        
+        <!-- 卡片 1: PCA × 蒙德里安 -->
+        <div class="bg-slate-800/90 rounded-2xl p-5 border border-blue-500/40 flex flex-col justify-between hover:border-blue-400 transition shadow-lg">
+          <div>
+            <div class="flex justify-between items-center mb-3">
+              <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                PCA ＝ 蒙德里安冷抽象派
+              </span>
+              <i class="fa-solid fa-shapes text-blue-400"></i>
+            </div>
+            
+            <div class="w-full h-44 rounded-xl bg-slate-950 border border-slate-700 overflow-hidden relative mb-4 flex items-center justify-center">
+              <svg class="w-full h-full" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">
+                <rect x="10" y="10" width="80" height="70" fill="#ef4444" opacity="0.85"/>
+                <rect x="100" y="10" width="90" height="40" fill="#f8fafc" opacity="0.9"/>
+                <rect x="100" y="60" width="40" height="90" fill="#3b82f6" opacity="0.85"/>
+                <rect x="150" y="110" width="40" height="40" fill="#eab308" opacity="0.85"/>
+                <rect x="10" y="90" width="80" height="60" fill="#f1f5f9" opacity="0.95"/>
+                <line x1="10" y1="80" x2="190" y2="80" stroke="#000000" stroke-width="6"/>
+                <line x1="90" y1="10" x2="90" y2="150" stroke="#000000" stroke-width="6"/>
+                <line x1="140" y1="50" x2="140" y2="150" stroke="#000000" stroke-width="4"/>
+                <line x1="90" y1="50" x2="190" y2="50" stroke="#000000" stroke-width="4"/>
+                <line x1="140" y1="100" x2="190" y2="100" stroke="#000000" stroke-width="4"/>
+                <line x1="20" y1="140" x2="180" y2="20" stroke="#60a5fa" stroke-width="3" stroke-dasharray="4,4"/>
+                <circle cx="100" cy="80" r="4" fill="#60a5fa"/>
+                <text x="110" y="35" fill="#93c5fd" font-size="10" font-family="monospace" font-weight="bold">PC1 (最大變異軸)</text>
+              </svg>
+            </div>
+
+            <h4 class="font-bold text-base text-blue-200 mb-1">抽離主題，只留「正交能量骨架」</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              <strong>畫派哲學：</strong>畫家完全不在意畫布上畫的是什麼（無標籤）。只以垂直水平的黑線與大原色塊，尋找畫布延展張力最大的主軸，以最精簡的正交幾何維度保存全局變異數。
+            </p>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-700 text-[11px] text-slate-400 space-y-1">
+            <div class="flex justify-between"><span>目標：</span><span class="text-blue-300 font-semibold">整體能量（變異數）最大化</span></div>
+            <div class="flex justify-between"><span>線條：</span><span class="text-slate-200">互相正交垂直的直線系統</span></div>
+          </div>
+        </div>
+
+        <!-- 卡片 2: LDA × 馬蒂斯 -->
+        <div class="bg-slate-800/90 rounded-2xl p-5 border border-emerald-500/40 flex flex-col justify-between hover:border-emerald-400 transition shadow-lg">
+          <div>
+            <div class="flex justify-between items-center mb-3">
+              <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                LDA ＝ 馬蒂斯野獸派剪紙
+              </span>
+              <i class="fa-solid fa-scissors text-emerald-400"></i>
+            </div>
+            
+            <div class="w-full h-44 rounded-xl bg-slate-950 border border-slate-700 overflow-hidden relative mb-4 flex items-center justify-center">
+              <svg class="w-full h-full" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">
+                <rect x="85" y="0" width="30" height="160" fill="#0f172a" opacity="0.8"/>
+                <line x1="100" y1="10" x2="100" y2="150" stroke="#34d399" stroke-width="2.5" stroke-dasharray="5,3"/>
+                <path d="M 30,30 Q 55,20 60,45 Q 65,70 40,75 Q 20,80 25,50 Z" fill="#38bdf8" opacity="0.85"/>
+                <path d="M 45,85 Q 65,80 70,105 Q 65,130 35,120 Q 25,100 45,85 Z" fill="#0284c7" opacity="0.9"/>
+                <path d="M 140,35 Q 165,25 175,55 Q 185,85 155,80 Q 130,85 140,35 Z" fill="#f43f5e" opacity="0.85"/>
+                <path d="M 135,95 Q 165,90 170,120 Q 155,145 130,135 Q 115,115 135,95 Z" fill="#e11d48" opacity="0.9"/>
+                <text x="100" y="85" fill="#34d399" font-size="9" font-family="sans-serif" font-weight="bold" text-anchor="middle">類間分離留白</text>
+                <text x="50" y="145" fill="#7dd3fc" font-size="9" font-family="sans-serif" text-anchor="middle">同類緊縮 $S_W$</text>
+                <text x="150" y="145" fill="#fda4af" font-size="9" font-family="sans-serif" text-anchor="middle">同類緊縮 $S_W$</text>
+              </svg>
+            </div>
+
+            <h4 class="font-bold text-base text-emerald-200 mb-1">色彩強烈對撞，撕開「純色留白界限」</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              <strong>畫派哲學：</strong>極端在乎「類別標籤」。畫家手持利剪，規定紅色剪紙必須緊密捏合成一團（類內散布最小），並在紅與藍之間刻意拉出巨大的白色鴻溝（類間距離最大），一眼立判。
+            </p>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-700 text-[11px] text-slate-400 space-y-1">
+            <div class="flex justify-between"><span>目標：</span><span class="text-emerald-300 font-semibold">類別可分度最大（Fisher 準則）</span></div>
+            <div class="flex justify-between"><span>線條：</span><span class="text-slate-200">最大投影間隔的判別法向量</span></div>
+          </div>
+        </div>
+
+        <!-- 卡片 3: t-SNE × 秀拉與康丁斯基 -->
+        <div class="bg-slate-800/90 rounded-2xl p-5 border border-purple-500/40 flex flex-col justify-between hover:border-purple-400 transition shadow-lg">
+          <div>
+            <div class="flex justify-between items-center mb-3">
+              <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                t-SNE ＝ 秀拉點描派與流體群島
+              </span>
+              <i class="fa-solid fa-droplet text-purple-400"></i>
+            </div>
+            
+            <div class="w-full h-44 rounded-xl bg-slate-950 border border-slate-700 overflow-hidden relative mb-4 flex items-center justify-center">
+              <svg class="w-full h-full" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <radialGradient id="gradCluster1" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#818cf8" stop-opacity="0.4"/>
+                    <stop offset="100%" stop-color="#818cf8" stop-opacity="0"/>
+                  </radialGradient>
+                  <radialGradient id="gradCluster2" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#f472b6" stop-opacity="0.4"/>
+                    <stop offset="100%" stop-color="#f472b6" stop-opacity="0"/>
+                  </radialGradient>
+                </defs>
+                <circle cx="65" cy="80" r="45" fill="url(#gradCluster1)"/>
+                <circle cx="145" cy="80" r="35" fill="url(#gradCluster2)"/>
+                <circle cx="65" cy="80" r="3" fill="#c084fc"/>
+                <circle cx="55" cy="70" r="2.5" fill="#a855f7"/>
+                <circle cx="75" cy="72" r="2.8" fill="#818cf8"/>
+                <circle cx="70" cy="90" r="2.4" fill="#6366f1"/>
+                <circle cx="50" cy="85" r="2" fill="#9333ea"/>
+                <circle cx="80" cy="82" r="2.2" fill="#c084fc"/>
+                <circle cx="60" cy="95" r="2.5" fill="#a855f7"/>
+                <circle cx="145" cy="80" r="3" fill="#f43f5e"/>
+                <circle cx="138" cy="72" r="2.2" fill="#fb7185"/>
+                <circle cx="152" cy="75" r="2.6" fill="#ec4899"/>
+                <circle cx="140" cy="88" r="2" fill="#f43f5e"/>
+                <circle cx="155" cy="86" r="2.4" fill="#f43f5e"/>
+                <path d="M 85,80 C 100,60 115,60 130,78" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="3,3"/>
+                <text x="110" y="55" fill="#e9d5ff" font-size="8" font-family="sans-serif" text-anchor="middle">長尾排斥 (t-分布)</text>
+                <text x="65" y="138" fill="#c084fc" font-size="9" font-family="sans-serif" text-anchor="middle">微觀鄰域咬合 ($p_{ij} \approx q_{ij}$)</text>
+              </svg>
+            </div>
+
+            <h4 class="font-bold text-base text-purple-200 mb-1">打破筆直投影，織造「有機局部群島」</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              <strong>畫派哲學：</strong>拒絕任何僵硬筆直的投影軸！像秀拉的點描畫或互相推擠的油墨滴——微觀點點緊密依偎咬合，中遠距離則被長尾排斥力推向四方，演化成群島般的有機流形。
+            </p>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-700 text-[11px] text-slate-400 space-y-1">
+            <div class="flex justify-between"><span>目標：</span><span class="text-purple-300 font-semibold">局部鄰域拓撲保持（KL 散度最小）</span></div>
+            <div class="flex justify-between"><span>線條：</span><span class="text-slate-200">非線性自由流動嵌入（無固定軸）</span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- AI 資訊圖表生成結果展示區 (動態呈現) -->
+      <div id="ai-infographic-result" class="mt-6 hidden">
+        <div class="p-5 rounded-2xl bg-slate-950/90 border border-amber-500/50 relative">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center space-x-2">
+              <i class="fa-solid fa-robot text-amber-400"></i>
+              <span class="text-xs font-bold text-amber-300">Gemini 3.1 Flash Image 生成藝術風格比喻資訊圖</span>
+            </div>
+            <button onclick="document.getElementById('ai-infographic-result').classList.add('hidden')" class="text-slate-400 hover:text-white text-xs">
+              <i class="fa-solid fa-xmark"></i> 關閉
+            </button>
+          </div>
+          <div id="ai-infographic-loader" class="flex flex-col items-center justify-center py-12 text-slate-300">
+            <i class="fa-solid fa-circle-notch fa-spin text-3xl text-amber-400 mb-3"></i>
+            <span class="text-xs font-mono">Gemini 3.1 Flash Image 正在構思繪製抽象畫風降維概念海報中，請稍候...</span>
+          </div>
+          <div id="ai-infographic-img-container" class="hidden flex flex-col items-center">
+            <img id="ai-infographic-img" src="" alt="AI Infographic Poster" class="max-w-full max-h-[500px] rounded-lg shadow-2xl border border-slate-700 object-contain"/>
+            <p class="mt-2 text-[11px] text-slate-400 font-mono text-center">由 Gemini 3.1 Flash Image 即時生成之 PCA (Mondrian) vs LDA (Matisse) vs t-SNE (Seurat) 藝術風格資訊海報</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07. 工業上應用 -->
+    <section class="bg-white rounded-2xl shadow-md p-6 lg:p-8">
+      <div class="flex items-center space-x-3 mb-6">
+        <div class="w-8 h-8 rounded-lg bg-teal-100 text-teal-600 flex items-center justify-center font-bold">
+          <i class="fa-solid fa-industry"></i>
+        </div>
+        <h3 class="text-xl sm:text-2xl font-black text-slate-900">07. 工業實務落地落地與場景精析</h3>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs sm:text-sm text-slate-600">
+        <div class="p-5 rounded-2xl border border-blue-200 bg-blue-50/40">
+          <h4 class="font-bold text-blue-900 text-base mb-2 flex items-center">
+            <i class="fa-solid fa-microchip mr-2 text-blue-600"></i> PCA：晶圓感測降噪與金融高頻
+          </h4>
+          <ul class="space-y-2 list-disc list-inside">
+            <li><strong>半導體機台感測器共線性消除：</strong>蝕刻與薄膜沉積製程中，數百個高相關溫度、壓力感測器透過 PCA 解耦為前 5 個正交主成分，避免多重共線性並作為 SPC 統計製程監控特徵。</li>
+            <li><strong>量化金融因子模型：</strong>將上千檔股票報酬率矩陣分解為市場因子、行業因子等前幾個主要正交能量特徵。</li>
+          </ul>
+        </div>
+
+        <div class="p-5 rounded-2xl border border-emerald-200 bg-emerald-50/40">
+          <h4 class="font-bold text-emerald-900 text-base mb-2 flex items-center">
+            <i class="fa-solid fa-kit-medical mr-2 text-emerald-600"></i> LDA：瑕疵晶片分類與疾病診斷
+          </h4>
+          <ul class="space-y-2 list-disc list-inside">
+            <li><strong>晶圓缺陷圖譜 (Defect Pattern) 分類：</strong>已知標籤（如 Scratch 刮痕、Ring 環狀、Donut 甜甜圈），LDA 尋找最佳鑑別超平面，將高維光學檢測特徵投影後直接判別。</li>
+            <li><strong>血液生化標記多重疾病診斷：</strong>依據多組血液生化檢驗數值，最大化不同病患組別（如糖尿病前期、確診組）的分離間距。</li>
+          </ul>
+        </div>
+
+        <div class="p-5 rounded-2xl border border-purple-200 bg-purple-50/40">
+          <h4 class="font-bold text-purple-900 text-base mb-2 flex items-center">
+            <i class="fa-solid fa-dna mr-2 text-purple-600"></i> t-SNE：單細胞定序與 LLM 空間審計
+          </h4>
+          <ul class="space-y-2 list-disc list-inside">
+            <li><strong>單細胞 RNA 定序 (scRNA-seq)：</strong>20,000 個基因表現量的高維曲面，利用 t-SNE 展開至 2D 畫布，清晰呈現未知的幹細胞分化亞型群島。</li>
+            <li><strong>LLM 文本嵌入空間 (Embedding Space) 檢查：</strong>審查 RAG 知識庫數千維向量是否聚合成合理主題簇、排查語意孤島與幻覺邊界。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 08. 理論簡介 & 09. 數學推導 -->
+    <section id="math" class="bg-white rounded-2xl shadow-md p-6 lg:p-8">
+      <div class="flex items-center space-x-3 mb-6">
+        <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+          <i class="fa-solid fa-square-root-variable"></i>
+        </div>
+        <h3 class="text-xl sm:text-2xl font-black text-slate-900">08. 理論簡介 & 09. 核心數學嚴密推導</h3>
+      </div>
+
+      <!-- Tab 標籤切換數學推導 -->
+      <div class="flex border-b border-slate-200 mb-6 space-x-8 text-sm overflow-x-auto">
+        <button onclick="switchMathTab('pca-math')" id="pca-tab-btn" class="py-2.5 px-2 tab-active flex items-center space-x-2 shrink-0">
+          <i class="fa-solid fa-chart-line text-blue-600"></i> <span>PCA 變異數最大化推導</span>
+        </button>
+        <button onclick="switchMathTab('lda-math')" id="lda-tab-btn" class="py-2.5 px-2 text-slate-500 hover:text-slate-800 flex items-center space-x-2 shrink-0">
+          <i class="fa-solid fa-compress-arrows-alt text-emerald-600"></i> <span>LDA 廣義瑞利商推導</span>
+        </button>
+        <button onclick="switchMathTab('tsne-math')" id="tsne-tab-btn" class="py-2.5 px-2 text-slate-500 hover:text-slate-800 flex items-center space-x-2 shrink-0">
+          <i class="fa-solid fa-infinity text-purple-600"></i> <span>t-SNE KL 散度與梯度推導</span>
+        </button>
+      </div>
+
+      <!-- PCA 數學推導內容 -->
+      <div id="pca-math" class="space-y-4 text-xs sm:text-sm text-slate-600 leading-relaxed">
+        <h4 class="text-base sm:text-lg font-bold text-blue-900">PCA：以拉格朗日乘子法求解變異數最大化</h4>
+        <p>
+          設中心化（零均值）後的資料矩陣為 $X \in \mathbb{R}^{n \times d}$，樣本協方差矩陣為 $\Sigma = \frac{1}{n} X^T X$。尋找一個單位投影向量 $w \in \mathbb{R}^d$ ($w^T w = 1$)，使得投影後的純量標量 $z_i = w^T x_i$ 之樣本變異數最大。
+        </p>
+        <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 overflow-x-auto space-y-3 font-mono text-slate-800">
+          <p class="font-sans font-bold text-slate-900">1. 目標函數：</p>
+          $$\sigma^2_z = \frac{1}{n} \sum_{i=1}^n (w^T x_i)^2 = \frac{1}{n} w^T \left( \sum_{i=1}^n x_i x_i^T \right) w = w^T \Sigma w$$
+          <p class="font-sans font-bold text-slate-900">2. 建立帶有限制條件的拉格朗日函數：</p>
+          $$\mathcal{L}(w, \lambda) = w^T \Sigma w - \lambda (w^T w - 1)$$
+          <p class="font-sans font-bold text-slate-900">3. 對 $w$ 微分並令其為零：</p>
+          $$\frac{\partial \mathcal{L}}{\partial w} = 2 \Sigma w - 2 \lambda w = 0 \implies \Sigma w = \lambda w$$
+          <p class="font-sans font-bold text-slate-900">4. 結論：</p>
+          $$w^T \Sigma w = w^T (\lambda w) = \lambda (w^T w) = \lambda$$
+          <p class="font-sans text-xs text-slate-600">
+            欲最大化變異數，投影方向 $w$ 必須是協方差矩陣 $\Sigma$ 的<strong>特徵向量</strong>，且投影變異數大小正好等於對應的<strong>特徵值 $\lambda$</strong>。取前 $k$ 個最大特徵值對應的正交特徵向量，即構成降維矩陣 $W = [w_1, w_2, \dots, w_k]$。
+          </p>
+        </div>
+      </div>
+
+      <!-- LDA 數學推導內容 -->
+      <div id="lda-math" class="space-y-4 text-xs sm:text-sm text-slate-600 leading-relaxed hidden">
+        <h4 class="text-base sm:text-lg font-bold text-emerald-900">LDA：Fisher 判別準則與廣義特徵值問題</h4>
+        <p>
+          以二分類為例，類別 $C_1, C_2$ 的樣本均值為 $\mu_1, \mu_2$。定義類內散布矩陣 $S_W$ 與類間散布矩陣 $S_B$。
+        </p>
+        <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 overflow-x-auto space-y-3 font-mono text-slate-800">
+          <p class="font-sans font-bold text-slate-900">1. 散布矩陣定義：</p>
+          $$S_W = \sum_{x \in C_1} (x - \mu_1)(x - \mu_1)^T + \sum_{x \in C_2} (x - \mu_2)(x - \mu_2)^T$$
+          $$S_B = (\mu_1 - \mu_2)(\mu_1 - \mu_2)^T$$
+          <p class="font-sans font-bold text-slate-900">2. Fisher 準則（廣義瑞利商 Generalized Rayleigh Quotient）：</p>
+          $$J(w) = \frac{w^T S_B w}{w^T S_W w}$$
+          <p class="font-sans font-bold text-slate-900">3. 對 $w$ 求導並令其為零：</p>
+          $$\frac{\partial J}{\partial w} = \frac{2 S_B w (w^T S_W w) - 2 S_W w (w^T S_B w)}{(w^T S_W w)^2} = 0$$
+          $$S_B w (w^T S_W w) = S_W w (w^T S_B w) \implies S_W^{-1} S_B w = \left( \frac{w^T S_B w}{w^T S_W w} \right) w = \lambda w$$
+          <p class="font-sans text-xs text-slate-600">
+            因此最優投影軸 $w$ 是矩陣 $S_W^{-1} S_B$ 的特徵向量。在多類別情境下，若類別數為 $C$，則 $S_B$ 的秩最多為 $C-1$，故<strong>最多僅能解出 $C-1$ 個非零特徵值</strong>，這正是 LDA 最多只能降至 $C-1$ 維的根本數學原因！
+          </p>
+        </div>
+      </div>
+
+      <!-- t-SNE 數學推導內容 -->
+      <div id="tsne-math" class="space-y-4 text-xs sm:text-sm text-slate-600 leading-relaxed hidden">
+        <h4 class="text-base sm:text-lg font-bold text-purple-900">t-SNE：高維高斯分布、低維 Student-t 與 KL 散度梯度</h4>
+        <p>
+          t-SNE 將距離轉化為條件機率，以對稱聯合機率分布衡量樣本點之間的鄰近相似度。
+        </p>
+        <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 overflow-x-auto space-y-3 font-mono text-slate-800">
+          <p class="font-sans font-bold text-slate-900">1. 高維空間相似度（對稱高斯機率）：</p>
+          $$p_{j|i} = \frac{\exp(-\|x_i - x_j\|^2 / 2\sigma_i^2)}{\sum_{k \neq i} \exp(-\|x_i - x_k\|^2 / 2\sigma_i^2)}, \quad p_{ij} = \frac{p_{j|i} + p_{i|j}}{2n}$$
+          <p class="font-sans font-bold text-slate-900">2. 低維空間相似度（自由度為 1 之 Student-t 分布 / 柯西分布）：</p>
+          $$q_{ij} = \frac{(1 + \|y_i - y_j\|^2)^{-1}}{\sum_{k} \sum_{l \neq k} (1 + \|y_k - y_l\|^2)^{-1}}, \quad q_{ii} = 0$$
+          <p class="font-sans font-bold text-slate-900">3. 損失函數與梯度下降公式：</p>
+          $$KL(P || Q) = \sum_{i \neq j} p_{ij} \log \frac{p_{ij}}{q_{ij}}$$
+          $$\frac{\partial KL}{\partial y_i} = 4 \sum_{j} (p_{ij} - q_{ij})(y_i - y_j)(1 + \|y_i - y_j\|^2)^{-1}$$
+          <p class="font-sans text-xs text-slate-600">
+            梯度具有彈簧力學直觀：當 $p_{ij} > q_{ij}$（高維親近但低維太遠）產生引力；當 $p_{ij} < q_{ij}$ 產生排斥力。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03. IPAS AI 經濟部證照考題互動檢驗 -->
+    <section id="ipas" class="bg-slate-900 text-white rounded-3xl shadow-xl p-6 lg:p-8 border border-slate-800">
+      <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-bold">
+            <i class="fa-solid fa-graduation-cap text-lg"></i>
+          </div>
+          <div>
+            <h3 class="text-xl sm:text-2xl font-bold">03. 經濟部 IPAS AI 應用工程師考題實戰</h3>
+            <p class="text-xs text-slate-400">涵蓋演算法維度限制、監督屬性與適用限制之精選考點</p>
+          </div>
+        </div>
+        <span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs px-3 py-1 rounded-full font-mono font-semibold">
+          IPAS 模擬測驗
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 題目 1 -->
+        <div class="bg-slate-800/90 rounded-2xl p-5 border border-slate-700 flex flex-col justify-between">
+          <div>
+            <span class="text-xs font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">【題 1 · 核心觀念題】</span>
+            <p class="mt-2 text-xs sm:text-sm text-slate-200 leading-relaxed">
+              某製造工廠有 3 種不同類型的產品瑕疵（類別數 $C=3$），工程師擷取了 50 個感測器特徵，欲使用<strong>線性判別分析 (LDA)</strong> 進行降維以進行視覺化或分類。請問 LDA 理論上降維後的<strong>最大維度</strong>是多少？
+            </p>
+            <div class="mt-4 space-y-2 text-xs sm:text-sm" id="q1-options">
+              <button onclick="checkQuiz(1, 'A')" class="w-full text-left p-2.5 rounded-lg bg-slate-700/60 hover:bg-slate-700 transition flex items-center">
+                <span class="font-mono mr-2 text-indigo-400 font-bold">A.</span> 50 維
+              </button>
+              <button onclick="checkQuiz(1, 'B')" class="w-full text-left p-2.5 rounded-lg bg-slate-700/60 hover:bg-slate-700 transition flex items-center">
+                <span class="font-mono mr-2 text-indigo-400 font-bold">B.</span> 3 維
+              </button>
+              <button onclick="checkQuiz(1, 'C')" class="w-full text-left p-2.5 rounded-lg bg-slate-700/60 hover:bg-slate-700 transition flex items-center">
+                <span class="font-mono mr-2 text-indigo-400 font-bold">C.</span> 2 維
+              </button>
+              <button onclick="checkQuiz(1, 'D')" class="w-full text-left p-2.5 rounded-lg bg-slate-700/60 hover:bg-slate-700 transition flex items-center">
+                <span class="font-mono mr-2 text-indigo-400 font-bold">D.</span> 任意維度皆可
+              </button>
+            </div>
+          </div>
+          <div id="q1-ans" class="mt-3 text-xs hidden p-3 rounded-lg"></div>
+        </div>
+
+        <!-- 題目 2 -->
+        <div class="bg-slate-800/90 rounded-2xl p-5 border border-slate-700 flex flex-col justify-between">
+          <div>
+            <span class="text-xs font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">【題 2 · 實務架構題】</span>
+            <p class="mt-2 text-xs sm:text-sm text-slate-200 leading-relaxed">
+              在訓練好機器學習管線 (ML Pipeline) 後，需要將<strong>即時線上串流進來的新測試樣本 (Inference Data)</strong> 進行降維並送入模型。下列哪一個降維演算法<strong>無法</strong>直接使用類似 `transform()` 方法對新樣本進行降維？
+            </p>
+            <div class="mt-4 space-y-2 text-xs sm:text-sm" id="q2-options">
+              <button onclick="checkQuiz(2, 'A')" class="w-full text-left p-2.5 rounded-lg bg-slate-700/60 hover:bg-slate-700 transition flex items-center">
+                <span class="font-mono mr-2 text-indigo-400 font-bold">A.</span> PCA (主成分分析)
+              </button>
+              <button onclick="checkQuiz(2, 'B')" class="w-full text-left p-2.5 rounded-lg bg-slate-700/60 hover:bg-slate-700 transition flex items-center">
+                <span class="font-mono mr-2 text-indigo-400 font-bold">B.</span> LDA (線性判別分析)
+              </button>
+              <button onclick="checkQuiz(2, 'C')" class="w-full text-left p-2.5 rounded-lg bg-slate-700/60 hover:bg-slate-700 transition flex items-center">
+                <span class="font-mono mr-2 text-indigo-400 font-bold">C.</span> t-SNE (t-分布隨機鄰居嵌入)
+              </button>
+              <button onclick="checkQuiz(2, 'D')" class="w-full text-left p-2.5 rounded-lg bg-slate-700/60 hover:bg-slate-700 transition flex items-center">
+                <span class="font-mono mr-2 text-indigo-400 font-bold">D.</span> 因子分析 (Factor Analysis)
+              </button>
+            </div>
+          </div>
+          <div id="q2-ans" class="mt-3 text-xs hidden p-3 rounded-lg"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 & 12: 互動式降維實驗室與 Step-by-Step / 一鍵模擬 -->
+    <section id="simulator" class="bg-white rounded-3xl shadow-xl p-6 lg:p-8 border border-slate-200">
+      <div class="flex flex-wrap items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
+            10. 領域範疇互動體驗 & 12. 演算法動態模擬
+          </span>
+          <h3 class="text-xl sm:text-2xl font-black text-slate-900 mt-1">降維互動實驗室：幾何投影 vs 非線性流形演化</h3>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button id="btn-auto-sim" onclick="startAutoSim()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow transition flex items-center">
+            <i class="fa-solid fa-bolt mr-2"></i> 一鍵自動模擬
+          </button>
+          <button id="btn-step-sim" onclick="stepSimulation()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-semibold rounded-xl border transition flex items-center">
+            <i class="fa-solid fa-forward-step mr-1.5"></i> 單步執行
+          </button>
+          <button onclick="resetDataset()" class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition" title="重設資料">
+            <i class="fa-solid fa-arrow-rotate-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- 控制列 -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-2xl mb-6 border border-slate-200/60">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">1. 選擇資料集形態</label>
+          <select id="sim-dataset-select" onchange="resetDataset()" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 bg-white border">
+            <option value="gaussian_overlap">類別交疊高斯群 (考驗 PCA vs LDA 辨別力)</option>
+            <option value="two_moons">雙月灣非線性流形 (考驗線性 vs t-SNE)</option>
+            <option value="llm_embeddings">LLM 詞嵌入多主題高維空間 (10D 投影)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">2. 降維演算法</label>
+          <select id="sim-algo-select" onchange="changeAlgo()" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 bg-white border font-bold text-indigo-900">
+            <option value="pca">PCA (最大化變異數投影)</option>
+            <option value="lda">LDA (最大化類間/最小化類內)</option>
+            <option value="tsne">t-SNE (梯度下降非線性嵌入)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">
+            t-SNE 困惑度 (Perplexity): <span id="val-perp" class="text-indigo-600 font-mono font-bold">15</span>
+          </label>
+          <input type="range" id="sim-perp" min="5" max="40" value="15" oninput="document.getElementById('val-perp').innerText=this.value" class="w-full accent-indigo-600">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">當前進度 / 狀態</label>
+          <div class="flex items-center h-9 text-xs font-mono font-semibold px-3 rounded-lg bg-white border border-slate-200 text-slate-700">
+            <span id="sim-status">準備就緒 (點擊模擬或單步)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 畫布區：左邊為原始空間 / 投影軸，右邊為降維後空間 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="flex flex-col items-center">
+          <div class="w-full flex justify-between items-center mb-2 px-1">
+            <span class="text-xs font-bold text-slate-700 flex items-center">
+              <span class="w-2.5 h-2.5 bg-blue-500 rounded-full mr-1.5"></span> 原始空間分布 (與最佳投影軸線)
+            </span>
+            <span id="canvas1-desc" class="text-xs text-slate-500">含真實類別標籤</span>
+          </div>
+          <div class="relative w-full aspect-square bg-slate-950 rounded-2xl overflow-hidden shadow-inner border border-slate-800">
+            <canvas id="canvas-raw" class="w-full h-full"></canvas>
+          </div>
+        </div>
+
+        <div class="flex flex-col items-center">
+          <div class="w-full flex justify-between items-center mb-2 px-1">
+            <span class="text-xs font-bold text-slate-700 flex items-center">
+              <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full mr-1.5"></span> 降維映射結果 (1D 軸或 2D 嵌入平面)
+            </span>
+            <span id="canvas2-desc" class="text-xs text-slate-500">投影轉換座標</span>
+          </div>
+          <div class="relative w-full aspect-square bg-slate-950 rounded-2xl overflow-hidden shadow-inner border border-slate-800">
+            <canvas id="canvas-proj" class="w-full h-full"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 降維分析解釋條 -->
+      <div id="sim-insight" class="mt-6 p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200 text-xs sm:text-sm text-indigo-950 flex items-start space-x-3">
+        <i class="fa-solid fa-lightbulb text-amber-500 text-lg mt-0.5"></i>
+        <div>
+          <h4 class="font-bold">演算法行為即時解析：</h4>
+          <p id="insight-text" class="mt-1 text-slate-700 leading-relaxed">
+            在「類別交疊高斯群」中，PCA 尋找資料整體變異最大的方向，但由於兩群斜向分布，PCA 投影後會使藍紅兩類重疊在一起；而 LDA 利用標籤引導，找到了垂直於群間距離的最佳分離軸，使兩類投影後完全分開！
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. 四大特定領域範疇應用細節 -->
+    <section class="bg-white rounded-3xl shadow-md p-6 lg:p-8">
+      <div class="flex items-center space-x-3 mb-6">
+        <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
+          <i class="fa-solid fa-cubes-stacked"></i>
+        </div>
+        <h3 class="text-xl sm:text-2xl font-black text-slate-900">10. 四大機器學習範疇中之應用深潛</h3>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="p-5 rounded-2xl border border-slate-200 bg-slate-50/70">
+          <h4 class="font-bold text-slate-900 flex items-center mb-2 text-sm sm:text-base">
+            <i class="fa-solid fa-robot text-blue-600 mr-2"></i> 傳統機器學習 (Machine Learning)
+          </h4>
+          <p class="text-xs text-slate-600 leading-relaxed mb-3">
+            在高維特徵工程中，「維度災難」會導致距離度量失效與過擬合。
+          </p>
+          <ul class="text-xs text-slate-700 space-y-1.5 list-disc list-inside">
+            <li><strong>PCA：</strong>消除特徵間多重共線性，提升線性模型泛化速度。</li>
+            <li><strong>LDA：</strong>直接作為 Bayes 最適線性分類器，具閉式解析解。</li>
+          </ul>
+        </div>
+
+        <div class="p-5 rounded-2xl border border-slate-200 bg-slate-50/70">
+          <h4 class="font-bold text-slate-900 flex items-center mb-2 text-sm sm:text-base">
+            <i class="fa-solid fa-network-wired text-emerald-600 mr-2"></i> 深度學習 (Deep Learning)
+          </h4>
+          <p class="text-xs text-slate-600 leading-relaxed mb-3">
+            CNN 或 Transformer 隱藏層表徵（Latent Representation）通常是數百至數千維稠密向量。
+          </p>
+          <ul class="text-xs text-slate-700 space-y-1.5 list-disc list-inside">
+            <li><strong>t-SNE：</strong>視覺化瓶頸層特徵圖，檢查神經網路是否正確分群。</li>
+            <li><strong>PCA：</strong>作為神經風格遷移中的白化濾波或權重低秩矩陣分解（LoRA 原理）。</li>
+          </ul>
+        </div>
+
+        <div class="p-5 rounded-2xl border border-slate-200 bg-slate-50/70">
+          <h4 class="font-bold text-slate-900 flex items-center mb-2 text-sm sm:text-base">
+            <i class="fa-solid fa-gamepad text-purple-600 mr-2"></i> 強化學習 (Reinforcement Learning)
+          </h4>
+          <p class="text-xs text-slate-600 leading-relaxed mb-3">
+            RL 智能體面臨連續環境的巨量狀態空間爆炸。
+          </p>
+          <ul class="text-xs text-slate-700 space-y-1.5 list-disc list-inside">
+            <li><strong>t-SNE 軌跡視覺化：</strong>分析 DQN 狀態價值網絡是否能有效辨識「危險」與「安全」狀態。</li>
+            <li><strong>PCA 狀態壓縮：</strong>在邊緣嵌入式晶片上即時壓縮高維感測訊號，加速 Policy 決策。</li>
+          </ul>
+        </div>
+
+        <div class="p-5 rounded-2xl border border-slate-200 bg-slate-50/70">
+          <h4 class="font-bold text-slate-900 flex items-center mb-2 text-sm sm:text-base">
+            <i class="fa-solid fa-brain text-rose-600 mr-2"></i> LLM 與檢索增強生成 (LLM & RAG)
+          </h4>
+          <p class="text-xs text-slate-600 leading-relaxed mb-3">
+            當代 Embedding 模型（如 1536 或 3072 維）維度極高。
+          </p>
+          <ul class="text-xs text-slate-700 space-y-1.5 list-disc list-inside">
+            <li><strong>向量資料庫除錯：</strong>利用 t-SNE 繪製知識庫 Chunk 向量，排查語意孤島與聚類不均。</li>
+            <li><strong>Matryoshka 階層表徵 (MRL)：</strong>以類似 PCA 階層能量概念，保留前少數維度大幅節省儲存。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11. Python / PyTorch 實作程式碼 -->
+    <section id="code" class="bg-white rounded-3xl shadow-md p-6 lg:p-8">
+      <div class="flex items-center space-x-3 mb-6">
+        <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+          <i class="fa-brands fa-python text-lg"></i>
+        </div>
+        <h3 class="text-xl sm:text-2xl font-black text-slate-900">11. Python (Scikit-Learn) 與 PyTorch 向量化實作</h3>
+      </div>
+
+      <div class="flex border-b border-slate-200 mb-4 space-x-6 text-xs sm:text-sm">
+        <button onclick="switchCodeTab('sklearn-code')" id="sklearn-tab-btn" class="py-2.5 px-1 tab-active font-semibold">
+          Scikit-Learn 標準工業實作 (PCA / LDA / t-SNE)
+        </button>
+        <button onclick="switchCodeTab('pytorch-code')" id="pytorch-tab-btn" class="py-2.5 px-1 text-slate-500 hover:text-slate-800 font-semibold">
+          PyTorch 原生 GPU 矩陣分解 PCA
+        </button>
+      </div>
+
+      <!-- Scikit-Learn 區塊 -->
+      <div id="sklearn-code" class="relative">
+        <pre class="bg-slate-900 text-slate-100 p-5 rounded-2xl overflow-x-auto text-xs code-block leading-relaxed"><code>import numpy as np
+from sklearn.decomposition import PCA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
+from sklearn.manifold import TSNE
+from sklearn.datasets import make_classification
+
+# 1. 產生模擬數據 (1000 樣本, 20 特徵, 3 類別)
+X, y = make_classification(n_samples=1000, n_features=20, n_classes=3, 
+                           n_informative=10, random_state=42)
+
+# --- 2. PCA (非監督式) ---
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X) # 支援 fit_transform
+print(f"PCA 投影後形狀: {X_pca.shape}")
+print(f"各主成分解釋變異數比例: {pca.explained_variance_ratio_}")
+# 支援新資料推理:
+# new_pca = pca.transform(X_new)
+
+# --- 3. LDA (監督式) ---
+# 注意：LDA 降維維度 n_components 必須 <= n_classes - 1 (此處類別=3，故最多降至 2 維)
+lda = LDA(n_components=2)
+X_lda = lda.fit_transform(X, y) # 必須傳入標籤 y
+print(f"LDA 投影後形狀: {X_lda.shape}")
+# 支援新資料推理:
+# new_lda = lda.transform(X_new)
+
+# --- 4. t-SNE (非監督式非線性流形) ---
+# 注意：perplexity 建議設為 5~50 之間；n_iter 通常在 1000 次左右
+tsne = TSNE(n_components=2, perplexity=30.0, max_iter=1000, random_state=42)
+X_tsne = tsne.fit_transform(X)
+print(f"t-SNE 降維後形狀: {X_tsne.shape}")
+# 警告：t-SNE 不提供 transform(X_new) 方法！新增樣本必須與舊資料一起重新 fit_transform。</code></pre>
+      </div>
+
+      <!-- PyTorch 區塊 -->
+      <div id="pytorch-code" class="relative hidden">
+        <pre class="bg-slate-900 text-slate-100 p-5 rounded-2xl overflow-x-auto text-xs code-block leading-relaxed"><code>import torch
+
+def pytorch_pca(X: torch.Tensor, k: int = 2):
+    """
+    純 PyTorch SVD 實作 GPU 加速 PCA
+    X: (n_samples, n_features)
+    k: 目標維度
+    """
+    # 1. 中心化 (Zero-center)
+    X_mean = torch.mean(X, dim=0)
+    X_centered = X - X_mean
+    
+    # 2. 奇異值分解 (SVD: X = U S V^T)
+    # V 的前 k 欄即為協方差矩陣的前 k 個特徵向量
+    U, S, V = torch.linalg.svd(X_centered, full_matrices=False)
+    
+    # 3. 投影至前 k 個主成分方向
+    W = V[:k, :].T  # (d, k)
+    X_projected = torch.mm(X_centered, W) # (n, k)
+    
+    # 4. 計算各主成分解釋變異數比例
+    explained_variance = (S ** 2) / (X.size(0) - 1)
+    explained_variance_ratio = explained_variance[:k] / explained_variance.sum()
+    
+    return X_projected, W, explained_variance_ratio
+
+# 示範於 GPU 執行 (若支援)
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+X_tensor = torch.randn(10000, 128, device=device)
+X_proj, W, evr = pytorch_pca(X_tensor, k=2)
+print(f"PyTorch 降維完成，輸出形狀: {X_proj.shape} on {device}")
+print(f"前兩軸解釋變異數比率: {evr.cpu().numpy()}")</code></pre>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 頁腳 -->
+  <footer class="bg-slate-900 text-slate-400 py-6 text-center text-xs border-t border-slate-800 mt-12">
+    <div class="max-w-7xl mx-auto px-4">
+      <p class="font-medium text-slate-300">PCA · LDA · t-SNE 降維全解演算法互動教學平台</p>
+      <p class="text-slate-500 mt-1">支援 KaTeX 完整數學推導 ｜ HTML5 Canvas 即時動態模擬 ｜ 高腳杯與抽象畫派雙重幾何譬喻 ｜ 深度洞察矩陣</p>
+    </div>
+  </footer>
+
+  <!-- 互動腳本邏輯 -->
+  <script>
+    // 1. Tab 切換邏輯
+    function switchMathTab(tabId) {
+      ['pca-math', 'lda-math', 'tsne-math'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+      ['pca-tab-btn', 'lda-tab-btn', 'tsne-tab-btn'].forEach(id => {
+        document.getElementById(id).classList.remove('tab-active');
+        document.getElementById(id).classList.add('text-slate-500');
+      });
+      document.getElementById(tabId).classList.remove('hidden');
+      const btn = document.getElementById(tabId.split('-')[0] + '-tab-btn');
+      btn.classList.add('tab-active');
+      btn.classList.remove('text-slate-500');
+    }
+
+    function switchCodeTab(tabId) {
+      document.getElementById('sklearn-code').classList.add('hidden');
+      document.getElementById('pytorch-code').classList.add('hidden');
+      document.getElementById('sklearn-tab-btn').classList.remove('tab-active');
+      document.getElementById('pytorch-tab-btn').classList.remove('tab-active');
+
+      document.getElementById(tabId).classList.remove('hidden');
+      document.getElementById(tabId.replace('-code', '-tab-btn')).classList.add('tab-active');
+    }
+
+    // 2. IPAS 測驗判斷邏輯
+    function checkQuiz(qNum, choice) {
+      if (qNum === 1) {
+        const box = document.getElementById('q1-ans');
+        box.classList.remove('hidden');
+        if (choice === 'C') {
+          box.className = "mt-3 text-xs p-3 rounded-xl bg-emerald-900/60 border border-emerald-500 text-emerald-200";
+          box.innerHTML = "<strong>回答正確！</strong> LDA 類間散布矩陣 $S_B$ 的秩最多為 $C-1$。此題有 3 個類別 ($C=3$)，故降維後的維度最高只能是 $3 - 1 = 2$ 維。這是 IPAS 考試極高頻考點！";
+        } else {
+          box.className = "mt-3 text-xs p-3 rounded-xl bg-rose-900/60 border border-rose-500 text-rose-200";
+          box.innerHTML = "<strong>回答錯誤。</strong> 正確答案為 <strong>C. 2 維</strong>。LDA 受限於類別均值向量張成空間的秩，最大降維維度上限為 $C - 1$。";
+        }
+      } else if (qNum === 2) {
+        const box = document.getElementById('q2-ans');
+        box.classList.remove('hidden');
+        if (choice === 'C') {
+          box.className = "mt-3 text-xs p-3 rounded-xl bg-emerald-900/60 border border-emerald-500 text-emerald-200";
+          box.innerHTML = "<strong>回答正確！</strong> t-SNE 是非參數 (Non-parametric) 的流形優化算法，不存在顯式的投射矩陣 $W$ 或解析映射公式，因此無法對新樣本直接調用 `transform()`，必須將新樣本併入全體重新進行全域優化。";
+        } else {
+          box.className = "mt-3 text-xs p-3 rounded-xl bg-rose-900/60 border border-rose-500 text-rose-200";
+          box.innerHTML = "<strong>回答錯誤。</strong> 正確答案為 <strong>C. t-SNE</strong>。PCA 與 LDA 均可求得固定投影矩陣 $W$，新樣本只要計算 $x_{new} W$ 即可降維。";
+        }
+      }
+      if (window.renderMathInElement) {
+        renderMathInElement(document.getElementById(`q${qNum}-ans`), {
+          delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]
+        });
+      }
+    }
+
+    // 3. Canvas 即時互動模擬核心
+    const canvasRaw = document.getElementById('canvas-raw');
+    const ctxRaw = canvasRaw.getContext('2d');
+    const canvasProj = document.getElementById('canvas-proj');
+    const ctxProj = canvasProj.getContext('2d');
+
+    function resizeCanvas() {
+      const rect1 = canvasRaw.getBoundingClientRect();
+      canvasRaw.width = rect1.width * window.devicePixelRatio;
+      canvasRaw.height = rect1.height * window.devicePixelRatio;
+      ctxRaw.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+      const rect2 = canvasProj.getBoundingClientRect();
+      canvasProj.width = rect2.width * window.devicePixelRatio;
+      canvasProj.height = rect2.height * window.devicePixelRatio;
+      ctxProj.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+
+    let dataset = [];
+    let tsneLowDim = [];
+    let simTimer = null;
+    let tsneIteration = 0;
+    const NUM_POINTS = 90;
+
+    function generateData(type) {
+      const data = [];
+      if (type === 'gaussian_overlap') {
+        for (let i = 0; i < NUM_POINTS / 2; i++) {
+          const u = Math.random() * 2 - 1;
+          const x = -0.5 + u * 1.5 + (Math.random() - 0.5) * 0.4;
+          const y = 0.5 + u * 1.5 + (Math.random() - 0.5) * 0.4;
+          data.push({ x, y, label: 0, color: '#38bdf8' });
+        }
+        for (let i = 0; i < NUM_POINTS / 2; i++) {
+          const u = Math.random() * 2 - 1;
+          const x = 0.5 + u * 1.5 + (Math.random() - 0.5) * 0.4;
+          const y = -0.5 + u * 1.5 + (Math.random() - 0.5) * 0.4;
+          data.push({ x, y, label: 1, color: '#f43f5e' });
+        }
+      } else if (type === 'two_moons') {
+        for (let i = 0; i < NUM_POINTS / 2; i++) {
+          const theta = (Math.PI * i) / (NUM_POINTS / 2);
+          const x = Math.cos(theta) + (Math.random() - 0.5) * 0.2 - 0.5;
+          const y = Math.sin(theta) + (Math.random() - 0.5) * 0.2;
+          data.push({ x, y, label: 0, color: '#38bdf8' });
+        }
+        for (let i = 0; i < NUM_POINTS / 2; i++) {
+          const theta = (Math.PI * i) / (NUM_POINTS / 2);
+          const x = 1 - Math.cos(theta) + (Math.random() - 0.5) * 0.2 - 0.5;
+          const y = 0.5 - Math.sin(theta) + (Math.random() - 0.5) * 0.2;
+          data.push({ x, y, label: 1, color: '#f43f5e' });
+        }
+      } else if (type === 'llm_embeddings') {
+        const clusters = [
+          { cx: -1.2, cy: -0.8, color: '#38bdf8', label: 0 },
+          { cx: 1.2, cy: -0.5, color: '#34d399', label: 1 },
+          { cx: 0.0, cy: 1.2, color: '#fbbf24', label: 2 }
+        ];
+        clusters.forEach((c) => {
+          for (let i = 0; i < NUM_POINTS / 3; i++) {
+            const rad = Math.random() * 0.6;
+            const ang = Math.random() * Math.PI * 2;
+            data.push({
+              x: c.cx + Math.cos(ang) * rad,
+              y: c.cy + Math.sin(ang) * rad,
+              label: c.label,
+              color: c.color
+            });
+          }
+        });
+      }
+      return data;
+    }
+
+    function resetDataset() {
+      if (simTimer) { clearInterval(simTimer); simTimer = null; }
+      const datasetType = document.getElementById('sim-dataset-select').value;
+      dataset = generateData(datasetType);
+      
+      tsneLowDim = dataset.map(() => ({
+        x: (Math.random() - 0.5) * 0.5,
+        y: (Math.random() - 0.5) * 0.5
+      }));
+      tsneIteration = 0;
+      document.getElementById('sim-status').innerText = '資料集已重置';
+      updateInsight();
+      render();
+    }
+
+    function changeAlgo() {
+      if (simTimer) { clearInterval(simTimer); simTimer = null; }
+      tsneIteration = 0;
+      updateInsight();
+      render();
+    }
+
+    function drawRaw(pcaVector, ldaVector) {
+      const w = canvasRaw.getBoundingClientRect().width;
+      const h = canvasRaw.getBoundingClientRect().height;
+      ctxRaw.clearRect(0, 0, w, h);
+
+      ctxRaw.strokeStyle = '#1e293b';
+      ctxRaw.lineWidth = 1;
+      ctxRaw.beginPath();
+      ctxRaw.moveTo(w/2, 0); ctxRaw.lineTo(w/2, h);
+      ctxRaw.moveTo(0, h/2); ctxRaw.lineTo(w, h/2);
+      ctxRaw.stroke();
+
+      const scale = w / 5;
+
+      if (pcaVector) {
+        ctxRaw.strokeStyle = '#60a5fa';
+        ctxRaw.lineWidth = 2.5;
+        ctxRaw.setLineDash([5, 5]);
+        ctxRaw.beginPath();
+        ctxRaw.moveTo(w/2 - pcaVector.x * scale * 2.5, h/2 + pcaVector.y * scale * 2.5);
+        ctxRaw.lineTo(w/2 + pcaVector.x * scale * 2.5, h/2 - pcaVector.y * scale * 2.5);
+        ctxRaw.stroke();
+        ctxRaw.setLineDash([]);
+        
+        ctxRaw.fillStyle = '#60a5fa';
+        ctxRaw.font = '10px monospace';
+        ctxRaw.fillText('PCA 投影軸', w/2 + pcaVector.x * scale * 1.5 + 5, h/2 - pcaVector.y * scale * 1.5);
+      }
+
+      if (ldaVector) {
+        ctxRaw.strokeStyle = '#34d399';
+        ctxRaw.lineWidth = 2.5;
+        ctxRaw.beginPath();
+        ctxRaw.moveTo(w/2 - ldaVector.x * scale * 2.5, h/2 + ldaVector.y * scale * 2.5);
+        ctxRaw.lineTo(w/2 + ldaVector.x * scale * 2.5, h/2 - ldaVector.y * scale * 2.5);
+        ctxRaw.stroke();
+
+        ctxRaw.fillStyle = '#34d399';
+        ctxRaw.font = '10px monospace';
+        ctxRaw.fillText('LDA 最優分離軸', w/2 + ldaVector.x * scale * 1.5 + 5, h/2 - ldaVector.y * scale * 1.5);
+      }
+
+      dataset.forEach(pt => {
+        const px = w/2 + pt.x * scale;
+        const py = h/2 - pt.y * scale;
+        ctxRaw.fillStyle = pt.color;
+        ctxRaw.beginPath();
+        ctxRaw.arc(px, py, 4.5, 0, Math.PI * 2);
+        ctxRaw.fill();
+        ctxRaw.strokeStyle = '#020617';
+        ctxRaw.lineWidth = 1;
+        ctxRaw.stroke();
+      });
+    }
+
+    function drawProjected(algo, pcaVec, ldaVec) {
+      const w = canvasProj.getBoundingClientRect().width;
+      const h = canvasProj.getBoundingClientRect().height;
+      ctxProj.clearRect(0, 0, w, h);
+
+      ctxProj.strokeStyle = '#1e293b';
+      ctxProj.lineWidth = 1;
+      ctxProj.beginPath();
+      ctxProj.moveTo(w/2, 0); ctxProj.lineTo(w/2, h);
+      ctxProj.moveTo(0, h/2); ctxProj.lineTo(w, h/2);
+      ctxProj.stroke();
+
+      const scale = w / 5;
+
+      if (algo === 'pca' || algo === 'lda') {
+        const vec = (algo === 'pca') ? pcaVec : ldaVec;
+        if (!vec) return;
+
+        ctxProj.strokeStyle = (algo === 'pca') ? '#60a5fa' : '#34d399';
+        ctxProj.lineWidth = 3;
+        ctxProj.beginPath();
+        ctxProj.moveTo(20, h/2);
+        ctxProj.lineTo(w - 20, h/2);
+        ctxProj.stroke();
+
+        dataset.forEach(pt => {
+          const projVal = pt.x * vec.x + pt.y * vec.y;
+          const px = w/2 + projVal * scale * 1.2;
+          const py = h/2;
+
+          ctxProj.fillStyle = pt.color;
+          ctxProj.beginPath();
+          ctxProj.arc(px, py, 4.5, 0, Math.PI * 2);
+          ctxProj.fill();
+          ctxProj.strokeStyle = '#0f172a';
+          ctxProj.stroke();
+
+          ctxProj.strokeStyle = pt.color + '44';
+          ctxProj.lineWidth = 1;
+          ctxProj.beginPath();
+          ctxProj.moveTo(px, py - 30);
+          ctxProj.lineTo(px, py + 30);
+          ctxProj.stroke();
+        });
+
+        ctxProj.fillStyle = '#94a3b8';
+        ctxProj.font = '11px sans-serif';
+        ctxProj.fillText(algo === 'pca' ? '第一主成分軸 (PC1)' : '第一線性判別軸 (LD1)', 25, h/2 - 15);
+
+      } else if (algo === 'tsne') {
+        const tScale = scale * 1.8;
+        tsneLowDim.forEach((pt, idx) => {
+          const px = w/2 + pt.x * tScale;
+          const py = h/2 + pt.y * tScale;
+
+          ctxProj.fillStyle = dataset[idx].color;
+          ctxProj.beginPath();
+          ctxProj.arc(px, py, 5, 0, Math.PI * 2);
+          ctxProj.fill();
+          ctxProj.strokeStyle = '#020617';
+          ctxProj.lineWidth = 1;
+          ctxProj.stroke();
+        });
+      }
+    }
+
+    function computePCA() {
+      let mx = 0, my = 0;
+      dataset.forEach(p => { mx += p.x; my += p.y; });
+      mx /= dataset.length; my /= dataset.length;
+
+      let cxx = 0, cxy = 0, cyy = 0;
+      dataset.forEach(p => {
+        const dx = p.x - mx, dy = p.y - my;
+        cxx += dx * dx; cxy += dx * dy; cyy += dy * dy;
+      });
+
+      const theta = 0.5 * Math.atan2(2 * cxy, cxx - cyy);
+      return { x: Math.cos(theta), y: Math.sin(theta) };
+    }
+
+    function computeLDA() {
+      const c0 = dataset.filter(p => p.label === 0);
+      const c1 = dataset.filter(p => p.label === 1);
+      if (c0.length === 0 || c1.length === 0) return { x: 1, y: 0 };
+
+      let m0x = 0, m0y = 0, m1x = 0, m1y = 0;
+      c0.forEach(p => { m0x += p.x; m0y += p.y; });
+      c1.forEach(p => { m1x += p.x; m1y += p.y; });
+      m0x /= c0.length; m0y /= c0.length;
+      m1x /= c1.length; m1y /= c1.length;
+
+      const diffX = m0x - m1x;
+      const diffY = m0y - m1y;
+
+      let sw_xx = 0, sw_xy = 0, sw_yy = 0;
+      c0.forEach(p => {
+        const dx = p.x - m0x, dy = p.y - m0y;
+        sw_xx += dx*dx; sw_xy += dx*dy; sw_yy += dy*dy;
+      });
+      c1.forEach(p => {
+        const dx = p.x - m1x, dy = p.y - m1y;
+        sw_xx += dx*dx; sw_xy += dx*dy; sw_yy += dy*dy;
+      });
+
+      const det = sw_xx * sw_yy - sw_xy * sw_xy + 1e-6;
+      const inv_xx = sw_yy / det;
+      const inv_xy = -sw_xy / det;
+      const inv_yy = sw_xx / det;
+
+      let ldaX = inv_xx * diffX + inv_xy * diffY;
+      let ldaY = inv_xy * diffX + inv_yy * diffY;
+      const norm = Math.hypot(ldaX, ldaY) || 1;
+      return { x: ldaX / norm, y: ldaY / norm };
+    }
+
+    function stepTSNE() {
+      tsneIteration++;
+      const lr = 0.08;
+      const n = dataset.length;
+
+      for (let i = 0; i < n; i++) {
+        let gradX = 0, gradY = 0;
+        for (let j = 0; j < n; j++) {
+          if (i === j) continue;
+          const dxRaw = dataset[i].x - dataset[j].x;
+          const dyRaw = dataset[i].y - dataset[j].y;
+          const rawDistSq = dxRaw*dxRaw + dyRaw*dyRaw;
+
+          const dxLow = tsneLowDim[i].x - tsneLowDim[j].x;
+          const dyLow = tsneLowDim[i].y - tsneLowDim[j].y;
+          const lowDistSq = dxLow*dxLow + dyLow*dyLow;
+
+          const p = Math.exp(-rawDistSq / 0.4);
+          const q = 1.0 / (1.0 + lowDistSq);
+
+          const force = 4 * (p - q * 0.15) * q;
+          gradX += force * dxLow;
+          gradY += force * dyLow;
+        }
+        tsneLowDim[i].x += gradX * lr + (Math.random() - 0.5) * 0.01;
+        tsneLowDim[i].y += gradY * lr + (Math.random() - 0.5) * 0.01;
+      }
+    }
+
+    function render() {
+      resizeCanvas();
+      const algo = document.getElementById('sim-algo-select').value;
+      const pcaVec = computePCA();
+      const ldaVec = computeLDA();
+
+      if (algo === 'pca') {
+        drawRaw(pcaVec, null);
+        drawProjected('pca', pcaVec, null);
+      } else if (algo === 'lda') {
+        drawRaw(null, ldaVec);
+        drawProjected('lda', null, ldaVec);
+      } else if (algo === 'tsne') {
+        drawRaw(null, null);
+        drawProjected('tsne', null, null);
+      }
+    }
+
+    function stepSimulation() {
+      const algo = document.getElementById('sim-algo-select').value;
+      if (algo === 'tsne') {
+        stepTSNE();
+        document.getElementById('sim-status').innerText = `t-SNE 迭代步數: ${tsneIteration}`;
+      } else {
+        document.getElementById('sim-status').innerText = `${algo.toUpperCase()} 為解析閉式解 (一步完成)`;
+      }
+      render();
+    }
+
+    function startAutoSim() {
+      if (simTimer) {
+        clearInterval(simTimer);
+        simTimer = null;
+        document.getElementById('btn-auto-sim').innerHTML = '<i class="fa-solid fa-bolt mr-2"></i> 一鍵自動模擬';
+        return;
+      }
+      document.getElementById('btn-auto-sim').innerHTML = '<i class="fa-solid fa-pause mr-2"></i> 暫停模擬';
+
+      simTimer = setInterval(() => {
+        stepSimulation();
+        if (tsneIteration >= 120 && document.getElementById('sim-algo-select').value === 'tsne') {
+          clearInterval(simTimer);
+          simTimer = null;
+          document.getElementById('btn-auto-sim').innerHTML = '<i class="fa-solid fa-bolt mr-2"></i> 一鍵自動模擬';
+          document.getElementById('sim-status').innerText = `t-SNE 收斂完成 (共 ${tsneIteration} 步)`;
+        }
+      }, 30);
+    }
+
+    function updateInsight() {
+      const datasetType = document.getElementById('sim-dataset-select').value;
+      const algo = document.getElementById('sim-algo-select').value;
+      const textEl = document.getElementById('insight-text');
+
+      if (datasetType === 'gaussian_overlap') {
+        if (algo === 'pca') {
+          textEl.innerHTML = "<strong>【PCA 盲點】</strong>：只看高矮不看男女！PCA 追逐變異數最大的軸，但由於兩群斜向分布，投影後藍色與紅色樣本直接重疊在一起，完全喪失分類能力。";
+        } else if (algo === 'lda') {
+          textEl.innerHTML = "<strong>【LDA 完美制霸】</strong>：園遊會徹底隔開飲料與炸物！LDA 考慮了類別標籤，尋找使得 $S_B/S_W$ 最大的方向，精準鎖定垂直切分軸，兩類界限分明！";
+        } else {
+          textEl.innerHTML = "<strong>【t-SNE 漸進演化】</strong>：地圖局部鄰居聚集！t-SNE 會自動感知局部鄰近聚集，在迭代優化過程中將藍群與紅群拉成兩個鮮明隔離的群島。";
+        }
+      } else if (datasetType === 'two_moons') {
+        if (algo === 'pca' || algo === 'lda') {
+          textEl.innerHTML = `<strong>【線性投影限制】</strong>：位置定死且只能畫直線！雙月灣是經典的「非線性流形」，任何一維的線性直線投影（${algo.toUpperCase()}）都無法將交織的兩個半月彎完全解開。`;
+        } else {
+          textEl.innerHTML = "<strong>【t-SNE 流形展開】</strong>：像立體地球儀畫成世界地圖般展開！t-SNE 的非線性機率親和力能沿著彎曲的流形展開空間，將兩個半月形平滑攤開分群。";
+        }
+      } else if (datasetType === 'llm_embeddings') {
+        textEl.innerHTML = "<strong>【LLM 高維語意空間】</strong>：模擬 Transformer 生成之多主題 Chunk 向量。t-SNE 保持同主題文件語意近鄰聚集，特別適合 RAG 向量資料庫除錯與可視化。";
+      }
+      if (window.renderMathInElement) {
+        renderMathInElement(textEl, {
+          delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]
+        });
+      }
+    }
+
+    // 4. 呼叫 Gemini 3.1 Flash Image 生成藝術風格比喻資訊圖表
+    async function triggerGenerateInfographicAI() {
+      const resultBox = document.getElementById('ai-infographic-result');
+      const loader = document.getElementById('ai-infographic-loader');
+      const imgContainer = document.getElementById('ai-infographic-img-container');
+      const imgEl = document.getElementById('ai-infographic-img');
+      const btn = document.getElementById('btn-gen-ai-infographic');
+
+      resultBox.classList.remove('hidden');
+      loader.classList.remove('hidden');
+      imgContainer.classList.add('hidden');
+      btn.disabled = true;
+
+      const userPrompt = "Create a sophisticated educational visual infographic poster comparing three machine learning dimensionality reduction techniques through abstract art styles: " +
+        "1. PCA (Principal Component Analysis) depicted in Piet Mondrian's Neo-Plasticism style with strict black orthogonal grid lines, primary color rectangles (red, blue, yellow) and white spaces, emphasizing variance maximization along orthogonal axes. " +
+        "2. LDA (Linear Discriminant Analysis) depicted in Henri Matisse's Fauvist cutout collage style with bold contrasting shapes tightly clustered by color with a wide white separation void between categories, symbolizing maximum inter-class margin. " +
+        "3. t-SNE (t-Distributed Stochastic Neighbor Embedding) depicted in Georges Seurat's Pointillism and Wassily Kandinsky's organic fluid manifold style with vibrating microscopic stippled dots forming organic clustered islands. " +
+        "Include clean minimalist typography labels 'PCA - Geometric Grid', 'LDA - Fauvist Cutout', 't-SNE - Pointillist Manifold' in an exhibition poster aesthetic with balanced composition.";
+
+      const payload = {
+        contents: [{
+          role: 'user',
+          parts: [{ text: userPrompt }]
+        }],
+        generationConfig: {
+          responseModalities: ['IMAGE'],
+          imageConfig: { aspectRatio: "16:9" }
+        }
+      };
+
+      const apiKey = "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${apiKey}`;
+
+      try {
+        let response = null;
+        let delay = 1000;
+        for (let i = 0; i < 3; i++) {
+          try {
+            response = await fetch(apiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            if (response.ok) break;
+          } catch (err) {}
+          await new Promise(r => setTimeout(r, delay));
+          delay *= 2;
+        }
+
+        if (response && response.ok) {
+          const result = await response.json();
+          const part = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+          if (part && part.inlineData) {
+            const imageUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+            imgEl.src = imageUrl;
+            loader.classList.add('hidden');
+            imgContainer.classList.remove('hidden');
+          } else {
+            throw new Error("未能成功解析生成的圖像資料");
+          }
+        } else {
+          throw new Error("API 響應異常");
+        }
+      } catch (e) {
+        loader.innerHTML = `
+          <div class="text-rose-400 text-xs text-center space-y-1">
+            <i class="fa-solid fa-triangle-exclamation text-xl mb-1"></i>
+            <p>目前生成服務繁忙或暫時無法連線，已保留上方精細的向量畫派資訊圖供隨時瀏覽對照！</p>
+          </div>
+        `;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // 5. 高腳玻璃杯投影動態渲染邏輯
+    let currentWGMode = 'pca';
+    let ldaCurrentType = 'lda_win';
+    let tsneUnfoldStep = 0;
+
+    function switchWineGlassMode(mode) {
+      currentWGMode = mode;
+      ['pca', 'lda', 'tsne'].forEach(m => {
+        const btn = document.getElementById(`wg-mode-${m}`);
+        if (m === mode) {
+          btn.className = "px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-bold text-xs transition flex items-center shadow";
+        } else {
+          btn.className = "px-3 py-1.5 rounded-lg text-slate-400 hover:text-white font-semibold text-xs transition flex items-center";
+        }
+      });
+
+      document.getElementById('wg-pca-slider-wrap').classList.toggle('hidden', mode !== 'pca');
+      document.getElementById('wg-lda-ctrl-wrap').classList.toggle('hidden', mode !== 'lda');
+      document.getElementById('wg-tsne-ctrl-wrap').classList.toggle('hidden', mode !== 'tsne');
+
+      if (mode === 'pca') {
+        const sliderVal = parseFloat(document.getElementById('wg-slider').value);
+        renderWineGlass(sliderVal);
+      } else if (mode === 'lda') {
+        renderLDAWineGlass();
+      } else if (mode === 'tsne') {
+        renderTSNEWineGlass();
+      }
+    }
+
+    function onWineGlassSlider(val) {
+      renderWineGlass(parseFloat(val));
+    }
+
+    function setLDAType(type) {
+      ldaCurrentType = type;
+      const btnPca = document.getElementById('btn-lda-pca');
+      const btnLda = document.getElementById('btn-lda-win');
+      if (type === 'pca_fail') {
+        btnPca.className = "flex-1 py-2 rounded-lg bg-rose-600 text-white text-xs font-bold transition";
+        btnLda.className = "flex-1 py-2 rounded-lg bg-emerald-950 border border-emerald-500/40 text-emerald-300 text-xs font-bold transition";
+      } else {
+        btnPca.className = "flex-1 py-2 rounded-lg bg-rose-950 border border-rose-600/40 text-rose-300 text-xs font-bold transition";
+        btnLda.className = "flex-1 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold transition";
+      }
+      renderLDAWineGlass();
+    }
+
+    function stepTSNEUnfold() {
+      tsneUnfoldStep = Math.min(5, tsneUnfoldStep + 1);
+      renderTSNEWineGlass();
+    }
+
+    function resetTSNEUnfold() {
+      tsneUnfoldStep = 0;
+      renderTSNEWineGlass();
+    }
+
+    function renderWineGlass(angleDeg) {
+      if (currentWGMode !== 'pca') return;
+      const angleBadge = document.getElementById('wg-angle-badge');
+      const statusBadge = document.getElementById('wg-result-status');
+      const descEl = document.getElementById('wg-insight-desc');
+      const cardEl = document.getElementById('wg-insight-card');
+
+      document.getElementById('wg-left-title').innerHTML = '<i class="fa-solid fa-cube mr-2"></i> 1. 三維空間物理情境 (光源角度)';
+      document.getElementById('wg-right-title').innerHTML = '<i class="fa-solid fa-cloud-moon mr-2"></i> 2. 降維投影結果 (二維影子平面)';
+
+      angleBadge.innerText = `視角: ${Math.round(angleDeg)}° (${angleDeg < 25 ? '俯視角' : angleDeg > 70 ? '側視角' : '斜視角'})`;
+
+      if (angleDeg < 25) {
+        statusBadge.className = "px-2 py-0.5 rounded text-xs font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30";
+        statusBadge.innerText = "狀態：資訊嚴重損失 (方向錯誤)";
+        cardEl.className = "mt-5 p-3 rounded-xl bg-slate-950 border border-rose-500/40 text-xs leading-relaxed space-y-1";
+        cardEl.firstElementChild.className = "font-bold text-rose-300 flex items-center";
+        cardEl.firstElementChild.innerHTML = '<i class="fa-solid fa-circle-xmark mr-1.5"></i> 方向錯誤！垂直俯視投影（只看到圓）：';
+        descEl.innerHTML = "光線從正上方照射（俯視），杯身、修長杯柱與底座在垂直軸線上完全重合坍塌！牆面上只能看到兩個同心圓。這是典型<strong>選到了最小變異數軸（Low-variance Axis）</strong>，杯子的幾何特徵在降維過程中被抹滅。";
+      } else if (angleDeg > 70) {
+        statusBadge.className = "px-2 py-0.5 rounded text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+        statusBadge.innerText = "狀態：完整特徵保留 (PCA 最佳軸)";
+        cardEl.className = "mt-5 p-3 rounded-xl bg-slate-950 border border-emerald-500/40 text-xs leading-relaxed space-y-1";
+        cardEl.firstElementChild.className = "font-bold text-emerald-300 flex items-center";
+        cardEl.firstElementChild.innerHTML = '<i class="fa-solid fa-check-circle mr-1.5"></i> PCA 第一主成分 (PC1) 最佳投影軸：';
+        descEl.innerHTML = "沿著垂直於杯身高延伸方向進行側向投影，此時樣本投影變異數最大（$\\lambda_1 = \\max$）。牆面上清晰展現出杯口、收腰杯身、纖細杯腳與圓形底座，幾何資訊完整保留！";
+      } else {
+        statusBadge.className = "px-2 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30";
+        statusBadge.innerText = "狀態：部分特徵保留 (次級投影)";
+        cardEl.className = "mt-5 p-3 rounded-xl bg-slate-950 border border-amber-500/40 text-xs leading-relaxed space-y-1";
+        cardEl.firstElementChild.className = "font-bold text-amber-300 flex items-center";
+        cardEl.firstElementChild.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1.5"></i> 斜向投影視角：';
+        descEl.innerHTML = "杯身與杯腳在投影面上產生透視斜影，能辨識部分輪廓但存在橢圓形畸變，投影變異數介於最大值與最小值之間。";
+      }
+
+      render3DWineGlass(angleDeg);
+      renderShadowWineGlass(angleDeg);
+
+      if (window.renderMathInElement) {
+        renderMathInElement(cardEl, {
+          delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]
+        });
+      }
+    }
+
+    function renderLDAWineGlass() {
+      const angleBadge = document.getElementById('wg-angle-badge');
+      const statusBadge = document.getElementById('wg-result-status');
+      const descEl = document.getElementById('wg-insight-desc');
+      const cardEl = document.getElementById('wg-insight-card');
+      const g3D = document.getElementById('svg-wineglass-body');
+      const lightBeam = document.getElementById('svg-light-beam');
+      const shadowG = document.getElementById('svg-shadow-content');
+
+      document.getElementById('wg-left-title').innerHTML = '<i class="fa-solid fa-tags mr-2"></i> 1. 兩類杯子：高腳杯 (藍) vs 威士忌矮杯 (紅)';
+      document.getElementById('wg-right-title').innerHTML = '<i class="fa-solid fa-table-columns mr-2"></i> 2. 投影判別線上的重疊 vs 分離';
+
+      angleBadge.innerText = ldaCurrentType === 'pca_fail' ? "軸線: PCA 最大變異軸" : "軸線: LDA 最優判別軸";
+      
+      lightBeam.innerHTML = ldaCurrentType === 'pca_fail' 
+        ? `<line x1="-80" y1="-80" x2="60" y2="60" stroke="#f43f5e" stroke-width="2" stroke-dasharray="4,4"/>
+           <text x="-70" y="-85" fill="#f87171" font-size="9" font-family="monospace">PCA 投影光線 (不看標籤)</text>`
+        : `<line x1="-90" y1="0" x2="80" y2="0" stroke="#34d399" stroke-width="2" stroke-dasharray="4,4"/>
+           <text x="-80" y="-10" fill="#34d399" font-size="9" font-family="monospace">LDA 最佳判別射線 (標籤導向)</text>`;
+
+      g3D.innerHTML = `
+        <g transform="translate(-45, 0)">
+          <ellipse cx="0" cy="50" rx="22" ry="5" fill="none" stroke="#38bdf8" stroke-width="2"/>
+          <line x1="0" y1="50" x2="0" y2="10" stroke="#38bdf8" stroke-width="3"/>
+          <path d="M -24,-35 Q -22,10 0,10 Q 22,10 24,-35 Z" fill="rgba(56, 189, 248, 0.2)" stroke="#38bdf8" stroke-width="2"/>
+          <ellipse cx="0" cy="-35" rx="24" ry="6" fill="rgba(56, 189, 248, 0.4)" stroke="#38bdf8" stroke-width="1.5"/>
+          <text x="0" y="-45" fill="#38bdf8" font-size="9" font-weight="bold" text-anchor="middle">類別 1: 高腳杯</text>
+        </g>
+        <g transform="translate(45, 10)">
+          <ellipse cx="0" cy="40" rx="24" ry="6" fill="none" stroke="#f43f5e" stroke-width="2"/>
+          <path d="M -26,-15 L -24,40 L 24,40 L 26,-15 Z" fill="rgba(244, 63, 94, 0.25)" stroke="#f43f5e" stroke-width="2"/>
+          <ellipse cx="0" cy="-15" rx="26" ry="6" fill="rgba(244, 63, 94, 0.4)" stroke="#f43f5e" stroke-width="1.5"/>
+          <text x="0" y="-25" fill="#f43f5e" font-size="9" font-weight="bold" text-anchor="middle">類別 2: 矮平杯</text>
+        </g>
+      `;
+
+      if (ldaCurrentType === 'pca_fail') {
+        statusBadge.className = "px-2 py-0.5 rounded text-xs font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30";
+        statusBadge.innerText = "狀態：兩類影子嚴重交疊混淆";
+
+        shadowG.innerHTML = `
+          <line x1="-90" y1="60" x2="90" y2="-60" stroke="#f43f5e" stroke-width="2.5"/>
+          <text x="50" y="-70" fill="#f87171" font-size="9" font-family="monospace">PCA 投影軸</text>
+          <ellipse cx="-15" cy="10" rx="35" ry="18" fill="rgba(56, 189, 248, 0.4)" stroke="#38bdf8" stroke-width="1.5"/>
+          <ellipse cx="10" cy="-5" rx="30" ry="20" fill="rgba(244, 63, 94, 0.4)" stroke="#f43f5e" stroke-width="1.5"/>
+          <rect x="-10" y="-2" width="20" height="15" fill="#fbbf24" opacity="0.6"/>
+          <text x="0" y="50" fill="#fbbf24" font-size="11" font-weight="bold" text-anchor="middle">⚠ 兩類影子重疊區！</text>
+          <text x="0" y="70" fill="#cbd5e1" font-size="9" text-anchor="middle">未利用標籤，無法由影子分出是哪種杯子</text>
+        `;
+
+        cardEl.className = "mt-5 p-3 rounded-xl bg-slate-950 border border-rose-500/40 text-xs leading-relaxed space-y-1";
+        cardEl.firstElementChild.className = "font-bold text-rose-300 flex items-center";
+        cardEl.firstElementChild.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1.5"></i> PCA 在分類任務中的盲點：';
+        descEl.innerHTML = "PCA 只問『整批數據哪裡延展最長』，不問『杯子到底是什麼類型』。當兩群杯子在斜向延伸時，PCA 盲目朝該方向投影，導致高腳杯與矮杯的影子直接黏在一塊，分類錯誤率大增！";
+      } else {
+        statusBadge.className = "px-2 py-0.5 rounded text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+        statusBadge.innerText = "狀態：兩類完美分離 (Fisher 準則)";
+
+        shadowG.innerHTML = `
+          <line x1="-100" y1="20" x2="100" y2="20" stroke="#34d399" stroke-width="3"/>
+          <text x="50" y="10" fill="#34d399" font-size="9" font-family="monospace">LDA 最佳判別軸</text>
+          <g transform="translate(-55, 20)">
+            <ellipse cx="0" cy="0" rx="18" ry="10" fill="rgba(56, 189, 248, 0.4)" stroke="#38bdf8" stroke-width="2"/>
+            <circle cx="0" cy="0" r="3" fill="#38bdf8"/>
+            <text x="0" y="-18" fill="#38bdf8" font-size="9" font-weight="bold" text-anchor="middle">高腳杯群</text>
+          </g>
+          <g transform="translate(55, 20)">
+            <ellipse cx="0" cy="0" rx="16" ry="10" fill="rgba(244, 63, 94, 0.4)" stroke="#f43f5e" stroke-width="2"/>
+            <circle cx="0" cy="0" r="3" fill="#f43f5e"/>
+            <text x="0" y="-18" fill="#f43f5e" font-size="9" font-weight="bold" text-anchor="middle">矮平杯群</text>
+          </g>
+          <line x1="0" y1="-40" x2="0" y2="60" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4,4"/>
+          <text x="0" y="75" fill="#fbbf24" font-size="10" font-weight="bold" text-anchor="middle">最寬分類決策邊界 (最大類間距離 $S_B$)</text>
+        `;
+
+        cardEl.className = "mt-5 p-3 rounded-xl bg-slate-950 border border-emerald-500/40 text-xs leading-relaxed space-y-1";
+        cardEl.firstElementChild.className = "font-bold text-emerald-300 flex items-center";
+        cardEl.firstElementChild.innerHTML = '<i class="fa-solid fa-check-circle mr-1.5"></i> LDA 監督式鑑別：精準鎖定特徵差異軸：';
+        descEl.innerHTML = "LDA 知道藍點代表『高腳杯』、紅點代表『矮平杯』。它刻意尋找垂直於杯柱長度差異的軸向，投影後<strong>同一種杯子的影子緊密靠攏（最小化類內 $S_W$），而兩種杯子的影子被推開極遠（最大化類間 $S_B$）</strong>，形成無懈可擊的分類邊界！";
+      }
+
+      if (window.renderMathInElement) {
+        renderMathInElement(cardEl, {
+          delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]
+        });
+      }
+    }
+
+    function renderTSNEWineGlass() {
+      const angleBadge = document.getElementById('wg-angle-badge');
+      const statusBadge = document.getElementById('wg-result-status');
+      const descEl = document.getElementById('wg-insight-desc');
+      const cardEl = document.getElementById('wg-insight-card');
+      const g3D = document.getElementById('svg-wineglass-body');
+      const lightBeam = document.getElementById('svg-light-beam');
+      const shadowG = document.getElementById('svg-shadow-content');
+
+      document.getElementById('wg-left-title').innerHTML = '<i class="fa-solid fa-wine-glass mr-2"></i> 1. 杯身曲面上的 3D 葡萄藤雕花點陣';
+      document.getElementById('wg-right-title').innerHTML = `<i class="fa-solid fa-map mr-2"></i> 2. t-SNE 非線性展開拓撲地圖 (步數: ${tsneUnfoldStep}/5)`;
+
+      angleBadge.innerText = `拓撲展開階數: ${tsneUnfoldStep}`;
+      statusBadge.className = "px-2 py-0.5 rounded text-xs font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30";
+      statusBadge.innerText = tsneUnfoldStep === 0 ? "線性光束重疊 (擠迫問題)" : "流形平滑攤平 (局部保真)";
+
+      lightBeam.innerHTML = `
+        <line x1="-90" y1="-40" x2="80" y2="-40" stroke="#a855f7" stroke-width="1.5" stroke-dasharray="3,3"/>
+        <text x="-85" y="-50" fill="#c084fc" font-size="8" font-family="monospace">若用直線光束：前後雕花重疊</text>
+      `;
+
+      g3D.innerHTML = `
+        <path d="M -35,-40 Q -30,15 0,15 Q 30,15 35,-40 Z" fill="rgba(168, 85, 247, 0.15)" stroke="#a855f7" stroke-width="2"/>
+        <line x1="0" y1="15" x2="0" y2="55" stroke="#a855f7" stroke-width="3"/>
+        <ellipse cx="0" cy="55" rx="25" ry="5" fill="none" stroke="#a855f7" stroke-width="2"/>
+        <ellipse cx="0" cy="-40" rx="35" ry="8" fill="rgba(168, 85, 247, 0.2)" stroke="#a855f7" stroke-width="1"/>
+
+        <circle cx="-15" cy="-10" r="3" fill="#34d399"/>
+        <circle cx="-5" cy="-5" r="3" fill="#34d399"/>
+        <circle cx="-10" cy="2" r="3" fill="#34d399"/>
+        <text x="-12" y="-18" fill="#34d399" font-size="7" font-weight="bold">正面藤蔓</text>
+
+        <circle cx="15" cy="-10" r="3" fill="#fbbf24" opacity="0.6"/>
+        <circle cx="20" cy="-2" r="3" fill="#fbbf24" opacity="0.6"/>
+        <circle cx="10" cy="5" r="3" fill="#fbbf24" opacity="0.6"/>
+        <text x="12" y="-18" fill="#fbbf24" font-size="7" font-weight="bold">背面葉片</text>
+      `;
+
+      const p = tsneUnfoldStep / 5;
+
+      if (p === 0) {
+        shadowG.innerHTML = `
+          <ellipse cx="0" cy="0" rx="55" ry="40" fill="rgba(168, 85, 247, 0.15)" stroke="#a855f7" stroke-width="2"/>
+          <circle cx="-5" cy="-5" r="4.5" fill="#34d399"/>
+          <circle cx="-3" cy="-3" r="4" fill="#fbbf24"/>
+          <circle cx="2" cy="4" r="4.5" fill="#34d399"/>
+          <circle cx="4" cy="2" r="4" fill="#fbbf24"/>
+          <circle cx="-10" cy="8" r="4.5" fill="#34d399"/>
+          <circle cx="-8" cy="10" r="4" fill="#fbbf24"/>
+          <text x="0" y="-55" fill="#f87171" font-size="11" font-weight="bold" text-anchor="middle">❌ 直線影子：正面與背面雕花重疊坍塌</text>
+          <text x="0" y="65" fill="#cbd5e1" font-size="9" text-anchor="middle">點擊上方『逐步展開曲面流形』觀看 t-SNE 展開</text>
+        `;
+      } else {
+        const sep = 50 * p;
+        shadowG.innerHTML = `
+          <rect x="-95" y="-60" width="190" height="120" rx="12" fill="rgba(147, 51, 234, 0.12)" stroke="#a855f7" stroke-width="1.5" stroke-dasharray="4,4"/>
+          
+          <g transform="translate(${-sep}, 0)">
+            <ellipse cx="0" cy="0" rx="28" ry="24" fill="rgba(52, 211, 153, 0.2)" stroke="#34d399" stroke-width="1"/>
+            <circle cx="-8" cy="-6" r="3.5" fill="#34d399"/>
+            <circle cx="6" cy="-4" r="3.5" fill="#34d399"/>
+            <circle cx="0" cy="8" r="3.5" fill="#34d399"/>
+            <path d="M -8,-6 Q 0,0 6,-4 Q 4,5 0,8" fill="none" stroke="#34d399" stroke-width="1.5"/>
+            <text x="0" y="24" fill="#34d399" font-size="8" font-weight="bold" text-anchor="middle">正面雕花局部鄰域保持</text>
+          </g>
+
+          <g transform="translate(${sep}, 0)">
+            <ellipse cx="0" cy="0" rx="28" ry="24" fill="rgba(251, 191, 36, 0.2)" stroke="#fbbf24" stroke-width="1"/>
+            <circle cx="-6" cy="-5" r="3.5" fill="#fbbf24"/>
+            <circle cx="8" cy="-2" r="3.5" fill="#fbbf24"/>
+            <circle cx="2" cy="7" r="3.5" fill="#fbbf24"/>
+            <path d="M -6,-5 Q 0,0 8,-2 Q 5,6 2,7" fill="none" stroke="#fbbf24" stroke-width="1.5"/>
+            <text x="0" y="24" fill="#fbbf24" font-size="8" font-weight="bold" text-anchor="middle">背面雕花局部鄰域保持</text>
+          </g>
+
+          <path d="M ${-sep + 25},0 C -10,-15 10,-15 ${sep - 25},0" fill="none" stroke="#c084fc" stroke-width="1.5" stroke-dasharray="3,3"/>
+          <text x="0" y="-22" fill="#e9d5ff" font-size="8" text-anchor="middle">t-分布長尾排斥推開</text>
+          <text x="0" y="-70" fill="#a855f7" font-size="11" font-weight="bold" text-anchor="middle">✔ t-SNE：曲面完整剝開，微觀結構完美保留</text>
+        `;
+      }
+
+      cardEl.className = "mt-5 p-3 rounded-xl bg-slate-950 border border-purple-500/40 text-xs leading-relaxed space-y-1";
+      cardEl.firstElementChild.className = "font-bold text-purple-300 flex items-center";
+      cardEl.firstElementChild.innerHTML = '<i class="fa-solid fa-scroll mr-1.5"></i> t-SNE 流形展開：不靠影子，像剝果皮般攤平：';
+      descEl.innerHTML = "若杯身表面有細緻雕花，任何筆直照射的線性投影（不論 PCA 或 LDA）都無法避免將『杯子正面的花』和『杯子背面的花』壓縮重疊在同一塊影子中（維度擁擠問題）。t-SNE 的作法是<strong>計算每個雕花點與周圍微觀鄰居的高斯距離，在 2D 畫布上像展開紙杯般將曲面完整攤平</strong>，同面的雕花緊扣，異面的雕花自動被長尾排斥推開！";
+
+      if (window.renderMathInElement) {
+        renderMathInElement(cardEl, {
+          delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]
+        });
+      }
+    }
+
+    function render3DWineGlass(angleDeg) {
+      const g = document.getElementById('svg-wineglass-body');
+      const lightBeam = document.getElementById('svg-light-beam');
+      
+      const rad = (angleDeg * Math.PI) / 180;
+      const lx = -90 * Math.sin(rad);
+      const ly = -90 * Math.cos(rad);
+
+      lightBeam.innerHTML = `
+        <circle cx="${lx}" cy="${ly}" r="8" fill="#fbbf24" filter="drop-shadow(0 0 8px #f59e0b)"/>
+        <line x1="${lx}" y1="${ly}" x2="0" y2="0" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4,4" opacity="0.8"/>
+        <polygon points="0,0 ${-5 * Math.sin(rad - 0.3)},${-5 * Math.cos(rad - 0.3)} ${-5 * Math.sin(rad + 0.3)},${-5 * Math.cos(rad + 0.3)}" fill="#fbbf24"/>
+        <text x="${lx + 10}" y="${ly - 5}" fill="#fde047" font-size="9" font-family="monospace" font-weight="bold">投影光源 (${Math.round(angleDeg)}°)</text>
+      `;
+
+      const rxTop = 32;
+      const ryTop = Math.max(4, 32 * Math.cos(rad));
+      const baseRx = 28;
+      const baseRy = Math.max(3, 28 * Math.cos(rad));
+
+      g.innerHTML = `
+        <ellipse cx="0" cy="${50 * Math.sin(rad)}" rx="${baseRx}" ry="${baseRy}" fill="none" stroke="#67e8f9" stroke-width="2" opacity="0.7"/>
+        <line x1="0" y1="${50 * Math.sin(rad)}" x2="0" y2="${5 * Math.sin(rad)}" stroke="#38bdf8" stroke-width="3"/>
+        <path d="M -${rxTop},${-40 * Math.sin(rad)} Q -${rxTop * 0.9},${5 * Math.sin(rad)} 0,${5 * Math.sin(rad)} Q ${rxTop * 0.9},${5 * Math.sin(rad)} ${rxTop},${-40 * Math.sin(rad)}" fill="rgba(56, 189, 248, 0.15)" stroke="#38bdf8" stroke-width="2"/>
+        <ellipse cx="0" cy="${-40 * Math.sin(rad)}" rx="${rxTop}" ry="${ryTop}" fill="rgba(224, 242, 254, 0.25)" stroke="#e0f2fe" stroke-width="2"/>
+        <line x1="0" y1="-80" x2="0" y2="80" stroke="#f43f5e" stroke-width="1" stroke-dasharray="2,2"/>
+        <text x="5" y="-70" fill="#f43f5e" font-size="8" font-family="monospace">物體主軸 (Z)</text>
+      `;
+    }
+
+    function renderShadowWineGlass(angleDeg) {
+      const g = document.getElementById('svg-shadow-content');
+      const rad = (angleDeg * Math.PI) / 180;
+      const t = angleDeg / 90;
+
+      if (t < 0.25) {
+        g.innerHTML = `
+          <circle cx="0" cy="0" r="45" fill="rgba(244, 63, 94, 0.2)" stroke="#f43f5e" stroke-width="3"/>
+          <circle cx="0" cy="0" r="38" fill="none" stroke="#f43f5e" stroke-width="1.5" stroke-dasharray="3,3"/>
+          <circle cx="0" cy="0" r="10" fill="#f43f5e" opacity="0.6"/>
+          <text x="0" y="-55" fill="#f87171" font-size="11" font-family="sans-serif" font-weight="bold" text-anchor="middle">❌ 只看見同心圓</text>
+          <text x="0" y="65" fill="#fca5a5" font-size="9" font-family="sans-serif" text-anchor="middle">杯口、杯身、細柱、底座全部重合坍塌</text>
+        `;
+      } else if (t > 0.75) {
+        g.innerHTML = `
+          <line x1="-38" y1="-60" x2="38" y2="-60" stroke="#34d399" stroke-width="3"/>
+          <path d="M -38,-60 Q -35,-5 0,-5 Q 35,-5 38,-60 Z" fill="rgba(52, 211, 153, 0.25)" stroke="#34d399" stroke-width="2.5"/>
+          <line x1="0" y1="-5" x2="0" y2="45" stroke="#34d399" stroke-width="4"/>
+          <line x1="-32" y1="45" x2="32" y2="45" stroke="#34d399" stroke-width="3.5"/>
+          <ellipse cx="0" cy="45" rx="32" ry="3" fill="#34d399" opacity="0.5"/>
+          <text x="0" y="-70" fill="#34d399" font-size="11" font-family="sans-serif" font-weight="bold" text-anchor="middle">✔ 完美保留高腳杯輪廓 (PC1)</text>
+          <text x="45" y="-30" fill="#a7f3d0" font-size="9" font-family="sans-serif">杯碗弧度</text>
+          <text x="15" y="20" fill="#a7f3d0" font-size="9" font-family="sans-serif">細長杯柱</text>
+          <text x="40" y="50" fill="#a7f3d0" font-size="9" font-family="sans-serif">底座輪廓</text>
+        `;
+      } else {
+        const heightFactor = Math.sin(rad);
+        const yTop = -60 * heightFactor;
+        const yStemBottom = 45 * heightFactor;
+        const rx = 38;
+        const ry = 38 * Math.cos(rad);
+
+        g.innerHTML = `
+          <ellipse cx="0" cy="${yTop}" rx="${rx}" ry="${ry}" fill="rgba(251, 191, 36, 0.2)" stroke="#fbbf24" stroke-width="2"/>
+          <path d="M -${rx},${yTop} Q -${rx * 0.8},${0} 0,${0} Q ${rx * 0.8},${0} ${rx},${yTop} Z" fill="rgba(251, 191, 36, 0.15)" stroke="#fbbf24" stroke-width="1.5"/>
+          <line x1="0" y1="0" x2="0" y2="${yStemBottom}" stroke="#fbbf24" stroke-width="3"/>
+          <ellipse cx="0" cy="${yStemBottom}" rx="30" ry="${30 * Math.cos(rad)}" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="2"/>
+          <text x="0" y="-75" fill="#fcd34d" font-size="10" font-family="sans-serif" font-weight="bold" text-anchor="middle">斜向投影（過渡橢圓）</text>
+        `;
+      }
+    }
+
+    // 6. 藝術風格抽象畫派比喻之 SVG 動態模擬邏輯
+    let currentArtMode = 'mondrian';
+    let seuratIteration = 0;
+    let seuratTimer = null;
+    let seuratParticles = [];
+
+    function initSeuratParticles() {
+      seuratParticles = [];
+      const TOTAL_PTS = 64;
+      // 初始狀態為交織的色彩雲霧 (高維混雜)
+      for (let i = 0; i < TOTAL_PTS; i++) {
+        const cluster = i % 3;
+        const color = cluster === 0 ? '#60a5fa' : cluster === 1 ? '#f43f5e' : '#a855f7';
+        seuratParticles.push({
+          x: 160 + (Math.random() - 0.5) * 80,
+          y: 120 + (Math.random() - 0.5) * 70,
+          targetCluster: cluster,
+          color: color,
+          size: 2.2 + Math.random() * 1.5
+        });
+      }
+    }
+
+    function switchArtMode(mode) {
+      currentArtMode = mode;
+      ['mondrian', 'matisse', 'seurat'].forEach(m => {
+        const btn = document.getElementById(`art-mode-${m}`);
+        if (m === mode) {
+          btn.className = "px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs transition flex items-center shadow";
+        } else {
+          btn.className = "px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white font-semibold text-xs transition flex items-center";
+        }
+        document.getElementById(`art-ctrl-${m}`).classList.toggle('hidden', m !== mode);
+      });
+
+      if (seuratTimer) {
+        clearInterval(seuratTimer);
+        seuratTimer = null;
+        const btnAuto = document.getElementById('btn-seurat-auto');
+        if (btnAuto) btnAuto.innerHTML = '<i class="fa-solid fa-bolt mr-1.5"></i> 自動演化';
+      }
+
+      if (mode === 'mondrian') {
+        const val = parseFloat(document.getElementById('slider-art-angle').value);
+        renderArtMondrian(val);
+      } else if (mode === 'matisse') {
+        renderArtMatisse();
+      } else if (mode === 'seurat') {
+        renderArtSeurat();
+      }
+    }
+
+    function onMondrianSlider(angleDeg) {
+      document.getElementById('val-art-angle').innerText = `${Math.round(angleDeg)}°`;
+      renderArtMondrian(parseFloat(angleDeg));
+    }
+
+    function renderArtMondrian(angleDeg) {
+      const svg = document.getElementById('svg-art-canvas');
+      const badge = document.getElementById('art-canvas-badge');
+      const sub = document.getElementById('art-canvas-sub');
+      const liveStat = document.getElementById('art-live-stat');
+      const critiqueCard = document.getElementById('art-critique-card');
+      const critiqueTitle = document.getElementById('art-critique-title');
+      const critiqueTag = document.getElementById('art-critique-tag');
+      const critiqueBody = document.getElementById('art-critique-body');
+      const statElem = document.getElementById('art-stat-elem');
+      const statMath = document.getElementById('art-stat-math');
+      const statDesc = document.getElementById('art-stat-desc');
+      const varLabel = document.getElementById('mondrian-var-label');
+      const quoteText = document.getElementById('art-quote-text');
+      const quoteAuthor = document.getElementById('art-quote-author');
+
+      badge.className = "px-2.5 py-1 rounded text-xs font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30";
+      badge.innerText = "Piet Mondrian · 新造型主義冷抽象";
+      sub.innerText = "PCA 正交網格與方差能量最大化";
+      liveStat.innerText = `投影軸 $\\theta$: ${Math.round(angleDeg)}°`;
+
+      critiqueCard.className = "bg-slate-900/90 rounded-2xl p-6 border border-blue-500/40 shadow-xl space-y-4";
+      critiqueTitle.className = "font-black text-lg text-blue-300 flex items-center";
+      critiqueTitle.innerHTML = '<i class="fa-solid fa-shapes mr-2"></i> 蒙德里安 × PCA：正交張力幾何';
+      critiqueTag.className = "text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/40";
+      critiqueTag.innerText = "非監督式 · 線性正交投影";
+      critiqueBody.innerHTML = "<strong>畫派哲學：</strong>蒙德里安徹底拋棄具象輪廓（不理會任何標籤）。畫作中黑色的垂直與水平正交線條，象徵宇宙最純粹的秩序。滑動滑桿改變正交投影軸 $\theta$，紅黃藍色塊如同高維特徵能量，當軸向正對矩形對角線時，投影方差達到最大值！";
+
+      statElem.innerText = "黑線正交網格、紅黃藍原色塊";
+      statMath.innerHTML = "$\\max_w w^T \\Sigma w$ (協方差最大特徵軸)";
+      statDesc.innerText = "以最少正交軸線捕捉全局最大方差";
+      quoteText.innerText = "「線條與色彩的平衡，並非複製自然，而是提煉整體幾何能量的主軸。」";
+      quoteAuthor.innerText = "— Piet Mondrian（比喻 PCA 之全域變異數提取）";
+
+      const rad = (angleDeg * Math.PI) / 180;
+      const varianceRatio = 65 + 32 * Math.pow(Math.sin(2 * rad), 2);
+      varLabel.innerText = `保留變異數: ${varianceRatio.toFixed(1)}% ${varianceRatio > 90 ? '(最佳 PC1 軸)' : '(次優投影)'}`;
+
+      const len = 140;
+      const cx = 160, cy = 120;
+      const x1 = cx - len * Math.cos(rad);
+      const y1 = cy + len * Math.sin(rad);
+      const x2 = cx + len * Math.cos(rad);
+      const y2 = cy - len * Math.sin(rad);
+
+      const x2_1 = cx - (len * 0.7) * Math.sin(rad);
+      const y2_1 = cy - (len * 0.7) * Math.cos(rad);
+      const x2_2 = cx + (len * 0.7) * Math.sin(rad);
+      const y2_2 = cy + (len * 0.7) * Math.cos(rad);
+
+      svg.innerHTML = `
+        <defs>
+          <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+          </filter>
+        </defs>
+        <rect x="20" y="20" width="100" height="90" fill="#ef4444" opacity="0.88"/>
+        <rect x="130" y="20" width="170" height="50" fill="#f8fafc" opacity="0.95"/>
+        <rect x="130" y="80" width="70" height="140" fill="#3b82f6" opacity="0.88"/>
+        <rect x="210" y="80" width="90" height="70" fill="#facc15" opacity="0.88"/>
+        <rect x="210" y="160" width="90" height="60" fill="#f8fafc" opacity="0.92"/>
+        <rect x="20" y="120" width="100" height="100" fill="#f1f5f9" opacity="0.95"/>
+
+        <line x1="125" y1="20" x2="125" y2="220" stroke="#000000" stroke-width="8"/>
+        <line x1="205" y1="75" x2="205" y2="220" stroke="#000000" stroke-width="6"/>
+        <line x1="20" y1="115" x2="300" y2="115" stroke="#000000" stroke-width="8"/>
+        <line x1="125" y1="75" x2="300" y2="75" stroke="#000000" stroke-width="6"/>
+        <line x1="205" y1="155" x2="300" y2="155" stroke="#000000" stroke-width="5"/>
+        <rect x="20" y="20" width="280" height="200" fill="none" stroke="#000000" stroke-width="8"/>
+
+        <line x1="70" y1="65" x2="${cx + 30 * Math.cos(rad)}" y2="${cy - 30 * Math.sin(rad)}" stroke="#f87171" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.7"/>
+        <line x1="165" y1="150" x2="${cx - 20 * Math.cos(rad)}" y2="${cy + 20 * Math.sin(rad)}" stroke="#60a5fa" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.7"/>
+        <line x1="255" y1="115" x2="${cx + 60 * Math.cos(rad)}" y2="${cy - 60 * Math.sin(rad)}" stroke="#fde047" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.7"/>
+
+        <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#38bdf8" stroke-width="3.5" filter="url(#neonGlow)"/>
+        <line x1="${x2_1}" y1="${y2_1}" x2="${x2_2}" y2="${y2_2}" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4,4" opacity="0.75"/>
+        <circle cx="${cx}" cy="${cy}" r="5" fill="#38bdf8"/>
+
+        <text x="${x2 + 8}" y="${y2 + 4}" fill="#38bdf8" font-size="10" font-family="monospace" font-weight="bold">PC1 (${Math.round(angleDeg)}°)</text>
+        <text x="${x2_2 + 6}" y="${y2_2 + 4}" fill="#94a3b8" font-size="9" font-family="monospace">PC2 (正交次軸)</text>
+
+        <g transform="translate(30, 35)">
+          <rect x="0" y="0" width="76" height="24" rx="4" fill="rgba(15, 23, 42, 0.85)" stroke="#38bdf8" stroke-width="1"/>
+          <text x="6" y="11" fill="#94a3b8" font-size="7" font-family="sans-serif">變異數捕獲</text>
+          <text x="6" y="20" fill="#38bdf8" font-size="9" font-family="monospace" font-weight="bold">${varianceRatio.toFixed(1)}%</text>
+        </g>
+      `;
+
+      if (window.renderMathInElement) {
+        renderMathInElement(critiqueCard, {
+          delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]
+        });
+      }
+    }
+
+    function onMatisseSlider() {
+      renderArtMatisse();
+    }
+
+    function renderArtMatisse() {
+      const sbVal = parseFloat(document.getElementById('slider-matisse-sb').value);
+      const swVal = parseFloat(document.getElementById('slider-matisse-sw').value);
+      document.getElementById('val-matisse-sb').innerText = `${Math.round(sbVal)}%`;
+      document.getElementById('val-matisse-sw').innerText = `${Math.round(swVal)}%`;
+
+      const svg = document.getElementById('svg-art-canvas');
+      const badge = document.getElementById('art-canvas-badge');
+      const sub = document.getElementById('art-canvas-sub');
+      const liveStat = document.getElementById('art-live-stat');
+      const critiqueCard = document.getElementById('art-critique-card');
+      const critiqueTitle = document.getElementById('art-critique-title');
+      const critiqueTag = document.getElementById('art-critique-tag');
+      const critiqueBody = document.getElementById('art-critique-body');
+      const statElem = document.getElementById('art-stat-elem');
+      const statMath = document.getElementById('art-stat-math');
+      const statDesc = document.getElementById('art-stat-desc');
+      const quoteText = document.getElementById('art-quote-text');
+      const quoteAuthor = document.getElementById('art-quote-author');
+
+      badge.className = "px-2.5 py-1 rounded text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+      badge.innerText = "Henri Matisse · 野獸派純色剪紙";
+      sub.innerText = "LDA 類間留白撕裂與類內捏合";
+      liveStat.innerText = `Fisher 判別比: ${(sbVal / (105 - swVal)).toFixed(2)}`;
+
+      critiqueCard.className = "bg-slate-900/90 rounded-2xl p-6 border border-emerald-500/40 shadow-xl space-y-4";
+      critiqueTitle.className = "font-black text-lg text-emerald-300 flex items-center";
+      critiqueTitle.innerHTML = '<i class="fa-solid fa-scissors mr-2"></i> 馬蒂斯 × LDA：野獸派純色撕裂';
+      critiqueTag.className = "text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+      critiqueTag.innerText = "監督式 · 類別鑑別最大化";
+      critiqueBody.innerHTML = "<strong>畫派哲學：</strong>晚年馬蒂斯手持利剪，直接在純色紙張中雕刻形體。他對色彩的『純潔度與對比邊界（類別標籤）』極端敏感！LDA 如同馬蒂斯的剪刀，<strong>在紅色剪紙與蔚藍剪紙之間刻意拉出巨大的白色留白鴻溝（最大化類間 $S_B$）</strong>，同時將同色剪紙緊密聚攏捏合（最小化類內 $S_W$）。";
+
+      statElem.innerText = "強烈互補純色、有機海藻剪紙形狀";
+      statMath.innerHTML = "$\\max_w \\frac{w^T S_B w}{w^T S_W w}$ (廣義瑞利商)";
+      statDesc.innerText = "撕裂群體間距，最大化分類判別可見度";
+      quoteText.innerText = "「剪紙是直接在色彩中雕刻，在對峙的純色之間留出空氣與界限。」";
+      quoteAuthor.innerText = "— Henri Matisse（比喻 LDA 之最大類別分離度）";
+
+      const voidHalfWidth = 15 + (sbVal / 100) * 45;
+      const compactScale = 1.25 - (swVal / 100) * 0.55;
+
+      svg.innerHTML = `
+        <defs>
+          <linearGradient id="voidGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#090d16" stop-opacity="0"/>
+            <stop offset="50%" stop-color="#f8fafc" stop-opacity="0.12"/>
+            <stop offset="100%" stop-color="#090d16" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+
+        <rect x="10" y="10" width="300" height="220" rx="12" fill="#0b1120" stroke="#1e293b" stroke-width="2"/>
+        <rect x="${160 - voidHalfWidth}" y="10" width="${voidHalfWidth * 2}" height="220" fill="url(#voidGrad)"/>
+        
+        <line x1="160" y1="20" x2="160" y2="220" stroke="#34d399" stroke-width="2.5" stroke-dasharray="6,4"/>
+        <text x="160" y="32" fill="#34d399" font-size="9" font-family="monospace" font-weight="bold" text-anchor="middle">LDA 判別邊界</text>
+        <text x="160" y="215" fill="#a7f3d0" font-size="8" font-family="sans-serif" text-anchor="middle">類間留白距離 $S_B$: ${Math.round(voidHalfWidth * 2)}px</text>
+
+        <g transform="translate(${160 - voidHalfWidth - 65}, 120) scale(${compactScale})">
+          <ellipse cx="0" cy="0" rx="55" ry="42" fill="rgba(56, 189, 248, 0.12)" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="3,3"/>
+          <path d="M 0,-35 C -25,-30 -35,-10 -20,10 C -35,25 -10,35 0,25 C 15,35 30,20 18,5 C 32,-10 20,-30 0,-35 Z" fill="#0284c7" opacity="0.88"/>
+          <circle cx="-15" cy="-10" r="4" fill="#38bdf8"/>
+          <circle cx="12" cy="15" r="3.5" fill="#7dd3fc"/>
+          <circle cx="-5" cy="18" r="3" fill="#bae6fd"/>
+          <circle cx="15" cy="-15" r="4" fill="#38bdf8"/>
+          <text x="0" y="48" fill="#38bdf8" font-size="9" font-family="sans-serif" font-weight="bold" text-anchor="middle">蔚藍剪紙群 (類別 1)</text>
+          <text x="0" y="58" fill="#7dd3fc" font-size="7" font-family="sans-serif" text-anchor="middle">類內緊縮 $S_W$</text>
+        </g>
+
+        <g transform="translate(${160 + voidHalfWidth + 65}, 120) scale(${compactScale})">
+          <ellipse cx="0" cy="0" rx="55" ry="42" fill="rgba(244, 63, 94, 0.12)" stroke="#f43f5e" stroke-width="1.5" stroke-dasharray="3,3"/>
+          <path d="M 0,-30 C -22,-20 -30,5 -15,20 C -28,32 -5,35 5,22 C 20,32 32,15 15,-2 C 30,-15 18,-28 0,-30 Z" fill="#e11d48" opacity="0.88"/>
+          <circle cx="-14" cy="-8" r="4" fill="#fb7185"/>
+          <circle cx="15" cy="12" r="3.5" fill="#fda4af"/>
+          <circle cx="-4" cy="16" r="3" fill="#fecdd3"/>
+          <circle cx="12" cy="-14" r="4" fill="#f43f5e"/>
+          <text x="0" y="48" fill="#f43f5e" font-size="9" font-family="sans-serif" font-weight="bold" text-anchor="middle">火紅剪紙群 (類別 2)</text>
+          <text x="0" y="58" fill="#fda4af" font-size="7" font-family="sans-serif" text-anchor="middle">類內緊縮 $S_W$</text>
+        </g>
+
+        <line x1="${160 - voidHalfWidth}" y1="120" x2="${160 + voidHalfWidth}" y2="120" stroke="#fbbf24" stroke-width="2"/>
+        <polygon points="${160 - voidHalfWidth},120 ${160 - voidHalfWidth + 6},116 ${160 - voidHalfWidth + 6},124" fill="#fbbf24"/>
+        <polygon points="${160 + voidHalfWidth},120 ${160 + voidHalfWidth - 6},116 ${160 + voidHalfWidth - 6},124" fill="#fbbf24"/>
+        <text x="160" y="113" fill="#fbbf24" font-size="8" font-family="monospace" font-weight="bold" text-anchor="middle">最大化 $S_B$</text>
+      `;
+
+      if (window.renderMathInElement) {
+        renderMathInElement(critiqueCard, {
+          delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]
+        });
+      }
+    }
+
+    function stepSeurat() {
+      seuratIteration = Math.min(100, seuratIteration + 1);
+      document.getElementById('val-seurat-iter').innerText = seuratIteration;
+
+      const targets = [
+        { cx: 85, cy: 120 },
+        { cx: 235, cy: 120 },
+        { cx: 160, cy: 60 }
+      ];
+
+      const p = seuratIteration / 100;
+      seuratParticles.forEach(pt => {
+        const tgt = targets[pt.targetCluster];
+        const attractDx = (tgt.cx - pt.x) * 0.12 * p;
+        const attractDy = (tgt.cy - pt.y) * 0.12 * p;
+        const jitterX = (Math.random() - 0.5) * (1 - p * 0.7) * 4;
+        const jitterY = (Math.random() - 0.5) * (1 - p * 0.7) * 4;
+
+        pt.x += attractDx + jitterX;
+        pt.y += attractDy + jitterY;
+      });
+
+      renderArtSeurat();
+    }
+
+    function toggleSeuratAuto() {
+      const btn = document.getElementById('btn-seurat-auto');
+      if (seuratTimer) {
+        clearInterval(seuratTimer);
+        seuratTimer = null;
+        btn.innerHTML = '<i class="fa-solid fa-bolt mr-1.5"></i> 自動演化';
+      } else {
+        btn.innerHTML = '<i class="fa-solid fa-pause mr-1.5"></i> 暫停';
+        seuratTimer = setInterval(() => {
+          stepSeurat();
+          if (seuratIteration >= 100) {
+            clearInterval(seuratTimer);
+            seuratTimer = null;
+            btn.innerHTML = '<i class="fa-solid fa-bolt mr-1.5"></i> 自動演化';
+          }
+        }, 35);
+      }
+    }
+
+    function resetSeurat() {
+      if (seuratTimer) {
+        clearInterval(seuratTimer);
+        seuratTimer = null;
+        document.getElementById('btn-seurat-auto').innerHTML = '<i class="fa-solid fa-bolt mr-1.5"></i> 自動演化';
+      }
+      seuratIteration = 0;
+      document.getElementById('val-seurat-iter').innerText = 0;
+      initSeuratParticles();
+      renderArtSeurat();
+    }
+
+    function renderArtSeurat() {
+      const svg = document.getElementById('svg-art-canvas');
+      const badge = document.getElementById('art-canvas-badge');
+      const sub = document.getElementById('art-canvas-sub');
+      const liveStat = document.getElementById('art-live-stat');
+      const critiqueCard = document.getElementById('art-critique-card');
+      const critiqueTitle = document.getElementById('art-critique-title');
+      const critiqueTag = document.getElementById('art-critique-tag');
+      const critiqueBody = document.getElementById('art-critique-body');
+      const statElem = document.getElementById('art-stat-elem');
+      const statMath = document.getElementById('art-stat-math');
+      const statDesc = document.getElementById('art-stat-desc');
+      const quoteText = document.getElementById('art-quote-text');
+      const quoteAuthor = document.getElementById('art-quote-author');
+
+      badge.className = "px-2.5 py-1 rounded text-xs font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30";
+      badge.innerText = "Georges Seurat · 秀拉點描派流體";
+      sub.innerText = "t-SNE 微觀粒子拓撲咬合與流形展開";
+      liveStat.innerText = `點描步數: ${seuratIteration}/100`;
+
+      critiqueCard.className = "bg-slate-900/90 rounded-2xl p-6 border border-purple-500/40 shadow-xl space-y-4";
+      critiqueTitle.className = "font-black text-lg text-purple-300 flex items-center";
+      critiqueTitle.innerHTML = '<i class="fa-solid fa-droplet mr-2"></i> 秀拉 × t-SNE：點描流體群島';
+      critiqueTag.className = "text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40";
+      critiqueTag.innerText = "非監督式 · 非線性流形學習";
+      critiqueBody.innerHTML = "<strong>畫派哲學：</strong>秀拉不調和色料，而是在畫布上點上無數細緻的原色色點，讓眼睛在大腦視網膜中自然融合。t-SNE 的非線性梯度下降正如同點描法——<strong>相鄰同調的微觀色點在引力拉扯下緊密依偎，而遠距群落被 t-分布的長尾排斥力推向四方</strong>，從最初糾纏的混沌色霧自組織成優雅分立的有機群島！";
+
+      statElem.innerText = "光學色點筆觸、點描力場、流動群島";
+      statMath.innerHTML = "$\\min_Y KL(P || Q)$ (Student-t 分布梯度)";
+      statDesc.innerText = "保留微觀拓撲鄰域，化解高維擁擠災難";
+      quoteText.innerText = "「讓細碎的色彩微粒彼此呼吸與推擠，光芒便從點與點的空隙中油然而生。」";
+      quoteAuthor.innerText = "— Georges Seurat（比喻 t-SNE 之微觀機率鄰域自組織）";
+
+      const p = seuratIteration / 100;
+
+      let particlesSvg = '';
+      seuratParticles.forEach(pt => {
+        particlesSvg += `<circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="${pt.size}" fill="${pt.color}" opacity="0.9"/>`;
+      });
+
+      svg.innerHTML = `
+        <defs>
+          <radialGradient id="seuratG1" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#3b82f6" stop-opacity="${(0.1 + p * 0.25).toFixed(2)}"/>
+            <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="seuratG2" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ef4444" stop-opacity="${(0.1 + p * 0.25).toFixed(2)}"/>
+            <stop offset="100%" stop-color="#ef4444" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="seuratG3" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#a855f7" stop-opacity="${(0.1 + p * 0.25).toFixed(2)}"/>
+            <stop offset="100%" stop-color="#a855f7" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+
+        <rect x="10" y="10" width="300" height="220" rx="12" fill="#090d16" stroke="#1e293b" stroke-width="1.5"/>
+
+        <circle cx="85" cy="120" r="55" fill="url(#seuratG1)"/>
+        <circle cx="235" cy="120" r="55" fill="url(#seuratG2)"/>
+        <circle cx="160" cy="60" r="45" fill="url(#seuratG3)"/>
+
+        ${p > 0.3 ? `
+          <path d="M 120,120 Q 160,140 200,120" fill="none" stroke="#c084fc" stroke-width="1.5" stroke-dasharray="3,3" opacity="${p}"/>
+          <text x="160" y="152" fill="#e9d5ff" font-size="8" font-family="monospace" text-anchor="middle">t-分布長尾排斥</text>
+        ` : ''}
+
+        ${particlesSvg}
+
+        <text x="85" y="195" fill="#93c5fd" font-size="8" font-family="sans-serif" font-weight="bold" text-anchor="middle">群島 A (微觀咬合)</text>
+        <text x="235" y="195" fill="#fca5a5" font-size="8" font-family="sans-serif" font-weight="bold" text-anchor="middle">群島 B (微觀咬合)</text>
+        <text x="160" y="25" fill="#d8b4fe" font-size="8" font-family="sans-serif" font-weight="bold" text-anchor="middle">群島 C (局部拓撲)</text>
+      `;
+
+      if (window.renderMathInElement) {
+        renderMathInElement(critiqueCard, {
+          delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]
+        });
+      }
+    }
+
+    // 初始化載入
+    window.addEventListener('load', () => {
+      resetDataset();
+      renderWineGlass(90);
+      initSeuratParticles();
+      renderArtMondrian(45);
+    });
+
+    window.addEventListener('resize', () => {
+      render();
+    });
+  </script>
+</body>
+</html>
