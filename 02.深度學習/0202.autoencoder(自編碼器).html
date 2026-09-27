@@ -1,0 +1,1672 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autoencoder (自編碼器) 全方位權威指南與互動實驗室</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- KaTeX for math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+          onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#312e81',
+            },
+            accent: {
+              cyan: '#06b6d4',
+              emerald: '#10b981',
+              rose: '#f43f5e',
+              amber: '#f59e0b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap');
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+    }
+    code, pre {
+      font-family: 'Fira Code', monospace;
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glow-cyan {
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.25);
+    }
+    .glow-indigo {
+      box-shadow: 0 0 25px rgba(99, 102, 241, 0.3);
+    }
+    /* PyTorch custom code highlights */
+    .pt-layer { color: #38bdf8; font-weight: 600; }     /* Encoder/Decoder layers */
+    .pt-func { color: #f472b6; font-weight: 600; }      /* Activation/Forward */
+    .pt-loss { color: #fb923c; font-weight: 700; }      /* Loss Criterion */
+    .pt-optim { color: #34d399; font-weight: 700; }     /* Optimizer/Backward */
+    .pt-tensor { color: #a78bfa; font-weight: 600; }    /* Bottleneck/Latent */
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen selection:bg-indigo-500 selection:text-white">
+
+  <!-- Header Navigation -->
+  <header class="sticky top-0 z-50 glass-card border-b border-slate-800/80 px-4 lg:px-8 py-3.5">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-cyan-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+          <i class="fa-solid fa-arrows-split-up-and-left text-white text-lg rotate-90"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-black tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-cyan-300">
+            AUTOENCODER MASTER LAB
+          </h1>
+          <p class="text-xs text-slate-400">自編碼器全景教學與即時互動模擬系統</p>
+        </div>
+      </div>
+
+      <!-- Quick Nav Buttons -->
+      <nav class="hidden md:flex items-center gap-1.5 text-xs text-slate-300">
+        <a href="#sec-01" class="px-2.5 py-1 rounded hover:bg-slate-800 transition">01-04 核心觀念</a>
+        <a href="#sec-arch" class="px-2.5 py-1 rounded hover:bg-slate-800 transition">架構與三大用途</a>
+        <a href="#sec-05" class="px-2.5 py-1 rounded hover:bg-slate-800 transition">05-08 由來與應用</a>
+        <a href="#sec-09" class="px-2.5 py-1 rounded hover:bg-slate-800 transition">09 數學推導</a>
+        <a href="#sec-10" class="px-2.5 py-1 rounded hover:bg-indigo-900/60 text-cyan-400 font-semibold transition">10 範疇互動實驗</a>
+        <a href="#sec-11" class="px-2.5 py-1 rounded hover:bg-slate-800 transition">11 PyTorch 實作</a>
+        <a href="#sec-12" class="px-3 py-1 rounded-full bg-indigo-600 text-white font-bold hover:bg-indigo-500 transition shadow-md shadow-indigo-600/40">12 視覺化模擬器</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 lg:px-8 py-8 space-y-16">
+
+    <!-- Hero Section -->
+    <div class="relative overflow-hidden rounded-3xl p-8 lg:p-12 glass-card border border-indigo-500/30 glow-indigo">
+      <div class="absolute -right-24 -top-24 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -left-20 -bottom-20 w-80 h-80 bg-cyan-600/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="relative z-10 max-w-4xl space-y-4">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-400/30 text-indigo-300 text-xs font-semibold">
+          <i class="fa-solid fa-atom"></i> 深度學習 / 非監督表徵學習的核心基石
+        </div>
+        <h2 class="text-3xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
+          自編碼器：從 <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400">資訊瓶頸</span> 到 <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">異常檢測與生成</span>
+        </h2>
+        <p class="text-slate-300 text-base lg:text-lg leading-relaxed">
+          深入解析自編碼器架構的對稱之美，掌握無監督學習的「壓縮—還原」本質，從 IPAS 認證關鍵考點、工業 AOI 缺陷判定，到 PyTorch 端到端實作與五步即時動態模擬。
+        </p>
+      </div>
+    </div>
+
+    <!-- 01 & 02 & 04 模組：核心與特徵 -->
+    <section id="sec-01" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- 01. 一句話簡介 -->
+      <div class="glass-card rounded-2xl p-6 border-l-4 border-l-cyan-500 space-y-3">
+        <div class="flex items-center justify-between text-cyan-400">
+          <span class="text-xs font-bold uppercase tracking-widest">SECTION 01</span>
+          <i class="fa-solid fa-bolt text-lg"></i>
+        </div>
+        <h3 class="text-xl font-bold text-white">一句話簡介</h3>
+        <p class="text-slate-300 text-sm leading-relaxed">
+          <strong class="text-cyan-300">自編碼器（Autoencoder）</strong> 是一種<span class="text-white font-semibold">非監督式學習（或自監督學習）</span>的人工神經網路，主要用來學習資料的壓縮表示，並從中重建原始數據。你可以把它想像成一個<strong class="text-amber-300">「先壓縮、再還原」</strong>的資料處理模型。
+        </p>
+      </div>
+
+      <!-- 02. 核心原理 -->
+      <div class="glass-card rounded-2xl p-6 border-l-4 border-l-indigo-500 space-y-3">
+        <div class="flex items-center justify-between text-indigo-400">
+          <span class="text-xs font-bold uppercase tracking-widest">SECTION 02</span>
+          <i class="fa-solid fa-microchip text-lg"></i>
+        </div>
+        <h3 class="text-xl font-bold text-white">核心原理</h3>
+        <p class="text-slate-300 text-sm leading-relaxed">
+          透過強迫神經網路穿越維度大幅縮減的<strong class="text-indigo-300">瓶頸層 (Bottleneck / Code)</strong>，剝離無關雜訊與冗餘維度，僅留下資料最核心的潛在表徵（Latent Representations），以<span class="text-emerald-300 font-semibold">最小化自身重構誤差</span>達成自主學習。
+        </p>
+      </div>
+
+      <!-- 04. 實務特徵 -->
+      <div class="glass-card rounded-2xl p-6 border-l-4 border-l-emerald-500 space-y-3">
+        <div class="flex items-center justify-between text-emerald-400">
+          <span class="text-xs font-bold uppercase tracking-widest">SECTION 04</span>
+          <i class="fa-solid fa-list-check text-lg"></i>
+        </div>
+        <h3 class="text-xl font-bold text-white">實務特徵</h3>
+        <ul class="text-slate-300 text-xs space-y-1.5 list-disc list-inside leading-relaxed">
+          <li><span class="text-white font-medium">非線性降維：</span>利用非線性活化函數捕捉流形幾何結構。</li>
+          <li><span class="text-white font-medium">無監督學習：</span>無需標籤資料（Label-free），大幅降低資料標註成本。</li>
+          <li><span class="text-white font-medium">異常檢測靈敏性：</span>僅對訓練集的正常模式具備重建能力。</li>
+          <li><span class="text-white font-medium">抗噪學習：</span>具備抑制白雜訊、重建原始清晰信號的泛化潛能。</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 核心架構三要素 & 主要用途 & 常見變體精華 -->
+    <section id="sec-arch" class="glass-card rounded-3xl p-6 lg:p-8 space-y-8 border border-slate-800">
+      
+      <!-- 核心架構三要素 -->
+      <div class="space-y-4">
+        <div class="flex items-center gap-2">
+          <div class="w-2.5 h-6 rounded-full bg-gradient-to-b from-indigo-500 to-cyan-400"></div>
+          <h3 class="text-2xl font-black text-white">核心架構：主要由三個部分組成</h3>
+        </div>
+        <p class="text-xs text-slate-400">自編碼器透過「編碼 ➔ 瓶頸 ➔ 解碼」的經典對稱沙漏管線運作：</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5 pt-2">
+          <!-- 編碼器 -->
+          <div class="p-5 rounded-2xl bg-slate-900/90 border border-cyan-500/30 relative overflow-hidden group hover:border-cyan-400 transition-all">
+            <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-cyan-500/10 rounded-full blur-xl group-hover:scale-125 transition-transform"></div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold px-2.5 py-1 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">PART 1</span>
+              <i class="fa-solid fa-compress text-cyan-400 text-lg"></i>
+            </div>
+            <h4 class="text-lg font-bold text-white mb-2">編碼器（Encoder）</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              把高維度的輸入資料壓縮成低維度的隱藏特徵（稱為<strong class="text-cyan-300">瓶頸層</strong>或 <strong class="text-cyan-300">Code</strong>），過濾冗餘細節並萃取高層次抽象特徵。
+            </p>
+          </div>
+
+          <!-- 瓶頸層 -->
+          <div class="p-5 rounded-2xl bg-slate-900/90 border border-indigo-500/30 relative overflow-hidden group hover:border-indigo-400 transition-all">
+            <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-indigo-500/10 rounded-full blur-xl group-hover:scale-125 transition-transform"></div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold px-2.5 py-1 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">PART 2</span>
+              <i class="fa-solid fa-filter text-indigo-400 text-lg"></i>
+            </div>
+            <h4 class="text-lg font-bold text-white mb-2">瓶頸層（Bottleneck）</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              儲存<strong class="text-indigo-300">最小表示空間</strong>的關鍵特徵，強迫模型<span class="text-amber-300 font-medium">去除雜訊、保留最重要的資訊</span>，杜絕模型退化為單純的恆等拷貝。
+            </p>
+          </div>
+
+          <!-- 解碼器 -->
+          <div class="p-5 rounded-2xl bg-slate-900/90 border border-emerald-500/30 relative overflow-hidden group hover:border-emerald-400 transition-all">
+            <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl group-hover:scale-125 transition-transform"></div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">PART 3</span>
+              <i class="fa-solid fa-expand text-emerald-400 text-lg"></i>
+            </div>
+            <h4 class="text-lg font-bold text-white mb-2">解碼器（Decoder）</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              從低維度的壓縮特徵中，盡可能還原出原始的輸入資料，透過最小化重構誤差指導全網路權重最佳化。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 主要用途與常見變體 -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4 border-t border-slate-800/80">
+        
+        <!-- 主要用途 -->
+        <div class="p-6 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-4">
+          <div class="flex items-center gap-2 text-cyan-400 font-bold text-base">
+            <i class="fa-solid fa-bullseye"></i>
+            <span>主要用途 (Major Applications)</span>
+          </div>
+
+          <div class="space-y-3.5 text-xs text-slate-300">
+            <div class="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
+              <div class="font-bold text-white flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                降維（Dimensionality Reduction）
+              </div>
+              <p class="text-slate-400 leading-relaxed pl-4">
+                類似主成分分析（PCA），但自編碼器具備非線性活化函數，能捕捉更複雜細膩的<strong class="text-cyan-300">非線性流形特徵</strong>。
+              </p>
+            </div>
+
+            <div class="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
+              <div class="font-bold text-white flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                異常偵測（Anomaly Detection）
+              </div>
+              <p class="text-slate-400 leading-relaxed pl-4">
+                模型只學習正常資料的重建方式；當異常資料輸入時，<strong class="text-amber-300">重建誤差會劇增</strong>，藉此準確抓出異常瑕疵。
+              </p>
+            </div>
+
+            <div class="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
+              <div class="font-bold text-white flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                去噪（Denoising）
+              </div>
+              <p class="text-slate-400 leading-relaxed pl-4">
+                去除圖片或音訊中的隨機高斯雜訊或脈衝雜訊，自主還原乾淨高保真的原本版本。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 常見變體精要 -->
+        <div class="p-6 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-4">
+          <div class="flex items-center gap-2 text-indigo-400 font-bold text-base">
+            <i class="fa-solid fa-code-branch"></i>
+            <span>常見核心變體 (Common Variants)</span>
+          </div>
+
+          <div class="space-y-3.5 text-xs text-slate-300">
+            <div class="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
+              <div class="font-bold text-white flex items-center justify-between">
+                <span class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+                  去噪自編碼器（DAE, Denoising Autoencoder）
+                </span>
+                <span class="text-[10px] text-indigo-300 px-2 py-0.5 rounded bg-indigo-950/80 border border-indigo-500/30">抗噪表徵</span>
+              </div>
+              <p class="text-slate-400 leading-relaxed pl-4">
+                輸入資料會被刻意加入雜訊 $\tilde{x}$，訓練模型學會消除干擾，並還原出無雜訊的原始純淨資料 $x$。
+              </p>
+            </div>
+
+            <div class="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
+              <div class="font-bold text-white flex items-center justify-between">
+                <span class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-pink-400"></span>
+                  變分自編碼器（VAE, Variational Autoencoder）
+                </span>
+                <span class="text-[10px] text-pink-300 px-2 py-0.5 rounded bg-pink-950/80 border border-pink-500/30">生成模型</span>
+              </div>
+              <p class="text-slate-400 leading-relaxed pl-4">
+                將潛在空間約束為連續平滑的<strong class="text-pink-300">機率分佈</strong>（常態分佈 $\mu, \sigma$），突破離散點限制，具備無窮生成全新逼真樣本的能力。
+              </p>
+            </div>
+
+            <div class="p-3 rounded-xl bg-indigo-950/30 border border-indigo-500/20 text-[11px] text-slate-300 flex items-center gap-2">
+              <i class="fa-solid fa-lightbulb text-amber-400 text-sm"></i>
+              <span>從傳統「特徵提取器」演進為具備採樣生成能力的現代「生成式架構」。</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 03. IPAS AI 考題專區 (初級 & 中級歷屆公告試題特輯) -->
+    <section id="sec-03" class="glass-card rounded-3xl p-6 lg:p-8 space-y-8 border border-amber-500/30 glow-indigo">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 text-amber-300 text-xs font-bold border border-amber-500/30 mb-2">
+            <i class="fa-solid fa-award"></i> 經濟部 IPAS 國家級 AI 應用規劃師證照歷屆公告試題庫
+          </div>
+          <h3 class="text-2xl lg:text-3xl font-black text-white">03. IPAS AI 歷屆試題：自編碼器 (AE) 與變分自編碼器 (VAE) 完整全解</h3>
+          <p class="text-xs lg:text-sm text-slate-400 mt-1">
+            精選初級 AI 應用規劃師（115 年第 1、2 次）與中級 AI 應用規劃師（114 年第 2 梯次）真實公告試題，直擊考核思維與陷阱破譯！
+          </p>
+        </div>
+
+        <!-- Filter / Tab Switchers -->
+        <div class="flex flex-wrap items-center gap-2 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800 text-xs">
+          <button id="examTabAll" onclick="filterExamQuestions('all')" class="px-3.5 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-black transition">
+            全部試題 (7 題)
+          </button>
+          <button id="examTabJunior" onclick="filterExamQuestions('junior')" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white font-semibold transition">
+            一、初級考題 (3 題)
+          </button>
+          <button id="examTabMid" onclick="filterExamQuestions('mid')" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white font-semibold transition">
+            二、中級考題 (4 題)
+          </button>
+        </div>
+      </div>
+
+      <!-- Key Takeaway Banner -->
+      <div class="p-5 rounded-2xl bg-gradient-to-r from-indigo-950/80 via-slate-900 to-amber-950/40 border border-amber-500/30 text-xs text-slate-300 space-y-3">
+        <div class="flex items-center gap-2 text-amber-400 font-bold text-sm">
+          <i class="fa-solid fa-lightbulb text-base"></i>
+          <span>💡 官方命題考點全景小結 (Exam Key Takeaways)</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+          <div class="p-3.5 rounded-xl bg-slate-950/70 border border-cyan-500/30 space-y-1.5">
+            <span class="text-cyan-300 font-bold flex items-center gap-2">
+              <i class="fa-solid fa-cube text-xs"></i> Autoencoder (AE) 命題常態：
+            </span>
+            <p class="text-slate-400 leading-relaxed">
+              常考於<strong class="text-white">設備感測器數值異常偵測</strong>（在缺乏標註、無監督學習環境下利用重建誤差度量異常）、非線性特徵降維與資料壓縮重構。
+            </p>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-950/70 border border-pink-500/30 space-y-1.5">
+            <span class="text-pink-300 font-bold flex items-center gap-2">
+              <i class="fa-solid fa-dna text-xs"></i> Variational Autoencoder (VAE) 命題常態：
+            </span>
+            <p class="text-slate-400 leading-relaxed">
+              考點涵蓋<strong class="text-white">產品概念圖與風格草圖生成</strong>、學習正常分佈預警異常、<strong class="text-white">監控潛在空間分佈以偵測資料漂移（Data Drift）</strong>，以及低資源情境下建構潛在語意空間與生成模擬虛擬樣本。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Question Cards Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- ===== 初級 1: 115-1 初級第一科 第10題 ===== -->
+        <div class="exam-card exam-junior p-5 rounded-2xl bg-slate-900/90 border border-cyan-500/30 flex flex-col justify-between space-y-4">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold px-2.5 py-1 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                115年第1次 · 初級第一科（人工智慧基礎概論）第 10 題
+              </span>
+              <span class="text-[10px] text-slate-400 uppercase font-mono">初級試題</span>
+            </div>
+            <h4 class="text-base font-bold text-white leading-snug">
+              產品概念圖與風格草圖生成
+            </h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              <strong>題目：</strong>某設計公司導入生成式 AI（Generative AI）工具，用於自動產生產品概念圖與風格草圖。為了讓系統能依據既有圖像資料產生具有變化且風格一致的新圖像，模型必須具備學習資料特性並生成新樣本的能力。下列哪一種模型技術或方法最符合上述需求？
+            </p>
+            <div class="space-y-1.5 text-xs text-slate-300">
+              <div class="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 font-semibold flex items-center justify-between">
+                <span>(A) 隱變量自編碼器（Variational Autoencoder, VAE）</span>
+                <i class="fa-solid fa-circle-check text-emerald-400"></i>
+              </div>
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(B) 隨機森林（Random Forest）</div>
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(C) K-近鄰演算法（K-Nearest Neighbors, KNN）</div>
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(D) 貝氏網路（Bayesian Network）</div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-800">
+            <details class="cursor-pointer group" open>
+              <summary class="text-xs font-bold text-cyan-400 group-hover:text-cyan-300 flex items-center justify-between">
+                <span>正確答案：(A) ｜ 深度題解剖析</span>
+                <i class="fa-solid fa-chevron-down transition-transform group-open:rotate-180"></i>
+              </summary>
+              <div class="mt-2.5 p-3 rounded-xl bg-cyan-950/20 border border-cyan-500/20 text-xs text-slate-300 space-y-1.5 leading-relaxed">
+                <p><strong class="text-cyan-300">核心解析：</strong>隨機森林與 KNN 皆為典型傳統判別/分類模型，不具備自主產生圖像新樣本的「生成模型（Generative Model）」能力；而貝氏網路主要處理概率圖因果推論。<strong>變分自編碼器（VAE）</strong>將高維圖像映射至連續的潛在機率分佈 $\mathcal{N}(\mu, \sigma^2)$，透過採樣能平滑生成「風格連貫且具備多樣細節變化」的嶄新草圖圖像。</p>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <!-- ===== 初級 2: 115-1 初級第一科 第22題 ===== -->
+        <div class="exam-card exam-junior p-5 rounded-2xl bg-slate-900/90 border border-cyan-500/30 flex flex-col justify-between space-y-4">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold px-2.5 py-1 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                115年第1次 · 初級第一科（人工智慧基礎概論）第 22 題
+              </span>
+              <span class="text-[10px] text-slate-400 uppercase font-mono">初級試題</span>
+            </div>
+            <h4 class="text-base font-bold text-white leading-snug">
+              無標註數據下之異常預警
+            </h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              <strong>題目：</strong>某製造業工廠規劃導入 AI 監控系統，持續分析設備感測數據（如溫度、震動與壓力）。系統需能在缺乏完整異常標註資料的情況下，辨識與一般運作型態顯著不同的狀態，並發出預警。在此需求下，下列何種技術較為適合？
+            </p>
+            <div class="space-y-1.5 text-xs text-slate-300">
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(A) 使用支援向量機（SVM）建立異常分類模型</div>
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(B) 以決策樹（Decision Tree）學習異常類型的判斷規則</div>
+              <div class="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 font-semibold flex items-center justify-between">
+                <span>(C) 採用變分自編碼器（Variational Autoencoder, VAE）學習正常資料分佈</span>
+                <i class="fa-solid fa-circle-check text-emerald-400"></i>
+              </div>
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(D) 使用生成對抗網路（GAN）直接預測異常標籤</div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-800">
+            <details class="cursor-pointer group" open>
+              <summary class="text-xs font-bold text-cyan-400 group-hover:text-cyan-300 flex items-center justify-between">
+                <span>正確答案：(C) ｜ 深度題解剖析</span>
+                <i class="fa-solid fa-chevron-down transition-transform group-open:rotate-180"></i>
+              </summary>
+              <div class="mt-2.5 p-3 rounded-xl bg-cyan-950/20 border border-cyan-500/20 text-xs text-slate-300 space-y-1.5 leading-relaxed">
+                <p><strong class="text-cyan-300">核心解析：</strong>題目關鍵詞為「<strong>缺乏完整異常標註資料</strong>（無監督/單類別情境）」。SVM 與決策樹需要大量且平衡的異常標籤進行監督式分類；GAN 是生成架構，一般不直接作為異常標籤預測器。<strong>VAE</strong> 可只輸入大量「正常運作狀態」資料，學習其多維機率分佈，當未知故障或偏差數據輸入時，潛在機率對數似然度暴跌或重構誤差劇增，即可精準發出異常預警。</p>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <!-- ===== 初級 3: 115-2 初級第一科 第27題 ===== -->
+        <div class="exam-card exam-junior p-5 rounded-2xl bg-slate-900/90 border border-cyan-500/30 flex flex-col justify-between space-y-4">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold px-2.5 py-1 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                115年第2次 · 初級第一科（人工智慧基礎概論）第 27 題
+              </span>
+              <span class="text-[10px] text-slate-400 uppercase font-mono">初級試題</span>
+            </div>
+            <h4 class="text-base font-bold text-white leading-snug">
+              自編碼器最適應用場景
+            </h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              <strong>題目：</strong>某製造業評估在不同場景導入 AI，包含：（甲）依據設備感測器數值判斷是否出現異常；（乙）依據客服對話內容判斷客戶情緒；（丙）依據產品影像輪廓直接進行瑕疵分類。下列哪一種情境最適合以自編碼器（Autoencoder）作為主要模型架構？
+            </p>
+            <div class="space-y-1.5 text-xs text-slate-300">
+              <div class="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 font-semibold flex items-center justify-between">
+                <span>(A) 甲</span>
+                <i class="fa-solid fa-circle-check text-emerald-400"></i>
+              </div>
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(B) 乙</div>
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(C) 丙</div>
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(D) 甲與丙</div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-800">
+            <details class="cursor-pointer group" open>
+              <summary class="text-xs font-bold text-cyan-400 group-hover:text-cyan-300 flex items-center justify-between">
+                <span>正確答案：(A) ｜ 深度題解剖析</span>
+                <i class="fa-solid fa-chevron-down transition-transform group-open:rotate-180"></i>
+              </summary>
+              <div class="mt-2.5 p-3 rounded-xl bg-cyan-950/20 border border-cyan-500/20 text-xs text-slate-300 space-y-1.5 leading-relaxed">
+                <p><strong class="text-cyan-300">核心解析：</strong>
+                  • <strong>情境（甲）：</strong>感測器數值多為正常連續訊號，瑕疵極罕見，最適合 Autoencoder 學習正常重構，以 Reconstruction Loss 超標判定異常。<br>
+                  • <strong>情境（乙）：</strong>文本情緒分析屬於標準 NLP 分類任務，適合 BERT / RNN 等架構。<br>
+                  • <strong>情境（丙）：</strong>「直接瑕疵分類」需要輸出具體瑕疵類別標籤（如刮傷、凹陷），屬於監督式 CNN/Vision Transformer 分類模型，非 AE 之首要定位。故最適合者唯有 <strong>(A) 甲</strong>。
+                </p>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <!-- ===== 中級 1: 114-2 中級第一科 第40題 ===== -->
+        <div class="exam-card exam-mid p-5 rounded-2xl bg-slate-900/90 border border-indigo-500/30 flex flex-col justify-between space-y-4">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold px-2.5 py-1 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                114年第2梯次 · 中級第一科（技術應用與規劃）第 40 題
+              </span>
+              <span class="text-[10px] text-amber-400 uppercase font-mono font-bold">中級試題</span>
+            </div>
+            <h4 class="text-base font-bold text-white leading-snug">
+              VAE、GAN 與擴散模型之根本差異
+            </h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              <strong>題目：</strong>下列哪一項最正確地描述了 VAE（Variational Autoencoder）、GAN（Generative Adversarial Network）與擴散模型（Diffusion Model）在多模態潛在空間對齊（Latent Alignment）與生成策略上的根本差異？
+            </p>
+            <div class="space-y-1.5 text-xs text-slate-300">
+              <div class="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 font-semibold flex items-center justify-between">
+                <span>(A) VAE 透過顯式潛在變數建模實現跨模態對齊，適合捕捉整體語意結構但生成解析度有限；GAN 透過對抗損失在不同模態間學習分佈映射，生成品質高但穩定性差；擴散模型則以條件化噪聲反推方式實現高保真跨模態生成，兼具穩定性與多樣性</span>
+                <i class="fa-solid fa-circle-check text-emerald-400 ml-2 shrink-0"></i>
+              </div>
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(B) VAE 與 Diffusion Model 均屬隱式生成架構，GAN 屬顯式密度模型...</div>
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(C) VAE 與 GAN 均使用馬爾可夫鏈（Markov Chain）進行跨模態轉換...</div>
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(D) 三者在多模態應用中皆依賴同一潛在表徵空間...</div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-800">
+            <details class="cursor-pointer group" open>
+              <summary class="text-xs font-bold text-indigo-400 group-hover:text-indigo-300 flex items-center justify-between">
+                <span>正確答案：(A) ｜ 深度題解剖析</span>
+                <i class="fa-solid fa-chevron-down transition-transform group-open:rotate-180"></i>
+              </summary>
+              <div class="mt-2.5 p-3 rounded-xl bg-indigo-950/20 border border-indigo-500/20 text-xs text-slate-300 space-y-1.5 leading-relaxed">
+                <p><strong class="text-indigo-300">核心解析：</strong>
+                  1. <strong>VAE：</strong>採用變分推斷顯式建模潛在分佈 $q_\phi(z|x)$，結構平滑但生成易產生模糊、高頻解析度受限；<br>
+                  2. <strong>GAN：</strong>藉由鑑別器與生成器的極小極大博弈（Minimax Game）無顯式潛在先驗，生成銳利但面臨模式崩潰（Mode Collapse）與訓練震盪；<br>
+                  3. <strong>Diffusion：</strong>透過多步馬爾可夫前向加噪與逆向條件去噪（Score Matching），兼得超高解析度與分佈覆蓋度。選項 <strong>(A)</strong> 精準剖析三大架構本質。
+                </p>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <!-- ===== 中級 2: 114-2 中級第一科 第42題 ===== -->
+        <div class="exam-card exam-mid p-5 rounded-2xl bg-slate-900/90 border border-indigo-500/30 flex flex-col justify-between space-y-4">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold px-2.5 py-1 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                114年第2梯次 · 中級第一科（技術應用與規劃）第 42 題
+              </span>
+              <span class="text-[10px] text-amber-400 uppercase font-mono font-bold">中級試題</span>
+            </div>
+            <h4 class="text-base font-bold text-white leading-snug">
+              以 VAE 監控潛在空間分佈與資料偏移
+            </h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              <strong>題目：</strong>若部署一個深度學習模型至金融風控系統，該模型採用鑑別式架構（如 Transformer Classifier）。然而上線後，模型對新樣本的分類錯誤率顯著上升，經檢查發現，輸入資料分佈已與原訓練集明顯不同。針對此情形，下列哪一種應對策略最為適合？
+            </p>
+            <div class="space-y-1.5 text-xs text-slate-300">
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(A) 改用生成對抗網路（GAN）生成新樣本並混入訓練集</div>
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(B) 改用邏輯迴歸模型（Logistic Regression）以提升穩定性</div>
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(C) 增加模型容量（Model Capacity），以學習更多樣本差異</div>
+              <div class="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 font-semibold flex items-center justify-between">
+                <span>(D) 使用變分自編碼器（VAE）監控潛在空間分佈，偵測輸入資料偏移</span>
+                <i class="fa-solid fa-circle-check text-emerald-400 ml-2 shrink-0"></i>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-800">
+            <details class="cursor-pointer group" open>
+              <summary class="text-xs font-bold text-indigo-400 group-hover:text-indigo-300 flex items-center justify-between">
+                <span>正確答案：(D) ｜ 深度題解剖析</span>
+                <i class="fa-solid fa-chevron-down transition-transform group-open:rotate-180"></i>
+              </summary>
+              <div class="mt-2.5 p-3 rounded-xl bg-indigo-950/20 border border-indigo-500/20 text-xs text-slate-300 space-y-1.5 leading-relaxed">
+                <p><strong class="text-indigo-300">核心解析：</strong>線上金融風控模型表現衰退的主因為<strong>資料漂移（Data Drift / Distribution Shift）</strong>。VAE 具備統計先驗約束（例如約束在標準高斯空間），透過計算新樣本在潛在空間中的 KL 散度或重建似然度，可作為絕佳的<strong>漂移預警哨兵（Drift Detector）</strong>，及時通知系統觸發重新訓練。而盲目擴增模型容量 (C) 反而會加劇過擬合。</p>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <!-- ===== 中級 3: 114-2 中級第一科 第43題 ===== -->
+        <div class="exam-card exam-mid p-5 rounded-2xl bg-slate-900/90 border border-indigo-500/30 flex flex-col justify-between space-y-4">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold px-2.5 py-1 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                114年第2梯次 · 中級第一科（技術應用與規劃）第 43 題
+              </span>
+              <span class="text-[10px] text-amber-400 uppercase font-mono font-bold">中級試題</span>
+            </div>
+            <h4 class="text-base font-bold text-white leading-snug">
+              生成式路徑（VAE）與鑑別式路徑（BERT）低資源實驗設計
+            </h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              <strong>題目：</strong>某金融科技公司欲導入 AI 模型協助客服郵件自動分類（投訴、詢問、表揚）。團隊同時考慮兩種模型設計：方案 A（生成式路徑）：採用 VAE 建構潛在語意空間，再結合下游分類器進行標籤預測；方案 B（鑑別式路徑）：採用 BERT Classifier 直接根據輸入文本進行監督式分類。現有標註資料約 2,000 筆，資料分佈均勻但擴充成本高。若團隊希望公平比較兩種模型的資料利用效率與泛化能力，下列哪一種實驗設計最能突顯兩者的本質差異？
+            </p>
+            <div class="space-y-1.5 text-xs text-slate-300">
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(A) 在完整資料集上分別訓練兩者，並比較其分類準率與推論時間</div>
+              <div class="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 font-semibold flex items-center justify-between">
+                <span>(B) 在低資源情境（Low-resource Setting）下，逐步減少標註比例（100%、50%、10%），比較其 F1-score</span>
+                <i class="fa-solid fa-circle-check text-emerald-400 ml-2 shrink-0"></i>
+              </div>
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(C) 使用 GAN 自動生成文本樣本補足資料...</div>
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(D) 在相同訓練資料上固定輸入維度...</div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-800">
+            <details class="cursor-pointer group" open>
+              <summary class="text-xs font-bold text-indigo-400 group-hover:text-indigo-300 flex items-center justify-between">
+                <span>正確答案：(B) ｜ 深度題解剖析</span>
+                <i class="fa-solid fa-chevron-down transition-transform group-open:rotate-180"></i>
+              </summary>
+              <div class="mt-2.5 p-3 rounded-xl bg-indigo-950/20 border border-indigo-500/20 text-xs text-slate-300 space-y-1.5 leading-relaxed">
+                <p><strong class="text-indigo-300">核心解析：</strong>「生成式路徑（VAE 半監督學習）」的一大優勢在於：即使在<strong>極少標註（Low-resource Setting）</strong>時，VAE 仍能利用大量未標註文本自我重構學習紮實的潛在分佈；而純監督式鑑別路徑（BERT Classifier）在標註樣本縮水至 10% 時往往性能急遽跌落。故設計<strong>遞減標籤比例（100% $\to$ 50% $\to$ 10%）</strong>的對比實驗，最能突顯 VAE 半監督表徵學習的資料利用效率。</p>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <!-- ===== 中級 4: 114-2 中級第一科 第44題 ===== -->
+        <div class="exam-card exam-mid p-5 rounded-2xl bg-slate-900/90 border border-indigo-500/30 flex flex-col justify-between space-y-4">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold px-2.5 py-1 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                114年第2梯次 · 中級第一科（技術應用與規劃）第 44 題
+              </span>
+              <span class="text-[10px] text-amber-400 uppercase font-mono font-bold">中級試題</span>
+            </div>
+            <h4 class="text-base font-bold text-white leading-snug">
+              兼顧預測與虛擬樣本生成
+            </h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              <strong>題目：</strong>某電信公司希望建立一個模型來預測顧客是否即將流失，並進一步模擬不同促銷或服務策略下顧客的行為變化，以生成多樣化的虛擬樣本資料進行 A/B 測試與行銷策略評估。若要同時兼顧預測與資料生成的需求，最適合採用下列哪一種方法？
+            </p>
+            <div class="space-y-1.5 text-xs text-slate-300">
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(A) 使用傳統隨機森林（Random Forest）</div>
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(B) 使用邏輯迴歸（Logistic Regression）模型</div>
+              <div class="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 font-semibold flex items-center justify-between">
+                <span>(C) 使用變分自編碼器（Variational Autoencoder, VAE）或生成對抗網路（GAN）</span>
+                <i class="fa-solid fa-circle-check text-emerald-400 ml-2 shrink-0"></i>
+              </div>
+              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-slate-400">(D) 使用強化學習代理（Reinforcement Learning Agent）</div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-800">
+            <details class="cursor-pointer group" open>
+              <summary class="text-xs font-bold text-indigo-400 group-hover:text-indigo-300 flex items-center justify-between">
+                <span>正確答案：(C) ｜ 深度題解剖析</span>
+                <i class="fa-solid fa-chevron-down transition-transform group-open:rotate-180"></i>
+              </summary>
+              <div class="mt-2.5 p-3 rounded-xl bg-indigo-950/20 border border-indigo-500/20 text-xs text-slate-300 space-y-1.5 leading-relaxed">
+                <p><strong class="text-indigo-300">核心解析：</strong>傳統隨機森林 (A) 或邏輯迴歸 (B) 僅能輸出流失機率預測值，完全不具備「生成全新顧客樣貌資料」的能力。<strong>變分自編碼器 (VAE) 或 GAN</strong> 能學習顧客特徵的聯合機率分佈，不僅能結合分類頭預測流失，更可透過潛在向量插值（Latent Vector Interpolation）生成極具可信度的「虛擬高價值顧客」特徵，以供 A/B 模擬測試。</p>
+              </div>
+            </details>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 05. 由來 & 06. 生活化例子 & 07. 工業上應用 -->
+    <section id="sec-05" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      <!-- 05. 由來 -->
+      <div class="glass-card rounded-2xl p-6 space-y-3">
+        <div class="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase">
+          <i class="fa-solid fa-clock-rotate-left"></i> 05. 由來 (History)
+        </div>
+        <h3 class="text-lg font-bold text-white">從自動關聯到深度學習復興</h3>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          1986 年由 Rumelhart、Hinton 等人在 PDP 連接主義架構中提出「Auto-association（自聯想）」。2006 年，Geoffrey Hinton 在 <em>Science</em> 期刊發表里程碑論文，利用受限玻爾茲曼機 (RBM) 逐層貪婪預訓練 (Greedy Layer-wise Pre-training) 深度 Autoencoder，成功證明深層神經網路的有效訓練，一舉引爆近代<strong>深度學習革命</strong>。
+        </p>
+      </div>
+
+      <!-- 06. 生活化例子 -->
+      <div class="glass-card rounded-2xl p-6 space-y-3">
+        <div class="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase">
+          <i class="fa-solid fa-lightbulb"></i> 06. 生活化比喻
+        </div>
+        <h3 class="text-lg font-bold text-white">速記記者的極簡提綱筆記</h3>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          想像一位法庭速記員：
+          <br>• <strong>Encoder（筆記）：</strong>聆聽 2 小時、兩萬字的繁雜證詞（高維輸入），在筆記本上只摘錄 5 個最核心的人事物關鍵字（低維瓶頸 $z$）。
+          <br>• <strong>Decoder（口述還原）：</strong>回家後，僅憑這 5 個關鍵字，將整場法庭對話重述還原出來（$\hat{x}$）。
+          若還原誤差越小，說明這 5 個字越是抓住了全場的「靈魂特徵」。
+        </p>
+      </div>
+
+      <!-- 07. 工業上應用 -->
+      <div class="glass-card rounded-2xl p-6 space-y-3">
+        <div class="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase">
+          <i class="fa-solid fa-industry"></i> 07. 工業上應用
+        </div>
+        <h3 class="text-lg font-bold text-white">先進製造與邊緣智慧現場</h3>
+        <ul class="text-xs text-slate-300 space-y-2 leading-relaxed">
+          <li><strong>• 智慧製造 AOI：</strong>PCB/晶圓/背光模組光學外觀瑕疵自動定位與警報。</li>
+          <li><strong>• 預測性維護 (PdM)：</strong>監控風機、發電機馬達震動與三相電流頻譜，預知軸承微裂紋。</li>
+          <li><strong>• 金融資安防護：</strong>即時信用卡盜刷、ATM 異常洗錢金流軌跡監測。</li>
+          <li><strong>• 醫療影像去噪：</strong>低輻射劑量 CT / 快速 MRI 影像的高保真去噪還原 (Denoising AE)。</li>
+        </ul>
+      </div>
+
+    </section>
+
+    <!-- 08. 理論簡介：演進族譜 -->
+    <section class="glass-card rounded-3xl p-6 lg:p-8 space-y-6">
+      <div class="border-b border-slate-800 pb-4">
+        <span class="text-xs font-bold text-indigo-400 uppercase tracking-widest">SECTION 08</span>
+        <h3 class="text-2xl font-black text-white mt-1">自編碼器理論家族譜系 (AE Taxonomy)</h3>
+        <p class="text-xs text-slate-400 mt-1">為了克服單純複製（Identity Mapping）並學習更具泛化力的表徵，衍生出多種強大架構：</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+        
+        <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+          <div class="flex items-center gap-2 text-cyan-400 font-bold text-sm">
+            <i class="fa-solid fa-cubes"></i> Vanilla / Undercomplete AE
+          </div>
+          <p class="text-slate-300">
+            潛在維度 $d \ll D$。強迫模型捨棄次要雜訊，抓取主成分流形。若維度不足會模糊，若維度過大易過擬合。
+          </p>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+          <div class="flex items-center gap-2 text-amber-400 font-bold text-sm">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Denoising AE (DAE)
+          </div>
+          <p class="text-slate-300">
+            人為向輸入添加雜訊 $\tilde{x} \sim q(\tilde{x}|x)$，但要求解碼器還原無雜訊的原始 $x$。強迫模型學習將受擾動數據投影回收斂流形的能力。
+          </p>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+          <div class="flex items-center gap-2 text-rose-400 font-bold text-sm">
+            <i class="fa-solid fa-network-wired"></i> Sparse / Contractive AE
+          </div>
+          <p class="text-slate-300">
+            引入稀疏性約束（如 KL 散度）或雅可比矩陣懲罰項（Frobenius Norm of Jacobian），限制潛在神經元僅在關鍵特徵出現時微量活化。
+          </p>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+          <div class="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+            <i class="fa-solid fa-dna"></i> Variational AE (VAE)
+          </div>
+          <p class="text-slate-300">
+            邁向生成模型！將瓶頸編碼為機率分佈 $\mu, \sigma^2$，透過重參數化技巧（Reparameterization Trick）生成連續且可插值的潛在空間。
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 09. 數學推導（互動切換式） -->
+    <section id="sec-09" class="glass-card rounded-3xl p-6 lg:p-8 space-y-6 border border-indigo-900/50">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        <div>
+          <span class="text-xs font-bold text-indigo-400 uppercase tracking-widest">SECTION 09</span>
+          <h3 class="text-2xl font-black text-white mt-1">數學推導與理論證明</h3>
+          <p class="text-xs text-slate-400">嚴密數學表述：從目標泛函、反向傳播更新，到「線性 AE 與 PCA 等價性證明」</p>
+        </div>
+        
+        <!-- Math Tab Buttons -->
+        <div class="flex items-center gap-2 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
+          <button id="mathTabBtn1" onclick="switchMathTab('formulation')" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-semibold transition">
+            1. 映射與目標泛函
+          </button>
+          <button id="mathTabBtn2" onclick="switchMathTab('backprop')" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition">
+            2. 梯度傳播更新
+          </button>
+          <button id="mathTabBtn3" onclick="switchMathTab('pca-proof')" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition">
+            3. 線性 AE = PCA 證明
+          </button>
+        </div>
+      </div>
+
+      <!-- Math Content Panels -->
+      <div id="math-content" class="min-h-[220px]">
+        <!-- Panel 1: Formulation -->
+        <div id="mathPanel-formulation" class="space-y-4 text-sm leading-relaxed text-slate-300">
+          <p>
+            給定高維無標籤數據集 $\mathcal{D} = \{x^{(1)}, x^{(2)}, \dots, x^{(N)}\}$，其中 $x \in \mathbb{R}^D$。自編碼器由兩部分構成：
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
+              <span class="text-cyan-400 font-bold block mb-1">【編碼器 Encoder】</span>
+              將輸入空間映射至低維潛在空間 $\mathbb{R}^d$ ($d \ll D$)：
+              <div class="my-2 text-center text-white">
+                $$z = f_\theta(x) = \sigma(W_e x + b_e)$$
+              </div>
+              其中 $W_e \in \mathbb{R}^{d \times D}, b_e \in \mathbb{R}^d$，$\sigma$ 為活化函數。
+            </div>
+            <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
+              <span class="text-emerald-400 font-bold block mb-1">【解碼器 Decoder】</span>
+              將低維瓶頸映射回原始高維空間 $\mathbb{R}^D$：
+              <div class="my-2 text-center text-white">
+                $$\hat{x} = g_\phi(z) = \sigma'(W_d z + b_d)$$
+              </div>
+              其中 $W_d \in \mathbb{R}^{D \times d}, b_d \in \mathbb{R}^D$。若採用權重綁定（Tied Weights），則令 $W_d = W_e^T$。
+            </div>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
+            <span class="text-amber-400 font-bold block mb-1">【損失函數 Loss Function】</span>
+            針對連續型數值特徵，通常採用均方誤差（Mean Squared Error, MSE）：
+            <div class="my-2 text-center text-white">
+              $$\mathcal{L}(x, \hat{x}) = \frac{1}{2} \| x - \hat{x} \|_2^2 = \frac{1}{2} \sum_{j=1}^D (x_j - \hat{x}_j)^2$$
+            </div>
+            針對歸一化在 $[0, 1]$ 區間的影像像素，亦常採用二元交叉熵（Binary Cross-Entropy, BCE）：
+            <div class="my-2 text-center text-white">
+              $$\mathcal{L}_{\text{BCE}}(x, \hat{x}) = - \sum_{j=1}^D \left[ x_j \ln \hat{x}_j + (1 - x_j) \ln (1 - \hat{x}_j) \right]$$
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel 2: Backprop -->
+        <div id="mathPanel-backprop" class="hidden space-y-4 text-sm leading-relaxed text-slate-300">
+          <p>
+            透過鏈式法則（Chain Rule）計算損失對解碼器與編碼器權重的偏導數：
+          </p>
+          <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-3">
+            <h4 class="text-white font-bold">1. 解碼器梯度推導：</h4>
+            設解碼器輸出前之淨輸入為 $a_d = W_d z + b_d$，故 $\hat{x} = \sigma'(a_d)$。
+            $$\delta_d = \frac{\partial \mathcal{L}}{\partial a_d} = (\hat{x} - x) \odot \sigma'(a_d)$$
+            對於解碼器權重矩陣之梯度為：
+            $$\frac{\partial \mathcal{L}}{\partial W_d} = \delta_d \cdot z^T \in \mathbb{R}^{D \times d}, \quad \frac{\partial \mathcal{L}}{\partial b_d} = \delta_d \in \mathbb{R}^D$$
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-3">
+            <h4 class="text-white font-bold">2. 編碼器梯度推導：</h4>
+            誤差信號反向穿越潛在空間 $z$ 傳遞至編碼器：
+            $$\delta_e = \frac{\partial \mathcal{L}}{\partial a_e} = \left( W_d^T \delta_d \right) \odot \sigma(a_e)$$
+            對編碼器權重矩陣之更新梯度為：
+            $$\frac{\partial \mathcal{L}}{\partial W_e} = \delta_e \cdot x^T \in \mathbb{R}^{d \times D}, \quad \frac{\partial \mathcal{L}}{\partial b_e} = \delta_e \in \mathbb{R}^d$$
+          </div>
+        </div>
+
+        <!-- Panel 3: PCA Proof -->
+        <div id="mathPanel-pca-proof" class="hidden space-y-4 text-sm leading-relaxed text-slate-300">
+          <div class="p-4 rounded-xl bg-slate-900/80 border border-indigo-500/30 space-y-2">
+            <span class="text-indigo-300 font-bold text-base">【定理：線性 Autoencoder 等價於 PCA】</span>
+            <p>
+              若所有活化函數為線性即 $\sigma(u)=u, \sigma'(u)=u$，且中心化輸入滿足 $\mathbb{E}[x] = 0$。則優化問題轉化為：
+            </p>
+            <div class="my-2 text-center text-white">
+              $$\min_{W_e, W_d} \mathbb{E}\left[ \| x - W_d W_e x \|_2^2 \right]$$
+            </div>
+            <p>
+              令投影矩陣 $P = W_d W_e \in \mathbb{R}^{D \times D}$。因為 $W_e \in \mathbb{R}^{d \times D}, W_d \in \mathbb{R}^{D \times d}$，故 $P$ 的秩（Rank）最多為 $d$。
+            </p>
+            <p>
+              由 <strong>Eckart-Young-Mirsky 低秩逼近定理</strong>，最佳的秩-$d$ 正交投影矩陣必然由協方差矩陣 $\Sigma = \mathbb{E}[x x^T]$ 的前 $d$ 個最大特徵值所對應的特徵向量張成！
+            </p>
+            <div class="p-3 rounded bg-slate-950/80 border-l-2 border-indigo-400 text-xs text-slate-300">
+              <strong>結論：</strong> 線性 AE 所學到的瓶頸特徵向量空間，與 PCA 主成分所張成的超平面完全重合。而<strong>非線性 AE 則是將這種線性超平面推廣至任意彎曲的非線性流形（Nonlinear Manifold）</strong>。
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. 深度學習應用互動實驗室 (2D Latent Explorer & Anomaly Detection) -->
+    <section id="sec-10" class="glass-card rounded-3xl p-6 lg:p-8 space-y-6 border border-cyan-900/50">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 text-xs font-bold border border-cyan-500/20 mb-1">
+            <i class="fa-solid fa-flask-vial"></i> 領域實踐：深度學習與表徵空間
+          </div>
+          <h3 class="text-2xl font-black text-white">10. 互動式潛在空間 (Latent Space) 與異常檢測實驗室</h3>
+          <p class="text-xs text-slate-400">移動滑桿探索 2D 瓶頸空間如何解碼生成幾何圖案，或注入異常測試重建誤差警報！</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="injectAnomalyBtn" class="px-3 py-1.5 rounded-lg bg-rose-600/20 border border-rose-500/40 text-rose-300 text-xs font-bold hover:bg-rose-600/40 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-triangle-exclamation"></i> 注入異常訊號
+          </button>
+          <button id="resetNormalBtn" class="px-3 py-1.5 rounded-lg bg-emerald-600/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold hover:bg-emerald-600/40 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-rotate-left"></i> 重設為正常樣本
+          </button>
+        </div>
+      </div>
+
+      <!-- Playground Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Column 1: Input & Reconstruction View -->
+        <div class="space-y-4">
+          <div class="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-chart-line text-cyan-400"></i> 輸入訊號 $x$ vs 重建訊號 $\hat{x}$
+              </span>
+              <span id="anomalyBadge" class="text-[10px] px-2 py-0.5 rounded font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                正常樣本 (Normal)
+              </span>
+            </div>
+            
+            <!-- Canvas Plot -->
+            <div class="relative w-full h-44 bg-slate-950 rounded-xl overflow-hidden border border-slate-800">
+              <canvas id="waveformCanvas" class="w-full h-full"></canvas>
+            </div>
+
+            <!-- Legend & Stats -->
+            <div class="flex items-center justify-between text-xs text-slate-400 px-1">
+              <div class="flex items-center gap-3">
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block"></span> 輸入 $x$</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span> 重建 $\hat{x}$</span>
+              </div>
+              <div>
+                MSE 誤差: <span id="mseLossVal" class="font-mono font-bold text-white">0.0042</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- AOI Defect Gauge -->
+          <div class="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-slate-300">工業異常警報判定 (Threshold = 0.050)</span>
+              <span id="decisionText" class="font-bold text-emerald-400">PASS (良品)</span>
+            </div>
+            <div class="w-full bg-slate-950 rounded-full h-3 border border-slate-800 overflow-hidden relative">
+              <div id="errorMeter" class="h-full bg-emerald-500 transition-all duration-300" style="width: 8%;"></div>
+              <div class="absolute top-0 bottom-0 left-[50%] w-0.5 bg-amber-400 z-10" title="門檻值 0.050"></div>
+            </div>
+            <div class="flex justify-between text-[10px] text-slate-500">
+              <span>0.00</span>
+              <span class="text-amber-400">臨界閥值 $\tau$</span>
+              <span>0.10+</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column 2: 2D Latent Bottleneck Map -->
+        <div class="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-bullseye text-indigo-400"></i> 潛在空間 2D 座標 ($z_1, z_2$)
+              </span>
+              <span class="text-[10px] text-slate-400">拖曳或移動點探索</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1">
+              瓶頸層將高維波形壓縮至 2 個核心自由度（頻率與振幅特徵）。
+            </p>
+          </div>
+
+          <!-- Interactive Latent Coordinate Canvas -->
+          <div class="relative w-full h-52 bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center cursor-crosshair" id="latentPad">
+            <canvas id="latentCanvas" class="w-full h-full"></canvas>
+            <div class="absolute top-2 left-2 text-[10px] text-slate-500 pointer-events-none">
+              $z_2$ (形狀因子)
+            </div>
+            <div class="absolute bottom-2 right-2 text-[10px] text-slate-500 pointer-events-none">
+              $z_1$ (能量基底)
+            </div>
+          </div>
+
+          <!-- Coordinate values -->
+          <div class="grid grid-cols-2 gap-2 text-center text-xs">
+            <div class="p-2 rounded-lg bg-slate-950 border border-slate-800">
+              <span class="text-slate-400">潛在值 $z_1$:</span> <span id="z1Val" class="font-mono text-cyan-400 font-bold">0.00</span>
+            </div>
+            <div class="p-2 rounded-lg bg-slate-950 border border-slate-800">
+              <span class="text-slate-400">潛在值 $z_2$:</span> <span id="z2Val" class="font-mono text-indigo-400 font-bold">0.00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column 3: Feature Controls & Decoder Synthesis -->
+        <div class="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-4 flex flex-col justify-between">
+          <div class="space-y-3">
+            <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-sliders text-amber-400"></i> 輸入訊號調控 (高維生成源)
+            </span>
+            
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs text-slate-300">
+                <span>基頻頻率 (Frequency)</span>
+                <span id="freqLabel" class="font-mono text-cyan-300">1.0x</span>
+              </div>
+              <input type="range" id="freqSlider" min="0.5" max="3.0" step="0.1" value="1.0" class="w-full accent-cyan-400 bg-slate-800 h-1.5 rounded-lg cursor-pointer">
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs text-slate-300">
+                <span>高階諧波 (Harmonics)</span>
+                <span id="harmLabel" class="font-mono text-indigo-300">0.3</span>
+              </div>
+              <input type="range" id="harmSlider" min="0.0" max="1.0" step="0.05" value="0.3" class="w-full accent-indigo-400 bg-slate-800 h-1.5 rounded-lg cursor-pointer">
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs text-slate-300">
+                <span>隨機高斯雜訊 (Noise $\epsilon$)</span>
+                <span id="noiseLabel" class="font-mono text-rose-300">0.05</span>
+              </div>
+              <input type="range" id="noiseSlider" min="0.0" max="0.5" step="0.02" value="0.05" class="w-full accent-rose-400 bg-slate-800 h-1.5 rounded-lg cursor-pointer">
+            </div>
+          </div>
+
+          <div class="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/20 text-[11px] text-slate-300 space-y-1">
+            <div class="font-bold text-indigo-300 flex items-center gap-1">
+              <i class="fa-solid fa-circle-info"></i> 學習機制觀察：
+            </div>
+            <p>
+              當訊號符合模型訓練時的正常諧波分佈時，無論頻率如何改變，編碼器皆能精確對齊至 $z$，解碼器完美還原；但當點擊「注入異常」時，高頻突刺超出生理學/物理學流形，解碼器無法重建，誤差瞬間衝破警報線！
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 11. Python / PyTorch 實作 (語法色彩高亮) -->
+    <section id="sec-11" class="glass-card rounded-3xl p-6 lg:p-8 space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        <div>
+          <span class="text-xs font-bold text-emerald-400 uppercase tracking-widest">SECTION 11</span>
+          <h3 class="text-2xl font-black text-white mt-1">PyTorch 完整實作：含異常檢測與顏色標記核心函式</h3>
+          <p class="text-xs text-slate-400">標準模組化架構，以醒目色彩標註神經網路層、活化函數、Bottleneck 與反向傳播梯度函式</p>
+        </div>
+        
+        <!-- Legend of Highlights -->
+        <div class="flex flex-wrap gap-2 text-[10px]">
+          <span class="px-2 py-1 rounded bg-sky-950/80 border border-sky-500/40 text-sky-300 font-bold">網路層 Layer</span>
+          <span class="px-2 py-1 rounded bg-pink-950/80 border border-pink-500/40 text-pink-300 font-bold">活化/傳播 Forward</span>
+          <span class="px-2 py-1 rounded bg-purple-950/80 border border-purple-500/40 text-purple-300 font-bold">潛在瓶頸 Bottleneck</span>
+          <span class="px-2 py-1 rounded bg-orange-950/80 border border-orange-500/40 text-orange-300 font-bold">損失函式 Criterion</span>
+          <span class="px-2 py-1 rounded bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 font-bold">優化器 Optimizer</span>
+        </div>
+      </div>
+
+      <!-- Code Container -->
+      <div class="relative rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden shadow-2xl">
+        <div class="flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-800 text-xs text-slate-400">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-rose-500/80 inline-block"></span>
+            <span class="w-3 h-3 rounded-full bg-amber-500/80 inline-block"></span>
+            <span class="w-3 h-3 rounded-full bg-emerald-500/80 inline-block"></span>
+            <span class="ml-2 font-mono text-slate-300">autoencoder_anomaly_detector.py</span>
+          </div>
+          <button onclick="copyCode()" class="hover:text-white transition flex items-center gap-1 text-slate-400">
+            <i class="fa-regular fa-copy"></i> 複製程式碼
+          </button>
+        </div>
+
+        <pre class="p-6 text-xs lg:text-sm overflow-x-auto text-slate-200 leading-relaxed font-mono"><code><span class="text-slate-500">import torch</span>
+<span class="text-slate-500">import torch.nn as nn</span>
+<span class="text-slate-500">import torch.optim as optim</span>
+
+<span class="text-indigo-400">class</span> <span class="text-yellow-300 font-bold">DeepAutoencoder</span>(nn.Module):
+    <span class="text-indigo-400">def</span> <span class="text-blue-300">__init__</span>(self, input_dim=<span class="text-purple-300">64</span>, latent_dim=<span class="text-purple-300">4</span>):
+        <span class="text-indigo-400">super</span>(DeepAutoencoder, self).__init__()
+        
+        <span class="text-slate-500"># 1. 編碼器 (Encoder)：高維特徵壓縮</span>
+        self.<span class="pt-layer">encoder</span> = nn.<span class="pt-layer">Sequential</span>(
+            nn.<span class="pt-layer">Linear</span>(input_dim, <span class="text-purple-300">32</span>),
+            nn.<span class="pt-func">GELU</span>(),
+            nn.<span class="pt-layer">Linear</span>(<span class="text-purple-300">32</span>, <span class="text-purple-300">16</span>),
+            nn.<span class="pt-func">GELU</span>(),
+            nn.<span class="pt-layer">Linear</span>(<span class="text-purple-300">16</span>, latent_dim)   <span class="text-slate-500"># 壓縮至 Bottleneck 維度</span>
+        )
+        
+        <span class="text-slate-500"># 2. 解碼器 (Decoder)：低維表徵高保真還原</span>
+        self.<span class="pt-layer">decoder</span> = nn.<span class="pt-layer">Sequential</span>(
+            nn.<span class="pt-layer">Linear</span>(latent_dim, <span class="text-purple-300">16</span>),
+            nn.<span class="pt-func">GELU</span>(),
+            nn.<span class="pt-layer">Linear</span>(<span class="text-purple-300">16</span>, <span class="text-purple-300">32</span>),
+            nn.<span class="pt-func">GELU</span>(),
+            nn.<span class="pt-layer">Linear</span>(<span class="text-purple-300">32</span>, input_dim)   <span class="text-slate-500"># 還原至輸入維度</span>
+        )
+
+    <span class="text-indigo-400">def</span> <span class="pt-func">forward</span>(self, x):
+        <span class="pt-tensor">latent_z</span> = self.<span class="pt-layer">encoder</span>(x)       <span class="text-slate-500"># 進入潛在空間 (Bottleneck)</span>
+        <span class="text-slate-200">reconstructed_x</span> = self.<span class="pt-layer">decoder</span>(<span class="pt-tensor">latent_z</span>)
+        <span class="text-indigo-400">return</span> <span class="text-slate-200">reconstructed_x</span>, <span class="pt-tensor">latent_z</span>
+
+<span class="text-slate-500"># 實例化模型、定義損失函數與最佳化器</span>
+device = torch.device(<span class="text-green-300">"cuda"</span> <span class="text-indigo-400">if</span> torch.cuda.is_available() <span class="text-indigo-400">else</span> <span class="text-green-300">"cpu"</span>)
+model = <span class="text-yellow-300">DeepAutoencoder</span>(input_dim=<span class="text-purple-300">64</span>, latent_dim=<span class="text-purple-300">4</span>).to(device)
+
+<span class="text-slate-500"># 重點函式顏色標註：MSE 均方重構損失與 AdamW 權重優化</span>
+<span class="pt-loss">criterion</span> = nn.<span class="pt-loss">MSELoss</span>()
+<span class="pt-optim">optimizer</span> = optim.<span class="pt-optim">AdamW</span>(model.parameters(), lr=<span class="text-purple-300">1e-3</span>, weight_decay=<span class="text-purple-300">1e-4</span>)
+
+<span class="text-slate-500"># 3. 訓練循環 (Training Step)</span>
+<span class="text-indigo-400">def</span> <span class="text-blue-300">train_step</span>(model, batch_normal_data):
+    model.<span class="pt-func">train</span>()
+    <span class="pt-optim">optimizer</span>.<span class="pt-optim">zero_grad</span>()                  <span class="text-slate-500"># 清空歷史累積梯度</span>
+    
+    outputs, _ = model(batch_normal_data)  <span class="text-slate-500"># 前向傳播</span>
+    loss = <span class="pt-loss">criterion</span>(outputs, batch_normal_data) <span class="text-slate-500"># 自我監督重建損失</span>
+    
+    loss.<span class="pt-optim">backward</span>()                        <span class="text-slate-500"># 反向傳播計算梯度</span>
+    <span class="pt-optim">optimizer</span>.<span class="pt-optim">step</span>()                       <span class="text-slate-500"># 參數更新</span>
+    <span class="text-indigo-400">return</span> loss.item()
+
+<span class="text-slate-500"># 4. 工業異常判定函式 (Inference & Anomaly Detection)</span>
+<span class="text-indigo-400">def</span> <span class="text-blue-300">detect_anomaly</span>(model, test_sample, threshold=<span class="text-purple-300">0.05</span>):
+    model.<span class="pt-func">eval</span>()
+    <span class="text-indigo-400">with</span> torch.no_grad():
+        reconstructed, _ = model(test_sample)
+        <span class="text-slate-500"># 計算樣本級重建誤差 (Sample-wise Reconstruction Error)</span>
+        error = torch.mean((test_sample - reconstructed) ** <span class="text-purple-300">2</span>, dim=-<span class="text-purple-300">1</span>).item()
+        
+    is_anomaly = (error > threshold)
+    <span class="text-indigo-400">return</span> {<span class="text-green-300">"reconstruction_error"</span>: error, <span class="text-green-300">"is_anomaly"</span>: is_anomaly}
+</code></pre>
+      </div>
+    </section>
+
+    <!-- 12. 模擬：Step by Step，一鍵自動模擬 -->
+    <section id="sec-12" class="glass-card rounded-3xl p-6 lg:p-8 space-y-6 border border-emerald-500/40 glow-cyan">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20 mb-1">
+            <i class="fa-solid fa-play"></i> 互動演練
+          </div>
+          <h3 class="text-2xl font-black text-white">12. 自編碼器運作模擬：Step-by-Step 與 一鍵自動演算法演練</h3>
+          <p class="text-xs text-slate-400">一步步觀察張量穿越 Encoder $\rightarrow$ Bottleneck $\rightarrow$ Decoder $\rightarrow$ Loss $\rightarrow$ Backprop 的全生命週期</p>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex items-center gap-2">
+          <button id="stepSimBtn" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 flex items-center gap-2 transition">
+            <i class="fa-solid fa-forward-step text-indigo-400"></i> 單步執行 (Step)
+          </button>
+          <button id="autoRunSimBtn" class="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 text-xs font-black shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition">
+            <i class="fa-solid fa-play" id="autoRunIcon"></i> <span id="autoRunText">一鍵自動模擬 (Auto)</span>
+          </button>
+          <button id="resetSimBtn" class="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white text-xs border border-slate-800 transition" title="重置">
+            <i class="fa-solid fa-rotate-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Simulation Pipeline Interactive Board -->
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-3 relative py-4">
+        
+        <!-- Step 1: Input -->
+        <div id="simStepNode1" class="p-4 rounded-2xl bg-slate-900 border-2 border-slate-800 transition-all duration-300 flex flex-col justify-between space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold text-slate-300">階段 1: 輸入</span>
+            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-400 text-[10px] flex items-center justify-center font-bold">1</span>
+          </div>
+          <div class="space-y-1 text-center py-2">
+            <div class="text-xs text-cyan-400 font-mono font-bold">$x \in \mathbb{R}^{64}$</div>
+            <div class="text-[11px] text-slate-400">原始高維向量 (影像/訊號)</div>
+          </div>
+          <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+            <div id="simBar1" class="h-full bg-cyan-400 w-0 transition-all duration-300"></div>
+          </div>
+        </div>
+
+        <!-- Step 2: Encoder & Bottleneck -->
+        <div id="simStepNode2" class="p-4 rounded-2xl bg-slate-900 border-2 border-slate-800 transition-all duration-300 flex flex-col justify-between space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold text-slate-300">階段 2: 瓶頸壓縮</span>
+            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-400 text-[10px] flex items-center justify-center font-bold">2</span>
+          </div>
+          <div class="space-y-1 text-center py-2">
+            <div class="text-xs text-indigo-400 font-mono font-bold">$z = f_\theta(x) \in \mathbb{R}^2$</div>
+            <div class="text-[11px] text-slate-400">Bottleneck 核心潛在碼</div>
+          </div>
+          <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+            <div id="simBar2" class="h-full bg-indigo-500 w-0 transition-all duration-300"></div>
+          </div>
+        </div>
+
+        <!-- Step 3: Decoder Reconstruction -->
+        <div id="simStepNode3" class="p-4 rounded-2xl bg-slate-900 border-2 border-slate-800 transition-all duration-300 flex flex-col justify-between space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold text-slate-300">階段 3: 解碼重建</span>
+            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-400 text-[10px] flex items-center justify-center font-bold">3</span>
+          </div>
+          <div class="space-y-1 text-center py-2">
+            <div class="text-xs text-emerald-400 font-mono font-bold">$\hat{x} = g_\phi(z) \in \mathbb{R}^{64}$</div>
+            <div class="text-[11px] text-slate-400">高維空間重組映射</div>
+          </div>
+          <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+            <div id="simBar3" class="h-full bg-emerald-500 w-0 transition-all duration-300"></div>
+          </div>
+        </div>
+
+        <!-- Step 4: Loss Computation -->
+        <div id="simStepNode4" class="p-4 rounded-2xl bg-slate-900 border-2 border-slate-800 transition-all duration-300 flex flex-col justify-between space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold text-slate-300">階段 4: 殘差度量</span>
+            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-400 text-[10px] flex items-center justify-center font-bold">4</span>
+          </div>
+          <div class="space-y-1 text-center py-2">
+            <div class="text-xs text-orange-400 font-mono font-bold">$\mathcal{L} = \frac{1}{2}\|x - \hat{x}\|^2$</div>
+            <div class="text-[11px] text-slate-400">比對還原差距</div>
+          </div>
+          <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+            <div id="simBar4" class="h-full bg-orange-400 w-0 transition-all duration-300"></div>
+          </div>
+        </div>
+
+        <!-- Step 5: Backprop & Weight Update -->
+        <div id="simStepNode5" class="p-4 rounded-2xl bg-slate-900 border-2 border-slate-800 transition-all duration-300 flex flex-col justify-between space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold text-slate-300">階段 5: 梯度反傳</span>
+            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-400 text-[10px] flex items-center justify-center font-bold">5</span>
+          </div>
+          <div class="space-y-1 text-center py-2">
+            <div class="text-xs text-pink-400 font-mono font-bold">$\nabla_\theta \mathcal{L}, \nabla_\phi \mathcal{L}$</div>
+            <div class="text-[11px] text-slate-400">AdamW 更新全網路權重</div>
+          </div>
+          <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+            <div id="simBar5" class="h-full bg-pink-500 w-0 transition-all duration-300"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Simulation Live Log Terminal & Metrics -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        
+        <!-- Terminal Log -->
+        <div class="lg:col-span-2 p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 font-mono text-xs">
+          <div class="flex items-center justify-between text-slate-500 pb-1 border-b border-slate-800">
+            <span><i class="fa-solid fa-terminal"></i> 模擬運作即時紀錄日誌 (Execution Logs)</span>
+            <span id="simEpochCounter">迭代步數: 0</span>
+          </div>
+          <div id="simLogBox" class="h-32 overflow-y-auto space-y-1 text-slate-300 pr-2">
+            <div class="text-slate-500">> 系統就緒。請點擊「單步執行」或「一鍵自動模擬」開始訓練管線演練...</div>
+          </div>
+        </div>
+
+        <!-- Dynamic Training Metric -->
+        <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col justify-between space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-300">當前訓練 MSE 損失</span>
+            <span id="simLossTrend" class="text-xs text-emerald-400"><i class="fa-solid fa-arrow-trend-down"></i> 收斂中</span>
+          </div>
+          <div class="text-center py-2">
+            <div id="simCurrentLoss" class="text-3xl font-black font-mono text-white">0.4520</div>
+            <div class="text-[11px] text-slate-400 mt-1">重建保真度 (Reconstruction Fidelity)</div>
+          </div>
+          <div class="flex justify-between items-center text-xs text-slate-400 border-t border-slate-800 pt-2">
+            <span>最佳 Loss: <strong class="text-cyan-400" id="bestLossVal">0.0125</strong></span>
+            <span>學習率: <strong class="text-slate-300">0.001</strong></span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/80 py-8 text-center text-xs text-slate-500 space-y-2">
+      <p>自編碼器 (Autoencoder) 核心原理與實踐教學模組 · 整合無監督學習理論、IPAS 認證標準與實時互動仿真系統</p>
+      <p class="text-slate-600">Built with Modern HTML5, Canvas 2D, Tailwind CSS & KaTeX</p>
+    </footer>
+
+  </main>
+
+  <!-- Interactive Logic Script -->
+  <script>
+    // -------------------------------------------------------------
+    // IPAS Exam Filter Switcher
+    // -------------------------------------------------------------
+    function filterExamQuestions(category) {
+      const juniorCards = document.querySelectorAll('.exam-junior');
+      const midCards = document.querySelectorAll('.exam-mid');
+
+      const btnAll = document.getElementById('examTabAll');
+      const btnJunior = document.getElementById('examTabJunior');
+      const btnMid = document.getElementById('examTabMid');
+
+      // Reset button styles
+      [btnAll, btnJunior, btnMid].forEach(btn => {
+        btn.className = "px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white font-semibold transition";
+      });
+
+      if (category === 'all') {
+        juniorCards.forEach(c => c.classList.remove('hidden'));
+        midCards.forEach(c => c.classList.remove('hidden'));
+        btnAll.className = "px-3.5 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-black transition";
+      } else if (category === 'junior') {
+        juniorCards.forEach(c => c.classList.remove('hidden'));
+        midCards.forEach(c => c.classList.add('hidden'));
+        btnJunior.className = "px-3.5 py-1.5 rounded-xl bg-cyan-500 text-slate-950 font-black transition";
+      } else if (category === 'mid') {
+        juniorCards.forEach(c => c.classList.add('hidden'));
+        midCards.forEach(c => c.classList.remove('hidden'));
+        btnMid.className = "px-3.5 py-1.5 rounded-xl bg-indigo-500 text-white font-black transition";
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Math Tabs Switcher
+    // -------------------------------------------------------------
+    function switchMathTab(tabId) {
+      const panels = ['formulation', 'backprop', 'pca-proof'];
+      panels.forEach((p, idx) => {
+        const el = document.getElementById('mathPanel-' + p);
+        const btn = document.getElementById('mathTabBtn' + (idx + 1));
+        if (p === tabId) {
+          el.classList.remove('hidden');
+          btn.className = "px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-semibold transition";
+        } else {
+          el.classList.add('hidden');
+          btn.className = "px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition";
+        }
+      });
+    }
+
+    // -------------------------------------------------------------
+    // Code Copy Helper
+    // -------------------------------------------------------------
+    function copyCode() {
+      const code = document.querySelector('pre code').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        alert('PyTorch 程式碼已複製至剪貼簿！');
+      });
+    }
+
+    // -------------------------------------------------------------
+    // Canvas & Waveform Interactive Lab (Section 10)
+    // -------------------------------------------------------------
+    const waveformCanvas = document.getElementById('waveformCanvas');
+    const waveCtx = waveformCanvas.getContext('2d');
+    const latentCanvas = document.getElementById('latentCanvas');
+    const latentCtx = latentCanvas.getContext('2d');
+
+    let freq = 1.0;
+    let harm = 0.3;
+    let noise = 0.05;
+    let isAnomalyInjected = false;
+    let z1 = 0.0;
+    let z2 = 0.0;
+
+    function resizeCanvases() {
+      const dpr = window.devicePixelRatio || 1;
+      
+      const w1 = waveformCanvas.clientWidth;
+      const h1 = waveformCanvas.clientHeight;
+      waveformCanvas.width = w1 * dpr;
+      waveformCanvas.height = h1 * dpr;
+      waveCtx.scale(dpr, dpr);
+
+      const w2 = latentCanvas.clientWidth;
+      const h2 = latentCanvas.clientHeight;
+      latentCanvas.width = w2 * dpr;
+      latentCanvas.height = h2 * dpr;
+      latentCtx.scale(dpr, dpr);
+
+      drawWaveform();
+      drawLatentSpace();
+    }
+
+    window.addEventListener('resize', resizeCanvases);
+
+    // Generate Signal & Simulate Encoder-Decoder Reconstruction
+    function drawWaveform() {
+      const w = waveformCanvas.clientWidth;
+      const h = waveformCanvas.clientHeight;
+      waveCtx.clearRect(0, 0, w, h);
+
+      // Grid Lines
+      waveCtx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      waveCtx.lineWidth = 1;
+      for (let x = 0; x < w; x += 30) {
+        waveCtx.beginPath();
+        waveCtx.moveTo(x, 0);
+        waveCtx.lineTo(x, h);
+        waveCtx.stroke();
+      }
+      for (let y = 0; y < h; y += 25) {
+        waveCtx.beginPath();
+        waveCtx.moveTo(0, y);
+        waveCtx.lineTo(w, y);
+        waveCtx.stroke();
+      }
+
+      const points = 80;
+      const inputSignal = [];
+      const reconSignal = [];
+      let totalSqErr = 0;
+
+      // Coordinate mapping of Latent Space (Encoder projection)
+      z1 = (freq - 1.0) / 1.5;
+      z2 = (harm - 0.3) / 0.5;
+      document.getElementById('z1Val').innerText = z1.toFixed(2);
+      document.getElementById('z2Val').innerText = z2.toFixed(2);
+
+      // Construct points
+      for (let i = 0; i < points; i++) {
+        const t = (i / points) * Math.PI * 4;
+        let base = Math.sin(t * freq) * 0.6 + Math.sin(t * freq * 2.5) * (harm * 0.4);
+        
+        // Add random gaussian noise
+        const n = (Math.random() - 0.5) * noise * 0.8;
+        let val = base + n;
+
+        // If anomaly is injected, add an abrupt defect glitch at the middle
+        if (isAnomalyInjected && i > 35 && i < 48) {
+          val += 0.85 * Math.sin((i - 35) * 0.5); // Unusual anomaly spike
+        }
+
+        inputSignal.push(val);
+
+        // Autoencoder reconstruction: learned clean manifold
+        // The decoder reconstructs according to smooth latent projections
+        let rVal = Math.sin(t * freq) * 0.6 + Math.sin(t * freq * 2.5) * (harm * 0.4);
+        reconSignal.push(rVal);
+
+        const diff = val - rVal;
+        totalSqErr += diff * diff;
+      }
+
+      const mse = totalSqErr / points;
+      document.getElementById('mseLossVal').innerText = mse.toFixed(4);
+
+      // Update Meter and Decision
+      const threshold = 0.050;
+      const meterPercent = Math.min(100, (mse / 0.10) * 100);
+      const errorMeter = document.getElementById('errorMeter');
+      const decisionText = document.getElementById('decisionText');
+      errorMeter.style.width = meterPercent + '%';
+
+      if (mse > threshold) {
+        errorMeter.className = "h-full bg-rose-500 transition-all duration-300";
+        decisionText.className = "font-bold text-rose-400";
+        decisionText.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> DEFECT (檢出異常瑕疵)`;
+      } else {
+        errorMeter.className = "h-full bg-emerald-500 transition-all duration-300";
+        decisionText.className = "font-bold text-emerald-400";
+        decisionText.innerHTML = `<i class="fa-solid fa-circle-check"></i> PASS (良品正常)`;
+      }
+
+      // Draw Input (Cyan)
+      waveCtx.strokeStyle = '#06b6d4';
+      waveCtx.lineWidth = 2;
+      waveCtx.beginPath();
+      for (let i = 0; i < points; i++) {
+        const x = (i / (points - 1)) * w;
+        const y = h / 2 - inputSignal[i] * (h * 0.35);
+        if (i === 0) waveCtx.moveTo(x, y);
+        else waveCtx.lineTo(x, y);
+      }
+      waveCtx.stroke();
+
+      // Draw Reconstructed (Emerald dotted)
+      waveCtx.strokeStyle = '#10b981';
+      waveCtx.lineWidth = 2.5;
+      waveCtx.setLineDash([5, 4]);
+      waveCtx.beginPath();
+      for (let i = 0; i < points; i++) {
+        const x = (i / (points - 1)) * w;
+        const y = h / 2 - reconSignal[i] * (h * 0.35);
+        if (i === 0) waveCtx.moveTo(x, y);
+        else waveCtx.lineTo(x, y);
+      }
+      waveCtx.stroke();
+      waveCtx.setLineDash([]); // reset
+    }
+
+    // Draw Latent 2D scatter & current position
+    function drawLatentSpace() {
+      const w = latentCanvas.clientWidth;
+      const h = latentCanvas.clientHeight;
+      latentCtx.clearRect(0, 0, w, h);
+
+      const cx = w / 2;
+      const cy = h / 2;
+
+      // Axis lines
+      latentCtx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      latentCtx.lineWidth = 1;
+      latentCtx.beginPath();
+      latentCtx.moveTo(0, cy);
+      latentCtx.lineTo(w, cy);
+      latentCtx.moveTo(cx, 0);
+      latentCtx.lineTo(cx, h);
+      latentCtx.stroke();
+
+      // Training manifold cluster (gaussian spread)
+      latentCtx.fillStyle = 'rgba(99, 102, 241, 0.12)';
+      for (let i = 0; i < 40; i++) {
+        const rx = cx + Math.sin(i * 1.7) * (w * 0.35);
+        const ry = cy + Math.cos(i * 2.3) * (h * 0.35);
+        latentCtx.beginPath();
+        latentCtx.arc(rx, ry, 3.5, 0, Math.PI * 2);
+        latentCtx.fill();
+      }
+
+      // Current point (px, py)
+      const px = cx + z1 * (w * 0.35);
+      const py = cy - z2 * (h * 0.35);
+
+      // Glow behind point
+      const glowGrad = latentCtx.createRadialGradient(px, py, 1, px, py, 18);
+      glowGrad.addColorStop(0, isAnomalyInjected ? 'rgba(244, 63, 94, 0.6)' : 'rgba(6, 182, 212, 0.6)');
+      glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      latentCtx.fillStyle = glowGrad;
+      latentCtx.beginPath();
+      latentCtx.arc(px, py, 18, 0, Math.PI * 2);
+      latentCtx.fill();
+
+      // Point circle
+      latentCtx.fillStyle = isAnomalyInjected ? '#f43f5e' : '#06b6d4';
+      latentCtx.beginPath();
+      latentCtx.arc(px, py, 6, 0, Math.PI * 2);
+      latentCtx.fill();
+      latentCtx.strokeStyle = '#ffffff';
+      latentCtx.lineWidth = 2;
+      latentCtx.stroke();
+    }
+
+    // Input slider events
+    document.getElementById('freqSlider').addEventListener('input', (e) => {
+      freq = parseFloat(e.target.value);
+      document.getElementById('freqLabel').innerText = freq.toFixed(1) + 'x';
+      drawWaveform();
+      drawLatentSpace();
+    });
+
+    document.getElementById('harmSlider').addEventListener('input', (e) => {
+      harm = parseFloat(e.target.value);
+      document.getElementById('harmLabel').innerText = harm.toFixed(2);
+      drawWaveform();
+      drawLatentSpace();
+    });
+
+    document.getElementById('noiseSlider').addEventListener('input', (e) => {
+      noise = parseFloat(e.target.value);
+      document.getElementById('noiseLabel').innerText = noise.toFixed(2);
+      drawWaveform();
+      drawLatentSpace();
+    });
+
+    // Injected Anomaly Buttons
+    document.getElementById('injectAnomalyBtn').addEventListener('click', () => {
+      isAnomalyInjected = true;
+      const badge = document.getElementById('anomalyBadge');
+      badge.className = "text-[10px] px-2 py-0.5 rounded font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30";
+      badge.innerText = "異常缺陷樣本 (Injected)";
+      drawWaveform();
+      drawLatentSpace();
+    });
+
+    document.getElementById('resetNormalBtn').addEventListener('click', () => {
+      isAnomalyInjected = false;
+      const badge = document.getElementById('anomalyBadge');
+      badge.className = "text-[10px] px-2 py-0.5 rounded font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+      badge.innerText = "正常樣本 (Normal)";
+      drawWaveform();
+      drawLatentSpace();
+    });
+
+    // Latent Pad Drag/Click Interaction
+    const latentPad = document.getElementById('latentPad');
+    function updateLatentFromMouse(evt) {
+      const rect = latentPad.getBoundingClientRect();
+      const x = evt.clientX - rect.left;
+      const y = evt.clientY - rect.top;
+      const cx = rect.width / 2;
+      const cy = rect.height / 2;
+      
+      z1 = Math.max(-1.5, Math.min(1.5, (x - cx) / (rect.width * 0.35)));
+      z2 = Math.max(-1.5, Math.min(1.5, -(y - cy) / (rect.height * 0.35)));
+
+      // Invert back to freq and harm
+      freq = Math.max(0.5, Math.min(3.0, 1.0 + z1 * 1.5));
+      harm = Math.max(0.0, Math.min(1.0, 0.3 + z2 * 0.5));
+
+      document.getElementById('freqSlider').value = freq;
+      document.getElementById('freqLabel').innerText = freq.toFixed(1) + 'x';
+      document.getElementById('harmSlider').value = harm;
+      document.getElementById('harmLabel').innerText = harm.toFixed(2);
+
+      drawWaveform();
+      drawLatentSpace();
+    }
+
+    let isDraggingLatent = false;
+    latentPad.addEventListener('mousedown', (e) => {
+      isDraggingLatent = true;
+      updateLatentFromMouse(e);
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (isDraggingLatent) updateLatentFromMouse(e);
+    });
+    window.addEventListener('mouseup', () => {
+      isDraggingLatent = false;
+    });
+
+    // -------------------------------------------------------------
+    // Section 12: Step-by-Step & One-Click Auto Simulator
+    // -------------------------------------------------------------
+    let currentStep = 0;
+    let simEpoch = 0;
+    let simLoss = 0.4520;
+    let autoRunInterval = null;
+
+    const logBox = document.getElementById('simLogBox');
+    function addLog(msg, colorClass = "text-slate-300") {
+      const div = document.createElement('div');
+      div.className = colorClass;
+      div.innerHTML = `> [T+${simEpoch}] ${msg}`;
+      logBox.appendChild(div);
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function resetStepHighlights() {
+      for (let s = 1; s <= 5; s++) {
+        const node = document.getElementById(`simStepNode${s}`);
+        const bar = document.getElementById(`simBar${s}`);
+        node.className = "p-4 rounded-2xl bg-slate-900 border-2 border-slate-800 transition-all duration-300 flex flex-col justify-between space-y-2";
+        bar.style.width = '0%';
+      }
+    }
+
+    function executeStep(stepIndex) {
+      resetStepHighlights();
+      currentStep = stepIndex;
+
+      const node = document.getElementById(`simStepNode${stepIndex}`);
+      const bar = document.getElementById(`simBar${stepIndex}`);
+      bar.style.width = '100%';
+
+      if (stepIndex === 1) {
+        node.className = "p-4 rounded-2xl bg-slate-900 border-2 border-cyan-500 glow-cyan transition-all duration-300 flex flex-col justify-between space-y-2";
+        addLog("【Step 1 輸入】讀取 Batch 數據 $x \\in \\mathbb{R}^{64}$，進行零均值標準化特徵前處理。", "text-cyan-400");
+      } else if (stepIndex === 2) {
+        node.className = "p-4 rounded-2xl bg-slate-900 border-2 border-indigo-500 glow-indigo transition-all duration-300 flex flex-col justify-between space-y-2";
+        addLog("【Step 2 瓶頸】通過 Encoder 線性矩陣與 GELU 壓縮，提煉出低維潛在變量 $z \\in \\mathbb{R}^{2}$。", "text-indigo-400");
+      } else if (stepIndex === 3) {
+        node.className = "p-4 rounded-2xl bg-slate-900 border-2 border-emerald-500 transition-all duration-300 flex flex-col justify-between space-y-2";
+        addLog("【Step 3 解碼】Decoder 將 $z$ 投影回 $64$ 維空間，生成重構估計張量 $\\hat{x}$。", "text-emerald-400");
+      } else if (stepIndex === 4) {
+        node.className = "p-4 rounded-2xl bg-slate-900 border-2 border-orange-500 transition-all duration-300 flex flex-col justify-between space-y-2";
+        const lossVal = (simLoss * (0.94 + Math.random() * 0.05)).toFixed(4);
+        simLoss = parseFloat(lossVal);
+        document.getElementById('simCurrentLoss').innerText = simLoss.toFixed(4);
+        addLog(`【Step 4 殘差】計算均方誤差 $\\mathcal{L} = \\frac{1}{2}\\|x - \\hat{x}\\|^2 = ${simLoss.toFixed(4)}$。`, "text-orange-400");
+      } else if (stepIndex === 5) {
+        node.className = "p-4 rounded-2xl bg-slate-900 border-2 border-pink-500 transition-all duration-300 flex flex-col justify-between space-y-2";
+        simEpoch++;
+        document.getElementById('simEpochCounter').innerText = `迭代步數: ${simEpoch}`;
+        addLog("【Step 5 更新】計算反向傳播梯度 $\\nabla_W \\mathcal{L}$，AdamW 優化器更新網路權重矩陣。", "text-pink-400");
+      }
+    }
+
+    document.getElementById('stepSimBtn').addEventListener('click', () => {
+      let next = currentStep + 1;
+      if (next > 5) next = 1;
+      executeStep(next);
+    });
+
+    document.getElementById('autoRunSimBtn').addEventListener('click', () => {
+      const btnText = document.getElementById('autoRunText');
+      const btnIcon = document.getElementById('autoRunIcon');
+
+      if (autoRunInterval) {
+        clearInterval(autoRunInterval);
+        autoRunInterval = null;
+        btnText.innerText = "一鍵自動模擬 (Auto)";
+        btnIcon.className = "fa-solid fa-play";
+      } else {
+        btnText.innerText = "暫停模擬 (Pause)";
+        btnIcon.className = "fa-solid fa-pause";
+        autoRunInterval = setInterval(() => {
+          let next = currentStep + 1;
+          if (next > 5) next = 1;
+          executeStep(next);
+        }, 800);
+      }
+    });
+
+    document.getElementById('resetSimBtn').addEventListener('click', () => {
+      if (autoRunInterval) {
+        clearInterval(autoRunInterval);
+        autoRunInterval = null;
+        document.getElementById('autoRunText').innerText = "一鍵自動模擬 (Auto)";
+        document.getElementById('autoRunIcon').className = "fa-solid fa-play";
+      }
+      currentStep = 0;
+      simEpoch = 0;
+      simLoss = 0.4520;
+      document.getElementById('simEpochCounter').innerText = `迭代步數: 0`;
+      document.getElementById('simCurrentLoss').innerText = '0.4520';
+      resetStepHighlights();
+      logBox.innerHTML = '<div class="text-slate-500">> 系統已重設歸零。請點擊「單步執行」開始演練。</div>';
+    });
+
+    // Initialize Canvas on load
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(resizeCanvases, 100);
+    });
+  </script>
+</body>
+</html>
