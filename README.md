@@ -37,9 +37,10 @@
 │   ├── 0201.stable_diffusion(潛在擴散模型).html # Stable Diffusion 核心架構解析與互動模擬
 │   └── 0202.autoencoder(自編碼器).html         # Autoencoder 自編碼器全方位指南與實驗室
 ├── 03.生成式AI/                 # 生成式AI單元筆記（持續更新）
-├── 04.補充教材/                 # 精選專題深入教材 (Cross-Entropy, MSE/MAE, 貓咪辨識等)
+├── 04.補充教材/                 # 精選專題深入教材 (Cross-Entropy, MSE/MAE, 蒙地卡羅, 十三分鐘略懂AI等)
 ├── 05.讀學時光 Rido(Read) & Learn/  # 讀學時光專題實驗室 (波動力學、AI網頁感知操作)
 ├── index.html                   # 投影片單頁應用（SPA）
+├── 十三分鐘略懂 AI 技術：機器學習、深度學習技術原理及延伸應用.md # 經典 AI 原理導讀逐字稿
 ├── 網頁 提示詞.txt              # 教學網頁生成提示詞規格書
 └── README.md                    # 專案說明文件
 ```
