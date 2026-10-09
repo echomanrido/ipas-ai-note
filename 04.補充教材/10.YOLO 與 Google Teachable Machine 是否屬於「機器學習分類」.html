@@ -1,0 +1,1419 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>深度學習影像分類與遷移學習 (Classification & Transfer Learning)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome for crisp iconography -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- KaTeX for crisp mathematical formulas -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+  <!-- Chart.js for data visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    code, pre {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Syntax color highlights */
+    .hl-keyword { color: #f43f5e; font-weight: 600; }
+    .hl-func { color: #38bdf8; font-weight: 600; }
+    .hl-class { color: #fbbf24; font-weight: 600; }
+    .hl-string { color: #a3e635; }
+    .hl-comment { color: #94a3b8; font-style: italic; }
+    .hl-param { color: #c084fc; }
+    .hl-number { color: #fb923c; }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    /* Pulse glow effect */
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 15px rgba(56, 189, 248, 0.4); }
+      50% { box-shadow: 0 0 25px rgba(56, 189, 248, 0.8); }
+    }
+    .pulse-glow {
+      animation: pulseGlow 2s infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-cyan-500 selection:text-black">
+
+  <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+          <i class="fa-solid fa-shapes text-white text-lg"></i>
+        </div>
+        <div>
+          <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-400 bg-clip-text text-transparent">AI 影像分類與遷移學習深度解析</span>
+          <span class="hidden md:inline-block ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800/60">IPAS 核心認證規範</span>
+        </div>
+      </div>
+      <nav class="hidden lg:flex items-center space-x-1 text-sm font-medium">
+        <a href="#sec-compare" class="px-3 py-1.5 rounded-lg bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 hover:bg-indigo-600/40 transition">YOLO vs TM 辨析</a>
+        <a href="#sec-overview" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition">核心速覽</a>
+        <a href="#sec-ipas" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition">IPAS考題</a>
+        <a href="#sec-math" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition">數學推導</a>
+        <a href="#sec-code" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition">PyTorch實作</a>
+        <a href="#sec-sim" class="px-3 py-1.5 rounded-lg bg-cyan-600/20 text-cyan-400 border border-cyan-500/40 hover:bg-cyan-600/30 transition">動態模擬器</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+    <!-- 00. 技術本質剖析：YOLO vs. Google Teachable Machine 是否屬於機器學習分類？ -->
+    <section id="sec-compare" class="relative overflow-hidden rounded-3xl bg-slate-900/90 border-2 border-indigo-500/50 p-6 md:p-10 shadow-2xl space-y-8">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-700/60 text-xs font-mono mb-2">
+            <i class="fa-solid fa-scale-balanced"></i> 電腦視覺核心任務定位剖析
+          </div>
+          <h2 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+            YOLO 與 Google Teachable Machine 是否屬於「機器學習分類」？
+          </h2>
+          <p class="text-slate-400 text-sm mt-1">
+            釐清「純影像分類（Classification）」與「多物件偵測（Object Detection）」的任務界線與技術底層
+          </p>
+        </div>
+        <div class="flex gap-2">
+          <span class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1.5">
+            <i class="fa-solid fa-check-circle"></i> Teachable Machine：標準分類
+          </span>
+          <span class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-950 text-amber-300 border border-amber-800 flex items-center gap-1.5">
+            <i class="fa-solid fa-triangle-exclamation"></i> YOLO：主體為物件偵測
+          </span>
+        </div>
+      </div>
+
+      <!-- 核心定性比較卡片 -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Teachable Machine Card -->
+        <div class="bg-slate-950/80 rounded-2xl p-6 border border-emerald-500/40 relative flex flex-col justify-between space-y-4">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl">
+                  <i class="fa-solid fa-graduation-cap"></i>
+                </div>
+                <div>
+                  <h3 class="text-lg font-bold text-white">Google Teachable Machine</h3>
+                  <span class="text-xs text-emerald-400 font-mono">任務範疇：純影像分類 (Classification)</span>
+                </div>
+              </div>
+              <span class="px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                100% 分類任務
+              </span>
+            </div>
+
+            <p class="text-sm text-slate-300 leading-relaxed">
+              <strong>【結論：是，完全屬於分類】</strong><br>
+              Teachable Machine 旨在回答整張影像<strong>「是什麼（What）」</strong>。使用者上傳多種類別圖片（例如「良品」與「瑕疵」），系統學習將整張圖片歸入對應標籤，輸出各類別機率分佈，<strong>不包含任何物體座標位置回歸</strong>。
+            </p>
+
+            <div class="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-xs space-y-1.5 font-mono text-slate-300">
+              <div class="text-emerald-400 font-bold">⚙️ 底層技術機制：</div>
+              <div>• 預訓練骨幹：基於 TensorFlow.js 載入 ImageNet 預訓練之 <strong>MobileNet</strong>。</div>
+              <div>• 遷移學習：凍結全部卷積層特徵提取器，僅微調最頂層的全連接分類頭（Dense + Softmax）。</div>
+              <div>• 輸出形態：純類別機率向量 $\mathbf{p} = [p_1, p_2, \dots, p_K]$，滿足 $\sum p_i = 1$。</div>
+            </div>
+          </div>
+
+          <div class="text-xs text-slate-400 border-t border-slate-800/80 pt-3 flex items-center justify-between">
+            <span>支援類型：影像分類 / 音訊頻譜分類 / 人體姿態分類</span>
+            <span class="text-emerald-400 font-mono">No-Code 遷移學習</span>
+          </div>
+        </div>
+
+        <!-- YOLO Card -->
+        <div class="bg-slate-950/80 rounded-2xl p-6 border border-amber-500/40 relative flex flex-col justify-between space-y-4">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl">
+                  <i class="fa-solid fa-crosshairs"></i>
+                </div>
+                <div>
+                  <h3 class="text-lg font-bold text-white">YOLO (You Only Look Once)</h3>
+                  <span class="text-xs text-amber-400 font-mono">任務範疇：物件偵測 (Object Detection)</span>
+                </div>
+              </div>
+              <span class="px-2.5 py-1 text-xs font-bold rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                偵測 > 純分類
+              </span>
+            </div>
+
+            <p class="text-sm text-slate-300 leading-relaxed">
+              <strong>【結論：嚴格來說是「物件偵測」，但內部包含分類子分支】</strong><br>
+              YOLO 旨在同時回答<strong>「是什麼（What）」與「在哪裡（Where）」</strong>。它一次性對全圖進行網格劃分，不僅辨識物體類別，更同時精準回歸物體的邊界框（Bounding Box: $x, y, w, h$）。
+            </p>
+
+            <div class="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-xs space-y-1.5 font-mono text-slate-300">
+              <div class="text-amber-400 font-bold">⚙️ 底層技術機制：</div>
+              <div>• 單階段架構：端到端多任務回歸（Backbone + FPN Neck + Detection Head）。</div>
+              <div>• 複合損失函數：邊界框回歸損失（$\mathcal{L}_{box}$: CIoU）+ 物件置信度損失（$\mathcal{L}_{obj}$）+ <strong>類別分類損失（$\mathcal{L}_{cls}$: BCE/CE）</strong>。</div>
+              <div>• 衍生延伸：現代 YOLO 程式庫（如 YOLOv8/v11）亦擴展提供獨立的純 Classification 模式。</div>
+            </div>
+          </div>
+
+          <div class="text-xs text-slate-400 border-t border-slate-800/80 pt-3 flex items-center justify-between">
+            <span>支援類型：物件偵測 / 實例分割 / 姿態估計 / 旋轉框</span>
+            <span class="text-amber-400 font-mono">Multi-task Regression</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 互動式視覺化直觀切換比較 -->
+      <div class="bg-slate-950 p-6 rounded-2xl border border-slate-800 space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h4 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-eye text-cyan-400"></i> 視覺化直觀感受：同一張影像在兩種技術下的輸出差異
+            </h4>
+            <p class="text-xs text-slate-400 mt-0.5">點擊下方按鈕切換檢視兩者在推論輸出上的本質區別</p>
+          </div>
+          <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+            <button onclick="setCompareMode('tm')" id="btn-comp-tm" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white transition">
+              Teachable Machine (純分類)
+            </button>
+            <button onclick="setCompareMode('yolo')" id="btn-comp-yolo" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition">
+              YOLO (物件偵測)
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+          <!-- 模擬畫面 -->
+          <div class="md:col-span-6 relative h-56 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-center overflow-hidden">
+            <!-- 模擬電路板背景 -->
+            <div class="w-full h-full p-4 flex flex-col justify-between opacity-80 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:16px_16px]">
+              <div class="text-[10px] font-mono text-slate-500">PCB-INSPECTION-BOARD #CAM-01</div>
+              <div class="flex justify-around items-center h-full">
+                <!-- 物體 A: 晶片 -->
+                <div class="w-20 h-20 bg-slate-800 border border-slate-700 rounded-lg flex items-center justify-center text-slate-400 text-xs font-mono relative" id="comp-obj-1">
+                  <i class="fa-solid fa-microchip text-2xl text-cyan-400"></i>
+                </div>
+                <!-- 物體 B: 電容瑕疵 -->
+                <div class="w-14 h-14 bg-slate-800 border border-slate-700 rounded-full flex items-center justify-center text-slate-400 text-xs font-mono relative" id="comp-obj-2">
+                  <i class="fa-solid fa-bolt text-lg text-rose-400"></i>
+                </div>
+              </div>
+              <div class="text-[10px] font-mono text-slate-500 text-right">RESOLUTION: 640x640</div>
+            </div>
+
+            <!-- YOLO 專屬覆蓋層：邊界框 Bounding Boxes -->
+            <div id="yolo-overlay" class="hidden absolute inset-0 p-4 pointer-events-none">
+              <!-- Box 1 -->
+              <div class="absolute left-16 top-14 w-28 h-28 border-2 border-emerald-400 bg-emerald-500/10 rounded">
+                <span class="absolute -top-5 left-0 px-1.5 py-0.5 bg-emerald-500 text-slate-950 font-mono font-bold text-[10px] rounded">
+                  Chip 0.96 (120, 85)
+                </span>
+              </div>
+              <!-- Box 2 -->
+              <div class="absolute right-20 top-20 w-20 h-20 border-2 border-rose-400 bg-rose-500/10 rounded">
+                <span class="absolute -top-5 left-0 px-1.5 py-0.5 bg-rose-500 text-slate-950 font-mono font-bold text-[10px] rounded">
+                  Defect: Crack 0.89 (430, 210)
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 輸出數據說明 -->
+          <div class="md:col-span-6 space-y-3">
+            <div id="comp-desc-title" class="text-sm font-bold text-emerald-400 font-mono">
+              Teachable Machine 輸出：全圖單一分類機率
+            </div>
+            <p id="comp-desc-p" class="text-xs text-slate-300 leading-relaxed">
+              輸入整張影像，透過預訓練 MobileNet 抽取出全圖語意向量，頂層 Softmax 給出此影像屬於各類別的整體置信度，<strong>完全沒有標註物體在影像中的具體坐標位置</strong>。
+            </p>
+
+            <div id="comp-bars" class="space-y-2 pt-2">
+              <div>
+                <div class="flex justify-between text-xs font-mono">
+                  <span class="text-slate-300">瑕疵不良品 (Defective)</span>
+                  <span class="text-rose-400 font-bold" id="comp-p1-val">91.4%</span>
+                </div>
+                <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden mt-1">
+                  <div class="h-full bg-rose-500 transition-all duration-300" id="comp-p1-bar" style="width: 91.4%"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between text-xs font-mono">
+                  <span class="text-slate-300">正常良品 (Normal)</span>
+                  <span class="text-emerald-400 font-bold" id="comp-p2-val">8.6%</span>
+                </div>
+                <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden mt-1">
+                  <div class="h-full bg-emerald-500 transition-all duration-300" id="comp-p2-bar" style="width: 8.6%"></div>
+                </div>
+              </div>
+            </div>
+
+            <div id="comp-yolo-details" class="hidden text-xs font-mono bg-slate-900 p-3 rounded-xl border border-slate-800 text-slate-300 space-y-1">
+              <div class="text-amber-400 font-bold">YOLO 預測張量 (Bounding Box + Cls)：</div>
+              <div>• 框 1: [x=120, y=85, w=112, h=112] ➔ 類別: Chip (96%)</div>
+              <div>• 框 2: [x=430, y=210, w=80, h=80] ➔ 類別: Crack Defect (89%)</div>
+              <div class="text-slate-500 text-[11px] mt-1">同時精準指出瑕疵發生的像素座標與尺寸！</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 總結表格 -->
+        <div class="overflow-x-auto pt-2">
+          <table class="w-full text-xs text-left text-slate-300 border border-slate-800">
+            <thead class="bg-slate-900 text-slate-400 font-mono uppercase text-[11px]">
+              <tr>
+                <th class="py-2.5 px-4 border-b border-slate-800">評比維度</th>
+                <th class="py-2.5 px-4 border-b border-slate-800 text-emerald-400">Google Teachable Machine</th>
+                <th class="py-2.5 px-4 border-b border-slate-800 text-amber-400">YOLO (物件偵測)</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800 font-mono text-[11px]">
+              <tr>
+                <td class="py-2 px-4 text-slate-400 font-sans font-semibold">任務本質</td>
+                <td class="py-2 px-4 text-emerald-300">純影像分類（Classification）</td>
+                <td class="py-2 px-4 text-amber-300">物件偵測（Detection）+ 邊界框回歸</td>
+              </tr>
+              <tr>
+                <td class="py-2 px-4 text-slate-400 font-sans font-semibold">解答核心問題</td>
+                <td class="py-2 px-4">這張圖片「是什麼」（What）？</td>
+                <td class="py-2 px-4">圖中物體「在哪裡（Where）」且「是什麼（What）」？</td>
+              </tr>
+              <tr>
+                <td class="py-2 px-4 text-slate-400 font-sans font-semibold">輸出維度格式</td>
+                <td class="py-2 px-4">$1 \times K$ 各類別機率分佈</td>
+                <td class="py-2 px-4">$N \times [x, y, w, h, \text{conf}, p_1, \dots, p_K]$ 偵測框矩陣</td>
+              </tr>
+              <tr>
+                <td class="py-2 px-4 text-slate-400 font-sans font-semibold">底層關鍵技術</td>
+                <td class="py-2 px-4">MobileNet + 頂層遷移學習 (Transfer Learning)</td>
+                <td class="py-2 px-4">CSPDarknet 骨幹 + 特徵金字塔 (FPN) + 多任務錨點預測</td>
+              </tr>
+              <tr>
+                <td class="py-2 px-4 text-slate-400 font-sans font-semibold">是否有分類成分？</td>
+                <td class="py-2 px-4 text-emerald-400 font-bold">100% 屬於分類</td>
+                <td class="py-2 px-4 text-amber-400 font-bold">核心為偵測，但包含分類子損失與類別預測分支</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Hero Banner -->
+    <section id="sec-overview" class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 p-6 md:p-10 border border-slate-800 shadow-2xl">
+      <div class="absolute -right-20 -top-20 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -left-20 -bottom-20 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="relative z-10 space-y-6">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700 text-xs text-cyan-400 font-mono">
+          <i class="fa-solid fa-code-compare"></i> 機器學習 / 深度學習分類任務 (Classification)
+        </div>
+        
+        <h1 class="text-3xl md:text-5xl font-extrabold text-white tracking-tight leading-tight">
+          01. 一句話簡介
+        </h1>
+        <p class="text-xl md:text-2xl text-cyan-300 font-medium leading-relaxed bg-slate-950/40 p-4 rounded-2xl border border-cyan-900/40">
+          「影像分類是讓神經網路透過特徵提取與機率對映，回答輸入影像『<strong>是什麼（What）</strong>』的監督式學習任務；而遷移學習（Transfer Learning）則是站在預訓練巨人的肩膀上，以極少資料在數秒內微調出高精度專屬分類器。」
+        </p>
+
+        <!-- 02. 核心原理 -->
+        <div class="pt-6 border-t border-slate-800">
+          <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+            <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 text-sm font-mono border border-cyan-500/30">02</span>
+            核心原理 (Core Principle)
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+            <div class="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/60 hover:border-cyan-500/50 transition">
+              <div class="w-10 h-10 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center text-lg mb-3">
+                <i class="fa-solid fa-layer-group"></i>
+              </div>
+              <h3 class="text-lg font-bold text-slate-100">1. 分層表徵萃取 (Feature Extraction)</h3>
+              <p class="text-sm text-slate-400 mt-2 leading-relaxed">
+                利用卷積層（CNN）或 Vision Transformer (ViT) 將百萬像素影像由淺入深轉換為低維語意向量（淺層抓邊緣紋理，深層辨識部件器官結構）。
+              </p>
+            </div>
+            
+            <div class="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/60 hover:border-indigo-500/50 transition">
+              <div class="w-10 h-10 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-lg mb-3">
+                <i class="fa-solid fa-calculator"></i>
+              </div>
+              <h3 class="text-lg font-bold text-slate-100">2. Logits 與 Softmax 機率轉換</h3>
+              <p class="text-sm text-slate-400 mt-2 leading-relaxed">
+                全連接分類頭將抽象特徵映射為無邊界的得分值（Logits $z_k$），經由標準化指數函數（Softmax）壓縮為總和等於 1 的多類別機率分佈。
+              </p>
+            </div>
+
+            <div class="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/60 hover:border-emerald-500/50 transition">
+              <div class="w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg mb-3">
+                <i class="fa-solid fa-snowflake"></i>
+              </div>
+              <h3 class="text-lg font-bold text-slate-100">3. 遷移學習骨幹凍結 (Weight Freezing)</h3>
+              <p class="text-sm text-slate-400 mt-2 leading-relaxed">
+                如 Google Teachable Machine：凍結在巨量數據（ImageNet）訓練好的通用骨幹網路（如 MobileNet），僅重新訓練頂層極少參數的分類頭，避免過擬合且大幅提速。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-ipas" class="space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+            <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 text-sm font-mono border border-amber-500/30">03</span>
+            IPAS AI 應用工程師能力鑑定 — 模擬經典考題
+          </h2>
+          <p class="text-slate-400 text-sm mt-1">涵蓋「物件偵測 vs 影像分類」、「遷移學習微調機制」、「損失函數選擇」常見鑑定題型</p>
+        </div>
+        <span class="hidden sm:inline-block px-3 py-1 rounded-full text-xs font-semibold bg-amber-950/80 text-amber-300 border border-amber-800">
+          重點試題實戰
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Q1 -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 hover:border-slate-700 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-cyan-400 bg-cyan-950/80 px-2.5 py-1 rounded-md border border-cyan-800">題目 01・分類與偵測本質辨識</span>
+            <span class="text-xs text-slate-400">核心能力指標：視覺架構判別</span>
+          </div>
+          <p class="text-slate-200 font-medium">
+            關於 YOLO 演算法與 Google Teachable Machine（影像專案）的本質差異，下列敘述何者<strong class="text-rose-400">錯誤</strong>？
+          </p>
+          <div class="space-y-2 text-sm">
+            <button onclick="checkIpas(1, 'A')" class="w-full text-left p-3 rounded-xl bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 transition flex items-center justify-between border border-transparent" id="q1-opt-A">
+              <span>(A) Google Teachable Machine 核心屬於純影像分類（Classification）任務</span>
+              <span class="check-icon"></span>
+            </button>
+            <button onclick="checkIpas(1, 'B')" class="w-full text-left p-3 rounded-xl bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 transition flex items-center justify-between border border-transparent" id="q1-opt-B">
+              <span>(B) YOLO 演算法輸出包含目標物體之邊界框（Bounding Box）位置回歸</span>
+              <span class="check-icon"></span>
+            </button>
+            <button onclick="checkIpas(1, 'C')" class="w-full text-left p-3 rounded-xl bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 transition flex items-center justify-between border border-transparent" id="q1-opt-C">
+              <span>(C) YOLO 內部不包含任何分類（Classification）的損失計算分支</span>
+              <span class="check-icon"></span>
+            </button>
+            <button onclick="checkIpas(1, 'D')" class="w-full text-left p-3 rounded-xl bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 transition flex items-center justify-between border border-transparent" id="q1-opt-D">
+              <span>(D) Teachable Machine 常採用預訓練之 MobileNet 進行特徵抽取遷移學習</span>
+              <span class="check-icon"></span>
+            </button>
+          </div>
+          <div id="q1-explain" class="hidden text-xs bg-slate-950 p-4 rounded-xl border border-slate-800 text-slate-300 space-y-1">
+            <div class="font-bold text-amber-400">💡 IPAS 解析：</div>
+            <p><strong>正確解答為 (C)</strong>。YOLO 屬於單階段物件偵測（One-stage Object Detection），其損失函數同時包含<strong>邊界框回歸損失（Bounding Box Loss）</strong>、<strong>物件置信度損失（Objectness Loss）</strong>與<strong>類別分類損失（Classification Loss）</strong>。因此 YOLO 內部確實具備分類子任務。</p>
+          </div>
+        </div>
+
+        <!-- Q2 -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 hover:border-slate-700 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-indigo-400 bg-indigo-950/80 px-2.5 py-1 rounded-md border border-indigo-800">題目 02・遷移學習微調策略</span>
+            <span class="text-xs text-slate-400">核心能力指標：模型調參優化</span>
+          </div>
+          <p class="text-slate-200 font-medium">
+            在工業瑕疵檢測任務中，若收集之瑕疵樣本圖片數量僅有 150 張（資料極為缺乏），但背景紋理與預訓練資料集（ImageNet）相近，下列哪種遷移學習策略最不容易造成過擬合（Overfitting）？
+          </p>
+          <div class="space-y-2 text-sm">
+            <button onclick="checkIpas(2, 'A')" class="w-full text-left p-3 rounded-xl bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 transition flex items-center justify-between border border-transparent" id="q2-opt-A">
+              <span>(A) 凍結骨幹網路（Backbone）全部卷積層權重，僅訓練新初始化的最後一層線性分類器</span>
+              <span class="check-icon"></span>
+            </button>
+            <button onclick="checkIpas(2, 'B')" class="w-full text-left p-3 rounded-xl bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 transition flex items-center justify-between border border-transparent" id="q2-opt-B">
+              <span>(B) 解凍整個深度模型的所有網路層（Full Fine-Tuning），並設定極大的學習率快速收斂</span>
+              <span class="check-icon"></span>
+            </button>
+            <button onclick="checkIpas(2, 'C')" class="w-full text-left p-3 rounded-xl bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 transition flex items-center justify-between border border-transparent" id="q2-opt-C">
+              <span>(C) 放棄預訓練權重，完全隨機初始化權重從頭訓練（Train from Scratch）</span>
+              <span class="check-icon"></span>
+            </button>
+            <button onclick="checkIpas(2, 'D')" class="w-full text-left p-3 rounded-xl bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 transition flex items-center justify-between border border-transparent" id="q2-opt-D">
+              <span>(D) 移除骨幹網絡，僅使用單層感知機直接將輸入影像展平輸入訓練</span>
+              <span class="check-icon"></span>
+            </button>
+          </div>
+          <div id="q2-explain" class="hidden text-xs bg-slate-950 p-4 rounded-xl border border-slate-800 text-slate-300 space-y-1">
+            <div class="font-bold text-amber-400">💡 IPAS 解析：</div>
+            <p><strong>正確解答為 (A)</strong>。當目標資料集微小（Small dataset）且領域與來源相近（High similarity）時，最佳策略是將預訓練特徵抽取層鎖定（`requires_grad = False`），僅訓練最後的全連接分類頭，避免在巨量權重中發生嚴重過擬合。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      
+      <!-- 04. 實務特徵 -->
+      <section class="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-4">
+        <h2 class="text-xl font-bold text-white flex items-center gap-3">
+          <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-mono border border-emerald-500/30">04</span>
+          實務特徵 (Practical Characteristics)
+        </h2>
+        <ul class="space-y-3 text-sm text-slate-300">
+          <li class="flex items-start gap-2.5">
+            <i class="fa-solid fa-circle-check text-emerald-400 mt-1"></i>
+            <span><strong>端到端特徵表徵（End-to-End Representation）：</strong> 擺脫傳統機器學習需人工抽取 SIFT/HOG 特徵的繁瑣，讓神經網路自主學習最具鑑別度的過濾器。</span>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <i class="fa-solid fa-circle-check text-emerald-400 mt-1"></i>
+            <span><strong>資料極度不平衡問題（Class Imbalance）：</strong> 實務上正常樣本往往佔 99%，瑕疵樣本不足 1%，需透過 Focal Loss、Weighted Cross-Entropy 或資料擴增（Mixup、CutMix）解決。</span>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <i class="fa-solid fa-circle-check text-emerald-400 mt-1"></i>
+            <span><strong>推論延遲與邊緣部署（Edge Deployment）：</strong> 著重 FLOPs 與參數平衡，常以 MobileNetV3、ShuffleNet、EfficientNet-Lite 或 TensorRT 量化（INT8）部署於產線邊緣設備。</span>
+          </li>
+        </ul>
+      </section>
+
+      <!-- 05. 由來 -->
+      <section class="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-4">
+        <h2 class="text-xl font-bold text-white flex items-center gap-3">
+          <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 text-xs font-mono border border-purple-500/30">05</span>
+          由來與演進里程碑 (Origin & History)
+        </h2>
+        <div class="relative pl-6 space-y-4 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-700 text-xs text-slate-300">
+          <div class="relative">
+            <span class="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-purple-500 ring-4 ring-slate-900"></span>
+            <div class="font-bold text-slate-200">1998：LeNet-5 雛形誕生</div>
+            <p class="text-slate-400 mt-0.5">Yann LeCun 提出經典 CNN 架構，成功商用於美國郵政手寫郵遞區號分類。</p>
+          </div>
+          <div class="relative">
+            <span class="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-cyan-500 ring-4 ring-slate-900"></span>
+            <div class="font-bold text-slate-200">2012：AlexNet 席捲 ImageNet</div>
+            <p class="text-slate-400 mt-0.5">利用 GPU 平行運算搭配 ReLU 與 Dropout，一舉引爆全球深度學習大爆炸。</p>
+          </div>
+          <div class="relative">
+            <span class="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-indigo-500 ring-4 ring-slate-900"></span>
+            <div class="font-bold text-slate-200">2015-2017：ResNet 殘差連接與 MobileNet 輕量革命</div>
+            <p class="text-slate-400 mt-0.5">解決梯度消失讓網路深度突破千層；深度可分離卷積促使邊緣設備與瀏覽器端遷移學習成真。</p>
+          </div>
+          <div class="relative">
+            <span class="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-slate-900"></span>
+            <div class="font-bold text-slate-200">2020~至今：ViT 與零樣本分類（CLIP / Multimodal LLM）</div>
+            <p class="text-slate-400 mt-0.5">自注意力機制擴展至圖像領域，影像分類邁入多模態零樣本提示工程（Zero-Shot Classification）時代。</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 06. 生活化例子 -->
+      <section class="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-4">
+        <h2 class="text-xl font-bold text-white flex items-center gap-3">
+          <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-pink-500/20 text-pink-400 text-xs font-mono border border-pink-500/30">06</span>
+          生活化例子 (Everyday Life Analogy)
+        </h2>
+        <div class="space-y-3 text-sm text-slate-300">
+          <div class="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/60 flex items-start gap-3">
+            <span class="text-2xl">🗑️</span>
+            <div>
+              <div class="font-semibold text-slate-200">智慧垃圾桶自動分類</div>
+              <p class="text-xs text-slate-400 mt-1">鏡頭掃描投入物體：辨識出「鋁罐（98%）」或「寶特瓶（1%）」，驅動對應擋板自動翻轉投入資源回收桶。</p>
+            </div>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/60 flex items-start gap-3">
+            <span class="text-2xl">🍎</span>
+            <div>
+              <div class="font-semibold text-slate-200">無人超商蔬果熟度辨識</div>
+              <p class="text-xs text-slate-400 mt-1">鏡頭拍攝香蕉外皮，分類為「未成熟（青綠）」、「完熟最佳賞味期（亮黃）」或「過熟特價即期品（黑斑）」。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 07. 工業上應用 -->
+      <section class="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-4">
+        <h2 class="text-xl font-bold text-white flex items-center gap-3">
+          <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 text-xs font-mono border border-cyan-500/30">07</span>
+          工業上應用 (Industrial Applications)
+        </h2>
+        <div class="space-y-3 text-sm text-slate-300">
+          <div class="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/60 flex items-start gap-3">
+            <span class="text-2xl">🔬</span>
+            <div>
+              <div class="font-semibold text-slate-200">晶圓晶片自動光學檢測 (AOI Defect Classification)</div>
+              <p class="text-xs text-slate-400 mt-1">在半導體封測廠，將顯微鏡掃描出的缺陷分類為：顆粒污染 (Particle)、微裂痕 (Crack)、引線偏移 (Bridging)。</p>
+            </div>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/60 flex items-start gap-3">
+            <span class="text-2xl">🩺</span>
+            <div>
+              <div class="font-semibold text-slate-200">智慧醫療 X 光與病理切片判讀</div>
+              <p class="text-xs text-slate-400 mt-1">胸部 X 光影像自動篩檢分類為：正常、細菌性肺炎、病毒性感染，提供臨床醫師高準度優先級預警。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section id="sec-math" class="space-y-8">
+      <!-- 08. 理論簡介 -->
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-4">
+        <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+          <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 text-sm font-mono border border-sky-500/30">08</span>
+          理論簡介：正向傳播、Softmax 與交叉熵損失
+        </h2>
+        <p class="text-sm text-slate-300 leading-relaxed">
+          影像分類本質上是尋找一個參數化對映函數 $f_\theta(\mathbf{x}): \mathbb{R}^{C \times H \times W} \to \Delta^{K-1}$，將高維輸入轉換為 $K$ 個離散類別的機率分佈。整個過程由 <strong>卷積特徵提取</strong>、<strong>線性層轉換為 Logits</strong>、<strong>Softmax 機率歸一化</strong>、以及評估預測與真實分佈差距的 <strong>交叉熵損失（Cross-Entropy Loss）</strong> 組成。
+        </p>
+      </div>
+
+      <!-- 09. 數學推導 (互動式) -->
+      <div class="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-8 shadow-xl">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+              <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 text-sm font-mono border border-cyan-500/30">09</span>
+              數學推導（互動式實驗室）
+            </h2>
+            <p class="text-slate-400 text-sm mt-1">動態滑動調整未歸一化對數得分（Logits $z_i$）與溫度係數（Temperature $T$），即時觀察梯度與機率分佈變化</p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-xs font-mono bg-cyan-950 text-cyan-300 border border-cyan-800 w-fit">
+            互動式公式渲染
+          </span>
+        </div>
+
+        <!-- 靜態數學推導區塊 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-950/80 p-5 rounded-2xl border border-slate-800/80 text-sm">
+          <div class="space-y-2">
+            <span class="text-xs font-semibold text-cyan-400 font-mono">Step 1: Softmax 函數</span>
+            <div id="math-formula-softmax" class="text-slate-200 overflow-x-auto py-2"></div>
+            <p class="text-xs text-slate-400">將任意實數 $z_i \in (-\infty, \infty)$ 壓縮為 $(0, 1)$ 且總和為 1 的有效機率。</p>
+          </div>
+          <div class="space-y-2">
+            <span class="text-xs font-semibold text-indigo-400 font-mono">Step 2: 交叉熵損失 (Cross-Entropy)</span>
+            <div id="math-formula-ce" class="text-slate-200 overflow-x-auto py-2"></div>
+            <p class="text-xs text-slate-400">當真實標籤為 One-Hot 向量時，損失等價於目標類別對數機率的負值 $-\ln(\hat{y}_c)$。</p>
+          </div>
+          <div class="space-y-2">
+            <span class="text-xs font-semibold text-emerald-400 font-mono">Step 3: 梯度反向傳播 (優雅的差值)</span>
+            <div id="math-formula-grad" class="text-slate-200 overflow-x-auto py-2"></div>
+            <p class="text-xs text-slate-400">反向傳播傳回 Logits 的梯度恰好等於「預測機率」減去「真實 One-Hot 標籤」！</p>
+          </div>
+        </div>
+
+        <!-- 互動控制面板 -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div class="lg:col-span-5 space-y-5 bg-slate-800/40 p-5 rounded-2xl border border-slate-700/60">
+            <h3 class="text-sm font-bold text-slate-200 flex items-center justify-between">
+              <span>調整模型 Logits 輸出 ($z_1, z_2, z_3$)</span>
+              <span class="text-xs text-cyan-400 font-mono">目標真值: 類別 1 (One-Hot [1, 0, 0])</span>
+            </h3>
+
+            <!-- Slider z1 -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs">
+                <span class="text-slate-300 font-semibold text-cyan-400">類別 1 Logit ($z_1$)</span>
+                <span id="val-z1" class="font-mono text-cyan-400 font-bold">2.5</span>
+              </div>
+              <input type="range" id="slider-z1" min="-5" max="5" step="0.1" value="2.5" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-400" oninput="updateMathLive()">
+            </div>
+
+            <!-- Slider z2 -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs">
+                <span class="text-slate-300 font-semibold text-amber-400">類別 2 Logit ($z_2$)</span>
+                <span id="val-z2" class="font-mono text-amber-400 font-bold">1.0</span>
+              </div>
+              <input type="range" id="slider-z2" min="-5" max="5" step="0.1" value="1.0" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-400" oninput="updateMathLive()">
+            </div>
+
+            <!-- Slider z3 -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs">
+                <span class="text-slate-300 font-semibold text-rose-400">類別 3 Logit ($z_3$)</span>
+                <span id="val-z3" class="font-mono text-rose-400 font-bold">-0.5</span>
+              </div>
+              <input type="range" id="slider-z3" min="-5" max="5" step="0.1" value="-0.5" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-400" oninput="updateMathLive()">
+            </div>
+
+            <!-- Slider Temperature -->
+            <div class="space-y-1.5 pt-2 border-t border-slate-700">
+              <div class="flex justify-between text-xs">
+                <span class="text-purple-300 font-semibold">溫度係數 Temperature ($T$)</span>
+                <span id="val-temp" class="font-mono text-purple-400 font-bold">1.0</span>
+              </div>
+              <input type="range" id="slider-temp" min="0.2" max="3.0" step="0.1" value="1.0" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-400" oninput="updateMathLive()">
+              <p class="text-[11px] text-slate-400">$T \to 0$ 趨近於 Argmax；$T \to \infty$ 機率均勻平滑。</p>
+            </div>
+          </div>
+
+          <!-- 即時計算視覺化 -->
+          <div class="lg:col-span-7 space-y-4">
+            <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4">
+              <div class="flex items-center justify-between text-xs font-mono">
+                <span class="text-slate-400">Softmax 機率輸出 ($\hat{y}_i = P(y=i|\mathbf{x})$)</span>
+                <span class="text-emerald-400">總和 $\sum \hat{y}_i = 1.0000$</span>
+              </div>
+
+              <!-- Bar 1 -->
+              <div class="space-y-1">
+                <div class="flex justify-between text-xs">
+                  <span class="text-slate-300 font-mono">類別 1 (目標真值 $y_1=1$)</span>
+                  <span id="text-p1" class="font-mono text-cyan-400 font-bold">78.2%</span>
+                </div>
+                <div class="h-3 w-full bg-slate-800 rounded-full overflow-hidden">
+                  <div id="bar-p1" class="h-full bg-cyan-400 transition-all duration-150" style="width: 78.2%"></div>
+                </div>
+                <div class="flex justify-between text-[11px] font-mono text-slate-400">
+                  <span>傳回梯度 $\frac{\partial \mathcal{L}}{\partial z_1} = \hat{y}_1 - 1$</span>
+                  <span id="grad-z1" class="text-cyan-300">-0.218</span>
+                </div>
+              </div>
+
+              <!-- Bar 2 -->
+              <div class="space-y-1">
+                <div class="flex justify-between text-xs">
+                  <span class="text-slate-300 font-mono">類別 2 ($y_2=0$)</span>
+                  <span id="text-p2" class="font-mono text-amber-400 font-bold">17.4%</span>
+                </div>
+                <div class="h-3 w-full bg-slate-800 rounded-full overflow-hidden">
+                  <div id="bar-p2" class="h-full bg-amber-400 transition-all duration-150" style="width: 17.4%"></div>
+                </div>
+                <div class="flex justify-between text-[11px] font-mono text-slate-400">
+                  <span>傳回梯度 $\frac{\partial \mathcal{L}}{\partial z_2} = \hat{y}_2 - 0$</span>
+                  <span id="grad-z2" class="text-amber-300">+0.174</span>
+                </div>
+              </div>
+
+              <!-- Bar 3 -->
+              <div class="space-y-1">
+                <div class="flex justify-between text-xs">
+                  <span class="text-slate-300 font-mono">類別 3 ($y_3=0$)</span>
+                  <span id="text-p3" class="font-mono text-rose-400 font-bold">4.4%</span>
+                </div>
+                <div class="h-3 w-full bg-slate-800 rounded-full overflow-hidden">
+                  <div id="bar-p3" class="h-full bg-rose-400 transition-all duration-150" style="width: 4.4%"></div>
+                </div>
+                <div class="flex justify-between text-[11px] font-mono text-slate-400">
+                  <span>傳回梯度 $\frac{\partial \mathcal{L}}{\partial z_3} = \hat{y}_3 - 0$</span>
+                  <span id="grad-z3" class="text-rose-300">+0.044</span>
+                </div>
+              </div>
+
+              <!-- Loss result box -->
+              <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
+                <span class="text-xs text-slate-400 font-medium">當前交叉熵損失值 (Cross-Entropy Loss):</span>
+                <span id="val-loss" class="text-lg font-extrabold font-mono text-emerald-400">0.2459</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+            <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 text-sm font-mono border border-indigo-500/30">10</span>
+            範疇歸屬：深度學習分類與遷移學習互動架構圖
+          </h2>
+          <p class="text-slate-400 text-sm mt-1">
+            點選切換「<strong>特徵凍結狀態</strong>」，直觀理解 Google Teachable Machine 與微調（Fine-tuning）的工作切分
+          </p>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6">
+        <!-- Interactive Architecture Diagram -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-5 text-center">
+          
+          <!-- Stage 1 -->
+          <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+            <div class="space-y-3">
+              <div class="flex flex-col items-center gap-1.5 min-h-[52px] justify-center">
+                <span class="text-xs font-mono text-cyan-400 font-bold uppercase tracking-wider">Input Stage</span>
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-900 text-slate-400 border border-slate-800">
+                  📷 原始輸入
+                </span>
+              </div>
+              <div class="w-14 h-14 mx-auto bg-slate-800 rounded-xl flex items-center justify-center text-2xl text-cyan-300 shadow-inner">
+                <i class="fa-solid fa-camera"></i>
+              </div>
+              <h4 class="font-bold text-slate-200 text-sm">輸入影像資料</h4>
+              <p class="text-[11px] text-slate-400">維度: $(3, 224, 224)$<br>包含三通道像素矩陣</p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-900 text-xs text-slate-500 font-mono">前處理 (歸一化)</div>
+          </div>
+
+          <!-- Stage 2 -->
+          <div id="arch-backbone" class="bg-slate-950 p-5 rounded-2xl border-2 border-sky-500/50 flex flex-col justify-between transition-all duration-300">
+            <div class="space-y-3">
+              <div class="flex flex-col items-center gap-1.5 min-h-[52px] justify-center">
+                <span class="text-xs font-mono text-sky-400 font-bold uppercase tracking-wider">Pretrained Backbone</span>
+                <div id="badge-backbone" class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-sky-950 text-sky-200 border border-sky-600/80 inline-flex items-center justify-center gap-1 shadow-sm leading-tight text-center">
+                  ❄️ 權重凍結 (requires_grad = False)
+                </div>
+              </div>
+              <div class="w-14 h-14 mx-auto bg-sky-950/60 rounded-xl flex items-center justify-center text-2xl text-sky-400">
+                <i class="fa-solid fa-brain"></i>
+              </div>
+              <h4 class="font-bold text-slate-200 text-sm">MobileNetV2 / ResNet</h4>
+              <p class="text-[11px] text-slate-400">提取 1280-d 全域語意特徵向量（千億級特徵庫）</p>
+            </div>
+            <button onclick="toggleBackboneFreeze()" class="mt-4 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 transition" id="btn-toggle-freeze">
+              切換為解凍狀態 (Fine-tuning)
+            </button>
+          </div>
+
+          <!-- Stage 3 -->
+          <div class="bg-slate-950 p-5 rounded-2xl border-2 border-indigo-500/70 flex flex-col justify-between">
+            <div class="space-y-3">
+              <div class="flex flex-col items-center gap-1.5 min-h-[52px] justify-center">
+                <span class="text-xs font-mono text-indigo-400 font-bold uppercase tracking-wider">New Linear Head</span>
+                <div class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-950 text-indigo-200 border border-indigo-600/80 inline-flex items-center justify-center gap-1 shadow-sm leading-tight text-center">
+                  🔥 正在訓練 (requires_grad = True)
+                </div>
+              </div>
+              <div class="w-14 h-14 mx-auto bg-indigo-950/60 rounded-xl flex items-center justify-center text-2xl text-indigo-400">
+                <i class="fa-solid fa-network-wired"></i>
+              </div>
+              <h4 class="font-bold text-slate-200 text-sm">自訂全連接層 (FC Head)</h4>
+              <p class="text-[11px] text-slate-400">`nn.Linear(1280, num_classes)`<br>幾秒內快速微調</p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-900 text-xs text-indigo-300 font-mono">Teachable Machine 核心</div>
+          </div>
+
+          <!-- Stage 4 -->
+          <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+            <div class="space-y-3">
+              <div class="flex flex-col items-center gap-1.5 min-h-[52px] justify-center">
+                <span class="text-xs font-mono text-emerald-400 font-bold uppercase tracking-wider">Classification</span>
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-700/80">
+                  ✨ 機率分佈
+                </span>
+              </div>
+              <div class="w-14 h-14 mx-auto bg-emerald-950/60 rounded-xl flex items-center justify-center text-2xl text-emerald-400">
+                <i class="fa-solid fa-chart-pie"></i>
+              </div>
+              <h4 class="font-bold text-slate-200 text-sm">Softmax 類別機率</h4>
+              <p class="text-[11px] text-slate-400">輸出各標籤置信度<br>高者即為預測結果</p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-900 text-xs text-emerald-400 font-mono">CrossEntropyLoss</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-code" class="space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+            <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 text-sm font-mono border border-emerald-500/30">11</span>
+            Python / PyTorch 實作：標準遷移學習分類器
+          </h2>
+          <p class="text-slate-400 text-sm mt-1">
+            重點核心函式以不同顏色標明（<span class="text-rose-400 font-semibold">凍結權重</span>、<span class="text-sky-400 font-semibold">替換分類頭</span>、<span class="text-yellow-400 font-semibold">損失函數</span>、<span class="text-purple-400 font-semibold">優化器</span>）
+          </p>
+        </div>
+        <button onclick="copyCode()" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium border border-slate-700 transition">
+          <i class="fa-regular fa-copy"></i>
+          <span id="copy-btn-text">複製完整程式碼</span>
+        </button>
+      </div>
+
+      <!-- Code Block Container -->
+      <div class="relative rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden shadow-2xl">
+        <div class="flex items-center justify-between px-4 py-3 bg-slate-900/90 border-b border-slate-800 text-xs text-slate-400 font-mono">
+          <div class="flex items-center space-x-2">
+            <span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span>
+            <span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span>
+            <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+            <span class="ml-2 text-slate-300 font-semibold">transfer_learning_classifier.py</span>
+          </div>
+          <span>PyTorch 2.x + TorchVision</span>
+        </div>
+
+        <pre class="p-6 text-xs sm:text-sm overflow-x-auto text-slate-300 leading-relaxed font-mono"><code><span class="hl-keyword">import</span> torch
+<span class="hl-keyword">import</span> torch.nn <span class="hl-keyword">as</span> nn
+<span class="hl-keyword">import</span> torchvision.models <span class="hl-keyword">as</span> models
+<span class="hl-keyword">from</span> torchvision <span class="hl-keyword">import</span> transforms
+<span class="hl-keyword">from</span> torch.utils.data <span class="hl-keyword">import</span> DataLoader
+
+<span class="hl-comment"># =====================================================================</span>
+<span class="hl-comment"># 1. 載入 ImageNet 預訓練骨幹網路 (MobileNetV2: Teachable Machine 常見骨幹)</span>
+<span class="hl-comment"># =====================================================================</span>
+model = models.<span class="hl-func">mobilenet_v2</span>(weights=models.MobileNet_V2_Weights.DEFAULT)
+
+<span class="hl-comment"># =====================================================================</span>
+<span class="hl-comment"># 2. 關鍵步驟：【凍結骨幹網路全部參數】(鎖定特徵提取層，防止過擬合)</span>
+<span class="hl-comment"># =====================================================================</span>
+<span class="hl-keyword">for</span> param <span class="hl-keyword">in</span> model.<span class="hl-func">features</span>.parameters():
+    param.<span class="hl-param">requires_grad</span> = <span class="hl-keyword" style="color: #f43f5e; font-weight: bold;">False</span>  <span class="hl-comment"># 💥 重要：不計算梯度，不更新權重</span>
+
+<span class="hl-comment"># =====================================================================</span>
+<span class="hl-comment"># 3. 替換頂層分類頭 (Classification Head) 為我們的自訂類別數 (例如 3 類)</span>
+<span class="hl-comment"># =====================================================================</span>
+in_features = model.<span class="hl-func">classifier</span>[<span class="hl-number">1</span>].in_features  <span class="hl-comment"># MobileNetV2 為 1280 維</span>
+num_classes = <span class="hl-number">3</span>  <span class="hl-comment"># 假設任務為: [瑕疵A, 瑕疵B, 良品]</span>
+
+model.<span class="hl-func" style="color: #38bdf8; font-weight: bold;">classifier</span> = nn.<span class="hl-class">Sequential</span>(
+    nn.<span class="hl-class">Dropout</span>(p=<span class="hl-number">0.2</span>),
+    nn.<span class="hl-class" style="color: #38bdf8; font-weight: bold;">Linear</span>(in_features, num_classes)  <span class="hl-comment"># 💥 僅此層權重 requires_grad=True</span>
+)
+
+<span class="hl-comment"># =====================================================================</span>
+<span class="hl-comment"># 4. 定義損失函數與優化器 (僅優化未凍結的分類頭參數)</span>
+<span class="hl-comment"># =====================================================================</span>
+<span class="hl-comment"># 💥 CrossEntropyLoss 內部已整合 LogSoftmax + NLLLoss，輸入直接傳入原始 Logits</span>
+criterion = nn.<span class="hl-class" style="color: #fbbf24; font-weight: bold;">CrossEntropyLoss</span>()
+
+<span class="hl-comment"># 💥 傳入 model.classifier.parameters()，避免將凍結層加入優化計算</span>
+optimizer = torch.optim.<span class="hl-class" style="color: #c084fc; font-weight: bold;">Adam</span>(
+    model.<span class="hl-func">classifier</span>.parameters(), 
+    lr=<span class="hl-number">1e-3</span>
+)
+
+<span class="hl-comment"># =====================================================================</span>
+<span class="hl-comment"># 5. 訓練單步步驟 (Forward, Loss, Backward, Step)</span>
+<span class="hl-comment"># =====================================================================</span>
+<span class="hl-keyword">def</span> <span class="hl-func">train_step</span>(images, labels):
+    model.<span class="hl-func">train</span>()
+    optimizer.<span class="hl-func">zero_grad</span>()              <span class="hl-comment"># 清空歷史梯度</span>
+    logits = model(images)             <span class="hl-comment"># 正向傳播獲取未歸一化分數 Logits</span>
+    loss = criterion(logits, labels)   <span class="hl-comment"># 計算交叉熵損失</span>
+    loss.<span class="hl-func">backward</span>()                    <span class="hl-comment"># 反向傳播計算梯度</span>
+    optimizer.<span class="hl-func">step</span>()                   <span class="hl-comment"># 更新分類頭權重</span>
+    
+    <span class="hl-comment"># 計算當前預測類別與機率</span>
+    probabilities = torch.<span class="hl-func">softmax</span>(logits, dim=<span class="hl-number">1</span>)
+    predictions = torch.<span class="hl-func">argmax</span>(probabilities, dim=<span class="hl-number">1</span>)
+    <span class="hl-keyword">return</span> loss.item(), predictions
+</code></pre>
+      </div>
+    </section>
+
+    <section id="sec-sim" class="space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+            <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 text-sm font-mono border border-cyan-500/30">12</span>
+            互動模擬器：Step by Step 單步追蹤 ＆ 一鍵自動模擬
+          </h2>
+          <p class="text-slate-400 text-sm mt-1">親自觀看一張瑕疵影像如何歷經「特徵提取 ➔ 凍結傳導 ➔ 線性映射 ➔ 交叉熵損失 ➔ 梯度回傳」的完整生命週期</p>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex items-center gap-2">
+          <button onclick="stepSim()" id="btn-step" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-400 font-semibold text-sm border border-slate-700 transition flex items-center gap-2">
+            <i class="fa-solid fa-forward-step"></i>
+            <span>單步執行 (Next Step)</span>
+          </button>
+          <button onclick="toggleAutoSim()" id="btn-auto" class="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-cyan-600/30 transition flex items-center gap-2">
+            <i class="fa-solid fa-play" id="icon-auto"></i>
+            <span id="text-auto">一鍵自動模擬</span>
+          </button>
+          <button onclick="resetSim()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition">
+            <i class="fa-solid fa-arrow-rotate-left"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Simulator Arena -->
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-8">
+        
+        <!-- Step progress indicators -->
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
+          <div id="sim-ind-0" class="p-3 rounded-2xl border bg-cyan-950/60 border-cyan-500 text-cyan-300 transition-all">
+            <div class="text-[10px] font-mono text-cyan-400">Step 1</div>
+            <div class="text-xs font-bold mt-1">輸入影像採樣</div>
+          </div>
+          <div id="sim-ind-1" class="p-3 rounded-2xl border bg-slate-950 border-slate-800 text-slate-500 transition-all">
+            <div class="text-[10px] font-mono">Step 2</div>
+            <div class="text-xs font-bold mt-1">骨幹特徵萃取</div>
+          </div>
+          <div id="sim-ind-2" class="p-3 rounded-2xl border bg-slate-950 border-slate-800 text-slate-500 transition-all">
+            <div class="text-[10px] font-mono">Step 3</div>
+            <div class="text-xs font-bold mt-1">分類頭 Logits</div>
+          </div>
+          <div id="sim-ind-3" class="p-3 rounded-2xl border bg-slate-950 border-slate-800 text-slate-500 transition-all">
+            <div class="text-[10px] font-mono">Step 4</div>
+            <div class="text-xs font-bold mt-1">Softmax 與損失</div>
+          </div>
+          <div id="sim-ind-4" class="p-3 rounded-2xl border bg-slate-950 border-slate-800 text-slate-500 transition-all">
+            <div class="text-[10px] font-mono">Step 5</div>
+            <div class="text-xs font-bold mt-1">反向傳播更新</div>
+          </div>
+        </div>
+
+        <!-- Dynamic Visualization Dashboard -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          
+          <!-- Visual Box: Current State -->
+          <div class="lg:col-span-5 bg-slate-950 p-6 rounded-2xl border border-slate-800 space-y-4">
+            <div class="flex items-center justify-between text-xs font-mono">
+              <span class="text-slate-400">當前樣本資訊 (Sample Inspector)</span>
+              <span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800" id="sim-sample-id">#ID-1082</span>
+            </div>
+
+            <!-- Virtual Image Preview -->
+            <div class="relative w-full h-44 rounded-xl bg-slate-900 border border-slate-800 flex flex-col items-center justify-center overflow-hidden" id="sim-img-box">
+              <div class="text-4xl text-cyan-400 mb-2" id="sim-img-icon">
+                <i class="fa-solid fa-microchip"></i>
+              </div>
+              <div class="text-xs font-bold text-slate-200" id="sim-img-name">半導體晶圓 (Wafer Inspection)</div>
+              <div class="text-[11px] text-slate-400 font-mono mt-0.5" id="sim-img-groundtruth">真實標籤: [良品 Normal]</div>
+              
+              <!-- Scanning Laser Overlay -->
+              <div id="sim-laser" class="hidden absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-500 shadow-[0_0_12px_#38bdf8] animate-pulse"></div>
+            </div>
+
+            <!-- Mini Metrics -->
+            <div class="grid grid-cols-2 gap-3 text-xs font-mono">
+              <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                <span class="text-slate-400 block text-[10px]">特徵向量維度</span>
+                <span class="text-cyan-400 font-bold" id="sim-vec-dim">1280 浮點數</span>
+              </div>
+              <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                <span class="text-slate-400 block text-[10px]">當前訓練步數</span>
+                <span class="text-indigo-400 font-bold" id="sim-step-count">Epoch 1 / Step 0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Explanation Log Terminal -->
+          <div class="lg:col-span-7 bg-slate-950 p-6 rounded-2xl border border-slate-800 space-y-4">
+            <div class="flex items-center justify-between text-xs font-mono border-b border-slate-800 pb-3">
+              <span class="text-slate-400 flex items-center gap-2">
+                <i class="fa-solid fa-terminal text-cyan-400"></i> 神經網路即時執行日誌 (Live Execution Trace)
+              </span>
+              <span class="text-cyan-400 animate-pulse">● 模擬引擎就緒</span>
+            </div>
+
+            <div id="sim-log-text" class="h-44 overflow-y-auto space-y-2 text-xs font-mono text-slate-300 leading-relaxed pr-2">
+              <div class="text-slate-500">> 系統初始化完成，已載入 MobileNetV2 預訓練權重。</div>
+              <div class="text-slate-500">> 點選「單步執行」或「一鍵自動模擬」開始觀察正反向傳播。</div>
+            </div>
+
+            <!-- Real-time Result Bar -->
+            <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800 flex items-center justify-between text-xs font-mono">
+              <div>
+                <span class="text-slate-400">模型當前預測:</span>
+                <span id="sim-pred-class" class="font-bold text-slate-300 ml-1">待運算...</span>
+              </div>
+              <div>
+                <span class="text-slate-400">當前 Loss:</span>
+                <span id="sim-curr-loss" class="font-bold text-amber-400 ml-1">--</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Custom Notification Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-slate-100 px-4 py-3 rounded-xl border border-slate-700 shadow-2xl flex items-center gap-3 text-sm">
+      <i class="fa-solid fa-circle-check text-cyan-400 text-lg"></i>
+      <span id="toast-msg">操作成功</span>
+    </div>
+
+  </main>
+
+  <footer class="border-t border-slate-800 bg-slate-950 py-8 text-center text-xs text-slate-500 mt-12 space-y-2">
+    <p>AI 應用工程師核心評鑑指南・涵蓋影像分類、Softmax 梯度推導、遷移學習與 PyTorch 工業實作</p>
+    <p class="font-mono text-slate-600">Generated with Visual & Mathematical Excellence</p>
+  </footer>
+
+  <script>
+    // --- 0. YOLO vs Teachable Machine Interactive Comparison Toggle ---
+    function setCompareMode(mode) {
+      const btnTm = document.getElementById('btn-comp-tm');
+      const btnYolo = document.getElementById('btn-comp-yolo');
+      const yoloOverlay = document.getElementById('yolo-overlay');
+      const descTitle = document.getElementById('comp-desc-title');
+      const descP = document.getElementById('comp-desc-p');
+      const compBars = document.getElementById('comp-bars');
+      const compYoloDetails = document.getElementById('comp-yolo-details');
+
+      if (mode === 'yolo') {
+        btnYolo.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-amber-600 text-white transition";
+        btnTm.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition";
+        yoloOverlay.classList.remove('hidden');
+        descTitle.innerText = "YOLO 輸出：位置邊界框 (Bounding Box) ＋ 局部類別";
+        descTitle.className = "text-sm font-bold text-amber-400 font-mono";
+        descP.innerText = "YOLO 進行端到端多任務預測：同時回歸出物體的座標 (x, y)、長寬 (w, h)、物件置信度，並在該局部區域進行多類別分類判斷。";
+        compBars.classList.add('hidden');
+        compYoloDetails.classList.remove('hidden');
+        showToast("已切換為 YOLO 物件偵測視圖（含座標回歸）");
+      } else {
+        btnTm.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white transition";
+        btnYolo.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition";
+        yoloOverlay.classList.add('hidden');
+        descTitle.innerText = "Teachable Machine 輸出：全圖單一分類機率";
+        descTitle.className = "text-sm font-bold text-emerald-400 font-mono";
+        descP.innerText = "輸入整張影像，透過預訓練 MobileNet 抽取出全圖語意向量，頂層 Softmax 給出此影像屬於各類別的整體置信度，完全沒有標註物體在影像中的具體坐標位置。";
+        compBars.classList.remove('hidden');
+        compYoloDetails.classList.add('hidden');
+        showToast("已切換為 Teachable Machine 純影像分類視圖");
+      }
+    }
+
+    // --- 1. Math formulas rendering with KaTeX & Auto-Render ---
+    function renderAllMath() {
+      // 1. 全文 $ ... $ 與 $$ ... $$ 行內與區塊公式解析
+      if (typeof renderMathInElement === 'function') {
+        renderMathInElement(document.body, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false },
+            { left: '\\(', right: '\\)', display: false },
+            { left: '\\[', right: '\\]', display: true }
+          ],
+          throwOnError: false,
+          ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"]
+        });
+      }
+
+      // 2. 核心三步驟獨立推導公式渲染
+      if (typeof katex !== 'undefined') {
+        const formulaSoftmax = document.getElementById('math-formula-softmax');
+        const formulaCE = document.getElementById('math-formula-ce');
+        const formulaGrad = document.getElementById('math-formula-grad');
+
+        if (formulaSoftmax) {
+          katex.render("P(y=i|\\mathbf{z}) = \\frac{e^{z_i / T}}{\\sum_{j=1}^K e^{z_j / T}}", formulaSoftmax, {
+            throwOnError: false,
+            displayMode: true
+          });
+        }
+        if (formulaCE) {
+          katex.render("\\mathcal{L}_{\\text{CE}} = -\\sum_{k=1}^K y_k \\ln(\\hat{y}_k) = -\\ln(\\hat{y}_{\\text{target}})", formulaCE, {
+            throwOnError: false,
+            displayMode: true
+          });
+        }
+        if (formulaGrad) {
+          katex.render("\\frac{\\partial \\mathcal{L}}{\\partial z_i} = \\hat{y}_i - y_i \\quad (\\text{預測機率 } - \\text{真實標籤})", formulaGrad, {
+            throwOnError: false,
+            displayMode: true
+          });
+        }
+        updateMathLive();
+      }
+    }
+
+    // 輪詢機制確保 CDN 腳本加載完成後立即渲染
+    function initMathWithRetry() {
+      let attempts = 0;
+      const maxAttempts = 30; // 最多嘗試 3 秒
+      const timer = setInterval(() => {
+        attempts++;
+        if (typeof katex !== 'undefined' && typeof renderMathInElement === 'function') {
+          clearInterval(timer);
+          renderAllMath();
+        } else if (attempts >= maxAttempts) {
+          clearInterval(timer);
+          // 若 CDN 加載失敗，啟用備用純文字格式保護
+          console.warn("KaTeX 未能如期加載，請檢查網路連線");
+        }
+      }, 100);
+    }
+
+    window.addEventListener('DOMContentLoaded', initMathWithRetry);
+    window.addEventListener('load', renderAllMath);
+
+    // --- 2. Live Mathematical Derivation Slider Logic ---
+    function updateMathLive() {
+      const z1 = parseFloat(document.getElementById('slider-z1').value);
+      const z2 = parseFloat(document.getElementById('slider-z2').value);
+      const z3 = parseFloat(document.getElementById('slider-z3').value);
+      const T = parseFloat(document.getElementById('slider-temp').value);
+
+      document.getElementById('val-z1').innerText = z1.toFixed(1);
+      document.getElementById('val-z2').innerText = z2.toFixed(1);
+      document.getElementById('val-z3').innerText = z3.toFixed(1);
+      document.getElementById('val-temp').innerText = T.toFixed(1);
+
+      // Temperature scaling
+      const ez1 = Math.exp(z1 / T);
+      const ez2 = Math.exp(z2 / T);
+      const ez3 = Math.exp(z3 / T);
+      const sumExp = ez1 + ez2 + ez3;
+
+      const p1 = ez1 / sumExp;
+      const p2 = ez2 / sumExp;
+      const p3 = ez3 / sumExp;
+
+      // Update UI Bars
+      document.getElementById('text-p1').innerText = (p1 * 100).toFixed(1) + '%';
+      document.getElementById('bar-p1').style.width = (p1 * 100).toFixed(1) + '%';
+      document.getElementById('text-p2').innerText = (p2 * 100).toFixed(1) + '%';
+      document.getElementById('bar-p2').style.width = (p2 * 100).toFixed(1) + '%';
+      document.getElementById('text-p3').innerText = (p3 * 100).toFixed(1) + '%';
+      document.getElementById('bar-p3').style.width = (p3 * 100).toFixed(1) + '%';
+
+      // Gradients (Target is class 1 => y = [1, 0, 0])
+      const g1 = p1 - 1.0;
+      const g2 = p2 - 0.0;
+      const g3 = p3 - 0.0;
+
+      document.getElementById('grad-z1').innerText = (g1 >= 0 ? '+' : '') + g1.toFixed(3);
+      document.getElementById('grad-z2').innerText = '+' + g2.toFixed(3);
+      document.getElementById('grad-z3').innerText = '+' + g3.toFixed(3);
+
+      // Cross-Entropy Loss = -ln(p_target)
+      const ceLoss = -Math.log(Math.max(p1, 1e-9));
+      document.getElementById('val-loss').innerText = ceLoss.toFixed(4);
+    }
+
+    // --- 3. IPAS Quiz interactive checking ---
+    function checkIpas(qNum, choice) {
+      if (qNum === 1) {
+        const explain = document.getElementById('q1-explain');
+        explain.classList.remove('hidden');
+        ['A', 'B', 'C', 'D'].forEach(opt => {
+          const btn = document.getElementById(`q1-opt-${opt}`);
+          btn.classList.remove('border-emerald-500', 'bg-emerald-950/40', 'border-rose-500', 'bg-rose-950/40');
+        });
+        const selectedBtn = document.getElementById(`q1-opt-${choice}`);
+        if (choice === 'C') {
+          selectedBtn.classList.add('border-emerald-500', 'bg-emerald-950/40');
+          showToast("答對了！YOLO 內部確實包含分類任務分支");
+        } else {
+          selectedBtn.classList.add('border-rose-500', 'bg-rose-950/40');
+          document.getElementById('q1-opt-C').classList.add('border-emerald-500', 'bg-emerald-950/40');
+          showToast("答錯囉，正確解答為 (C)");
+        }
+      } else if (qNum === 2) {
+        const explain = document.getElementById('q2-explain');
+        explain.classList.remove('hidden');
+        ['A', 'B', 'C', 'D'].forEach(opt => {
+          const btn = document.getElementById(`q2-opt-${opt}`);
+          btn.classList.remove('border-emerald-500', 'bg-emerald-950/40', 'border-rose-500', 'bg-rose-950/40');
+        });
+        const selectedBtn = document.getElementById(`q2-opt-${choice}`);
+        if (choice === 'A') {
+          selectedBtn.classList.add('border-emerald-500', 'bg-emerald-950/40');
+          showToast("答對了！微小樣本且相近領域時僅需凍結微調頂層");
+        } else {
+          selectedBtn.classList.add('border-rose-500', 'bg-rose-950/40');
+          document.getElementById('q2-opt-A').classList.add('border-emerald-500', 'bg-emerald-950/40');
+          showToast("答錯囉，正確解答為 (A)");
+        }
+      }
+    }
+
+    // --- 4. Interactive Architecture Toggle ---
+    let isFrozen = true;
+    function toggleBackboneFreeze() {
+      isFrozen = !isFrozen;
+      const box = document.getElementById('arch-backbone');
+      const badge = document.getElementById('badge-backbone');
+      const btn = document.getElementById('btn-toggle-freeze');
+      if (isFrozen) {
+        badge.innerHTML = "❄️ 權重凍結 (requires_grad = False)";
+        badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-sky-950 text-sky-200 border border-sky-600/80 inline-flex items-center justify-center gap-1 shadow-sm leading-tight text-center";
+        box.classList.remove('border-rose-500/80');
+        box.classList.add('border-sky-500/50');
+        btn.innerText = "切換為解凍狀態 (Fine-tuning)";
+        showToast("已凍結骨幹網路：計算量小，極速微調");
+      } else {
+        badge.innerHTML = "🔥 骨幹解凍微調 (requires_grad = True)";
+        badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-rose-950 text-rose-200 border border-rose-600/80 inline-flex items-center justify-center gap-1 shadow-sm leading-tight text-center";
+        box.classList.remove('border-sky-500/50');
+        box.classList.add('border-rose-500/80');
+        btn.innerText = "切換回凍結狀態 (Feature Extraction)";
+        showToast("已解凍骨幹網絡：可進行端到端微調");
+      }
+    }
+
+    // --- 5. Step-by-Step and Auto Pipeline Simulation ---
+    let currentStep = 0;
+    let autoInterval = null;
+    let simEpoch = 1;
+    let simLoss = 1.34;
+
+    const stepDescriptions = [
+      {
+        title: "Step 1: 輸入影像預處理",
+        log: "> [Input Stage] 獲取晶圓掃描影像 (224x224x3)。執行 Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])...",
+        highlight: 0
+      },
+      {
+        title: "Step 2: MobileNetV2 骨幹特徵萃取",
+        log: "> [Backbone Forward] 經過 53 個卷積與反轉殘差瓶頸層（Inverted Residual Blocks）。特徵已凝縮為 1280 維一維語意向量。此階段梯度已凍結，不產生歷史開銷。",
+        highlight: 1
+      },
+      {
+        title: "Step 3: 自訂分類頭線性映射 (FC)",
+        log: "> [Classifier Head] 執行 z = W · x + b。輸入 1280 維 ➔ 輸出 3 維 Logits [良品: 3.12, 瑕疵A: 0.84, 瑕疵B: -1.21]。",
+        highlight: 2
+      },
+      {
+        title: "Step 4: Softmax 機率轉換與交叉熵計算",
+        log: "> [Loss Calculation] Softmax 計算機率：良品 89.2%, 瑕疵A 8.7%, 瑕疵B 2.1%。\n> 交叉熵損失 -ln(0.892) = 0.1143。",
+        highlight: 3
+      },
+      {
+        title: "Step 5: 反向傳播與分類頭權重更新",
+        log: "> [Backward & Optimization] 傳回輸出層梯度 ∂L/∂z = [0.892 - 1, 0.087, 0.021] = [-0.108, 0.087, 0.021]。\n> Adam 優化器完成更新，模型精確度提升！",
+        highlight: 4
+      }
+    ];
+
+    function updateSimUI() {
+      // Update step indicators
+      for (let i = 0; i < 5; i++) {
+        const ind = document.getElementById(`sim-ind-${i}`);
+        if (i === currentStep) {
+          ind.className = "p-3 rounded-2xl border bg-cyan-950/70 border-cyan-400 text-cyan-300 ring-2 ring-cyan-500/30 transition-all";
+        } else if (i < currentStep) {
+          ind.className = "p-3 rounded-2xl border bg-slate-900 border-slate-700 text-slate-300 transition-all";
+        } else {
+          ind.className = "p-3 rounded-2xl border bg-slate-950 border-slate-800 text-slate-600 transition-all";
+        }
+      }
+
+      // Laser animation toggle
+      const laser = document.getElementById('sim-laser');
+      if (currentStep === 1) {
+        laser.classList.remove('hidden');
+      } else {
+        laser.classList.add('hidden');
+      }
+
+      // Add log
+      const info = stepDescriptions[currentStep];
+      const logBox = document.getElementById('sim-log-text');
+      const entry = document.createElement('div');
+      entry.className = "text-cyan-300 font-semibold";
+      entry.innerText = info.log;
+      logBox.appendChild(entry);
+      logBox.scrollTop = logBox.scrollHeight;
+
+      // Update prediction and loss values
+      if (currentStep >= 3) {
+        document.getElementById('sim-pred-class').innerText = "良品 Normal (89.2%)";
+        document.getElementById('sim-curr-loss').innerText = "0.1143";
+      } else {
+        document.getElementById('sim-pred-class').innerText = "計算中...";
+        document.getElementById('sim-curr-loss').innerText = "--";
+      }
+
+      document.getElementById('sim-step-count').innerText = `Epoch ${simEpoch} / Step ${currentStep + 1}`;
+    }
+
+    function stepSim() {
+      currentStep = (currentStep + 1) % 5;
+      if (currentStep === 0) {
+        simEpoch++;
+        const logBox = document.getElementById('sim-log-text');
+        logBox.innerHTML = `<div class="text-indigo-400 font-bold">> === 進入新樣本週期 (Epoch ${simEpoch}) ===</div>`;
+      }
+      updateSimUI();
+    }
+
+    function toggleAutoSim() {
+      const btn = document.getElementById('btn-auto');
+      const text = document.getElementById('text-auto');
+      const icon = document.getElementById('icon-auto');
+
+      if (autoInterval) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+        text.innerText = "一鍵自動模擬";
+        icon.className = "fa-solid fa-play";
+        btn.classList.remove('from-rose-600', 'to-amber-600');
+        btn.classList.add('from-cyan-600', 'to-indigo-600');
+        showToast("已暫停自動模擬");
+      } else {
+        text.innerText = "暫停自動模擬";
+        icon.className = "fa-solid fa-pause";
+        btn.classList.remove('from-cyan-600', 'to-indigo-600');
+        btn.classList.add('from-rose-600', 'to-amber-600');
+        autoInterval = setInterval(() => {
+          stepSim();
+        }, 1200);
+        showToast("開始持續自動模擬運算");
+      }
+    }
+
+    function resetSim() {
+      if (autoInterval) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+        document.getElementById('text-auto').innerText = "一鍵自動模擬";
+        document.getElementById('icon-auto').className = "fa-solid fa-play";
+      }
+      currentStep = 0;
+      simEpoch = 1;
+      const logBox = document.getElementById('sim-log-text');
+      logBox.innerHTML = `
+        <div class="text-slate-500">> 系統初始化完成，已重設 MobileNetV2 預訓練權重。</div>
+        <div class="text-slate-500">> 點選「單步執行」或「一鍵自動模擬」開始觀察正反向傳播。</div>
+      `;
+      updateSimUI();
+      showToast("模擬器已重設");
+    }
+
+    // --- 6. Helper Utilities ---
+    function copyCode() {
+      const code = `import torch
+import torch.nn as nn
+import torchvision.models as models
+
+# 1. 載入預訓練 MobileNetV2
+model = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.DEFAULT)
+
+# 2. 凍結特徵提取骨幹 (Feature Freezing)
+for param in model.features.parameters():
+    param.requires_grad = False
+
+# 3. 替換頂層分類頭 (Classification Head)
+in_features = model.classifier[1].in_features
+num_classes = 3
+model.classifier = nn.Sequential(
+    nn.Dropout(p=0.2),
+    nn.Linear(in_features, num_classes)
+)
+
+# 4. 定義損失函數與優化器
+criterion = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(model.classifier.parameters(), lr=1e-3)`;
+
+      const textarea = document.createElement('textarea');
+      textarea.value = code;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+
+      const btnText = document.getElementById('copy-btn-text');
+      btnText.innerText = "已成功複製！";
+      setTimeout(() => { btnText.innerText = "複製完整程式碼"; }, 2000);
+      showToast("PyTorch 實作程式碼已複製至剪貼簿");
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-msg');
+      toastMsg.innerText = msg;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 2500);
+    }
+  </script>
+</body>
+</html>
