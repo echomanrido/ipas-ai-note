@@ -1,0 +1,1938 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LDA (線性判別分析) 深度解析與互動實驗室</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- KaTeX for LaTeX rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+          onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* Custom Scrollbar & Code Highlights */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    
+    .code-fn { color: #38bdf8; font-weight: 600; }    /* Cyan: Key Functions */
+    .code-kw { color: #f43f5e; font-weight: 600; }    /* Rose: Keywords */
+    .code-var { color: #fbbf24; }                      /* Amber: Variables */
+    .code-str { color: #34d399; }                      /* Emerald: Strings */
+    .code-cm { color: #64748b; font-style: italic; }  /* Slate: Comments */
+    .code-op { color: #c084fc; }                      /* Purple: Operators & Math */
+
+    .tab-active {
+      border-color: #38bdf8;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-cyan-500 selection:text-white">
+
+  <!-- Header Navigation -->
+  <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-950/80 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-3">
+        <div class="p-2 rounded-xl bg-gradient-to-tr from-cyan-600 to-indigo-600 text-white shadow-lg shadow-cyan-500/20">
+          <i data-lucide="split" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg text-white tracking-wide">LDA 線性判別分析</h1>
+          <p class="text-xs text-slate-400">Linear Discriminant Analysis · 知識庫與模擬器</p>
+        </div>
+      </div>
+      <nav class="hidden md:flex space-x-1 text-sm font-medium">
+        <a href="#overview" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition">核心速覽</a>
+        <a href="#dimension-comparison" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 text-cyan-300 hover:text-white transition">PCA/LDA/t-SNE 對比</a>
+        <a href="#theory-math" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition">數學推導</a>
+        <a href="#interactive-lab" class="px-3 py-1.5 rounded-lg bg-cyan-950/60 border border-cyan-500/40 text-cyan-400 hover:bg-cyan-900/50 transition">互動實驗室</a>
+        <a href="#ipas-exam" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition">IPAS AI 考題</a>
+        <a href="#code-impl" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition">程式實作</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-16">
+
+    <!-- 01. 一句話簡介 Hero Banner -->
+    <section id="overview" class="relative rounded-3xl p-8 sm:p-10 bg-gradient-to-br from-slate-900 via-slate-900/90 to-cyan-950/40 border border-slate-800 shadow-2xl overflow-hidden">
+      <div class="absolute -right-20 -top-20 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="relative z-10 space-y-4">
+        <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+          <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+          <span>01. 一句話簡介 (One-Line Summary)</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-cyan-300">
+          尋求投影方向，最大化類別間間距，最小化類別內離散。
+        </h2>
+        <p class="text-slate-300 text-base sm:text-lg max-w-4xl leading-relaxed">
+          LDA（Linear Discriminant Analysis）是一種<span class="text-cyan-400 font-semibold">監督式降維與線性分類技術</span>。其核心思想是將高維空間資料投影至低維軸線（如 1D 或 2D），使投影後達到<span class="underline decoration-cyan-400 decoration-2 underline-offset-4">「類間距離最大化（Between-class Variance Maximize）」</span>同時<span class="underline decoration-indigo-400 decoration-2 underline-offset-4">「類內分散最小化（Within-class Variance Minimize）」</span>，從而為後續分類器保留最高判別力。
+        </p>
+
+        <!-- LDA vs PCA 關係補充說明 -->
+        <div class="mt-4 p-4 rounded-2xl bg-slate-950/70 border border-cyan-500/30 text-slate-200 text-sm sm:text-base leading-relaxed space-y-4">
+          <div class="flex items-center space-x-2 text-cyan-400 font-bold text-xs sm:text-sm">
+            <i data-lucide="git-branch" class="w-4 h-4"></i>
+            <span>降維視角：LDA 與 PCA 的核心承接與關鍵差異</span>
+          </div>
+          <p>
+            在降維度的方法上，<strong class="text-white">LDA 是 PCA 延伸的一種方法</strong>。PCA 目標是希望找到投影軸讓資料投影下去後分散量最大化，但 PCA 不需要知道資料的類別。而 LDA 也是希望資料投影下去後分散量最大，但不同的是這個分散量是希望<span class="text-amber-300 font-semibold">「不同類別之間的分散量」</span>越大越好。
+          </p>
+          <p>
+            所以 LDA 和 PCA 差異的部份，PCA 是<span class="text-sky-400 font-semibold">無監督式（unsupervised learning）</span>方法，LDA 多了這四個字（<strong>「不同類別」</strong>）是一種<span class="text-cyan-400 font-semibold">監督式（supervised learning）</span>方法。
+          </p>
+
+          <!-- 雙核心差異對比 SVG 視覺化圖表 -->
+          <div class="mt-3 pt-3 border-t border-slate-800/80">
+            <div class="w-full overflow-hidden rounded-xl bg-slate-950 border border-slate-800 p-2 sm:p-4 shadow-inner">
+              <svg viewBox="0 0 860 380" class="w-full h-auto select-none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <!-- 定義箭頭標記 -->
+                  <marker id="arrow-pca" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#38bdf8" />
+                  </marker>
+                  <marker id="arrow-lda" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#06b6d4" />
+                  </marker>
+                  
+                  <!-- 背景微漸層 -->
+                  <linearGradient id="bg-panel-pca" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#0b1324" />
+                    <stop offset="100%" stop-color="#070c18" />
+                  </linearGradient>
+                  <linearGradient id="bg-panel-lda" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#071b26" />
+                    <stop offset="100%" stop-color="#06121d" />
+                  </linearGradient>
+                </defs>
+
+                <!-- ================= 左面板: PCA (無監督) ================= -->
+                <rect x="15" y="15" width="400" height="350" rx="14" fill="url(#bg-panel-pca)" stroke="#1e293b" stroke-width="1.5" />
+                
+                <!-- 標題與標籤 -->
+                <rect x="30" y="28" width="100" height="22" rx="6" fill="#0369a1" fill-opacity="0.25" stroke="#38bdf8" stroke-width="1" />
+                <text x="80" y="43" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle" font-family="system-ui">PCA (無監督)</text>
+                <text x="140" y="44" fill="#94a3b8" font-size="11" font-family="system-ui">不知道資料類別 (無 Label)</text>
+
+                <!-- 幾何座標網格線背景 -->
+                <path d="M 40 170 L 390 170 M 215 65 L 215 275" stroke="#1e293b" stroke-width="1" stroke-dasharray="3 3" />
+
+                <!-- PCA 投影軸 (沿整體變異最大的長對角線) -->
+                <line x1="70" y1="245" x2="360" y2="95" stroke="#38bdf8" stroke-width="2.5" marker-end="url(#arrow-pca)" />
+                <text x="365" y="90" fill="#38bdf8" font-size="11" font-weight="bold" font-family="system-ui">PCA 投影軸</text>
+                <text x="365" y="105" fill="#64748b" font-size="9" font-family="system-ui">(整體方差最大方向)</text>
+
+                <!-- 左側 PCA 資料點 (兩團傾斜分佈，但無標籤所以為統一銀灰色) -->
+                <!-- 隱含類別 A 點 -->
+                <g fill="#94a3b8">
+                  <circle cx="120" cy="205" r="4.5" />
+                  <circle cx="135" cy="190" r="4.5" />
+                  <circle cx="145" cy="215" r="4.5" />
+                  <circle cx="160" cy="180" r="4.5" />
+                  <circle cx="170" cy="195" r="4.5" />
+                  <circle cx="185" cy="175" r="4.5" />
+                  <circle cx="195" cy="190" r="4.5" />
+                  
+                  <!-- 隱含類別 B 點 (在 PCA 視角下一視同仁，同色) -->
+                  <circle cx="215" cy="145" r="4.5" />
+                  <circle cx="230" cy="160" r="4.5" />
+                  <circle cx="240" cy="130" r="4.5" />
+                  <circle cx="255" cy="150" r="4.5" />
+                  <circle cx="270" cy="120" r="4.5" />
+                  <circle cx="285" cy="140" r="4.5" />
+                  <circle cx="295" cy="115" r="4.5" />
+                </g>
+
+                <!-- 投影虛線射線到 PCA 軸線 -->
+                <g stroke="#64748b" stroke-width="1" stroke-dasharray="2 2" stroke-opacity="0.6">
+                  <line x1="145" y1="215" x2="175" y2="190" />
+                  <line x1="160" y1="180" x2="188" y2="183" />
+                  <line x1="185" y1="175" x2="208" y2="173" />
+                  <line x1="230" y1="160" x2="225" y2="164" />
+                  <line x1="240" y1="130" x2="252" y2="151" />
+                  <line x1="270" y1="120" x2="276" y2="138" />
+                </g>
+
+                <!-- PCA 軸上的投影落點 (重疊混在一起) -->
+                <g fill="#e2e8f0" stroke="#38bdf8" stroke-width="1.5">
+                  <circle cx="150" cy="204" r="3.5" />
+                  <circle cx="175" cy="191" r="3.5" />
+                  <circle cx="188" cy="184" r="3.5" />
+                  <!-- 重疊區域混淆點 -->
+                  <circle cx="208" cy="174" r="4.5" fill="#f43f5e" stroke="#f43f5e" />
+                  <circle cx="218" cy="168" r="4.5" fill="#38bdf8" stroke="#38bdf8" />
+                  <circle cx="228" cy="163" r="4.5" fill="#f43f5e" stroke="#f43f5e" />
+                  <circle cx="236" cy="159" r="4.5" fill="#38bdf8" stroke="#38bdf8" />
+                  <circle cx="255" cy="149" r="3.5" />
+                  <circle cx="276" cy="138" r="3.5" />
+                  <circle cx="295" cy="128" r="3.5" />
+                </g>
+
+                <!-- 重疊警示紅框與標籤 -->
+                <rect x="195" y="152" width="55" height="30" rx="6" fill="#f43f5e" fill-opacity="0.15" stroke="#f43f5e" stroke-width="1.2" stroke-dasharray="3 2" />
+                <text x="222" y="198" fill="#fda4af" font-size="9" font-weight="bold" text-anchor="middle" font-family="system-ui">⚠️ 嚴重混雜疊合</text>
+
+                <!-- 左側結論底部提示卡片 -->
+                <rect x="25" y="285" width="380" height="65" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1" />
+                <text x="35" y="304" fill="#38bdf8" font-size="11" font-weight="bold" font-family="system-ui">差異 1：無標籤</text>
+                <text x="110" y="304" fill="#94a3b8" font-size="10" font-family="system-ui">→ 視所有點為一體，無法區分群體屬性</text>
+                <text x="35" y="324" fill="#f43f5e" font-size="11" font-weight="bold" font-family="system-ui">差異 2：目標衝突</text>
+                <text x="130" y="324" fill="#cbd5e1" font-size="10" font-family="system-ui">→ 追求整體方差最大，投影後兩類混在一起無從分類</text>
+
+                <!-- ================= 右面板: LDA (監督式) ================= -->
+                <rect x="445" y="15" width="400" height="350" rx="14" fill="url(#bg-panel-lda)" stroke="#0e7490" stroke-width="1.5" />
+
+                <!-- 標題與標籤 -->
+                <rect x="460" y="28" width="105" height="22" rx="6" fill="#0891b2" fill-opacity="0.25" stroke="#06b6d4" stroke-width="1" />
+                <text x="512" y="43" fill="#22d3ee" font-size="11" font-weight="bold" text-anchor="middle" font-family="system-ui">LDA (監督式)</text>
+                <text x="575" y="44" fill="#67e8f9" font-size="11" font-family="system-ui">明確知道「不同類別」標籤</text>
+
+                <!-- 幾何座標網格線背景 -->
+                <path d="M 470 170 L 820 170 M 645 65 L 645 275" stroke="#1e293b" stroke-width="1" stroke-dasharray="3 3" />
+
+                <!-- LDA 最佳投影軸 (依據類別可分度傾斜) -->
+                <line x1="535" y1="75" x2="745" y2="265" stroke="#06b6d4" stroke-width="2.5" marker-end="url(#arrow-lda)" />
+                <text x="752" y="260" fill="#22d3ee" font-size="11" font-weight="bold" font-family="system-ui">LDA 最優投影軸</text>
+                <text x="752" y="275" fill="#67e8f9" font-size="9" font-family="system-ui">(類間距離最大、類內最緊湊)</text>
+
+                <!-- 分割超平面/門檻 -->
+                <line x1="595" y1="210" x2="685" y2="120" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3" />
+                <text x="690" y="130" fill="#fbbf24" font-size="9" font-family="system-ui">決策邊界 (門檻)</text>
+
+                <!-- 右側 LDA 資料點 (帶有顏色標籤：類別 A 藍青，類別 B 玫瑰紅) -->
+                <!-- 類別 A (Class 1) -->
+                <g fill="#38bdf8">
+                  <circle cx="550" cy="205" r="4.5" />
+                  <circle cx="565" cy="190" r="4.5" />
+                  <circle cx="575" cy="215" r="4.5" />
+                  <circle cx="590" cy="180" r="4.5" />
+                  <circle cx="600" cy="195" r="4.5" />
+                  <circle cx="615" cy="175" r="4.5" />
+                  <circle cx="625" cy="190" r="4.5" />
+                </g>
+                <text x="560" y="235" fill="#38bdf8" font-size="10" font-weight="bold" font-family="system-ui">類別 A (Class 1)</text>
+
+                <!-- 類別 B (Class 2) -->
+                <g fill="#f43f5e">
+                  <circle cx="645" cy="145" r="4.5" />
+                  <circle cx="660" cy="160" r="4.5" />
+                  <circle cx="670" cy="130" r="4.5" />
+                  <circle cx="685" cy="150" r="4.5" />
+                  <circle cx="700" cy="120" r="4.5" />
+                  <circle cx="715" cy="140" r="4.5" />
+                  <circle cx="725" cy="115" r="4.5" />
+                </g>
+                <text x="705" y="105" fill="#f43f5e" font-size="10" font-weight="bold" font-family="system-ui">類別 B (Class 2)</text>
+
+                <!-- 投影虛線射線到 LDA 軸線 -->
+                <g stroke="#64748b" stroke-width="1" stroke-dasharray="2 2" stroke-opacity="0.6">
+                  <line x1="575" y1="215" x2="600" y2="134" />
+                  <line x1="590" y1="180" x2="618" y2="150" />
+                  <line x1="615" y1="175" x2="633" y2="164" />
+                  <line x1="660" y1="160" x2="655" y2="184" />
+                  <line x1="670" y1="130" x2="675" y2="202" />
+                  <line x1="700" y1="120" x2="695" y2="220" />
+                </g>
+
+                <!-- LDA 軸上的投影落點 (兩類各自緊密聚攏，完全切開！) -->
+                <!-- 投影落點 A -->
+                <g fill="#38bdf8" stroke="#082f49" stroke-width="1.5">
+                  <circle cx="585" cy="120" r="4" />
+                  <circle cx="598" cy="132" r="4" />
+                  <circle cx="608" cy="141" r="4" />
+                  <circle cx="618" cy="150" r="4" />
+                  <circle cx="628" cy="159" r="4" />
+                </g>
+
+                <!-- 投影落點 B -->
+                <g fill="#f43f5e" stroke="#4c0519" stroke-width="1.5">
+                  <circle cx="658" cy="186" r="4" />
+                  <circle cx="668" cy="195" r="4" />
+                  <circle cx="678" cy="204" r="4" />
+                  <circle cx="692" cy="217" r="4" />
+                  <circle cx="705" cy="229" r="4" />
+                </g>
+
+                <!-- 分離成功指示標籤 -->
+                <rect x="618" y="167" width="46" height="18" rx="4" fill="#10b981" fill-opacity="0.2" stroke="#10b981" stroke-width="1" />
+                <text x="641" y="180" fill="#34d399" font-size="9" font-weight="bold" text-anchor="middle" font-family="system-ui">完美間距</text>
+
+                <!-- 右側結論底部提示卡片 -->
+                <rect x="455" y="285" width="380" height="65" rx="8" fill="#042f2e" fill-opacity="0.5" stroke="#115e59" stroke-width="1" />
+                <text x="465" y="304" fill="#22d3ee" font-size="11" font-weight="bold" font-family="system-ui">差異 1：具備標籤</text>
+                <text x="548" y="304" fill="#ccfbf1" font-size="10" font-family="system-ui">→ 掌握不同類別歸屬，針對性計算各自重心與離散</text>
+                <text x="465" y="324" fill="#34d399" font-size="11" font-weight="bold" font-family="system-ui">差異 2：目標契合</text>
+                <text x="558" y="324" fill="#a7f3d0" font-size="10" font-family="system-ui">→ 最大化類別間距離，投影後兩類各自成群、零重疊！</text>
+              </svg>
+            </div>
+
+            <!-- 兩大核心不同點文字總結標籤 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 text-xs">
+              <div class="p-3 rounded-xl bg-sky-950/40 border border-sky-500/20 text-slate-300">
+                <div class="flex items-center space-x-1.5 text-sky-400 font-bold mb-1">
+                  <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+                  <span>關鍵不同 1：有無標籤（非監督 vs 監督）</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                  PCA 視全部點為同色同群，僅計算整體協方差；LDA 掌握各點所屬類別標籤，分別計算各類中心 $\mu_k$ 與類內離散 $S_W$。
+                </p>
+              </div>
+
+              <div class="p-3 rounded-xl bg-cyan-950/40 border border-cyan-500/20 text-slate-300">
+                <div class="flex items-center space-x-1.5 text-cyan-300 font-bold mb-1">
+                  <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                  <span>關鍵不同 2：投影幾何目標（全體方差 vs 類間可分）</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                  PCA 盲目追求「整體延伸最長」，常使不同類別擠在同一直線上；LDA 專門尋找「讓不同類別中心拉得最遠、同類抱得最緊」的黃金投影軸。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Grid (02 核心原理, 04 特徵, 05 由來) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 pt-8 border-t border-slate-800">
+        <!-- 02 核心原理 -->
+        <div class="bg-slate-900/80 rounded-2xl p-5 border border-slate-800/80">
+          <div class="flex items-center space-x-2 text-cyan-400 mb-2 font-bold text-sm">
+            <i data-lucide="target" class="w-4 h-4"></i>
+            <span>02. 核心原理</span>
+          </div>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            透過定義類間散布矩陣 $S_B$ 與類內散布矩陣 $S_W$，構建<strong class="text-white">廣義瑞利商（Generalized Rayleigh Quotient）</strong>：
+            $$J(w) = \frac{w^T S_B w}{w^T S_W w}$$
+            轉化為求解廣義特徵值問題：$S_W^{-1} S_B w = \lambda w$。
+          </p>
+        </div>
+
+        <!-- 04 實務特徵 -->
+        <div class="bg-slate-900/80 rounded-2xl p-5 border border-slate-800/80">
+          <div class="flex items-center space-x-2 text-indigo-400 mb-2 font-bold text-sm">
+            <i data-lucide="sliders" class="w-4 h-4"></i>
+            <span>04. 實務特徵與限制</span>
+          </div>
+          <ul class="text-xs text-slate-300 space-y-1.5 list-disc list-inside">
+            <li><span class="text-white font-medium">降維維度上限：</span>最多降至 $C - 1$ 維（$C$ 為類別數）。</li>
+            <li><span class="text-white font-medium">基本假設：</span>各類別特徵服從多元常態分佈且共變異矩陣相等。</li>
+            <li><span class="text-white font-medium">維度災難：</span>樣本數小於特徵數時 $S_W$ 不可逆（小樣本問題）。</li>
+          </ul>
+        </div>
+
+        <!-- 05 由來 -->
+        <div class="bg-slate-900/80 rounded-2xl p-5 border border-slate-800/80">
+          <div class="flex items-center space-x-2 text-amber-400 mb-2 font-bold text-sm">
+            <i data-lucide="history" class="w-4 h-4"></i>
+            <span>05. 由來 (History)</span>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            1936 年由現代統計學之父 <strong class="text-white">Ronald A. Fisher</strong> 於其論文中提出，最初用於二分類問題（Fisher's Linear Discriminant），用以區分三種鳶尾花（Iris Dataset）。1948 年由 <strong class="text-white">C. R. Rao</strong> 推廣為多類別（Multiclass LDA）。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- NEW SECTION: PCA vs LDA vs t-SNE 深度橫向對比 -->
+    <section id="dimension-comparison" class="bg-slate-900/90 rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-8">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/30 mb-2">
+            <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+            <span>降維演算法三雄爭霸：PCA vs LDA vs t-SNE</span>
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-bold text-white">線性無標籤、線性有標籤 與 非線性流形降維全方位剖析</h2>
+          <p class="text-slate-400 text-xs sm:text-sm mt-1">選對降維工具是機器學習管線的成敗關鍵。深入理解數學機制、生活情境與工業級實例。</p>
+        </div>
+      </div>
+
+      <!-- 橫向比較表 (Responsive Table) -->
+      <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950">
+        <table class="w-full text-left text-xs sm:text-sm text-slate-300">
+          <thead class="bg-slate-900 text-slate-200 border-b border-slate-800 font-semibold">
+            <tr>
+              <th class="p-3.5 sm:p-4 text-cyan-400">比較維度</th>
+              <th class="p-3.5 sm:p-4 text-sky-400">PCA (主成分分析)</th>
+              <th class="p-3.5 sm:p-4 text-indigo-400">LDA (線性判別分析)</th>
+              <th class="p-3.5 sm:p-4 text-purple-400">t-SNE (t-分佈隨機鄰近嵌入)</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/60 font-mono text-xs">
+            <tr class="hover:bg-slate-900/40">
+              <td class="p-3.5 sm:p-4 font-bold text-slate-200 font-sans">學習範式 (Paradigm)</td>
+              <td class="p-3.5 sm:p-4 text-sky-300">非監督式 (Unsupervised)</td>
+              <td class="p-3.5 sm:p-4 text-indigo-300">監督式 (Supervised)</td>
+              <td class="p-3.5 sm:p-4 text-purple-300">非監督式 (Unsupervised)</td>
+            </tr>
+            <tr class="hover:bg-slate-900/40">
+              <td class="p-3.5 sm:p-4 font-bold text-slate-200 font-sans">投影本質 (Transformation)</td>
+              <td class="p-3.5 sm:p-4">全域線性投影 (正交基底)</td>
+              <td class="p-3.5 sm:p-4">全域線性投影 (非正交可分軸)</td>
+              <td class="p-3.5 sm:p-4 text-amber-300">非線性流形學習 (局部鄰域機率)</td>
+            </tr>
+            <tr class="hover:bg-slate-900/40">
+              <td class="p-3.5 sm:p-4 font-bold text-slate-200 font-sans">最佳化目標函數</td>
+              <td class="p-3.5 sm:p-4">最大化整體投影方差 $\max w^T \Sigma w$</td>
+              <td class="p-3.5 sm:p-4">最大化類間與類內散布比 $\max \frac{w^T S_B w}{w^T S_W w}$</td>
+              <td class="p-3.5 sm:p-4">最小化高低維分佈之 KL 散度 $\min KL(P \parallel Q)$</td>
+            </tr>
+            <tr class="hover:bg-slate-900/40">
+              <td class="p-3.5 sm:p-4 font-bold text-slate-200 font-sans">輸出維度限制</td>
+              <td class="p-3.5 sm:p-4">最多 $D$ 維 (原始特徵維度)</td>
+              <td class="p-3.5 sm:p-4 text-rose-400 font-bold">最多 $C - 1$ 維 (類別數減一)</td>
+              <td class="p-3.5 sm:p-4">通常固定降至 2D 或 3D 視覺化</td>
+            </tr>
+            <tr class="hover:bg-slate-900/40">
+              <td class="p-3.5 sm:p-4 font-bold text-slate-200 font-sans">可否直接轉換新樣本</td>
+              <td class="p-3.5 sm:p-4 text-emerald-400 font-bold">可以 (矩陣投影：$X_{new} W$)</td>
+              <td class="p-3.5 sm:p-4 text-emerald-400 font-bold">可以 (矩陣投影：$X_{new} W$)</td>
+              <td class="p-3.5 sm:p-4 text-rose-400 font-bold">不行 (需重新擬合或使用 Parametric)</td>
+            </tr>
+            <tr class="hover:bg-slate-900/40">
+              <td class="p-3.5 sm:p-4 font-bold text-slate-200 font-sans">計算複雜度</td>
+              <td class="p-3.5 sm:p-4">$O(D^3) + O(D^2 N)$</td>
+              <td class="p-3.5 sm:p-4">$O(D^3) + O(D^2 N)$</td>
+              <td class="p-3.5 sm:p-4 text-rose-400">$O(N^2)$ (Barnes-Hut: $O(N \log N)$)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 生活化比喻三方對比 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <!-- PCA 生活例子 -->
+        <div class="bg-slate-950/80 rounded-2xl p-5 border border-sky-500/30 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center space-x-2 text-sky-400 mb-3 font-bold text-sm">
+              <i data-lucide="camera" class="w-4 h-4"></i>
+              <span>PCA 生活比喻：全景側拍照相</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              一群高矮胖瘦各不相同的人聚集在廣場，攝影師希望<strong>拍出一張最能看清所有人輪廓的照片</strong>（訊息量最大）。
+            </p>
+            <div class="mt-3 p-3 rounded-xl bg-sky-950/30 border border-sky-500/20 text-xs text-sky-200">
+              攝影師<strong>不在意誰是老師、誰是學生（無標籤）</strong>，他只找能讓隊伍站位「展開幅度最寬」的角度按下快門，避免所有人疊在同一條線上。
+            </div>
+          </div>
+          <span class="text-[10px] text-sky-400 font-mono mt-3">核心：抓住全體最大的幾何伸展方向</span>
+        </div>
+
+        <!-- LDA 生活例子 -->
+        <div class="bg-slate-950/80 rounded-2xl p-5 border border-indigo-500/30 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center space-x-2 text-indigo-400 mb-3 font-bold text-sm">
+              <i data-lucide="filter" class="w-4 h-4"></i>
+              <span>LDA 生活比喻：水果分類斜坡槽</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              果農要將<strong>「檸檬」</strong>與<strong>「萊姆」</strong>分流，已貼好標籤進行測試。雖然兩者重量有重疊，但檸檬較橢圓、萊姆較圓。
+            </p>
+            <div class="mt-3 p-3 rounded-xl bg-indigo-950/30 border border-indigo-500/20 text-xs text-indigo-200">
+              LDA 不在意整體水果大小的自然離散，而是<strong>專門尋找一條能夠「最完美切開檸檬與萊姆」的傾斜通道</strong>，讓投影落點分成兩堆毫不重疊。
+            </div>
+          </div>
+          <span class="text-[10px] text-indigo-400 font-mono mt-3">核心：利用已知標籤，最大化分離度</span>
+        </div>
+
+        <!-- t-SNE 生活例子 -->
+        <div class="bg-slate-950/80 rounded-2xl p-5 border border-purple-500/30 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center space-x-2 text-purple-400 mb-3 font-bold text-sm">
+              <i data-lucide="network" class="w-4 h-4"></i>
+              <span>t-SNE 生活比喻：跨國社群聚會繪圖</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              上千位來自世界各地的專家在多度社交維度（語言、興趣、專業、居住國）中互動，要把關係畫在一張 2D 園遊會海報上。
+            </p>
+            <div class="mt-3 p-3 rounded-xl bg-purple-950/30 border border-purple-500/20 text-xs text-purple-200">
+              t-SNE 像彈簧系統：<strong>讓平常最聊得來的好朋友緊緊聚成一小群（保留局部鄰域結構）</strong>，不同圈子之間各自散開，哪怕非線性扭曲也無所謂。
+            </div>
+          </div>
+          <span class="text-[10px] text-purple-400 font-mono mt-3">核心：保留局部微觀結構，專門用於 2D 視覺化</span>
+        </div>
+      </div>
+
+      <!-- 工業現場應用三方對比 -->
+      <div class="space-y-3">
+        <h4 class="font-bold text-sm text-white flex items-center space-x-2">
+          <i data-lucide="cpu" class="w-4 h-4 text-cyan-400"></i>
+          <span>工業實務選型指南 (Industrial Practical Guide)</span>
+        </h4>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-300">
+          
+          <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+            <span class="font-bold text-sky-400 block text-sm">PCA 工業現場：感測器去相關與無損壓縮</span>
+            <ul class="space-y-1.5 list-disc list-inside text-slate-300">
+              <li><strong class="text-white">高科技廠房機台：</strong>監控機台 500 個溫度、震動、電流感測器，因物理鄰近有極高共線性，PCA 萃取前 10 主成分即保留 98% 資訊並降噪。</li>
+              <li><strong class="text-white">特徵臉辨識 (Eigenfaces)：</strong>在深度學習普及前，將千維人臉影像正交壓縮至幾十個維度。</li>
+            </ul>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+            <span class="font-bold text-indigo-400 block text-sm">LDA 工業現場：帶標籤的即時分類前處理</span>
+            <ul class="space-y-1.5 list-disc list-inside text-slate-300">
+              <li><strong class="text-white">半導體瑕疵分類 (Defect Binning)：</strong>刮痕、顆粒、薄膜厚度異常等 6 類缺陷，LDA 直接壓至 $6-1=5$ 維空間，後接超輕量分類器毫秒級推論。</li>
+              <li><strong class="text-white">Fisherfaces 人臉辨識：</strong>利用類別標籤消除光照角度與陰影變化（類內干擾），辨識度顯著超越 PCA。</li>
+            </ul>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+            <span class="font-bold text-purple-400 block text-sm">t-SNE 工業現場：高維探索與生物特徵叢集</span>
+            <ul class="space-y-1.5 list-disc list-inside text-slate-300">
+              <li><strong class="text-white">單細胞基因定序 (scRNA-seq)：</strong>面對 20,000 個基因維度，生醫團隊使用 t-SNE 繪製 2D 細胞群落圖，發掘未知免疫細胞亞型。</li>
+              <li><strong class="text-white">大型語言模型 (LLM) 語義空間除錯：</strong>將 4096 維的 Token Embedding 投影在 2D 圖上，快速檢視詞意偏見與同義詞群聚現象。</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- 06. 生活化例子 & 07. 工業上應用 -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <!-- 06. 生活化例子 (佔 5 欄) -->
+      <div class="lg:col-span-5 bg-slate-900/90 rounded-3xl p-7 border border-slate-800 hover:border-slate-700 transition flex flex-col justify-between space-y-5">
+        <div>
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+            <div class="flex items-center space-x-3">
+              <div class="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <i data-lucide="sparkles" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <h3 class="text-xl font-bold text-white">06. 生活化比喻：三大降維直覺 Step-by-Step</h3>
+                <p class="text-xs text-slate-400">用日常直覺拆解演算法思維歷程：果園分揀、團體照攝影、社群聚會分桌</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 生活比喻 Tabs 切換 -->
+          <div class="flex space-x-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-medium mb-3">
+            <button onclick="switchLifeTab('lda')" id="tab-life-btn-lda" class="px-2.5 py-1.5 rounded-lg tab-active transition flex items-center space-x-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span>LDA (水果分揀槽)</span>
+            </button>
+            <button onclick="switchLifeTab('pca')" id="tab-life-btn-pca" class="px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center space-x-1.5">
+              <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+              <span>PCA (全景團體照)</span>
+            </button>
+            <button onclick="switchLifeTab('tsne')" id="tab-life-btn-tsne" class="px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center space-x-1.5">
+              <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+              <span>t-SNE (園遊會分桌)</span>
+            </button>
+          </div>
+
+          <!-- 生活情境 1: LDA 果園水果分揀機 -->
+          <div id="life-lda" class="space-y-2.5 text-xs">
+            <p class="text-xs text-slate-300 leading-relaxed pt-1">
+              果園採收數萬顆<strong class="text-yellow-300">「檸檬」</strong>與<strong class="text-lime-300">「萊姆」</strong>。果農要設計一條旋轉滑道，讓水果自然滾落進入各自的果籃：
+            </p>
+            <!-- 5 步驟流水線卡片 -->
+            <div class="space-y-2 mt-2">
+              <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-start space-x-3">
+                <div class="w-5 h-5 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-300 font-bold flex items-center justify-center shrink-0 text-[11px]">1</div>
+                <div>
+                  <span class="font-bold text-white block">量測多維特徵（重量 vs. 粗糙度）</span>
+                  <p class="text-[11px] text-slate-400 mt-0.5">每顆水果記錄「重量（克）」與「表面粗糙度」，在 2D 平面上散落為兩大團點。</p>
+                </div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-start space-x-3">
+                <div class="w-5 h-5 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-300 font-bold flex items-center justify-center shrink-0 text-[11px]">2</div>
+                <div>
+                  <span class="font-bold text-amber-300 block">發現單一維度困境（PCA 盲點）</span>
+                  <p class="text-[11px] text-slate-400 mt-0.5">只看重量（變異最大的軸），大顆萊姆和小顆檸檬重量相同，堆在同一直線上難以區分！</p>
+                </div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-start space-x-3">
+                <div class="w-5 h-5 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-300 font-bold flex items-center justify-center shrink-0 text-[11px]">3</div>
+                <div>
+                  <span class="font-bold text-cyan-300 block">利用標籤找出中心與自身離散（$\mu$ 與 $S_W$）</span>
+                  <p class="text-[11px] text-slate-400 mt-0.5">依據人工標籤計算檸檬中心 $\mu_1$、萊姆中心 $\mu_2$ 與兩堆各自向外膨脹的形狀。</p>
+                </div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-start space-x-3">
+                <div class="w-5 h-5 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-300 font-bold flex items-center justify-center shrink-0 text-[11px]">4</div>
+                <div>
+                  <span class="font-bold text-indigo-300 block">旋轉最優傾斜滑道（求最佳投影軸 $w^*$）</span>
+                  <p class="text-[11px] text-slate-400 mt-0.5">依據 $w^* \propto S_W^{-1}(\mu_1-\mu_2)$ 旋轉角度，讓投影間距最大化、各自團塊最緊實。</p>
+                </div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-start space-x-3">
+                <div class="w-5 h-5 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-300 font-bold flex items-center justify-center shrink-0 text-[11px]">5</div>
+                <div>
+                  <span class="font-bold text-emerald-400 block">重力 1D 投影落箱（零延遲分揀完成）</span>
+                  <p class="text-[11px] text-slate-400 mt-0.5">水果沿傾斜軸滾落，在分界線左右自動落入檸檬籃與萊姆籃，完成高效分類！</p>
+                </div>
+              </div>
+            </div>
+            <div class="mt-2 p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-500/20 text-[11px] text-emerald-300">
+              <strong>LDA 心法：</strong>已知標籤，刻意挑選能讓「類與類最遠、各自最緊實」的黃金傾斜角。
+            </div>
+          </div>
+
+          <!-- 生活情境 2: PCA 全景團體照攝影師 -->
+          <div id="life-pca" class="hidden space-y-2.5 text-xs">
+            <p class="text-xs text-slate-300 leading-relaxed pt-1">
+              運動會上一百位高矮胖瘦不同的同學在操場自由交談。攝影師要在 2D 照片中<strong>保留最豐富的身形多樣性與姿勢資訊</strong>（不看身分是誰）：
+            </p>
+            <!-- 5 步驟流水線卡片 -->
+            <div class="space-y-2 mt-2">
+              <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-start space-x-3">
+                <div class="w-5 h-5 rounded-full bg-sky-950 border border-sky-500/40 text-sky-300 font-bold flex items-center justify-center shrink-0 text-[11px]">1</div>
+                <div>
+                  <span class="font-bold text-white block">統計全員中心位置（去平均中心化）</span>
+                  <p class="text-[11px] text-slate-400 mt-0.5">攝影師先走到人群的正中心點，將相機視野的基準原點對準全體學生的中心重心。</p>
+                </div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-start space-x-3">
+                <div class="w-5 h-5 rounded-full bg-sky-950 border border-sky-500/40 text-sky-300 font-bold flex items-center justify-center shrink-0 text-[11px]">2</div>
+                <div>
+                  <span class="font-bold text-sky-300 block">觀察隊形的主要伸展方向（計算共變異）</span>
+                  <p class="text-[11px] text-slate-400 mt-0.5">觀察同學是沿著東北-西南方向排成長列，還是橫向散開？找出人潮「拉得最長、分得最開」的主軸。</p>
+                </div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-start space-x-3">
+                <div class="w-5 h-5 rounded-full bg-sky-950 border border-sky-500/40 text-sky-300 font-bold flex items-center justify-center shrink-0 text-[11px]">3</div>
+                <div>
+                  <span class="font-bold text-indigo-300 block">架設第一主相機角度（PC1 最大變異方向）</span>
+                  <p class="text-[11px] text-slate-400 mt-0.5">沿著最長的主軸正面拍攝，此視角下大家的站位展開最寬，遮擋最少，捕捉到最多的姿勢訊息！</p>
+                </div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-start space-x-3">
+                <div class="w-5 h-5 rounded-full bg-sky-950 border border-sky-500/40 text-sky-300 font-bold flex items-center justify-center shrink-0 text-[11px]">4</div>
+                <div>
+                  <span class="font-bold text-indigo-300 block">正交垂直架設第二相機（PC2 次要獨立視角）</span>
+                  <p class="text-[11px] text-slate-400 mt-0.5">在與第一相機完全垂直 90 度處拍第二張（零冗餘資訊），補充第一張無法看到的側面深度。</p>
+                </div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-start space-x-3">
+                <div class="w-5 h-5 rounded-full bg-sky-950 border border-sky-500/40 text-sky-300 font-bold flex items-center justify-center shrink-0 text-[11px]">5</div>
+                <div>
+                  <span class="font-bold text-emerald-400 block">捨棄雜訊維度（保留前幾張最有價值的照片）</span>
+                  <p class="text-[11px] text-slate-400 mt-0.5">微小的腳趾擺放、手指微動等變異極小的微觀細節直接忽略，用少數幾張大景照片保留 95% 全貌。</p>
+                </div>
+              </div>
+            </div>
+            <div class="mt-2 p-2.5 rounded-xl bg-sky-950/30 border border-sky-500/20 text-[11px] text-sky-300">
+              <strong>PCA 心法：</strong>不問身分與標籤，只找能讓全體數據「幾何展開幅度最大」的正交視角。
+            </div>
+          </div>
+
+          <!-- 生活情境 3: t-SNE 園遊會社群分桌 -->
+          <div id="life-tsne" class="hidden space-y-2.5 text-xs">
+            <p class="text-xs text-slate-300 leading-relaxed pt-1">
+              全球跨國校友園遊會上，上千名校友在「母語、主修、興趣、工作產業」等多度關係中互動。要把大家安排到一張 2D 大草坪野餐墊上：
+            </p>
+            <!-- 5 步驟流水線卡片 -->
+            <div class="space-y-2 mt-2">
+              <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-start space-x-3">
+                <div class="w-5 h-5 rounded-full bg-purple-950 border border-purple-500/40 text-purple-300 font-bold flex items-center justify-center shrink-0 text-[11px]">1</div>
+                <div>
+                  <span class="font-bold text-white block">測量高維社交緊密度（高維條件機率）</span>
+                  <p class="text-[11px] text-slate-400 mt-0.5">問卷調查每兩個人之間「是否聊得來」的機率。平常同實驗室、講同種語言的人互動機率極高。</p>
+                </div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-start space-x-3">
+                <div class="w-5 h-5 rounded-full bg-purple-950 border border-purple-500/40 text-purple-300 font-bold flex items-center justify-center shrink-0 text-[11px]">2</div>
+                <div>
+                  <span class="font-bold text-purple-300 block">隨機分發草坪初始座次（低維初始隨機分佈）</span>
+                  <p class="text-[11px] text-slate-400 mt-0.5">一開始把每位校友隨機丟在草坪 2D 地圖的任意座標上，此時熟人彼此可能離得極遠。</p>
+                </div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-start space-x-3">
+                <div class="w-5 h-5 rounded-full bg-purple-950 border border-purple-500/40 text-purple-300 font-bold flex items-center justify-center shrink-0 text-[11px]">3</div>
+                <div>
+                  <span class="font-bold text-indigo-300 block">安裝虛擬彈簧系統（拉力：引力引向好友）</span>
+                  <p class="text-[11px] text-slate-400 mt-0.5">在好友之間綁上橡皮筋彈簧，聊得來的人若距離太遠，會產生強大拉力將他們拉到同一張野餐桌。</p>
+                </div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-start space-x-3">
+                <div class="w-5 h-5 rounded-full bg-purple-950 border border-purple-500/40 text-purple-300 font-bold flex items-center justify-center shrink-0 text-[11px]">4</div>
+                <div>
+                  <span class="font-bold text-indigo-300 block">換上長尾排斥力墊片（Student-t 分佈解擁擠）</span>
+                  <p class="text-[11px] text-slate-400 mt-0.5">若大家都擠在一起會坐不下（擁擠問題）。改用長尾分佈，讓不熟的群體之間產生溫和推力自動分開。</p>
+                </div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-start space-x-3">
+                <div class="w-5 h-5 rounded-full bg-purple-950 border border-purple-500/40 text-purple-300 font-bold flex items-center justify-center shrink-0 text-[11px]">5</div>
+                <div>
+                  <span class="font-bold text-emerald-400 block">彈簧平衡收斂成社群小島（完美呈現群聚關係）</span>
+                  <p class="text-[11px] text-slate-400 mt-0.5">彈簧振動平衡後，草坪上自然浮現出一個個分明的聚落小島：生醫組、AI組、文創組各自成群！</p>
+                </div>
+              </div>
+            </div>
+            <div class="mt-2 p-2.5 rounded-xl bg-purple-950/30 border border-purple-500/20 text-[11px] text-purple-300">
+              <strong>t-SNE 心法：</strong>不在意全域直線投影，專注讓局部好友緊密相聚，哪怕非線性扭曲也甘之如飴。
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-2 p-3 rounded-xl bg-indigo-950/30 border border-indigo-500/20 text-[11px] text-indigo-300">
+          <strong>三大演算法直覺總結：</strong>
+          <span class="text-emerald-300 font-semibold">LDA</span> 依標籤調角度切開果實；
+          <span class="text-sky-300 font-semibold">PCA</span> 找最寬拍照視角保留輪廓；
+          <span class="text-purple-300 font-semibold">t-SNE</span> 靠彈簧聚攏知心好友。
+        </div>
+      </div>
+
+      <!-- 07. 工業上應用：三大演算法逐步工程流程 (佔 7 欄) -->
+      <div class="lg:col-span-7 bg-slate-900/90 rounded-3xl p-7 border border-slate-800 hover:border-slate-700 transition flex flex-col justify-between space-y-6">
+        <div>
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div class="flex items-center space-x-3">
+              <div class="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                <i data-lucide="factory" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <h3 class="text-xl font-bold text-white">07. 工業現場與尖端應用：三大降維演算法 Step-by-Step</h3>
+                <p class="text-xs text-slate-400">標準生產管線：解析 LDA、PCA 與 t-SNE 在現代工業生產端的逐步落地實施流程</p>
+              </div>
+            </div>
+            <!-- 演算法情境切換 Tabs -->
+            <div class="flex space-x-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-medium shrink-0">
+              <button onclick="switchIndTab('lda')" id="tab-btn-lda" class="px-2.5 py-1.5 rounded-lg tab-active transition flex items-center space-x-1.5">
+                <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                <span>LDA (即時缺陷分類)</span>
+              </button>
+              <button onclick="switchIndTab('pca')" id="tab-btn-pca" class="px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center space-x-1.5">
+                <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+                <span>PCA (感測器監控)</span>
+              </button>
+              <button onclick="switchIndTab('tsne')" id="tab-btn-tsne" class="px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center space-x-1.5">
+                <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+                <span>t-SNE (高維流形探勘)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 情境 1: LDA 半導體晶圓瑕疵分級管線 -->
+          <div id="ind-lda" class="space-y-3 pt-2">
+            <div class="p-3 bg-cyan-950/20 border border-cyan-500/30 rounded-xl text-xs text-cyan-200">
+              <strong class="text-white">【LDA 監督式現場】半導體晶圓瑕疵分級 (Wafer Defect Binning)：</strong>
+              利用已知 6 類缺陷標籤（刮痕、空洞、短路等），尋找判別力最強的正交空間，將計算負擔壓至極限以滿足百萬級晶片即時分選。
+            </div>
+
+            <div class="space-y-2.5 text-xs">
+              <!-- Step 1 -->
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-start space-x-3">
+                <div class="w-6 h-6 rounded-full bg-cyan-950 border border-cyan-500/50 text-cyan-300 font-bold flex items-center justify-center shrink-0 text-xs">1</div>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <span class="font-bold text-white">高維特徵萃取（光學 AOI 影像）</span>
+                    <span class="text-[10px] text-cyan-400 font-mono bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-500/30">128 維特徵向量</span>
+                  </div>
+                  <p class="text-slate-300 text-[11px] mt-1 leading-relaxed">
+                    光學檢測機台即時擷取灰階紋理、邊緣梯度、輪廓曲率、色度差等 <strong>128 項幾何與頻域特徵</strong>，組成原始特徵向量 $x \in \mathbb{R}^{128}$。
+                  </p>
+                </div>
+              </div>
+
+              <!-- Step 2 -->
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-start space-x-3">
+                <div class="w-6 h-6 rounded-full bg-cyan-950 border border-cyan-500/50 text-cyan-300 font-bold flex items-center justify-center shrink-0 text-xs">2</div>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <span class="font-bold text-sky-300">PCA 預先降維（抗奇異與去相關）</span>
+                    <span class="text-[10px] text-sky-400 font-mono bg-sky-950/60 px-1.5 py-0.5 rounded border border-sky-500/30">128 維 → 30 維</span>
+                  </div>
+                  <p class="text-slate-300 text-[11px] mt-1 leading-relaxed">
+                    為避免小樣本問題（$N < D$ 導致類內散布矩陣 $S_W$ 奇異無法求逆），先以無監督 PCA 消除共線性雜訊並壓縮至 <strong>30 維前置特徵空間</strong>。
+                  </p>
+                </div>
+              </div>
+
+              <!-- Step 3 -->
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-start space-x-3">
+                <div class="w-6 h-6 rounded-full bg-cyan-950 border border-cyan-500/50 text-cyan-300 font-bold flex items-center justify-center shrink-0 text-xs">3</div>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <span class="font-bold text-indigo-300">LDA 監督式判別矩陣求解</span>
+                    <span class="text-[10px] text-indigo-400 font-mono bg-indigo-950/60 px-1.5 py-0.5 rounded border border-indigo-500/30">降至 5 維空間</span>
+                  </div>
+                  <p class="text-slate-300 text-[11px] mt-1 leading-relaxed">
+                    結合品管工程師標記的 6 類缺陷標籤，計算類間散布 $S_B$ 與類內散布 $S_W$，求解廣義特徵值問題，求出投影矩陣 $W \in \mathbb{R}^{30 \times 5}$，降至 $6-1 = \mathbf{5}$ 維。
+                  </p>
+                </div>
+              </div>
+
+              <!-- Step 4 -->
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-start space-x-3">
+                <div class="w-6 h-6 rounded-full bg-cyan-950 border border-cyan-500/50 text-cyan-300 font-bold flex items-center justify-center shrink-0 text-xs">4</div>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <span class="font-bold text-emerald-300">邊緣運算極速推論（0.8 ms 毫秒決策）</span>
+                    <span class="text-[10px] text-emerald-400 font-mono bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">延遲 &lt; 1 ms</span>
+                  </div>
+                  <p class="text-slate-300 text-[11px] mt-1 leading-relaxed">
+                    將 5 維投影座標送入輕量線性判別式或最近質心距離比對（Nearest Centroid），<strong>單顆晶片瑕疵分類耗時僅 0.8 ms</strong>，完全跟上機台產能節奏。
+                  </p>
+                </div>
+              </div>
+
+              <!-- Step 5 -->
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-start space-x-3">
+                <div class="w-6 h-6 rounded-full bg-cyan-950 border border-cyan-500/50 text-cyan-300 font-bold flex items-center justify-center shrink-0 text-xs">5</div>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <span class="font-bold text-amber-300">產線異常警報與持續自我閉環</span>
+                    <span class="text-[10px] text-amber-400 font-mono bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-500/30">MLOps 閉環</span>
+                  </div>
+                  <p class="text-slate-300 text-[11px] mt-1 leading-relaxed">
+                    若投影落點距離已知 6 類中心皆超過馬氏距離門檻，標記為「新型缺陷」，通報產線警報，並自動收集新樣本加入每週定期重新訓練排程。
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 情境 2: PCA 機台感測器去相關與 MSQC 異常監控管線 -->
+          <div id="ind-pca" class="hidden space-y-3 pt-2">
+            <div class="p-3 bg-sky-950/20 border border-sky-500/30 rounded-xl text-xs text-sky-200">
+              <strong class="text-white">【PCA 非監督現場】高科技廠房 500 感測器去相關與 MSQC 統計製程管制：</strong>
+              蝕刻與薄膜沉積機台擁有數百個高共線性感測器（無標籤）。透過主成分萃取去除冗餘並建立 $T^2$ 與 SPE 雙指標監控。
+            </div>
+            
+            <div class="space-y-2.5 text-xs">
+              <!-- Step 1 -->
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-start space-x-3">
+                <div class="w-6 h-6 rounded-full bg-sky-950 border border-sky-500/50 text-sky-300 font-bold flex items-center justify-center shrink-0 text-xs">1</div>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <span class="font-bold text-white">多通道感測訊號採集與 Z-score 標準化</span>
+                    <span class="text-[10px] text-sky-400 font-mono bg-sky-950/60 px-1.5 py-0.5 rounded border border-sky-500/30">500 物理通道</span>
+                  </div>
+                  <p class="text-slate-300 text-[11px] mt-1 leading-relaxed">
+                    每秒同步收集機台 500 個溫度、氣體流量、射頻功率與腔體壓力數值。因各感測器物理單位懸殊，先進行 $z = \frac{x-\mu}{\sigma}$ 標準化消除量綱干擾。
+                  </p>
+                </div>
+              </div>
+
+              <!-- Step 2 -->
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-start space-x-3">
+                <div class="w-6 h-6 rounded-full bg-sky-950 border border-sky-500/50 text-sky-300 font-bold flex items-center justify-center shrink-0 text-xs">2</div>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <span class="font-bold text-sky-300">共變異矩陣計算與特徵值正交分解</span>
+                    <span class="text-[10px] text-sky-400 font-mono bg-sky-950/60 px-1.5 py-0.5 rounded border border-sky-500/30">特徵分解 $\Sigma = V \Lambda V^T$</span>
+                  </div>
+                  <p class="text-slate-300 text-[11px] mt-1 leading-relaxed">
+                    計算歷史正常運轉批次的樣本共變異數矩陣 $\Sigma \in \mathbb{R}^{500 \times 500}$，透過特徵分解或 SVD 求得相互正交的主成分載荷向量矩陣 $P$。
+                  </p>
+                </div>
+              </div>
+
+              <!-- Step 3 -->
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-start space-x-3">
+                <div class="w-6 h-6 rounded-full bg-sky-950 border border-sky-500/50 text-sky-300 font-bold flex items-center justify-center shrink-0 text-xs">3</div>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <span class="font-bold text-indigo-300">碎石圖評估與 95% 累計解釋方差截斷</span>
+                    <span class="text-[10px] text-indigo-400 font-mono bg-indigo-950/60 px-1.5 py-0.5 rounded border border-indigo-500/30">500 維 → 12 主成分</span>
+                  </div>
+                  <p class="text-slate-300 text-[11px] mt-1 leading-relaxed">
+                    依據解釋變異比例 $\frac{\sum_{i=1}^k \lambda_i}{\sum \lambda} \ge 95\%$ 截斷，前 12 個主成分即涵蓋 95% 產線物理動態，將維度由 500 驟降至 12 維。
+                  </p>
+                </div>
+              </div>
+
+              <!-- Step 4 -->
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-start space-x-3">
+                <div class="w-6 h-6 rounded-full bg-sky-950 border border-sky-500/50 text-sky-300 font-bold flex items-center justify-center shrink-0 text-xs">4</div>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <span class="font-bold text-emerald-300">線上雙統計量監控（Hotelling's $T^2$ 與 SPE）</span>
+                    <span class="text-[10px] text-emerald-400 font-mono bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">即時製程管制</span>
+                  </div>
+                  <p class="text-slate-300 text-[11px] mt-1 leading-relaxed">
+                    在主成分空間計算 $T^2$ 監控系統變異；在殘差空間計算平方預測誤差 SPE（Q 統計量）監控物理關聯破壞，任何一項超越 $99\%$ 管制上限即觸發警報。
+                  </p>
+                </div>
+              </div>
+
+              <!-- Step 5 -->
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-start space-x-3">
+                <div class="w-6 h-6 rounded-full bg-sky-950 border border-sky-500/50 text-sky-300 font-bold flex items-center justify-center shrink-0 text-xs">5</div>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <span class="font-bold text-amber-300">異常貢獻圖（Contribution Plot）根因追溯</span>
+                    <span class="text-[10px] text-amber-400 font-mono bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-500/30">根因定位</span>
+                  </div>
+                  <p class="text-slate-300 text-[11px] mt-1 leading-relaxed">
+                    觸發警報瞬間，系統將超標的殘差反向投影回原始 500 維感測器，產生長條貢獻圖，維修工程師在 30 秒內即可鎖定是哪一支電磁閥或溫度計發生漂移故障。
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 情境 3: t-SNE 單細胞定序與 LLM 嵌入探勘管線 -->
+          <div id="ind-tsne" class="hidden space-y-3 pt-2">
+            <div class="p-3 bg-purple-950/20 border border-purple-500/30 rounded-xl text-xs text-purple-200">
+              <strong class="text-white">【t-SNE 非線性流形現場】單細胞基因定序 (scRNA-seq) 與 LLM 語意空間探索：</strong>
+              面對數萬維非線性流形，以機率分佈為核心，保留局部微觀結構，在 2D/3D 平面上呈現細胞亞群分化路徑或語言模型潛在偏見。
+            </div>
+            
+            <div class="space-y-2.5 text-xs">
+              <!-- Step 1 -->
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-start space-x-3">
+                <div class="w-6 h-6 rounded-full bg-purple-950 border border-purple-500/50 text-purple-300 font-bold flex items-center justify-center shrink-0 text-xs">1</div>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <span class="font-bold text-white">高維稀疏表現矩陣品質過濾與對數化</span>
+                    <span class="text-[10px] text-purple-400 font-mono bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-500/30">20,000 基因表現量</span>
+                  </div>
+                  <p class="text-slate-300 text-[11px] mt-1 leading-relaxed">
+                    定序儀輸出 50,000 個單細胞在 20,000 個基因上的 UMI 讀取次數。過濾死細胞後，進行深度歸一化與 $\log(1 + \text{count})$ 變換，挑選出前 2,000 個高變異特徵基因。
+                  </p>
+                </div>
+              </div>
+
+              <!-- Step 2 -->
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-start space-x-3">
+                <div class="w-6 h-6 rounded-full bg-purple-950 border border-purple-500/50 text-purple-300 font-bold flex items-center justify-center shrink-0 text-xs">2</div>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <span class="font-bold text-sky-300">前置 PCA 粗降維（壓縮計算量與抑制雜訊）</span>
+                    <span class="text-[10px] text-sky-400 font-mono bg-sky-950/60 px-1.5 py-0.5 rounded border border-sky-500/30">2,000 維 → 50 維</span>
+                  </div>
+                  <p class="text-slate-300 text-[11px] mt-1 leading-relaxed">
+                    因 t-SNE 計算時間複雜度為 $O(N^2)$ 或 $O(N \log N)$ 且對高維雜訊敏感，生醫管線一律先以 PCA 降至 50 維，在保留主幹變異的同時大幅提升後續運算效率。
+                  </p>
+                </div>
+              </div>
+
+              <!-- Step 3 -->
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-start space-x-3">
+                <div class="w-6 h-6 rounded-full bg-purple-950 border border-purple-500/50 text-purple-300 font-bold flex items-center justify-center shrink-0 text-xs">3</div>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <span class="font-bold text-indigo-300">高維空間高斯條件機率矩陣構建</span>
+                    <span class="text-[10px] text-indigo-400 font-mono bg-indigo-950/60 px-1.5 py-0.5 rounded border border-indigo-500/30">困惑度 Perplexity 調校</span>
+                  </div>
+                  <p class="text-slate-300 text-[11px] mt-1 leading-relaxed">
+                    設定困惑度（Perplexity $\approx 30 \sim 50$），以二分搜尋決定各細胞的自適應高斯方差 $\sigma_i$，計算細胞間互為鄰居的對稱聯合機率分佈 $p_{ij} = \frac{p_{j|i} + p_{i|j}}{2N}$。
+                  </p>
+                </div>
+              </div>
+
+              <!-- Step 4 -->
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-start space-x-3">
+                <div class="w-6 h-6 rounded-full bg-purple-950 border border-purple-500/50 text-purple-300 font-bold flex items-center justify-center shrink-0 text-xs">4</div>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <span class="font-bold text-emerald-300">低維 Student-t 分佈與 Barnes-Hut 樹梯度優化</span>
+                    <span class="text-[10px] text-emerald-400 font-mono bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">最小化 KL 散度</span>
+                  </div>
+                  <p class="text-slate-300 text-[11px] mt-1 leading-relaxed">
+                    在 2D 畫布上採用長尾的單自由度 Student-t 分佈構建 $q_{ij}$（解決高維擁擠問題），透過 Barnes-Hut 四元樹空間分割加速梯度下降，迭代 1,000 次最小化 $KL(P \parallel Q)$。
+                  </p>
+                </div>
+              </div>
+
+              <!-- Step 5 -->
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-start space-x-3">
+                <div class="w-6 h-6 rounded-full bg-purple-950 border border-purple-500/50 text-purple-300 font-bold flex items-center justify-center shrink-0 text-xs">5</div>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <span class="font-bold text-amber-300">互動式視覺化標註與罕見細胞群落發現</span>
+                    <span class="text-[10px] text-amber-400 font-mono bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-500/30">臨床新藥發現</span>
+                  </div>
+                  <p class="text-slate-300 text-[11px] mt-1 leading-relaxed">
+                    免疫學家在最終 2D 地圖上觀察到多個清楚分離的細胞島嶼，圈選異常孤立島嶼並套用特定標記基因（如 CD8A, FOXP3），成功辨別出全新抗藥性 T 細胞亞群。
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="pt-3 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-400">
+          <span class="flex items-center space-x-1.5">
+            <i data-lucide="info" class="w-4 h-4 text-cyan-400"></i>
+            <span>選型心法：即時分類用 <strong>LDA</strong>；感測器抗雜訊用 <strong>PCA</strong>；流形叢集探索用 <strong>t-SNE</strong>。</span>
+          </span>
+          <span class="font-mono text-cyan-400 font-semibold shrink-0">Industrial Pipeline Standard</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 08. 理論簡介 & 09. 數學推導 -->
+    <section id="theory-math" class="bg-slate-900 rounded-3xl p-8 border border-slate-800 space-y-8">
+      <div>
+        <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 mb-3">
+          <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+          <span>08. 理論架構 & 09. 嚴謹數學推導</span>
+        </div>
+        <h2 class="text-2xl sm:text-3xl font-bold text-white">Fisher 判別準則與廣義特徵值問題解析</h2>
+        <p class="text-slate-400 text-sm mt-1">二類別經典推導：從投影方差比值到最優投影向量 $w^* \propto S_W^{-1}(\mu_1 - \mu_2)$。</p>
+      </div>
+
+      <!-- Step-by-step Math Breakdown Cards -->
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <!-- Step 1 -->
+        <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="text-xs font-bold text-cyan-400 mb-2">步驟 1 · 資料投影定義</div>
+            <p class="text-xs text-slate-300 mb-3">給定樣本 $x \in \mathbb{R}^D$ 與單位投影向量 $w$，投影值為純量：</p>
+            <div class="text-center py-2 bg-slate-900 rounded-lg text-sm font-mono text-cyan-200">
+              $$y = w^T x$$
+            </div>
+            <p class="text-xs text-slate-400 mt-2">類別均值向量 $\mu_1, \mu_2$ 投影後中心為：</p>
+            <div class="text-center py-1 text-xs text-slate-300">
+              $$\tilde{\mu}_1 = w^T \mu_1, \quad \tilde{\mu}_2 = w^T \mu_2$$
+            </div>
+          </div>
+          <span class="text-[10px] text-slate-500 font-mono mt-3">目標：使 $|\tilde{\mu}_1 - \tilde{\mu}_2|$ 最大</span>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="text-xs font-bold text-indigo-400 mb-2">步驟 2 · 散布矩陣定義</div>
+            <p class="text-xs text-slate-300 mb-2">定義<strong>類內散布矩陣 (Within-class)</strong>：</p>
+            <div class="text-center py-1 bg-slate-900 rounded-lg text-xs font-mono text-indigo-200">
+              $$S_W = \sum_{x \in C_1}(x-\mu_1)(x-\mu_1)^T + \sum_{x \in C_2}(x-\mu_2)(x-\mu_2)^T$$
+            </div>
+            <p class="text-xs text-slate-300 mt-3 mb-1">定義<strong>類間散布矩陣 (Between-class)</strong>：</p>
+            <div class="text-center py-1 bg-slate-900 rounded-lg text-xs font-mono text-indigo-200">
+              $$S_B = (\mu_1 - \mu_2)(\mu_1 - \mu_2)^T$$
+            </div>
+          </div>
+          <span class="text-[10px] text-slate-500 font-mono mt-3">注意：$S_B$ 的秩 (Rank) 恆為 1</span>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="text-xs font-bold text-amber-400 mb-2">步驟 3 · 瑞利商目標函數</div>
+            <p class="text-xs text-slate-300 mb-2">Fisher 判別準則定義投影後「類間方差」除以「類內方差」：</p>
+            <div class="text-center py-2 bg-slate-900 rounded-lg text-xs font-mono text-amber-200">
+              $$J(w) = \frac{(\tilde{\mu}_1 - \tilde{\mu}_2)^2}{\tilde{s}_1^2 + \tilde{s}_2^2} = \frac{w^T S_B w}{w^T S_W w}$$
+            </div>
+            <p class="text-xs text-slate-400 mt-2">目標是求得最佳向量 $w^*$ 使得 $J(w)$ 取得極大值。</p>
+          </div>
+          <span class="text-[10px] text-slate-500 font-mono mt-3">尺度不變性：<span class="font-serif italic">J</span>(<span class="font-serif italic">cw</span>) = <span class="font-serif italic">J</span>(<span class="font-serif italic">w</span>)</span>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="text-xs font-bold text-emerald-400 mb-2">步驟 4 · 微分求極值與解析解</div>
+            <p class="text-xs text-slate-300 mb-2">對 $w$ 偏微分令其為零 $\frac{\partial J}{\partial w} = 0$：</p>
+            <div class="text-center py-1 bg-slate-900 rounded-lg text-xs font-mono text-emerald-200">
+              $$(w^T S_W w) S_B w = (w^T S_B w) S_W w$$
+            </div>
+            <p class="text-xs text-slate-300 mt-2">因 $S_B w = (\mu_1-\mu_2)\beta$ 是純量倍數，化簡可得解析閉合解：</p>
+            <div class="text-center py-1.5 bg-emerald-950/40 border border-emerald-500/30 rounded-lg text-sm font-mono text-emerald-300 font-bold mt-2">
+              $$w^* = S_W^{-1} (\mu_1 - \mu_2)$$
+            </div>
+          </div>
+          <span class="text-[10px] text-emerald-400 font-mono mt-3">多類別則求解特徵向量</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. 所屬範疇互動網頁 & 12. 模擬 (Step-by-Step + 一鍵自動模擬) -->
+    <section id="interactive-lab" class="bg-slate-900/90 rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 mb-2">
+            <i data-lucide="play-circle" class="w-3.5 h-3.5"></i>
+            <span>10. 經典機器學習互動實驗室 & 12. 動態模擬引擎</span>
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-bold text-white">LDA vs PCA 實體投影模擬器</h2>
+          <p class="text-slate-400 text-xs sm:text-sm">拖曳調整投影軸角度，或點擊一鍵模擬，直觀觀察瑞利商數值 <span class="font-serif italic text-cyan-300 font-semibold">J</span>(<span class="font-serif italic text-cyan-300 font-semibold">w</span>) 與 1D 投影直方圖分離度。</p>
+        </div>
+        
+        <!-- Controls Buttons -->
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btn-step-by-step" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center space-x-1.5 border border-slate-700 transition">
+            <i data-lucide="footprints" class="w-4 h-4 text-cyan-400"></i>
+            <span>逐步拆解 (Step)</span>
+          </button>
+          <button id="btn-auto-sim" class="px-3.5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-lg shadow-cyan-500/20 transition">
+            <i data-lucide="play" class="w-4 h-4"></i>
+            <span>一鍵自動模擬 (Auto Demo)</span>
+          </button>
+          <button id="btn-reset-data" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-xs font-medium border border-slate-700 transition" title="重新隨機生成樣本">
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Interactive Workstation (Grid: Left 7 cols Canvas, Right 5 cols Controls) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Left: 2D Interactive Canvas & 1D Histogram (7 cols) -->
+        <div class="lg:col-span-7 bg-slate-950 rounded-2xl p-4 sm:p-5 border border-slate-800 flex flex-col space-y-4">
+          <div class="flex justify-between items-center text-xs">
+            <div class="flex items-center space-x-4">
+              <span class="flex items-center space-x-1.5 text-cyan-400 font-medium">
+                <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+                <span>類別 A (Class 1)</span>
+              </span>
+              <span class="flex items-center space-x-1.5 text-rose-400 font-medium">
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span>
+                <span>類別 B (Class 2)</span>
+              </span>
+            </div>
+            <span class="text-slate-400 text-[11px] hidden sm:inline">💡 在畫布上按住滑鼠拖曳可直接旋轉投影軸</span>
+          </div>
+
+          <!-- Main 2D Canvas Container -->
+          <div class="relative w-full aspect-square max-h-[460px] bg-slate-900/90 rounded-xl overflow-hidden border border-slate-800/80 cursor-crosshair">
+            <canvas id="ldaCanvas" class="w-full h-full block"></canvas>
+            
+            <div class="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-slate-950/80 backdrop-blur border border-slate-800 text-[10px] text-slate-400 font-mono pointer-events-none">
+              軸向量: <span id="vector-coords" class="text-cyan-300 font-semibold">[cos θ, sin θ]</span>
+            </div>
+          </div>
+
+          <!-- Bottom 1D Projection Histogram / KDE -->
+          <div class="w-full bg-slate-900/80 rounded-xl p-3 border border-slate-800">
+            <div class="flex justify-between items-center text-[11px] text-slate-400 mb-1">
+              <span class="font-semibold text-slate-300">1D 降維投影結果（重疊率愈小，分類能力愈強）</span>
+              <span id="overlap-metric" class="text-cyan-400 font-mono font-bold">估算重疊面積: 12.4%</span>
+            </div>
+            <div class="w-full h-20 bg-slate-950 rounded-lg overflow-hidden relative">
+              <canvas id="projCanvas" class="w-full h-full block"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Parameter Tuning & Real-time Metrics (5 cols) -->
+        <div class="lg:col-span-5 space-y-4">
+          
+          <!-- Control Panel -->
+          <div class="bg-slate-950 rounded-2xl p-5 border border-slate-800 space-y-4 text-xs">
+            <h4 class="font-bold text-sm text-white flex items-center space-x-2">
+              <i data-lucide="sliders-horizontal" class="w-4 h-4 text-cyan-400"></i>
+              <span>參數微調面板</span>
+            </h4>
+
+            <!-- Angle Slider -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-slate-300">
+                <span>投影方向角度 θ：</span>
+                <span id="angle-display" class="font-mono text-cyan-400 font-bold">45°</span>
+              </div>
+              <input id="slider-angle" type="range" min="0" max="180" step="1" value="45" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400">
+            </div>
+
+            <!-- Preset Action Buttons -->
+            <div class="grid grid-cols-2 gap-2 pt-2">
+              <button id="btn-snap-lda" class="py-2 px-3 rounded-xl bg-cyan-950/70 border border-cyan-500/50 hover:bg-cyan-900/60 text-cyan-300 font-semibold transition text-center">
+                ✨ 對齊最優 LDA 軸
+              </button>
+              <button id="btn-snap-pca" class="py-2 px-3 rounded-xl bg-indigo-950/70 border border-indigo-500/50 hover:bg-indigo-900/60 text-indigo-300 font-semibold transition text-center">
+                📊 對齊 PCA 主成分軸
+              </button>
+            </div>
+
+            <!-- Class Separation Slider -->
+            <div class="space-y-1.5 pt-2 border-t border-slate-800">
+              <div class="flex justify-between text-slate-300">
+                <span>類別間距 (Between separation)：</span>
+                <span id="sep-display" class="font-mono text-slate-400">中等 (3.2)</span>
+              </div>
+              <input id="slider-sep" type="range" min="1.0" max="6.0" step="0.2" value="3.2" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-slate-400">
+            </div>
+          </div>
+
+          <!-- Realtime Mathematical Metrics Display -->
+          <div class="bg-slate-950 rounded-2xl p-5 border border-slate-800 space-y-3 text-xs">
+            <h4 class="font-bold text-sm text-white flex items-center space-x-2">
+              <i data-lucide="calculator" class="w-4 h-4 text-emerald-400"></i>
+              <span>即時散布矩陣與瑞利商值</span>
+            </h4>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
+                <span class="text-slate-400 block mb-1">類間方差 <span class="font-serif italic">w</span><sup>T</sup><span class="font-serif italic">S</span><sub>B</sub><span class="font-serif italic">w</span></span>
+                <span id="val-sb" class="text-base font-mono font-bold text-white">0.000</span>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
+                <span class="text-slate-400 block mb-1">類內方差 <span class="font-serif italic">w</span><sup>T</sup><span class="font-serif italic">S</span><sub>W</sub><span class="font-serif italic">w</span></span>
+                <span id="val-sw" class="text-base font-mono font-bold text-white">0.000</span>
+              </div>
+            </div>
+
+            <!-- Generalized Rayleigh Quotient Highlight -->
+            <div class="p-4 rounded-xl bg-gradient-to-r from-cyan-950/50 to-slate-900 border border-cyan-500/30 flex justify-between items-center">
+              <div>
+                <span class="text-cyan-400 font-bold block">當前瑞利商 <span class="font-serif italic">J</span>(<span class="font-serif italic">w</span>)</span>
+                <span class="text-[10px] text-slate-400">數值愈大，可分離度愈高</span>
+              </div>
+              <div id="val-jw" class="text-2xl font-mono font-extrabold text-cyan-300">0.000</div>
+            </div>
+
+            <!-- Step by Step Explanation Box -->
+            <div id="step-explainer" class="p-3 rounded-xl bg-indigo-950/30 border border-indigo-500/20 text-indigo-200 text-[11px] leading-relaxed">
+              <span class="font-bold text-indigo-300 block mb-0.5">狀態：即時模式</span>
+              當前可手動調整角度或使用上方按鈕對比 PCA 與 LDA 的投影特性。
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 03. IPAS AI 經濟部考題深度解析 -->
+    <section id="ipas-exam" class="bg-slate-900 rounded-3xl p-8 border border-slate-800 space-y-6">
+      <div class="flex items-center space-x-3">
+        <div class="p-2.5 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
+          <i data-lucide="graduation-cap" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <div class="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/30">
+            03. 鑑定必考重點
+          </div>
+          <h2 class="text-2xl font-bold text-white">經濟部 IPAS AI 應用工程師 / 機器學習精選試題</h2>
+        </div>
+      </div>
+
+      <div class="space-y-4">
+        <!-- Question 1 -->
+        <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition">
+          <div class="flex items-start justify-between gap-4">
+            <div class="space-y-2">
+              <span class="inline-block px-2 py-0.5 rounded bg-slate-800 text-cyan-400 font-mono text-xs font-semibold">試題 1 · 核心觀念比較</span>
+              <p class="text-sm font-semibold text-slate-200">
+                關於主成分分析（PCA）與線性判別分析（LDA）之比較，下列敘述何者最為正確？
+              </p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-400 pt-1">
+                <div class="p-2 rounded bg-slate-900 border border-slate-800/80">(A) 兩者皆為非監督式特徵萃取演算法</div>
+                <div class="p-2 rounded bg-slate-900 border border-slate-800/80">(B) PCA 尋求最大化總方差的方向，LDA 尋求最佳化類別分離度的方向</div>
+                <div class="p-2 rounded bg-slate-900 border border-slate-800/80">(C) LDA 降維後的維度最多可以達到特徵數 $D$ 維</div>
+                <div class="p-2 rounded bg-slate-900 border border-slate-800/80">(D) 兩者皆假設特徵之間具有高度非線性分佈</div>
+              </div>
+            </div>
+            <button onclick="toggleAnswer('ans-1')" class="shrink-0 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition">
+              查看解析
+            </button>
+          </div>
+          <div id="ans-1" class="hidden mt-4 pt-3 border-t border-slate-800 text-xs space-y-1 text-slate-300">
+            <div class="text-emerald-400 font-bold">正確答案：(B)</div>
+            <p><strong>【IPAS 考點詳解】：</strong></p>
+            <p>(A) 錯誤：PCA 為非監督式（不使用 Label），LDA 為監督式（必須使用 Label）。</p>
+            <p>(B) 正確：PCA 目標在於保留整體資料的最大變異量；LDA 旨在最大化類間散布並最小化類內散布。</p>
+            <p>(C) 錯誤：若有 $C$ 個類別，類間散布矩陣 $S_B$ 的秩最大為 $C-1$，故 LDA 降維後維度最多僅為 $C-1$。</p>
+            <p>(D) 錯誤：兩者本質皆為線性變換方法（Linear Projection）。</p>
+          </div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition">
+          <div class="flex items-start justify-between gap-4">
+            <div class="space-y-2">
+              <span class="inline-block px-2 py-0.5 rounded bg-slate-800 text-indigo-400 font-mono text-xs font-semibold">試題 2 · 數學與矩陣限制</span>
+              <p class="text-sm font-semibold text-slate-200">
+                一資料集包含 5 個不同的目標分類類別（$C = 5$），原始特徵為 100 維（$D = 100$）。若採用標準多類別線性判別分析（Multiclass LDA）進行降維，則投影後的子空間最大維度為何？
+              </p>
+              <div class="flex gap-4 text-xs text-slate-400 pt-1">
+                <span>(A) 100</span>
+                <span>(B) 5</span>
+                <span>(C) 4</span>
+                <span>(D) 1</span>
+              </div>
+            </div>
+            <button onclick="toggleAnswer('ans-2')" class="shrink-0 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition">
+              查看解析
+            </button>
+          </div>
+          <div id="ans-2" class="hidden mt-4 pt-3 border-t border-slate-800 text-xs space-y-1 text-slate-300">
+            <div class="text-emerald-400 font-bold">正確答案：(C)</div>
+            <p><strong>【IPAS 考點詳解】：</strong></p>
+            <p>在多類別 LDA 中，類間散布矩陣定義為 $S_B = \sum_{k=1}^C N_k (\mu_k - \mu)(\mu_k - \mu)^T$。因為全體中心 $\mu$ 是各類均值向量 $\mu_k$ 的線性組合，因此這 $C$ 個差值向量中只有 $C-1$ 個是線性獨立的。因此 $\text{Rank}(S_B) \le C - 1$。由此推得非零特徵值最多只有 $C - 1$ 個，本題 $C = 5$，最大維度為 $5 - 1 = 4$。</p>
+          </div>
+        </div>
+
+        <!-- Question 3 -->
+        <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition">
+          <div class="flex items-start justify-between gap-4">
+            <div class="space-y-2">
+              <span class="inline-block px-2 py-0.5 rounded bg-slate-800 text-amber-400 font-mono text-xs font-semibold">試題 3 · 實務工程瓶頸與處理</span>
+              <p class="text-sm font-semibold text-slate-200">
+                在人臉識別應用中，輸入影像維度為 $10000$（$100 \times 100$ 畫素），但訓練樣本僅有 $200$ 張人臉。此時直接套用 LDA 會面臨類內散布矩陣 $S_W$ 奇異（Singular）無法求逆的問題，此現象稱為什麼？工程上標準解法為何？
+              </p>
+            </div>
+            <button onclick="toggleAnswer('ans-3')" class="shrink-0 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition">
+              查看解析
+            </button>
+          </div>
+          <div id="ans-3" class="hidden mt-4 pt-3 border-t border-slate-800 text-xs space-y-1 text-slate-300">
+            <div class="text-emerald-400 font-bold">考點名稱：小樣本問題 (Small Sample Size Problem, SSS)</div>
+            <p><strong>【IPAS 考點詳解】：</strong></p>
+            <p>1. <strong>原因：</strong>當訓練樣本數 $N$ 小於特徵維度 $D$ 時，矩陣 $S_W$ 的秩最多為 $N - C < D$，因此 $S_W$ 必定為奇異矩陣（Det = 0），無法直接求逆矩陣 $S_W^{-1}$。</p>
+            <p>2. <strong>工業界標準解法：</strong></p>
+            <ul class="list-disc list-inside space-y-1 pl-2">
+              <li><strong>PCA + LDA 組合法 (Fisherfaces 經典管線)：</strong>先利用 PCA 將維度壓縮至 $N - C$ 以下，再執行 LDA。</li>
+              <li><strong>正規化 LDA (Regularized LDA / Shrinkage)：</strong>在對角線加入微小擾動 $\tilde{S}_W = S_W + \gamma I$（類似 Ridge 正則化）確保可逆。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11. Python / PyTorch 實作 -->
+    <section id="code-impl" class="bg-slate-900 rounded-3xl p-8 border border-slate-800 space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 mb-2">
+            <i data-lucide="code-2" class="w-3.5 h-3.5"></i>
+            <span>11. 工業級程式碼實作 (Python / Scikit-Learn / PyTorch)</span>
+          </div>
+          <h2 class="text-2xl font-bold text-white">手刻推導、套件調用與神經網路客製層</h2>
+          <p class="text-slate-400 text-xs">重點關鍵函式皆標明色彩，兼具原理驗證與生產端封裝。</p>
+        </div>
+
+        <!-- Code Tabs -->
+        <div class="flex space-x-1 bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-xs font-medium">
+          <button onclick="switchTab('tab-numpy')" id="btn-tab-numpy" class="px-3 py-1.5 rounded-lg tab-active transition">NumPy 手刻底層</button>
+          <button onclick="switchTab('tab-sklearn')" id="btn-tab-sklearn" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition">Scikit-Learn 實務</button>
+          <button onclick="switchTab('tab-pytorch')" id="btn-tab-pytorch" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition">PyTorch 客製化</button>
+        </div>
+      </div>
+
+      <!-- Tab 1: NumPy -->
+      <div id="tab-numpy" class="bg-slate-950 rounded-2xl p-5 border border-slate-800 font-mono text-xs overflow-x-auto">
+        <pre><code class="leading-relaxed">
+<span class="code-kw">import</span> numpy <span class="code-kw">as</span> np
+
+<span class="code-kw">def</span> <span class="code-fn">fisher_lda_two_class</span>(X, y):
+    <span class="code-cm">"""手刻 Fisher 經典二類別線性判別分析 (Linear Discriminant Analysis)"""</span>
+    <span class="code-var">X1</span> = X[y == <span class="code-str">0</span>]
+    <span class="code-var">X2</span> = X[y == <span class="code-str">1</span>]
+    
+    <span class="code-cm"># 1. 計算兩類別平均向量 μ1, μ2</span>
+    <span class="code-var">mu1</span> = np.<span class="code-fn">mean</span>(X1, axis=<span class="code-str">0</span>)
+    <span class="code-var">mu2</span> = np.<span class="code-fn">mean</span>(X2, axis=<span class="code-str">0</span>)
+    
+    <span class="code-cm"># 2. 計算類內散布矩陣 Sw = S1 + S2</span>
+    <span class="code-var">S1</span> = np.<span class="code-fn">dot</span>((X1 - mu1).T, (X1 - mu1))
+    <span class="code-var">S2</span> = np.<span class="code-fn">dot</span>((X2 - mu2).T, (X2 - mu2))
+    <span class="code-var">Sw</span> = S1 + S2
+    
+    <span class="code-cm"># 3. 求解最佳投影向量 w* ∝ Sw^(-1) * (mu1 - mu2)</span>
+    <span class="code-cm"># 使用 solve 求解線性方程 Sw @ w = (mu1 - mu2)，數值穩定性高於直接求逆 inv</span>
+    <span class="code-var">w</span> = np.linalg.<span class="code-fn">solve</span>(Sw, (mu1 - mu2))
+    
+    <span class="code-cm"># 正規化單位向量</span>
+    <span class="code-var">w</span> = w / np.linalg.<span class="code-fn">norm</span>(w)
+    
+    <span class="code-cm"># 4. 計算線性決策門檻 (投影中心點)</span>
+    <span class="code-var">threshold</span> = <span class="code-str">0.5</span> * np.<span class="code-fn">dot</span>(w, (mu1 + mu2))
+    <span class="code-kw">return</span> w, threshold
+
+<span class="code-cm"># 測試推導結果</span>
+X_toy = np.random.randn(<span class="code-str">100</span>, <span class="code-str">2</span>)
+y_toy = (X_toy[:, <span class="code-str">0</span>] + X_toy[:, <span class="code-str">1</span>] > <span class="code-str">0</span>).astype(int)
+w_opt, b_opt = <span class="code-fn">fisher_lda_two_class</span>(X_toy, y_toy)
+print(<span class="code-str">f"LDA 最佳投影方向向量: {w_opt}, 門檻: {b_opt:.3f}"</span>)
+        </code></pre>
+      </div>
+
+      <!-- Tab 2: Sklearn -->
+      <div id="tab-sklearn" class="hidden bg-slate-950 rounded-2xl p-5 border border-slate-800 font-mono text-xs overflow-x-auto">
+        <pre><code class="leading-relaxed">
+<span class="code-kw">from</span> sklearn.discriminant_analysis <span class="code-kw">import</span> <span class="code-fn">LinearDiscriminantAnalysis</span>
+<span class="code-kw">from</span> sklearn.datasets <span class="code-kw">import</span> load_iris
+<span class="code-kw">from</span> sklearn.model_selection <span class="code-kw">import</span> train_test_split
+<span class="code-kw">from</span> sklearn.metrics <span class="code-kw">import</span> classification_report
+
+<span class="code-cm"># 1. 載入經典鳶尾花資料集 (3 類別, 4 特徵)</span>
+iris = <span class="code-fn">load_iris</span>()
+X, y = iris.data, iris.target
+X_train, X_test, y_train, y_test = <span class="code-fn">train_test_split</span>(X, y, test_size=<span class="code-str">0.3</span>, stratify=y, random_state=<span class="code-str">42</span>)
+
+<span class="code-cm"># 2. 初始化 LDA 模型</span>
+<span class="code-cm"># n_components 最多為 C - 1 = 3 - 1 = 2</span>
+<span class="code-var">lda</span> = <span class="code-fn">LinearDiscriminantAnalysis</span>(
+    <span class="code-var">n_components</span>=<span class="code-str">2</span>, 
+    <span class="code-var">solver</span>=<span class="code-str">'eigen'</span>,       <span class="code-cm"># 支援特徵分解，亦可選 'svd' 或 'lsqr'</span>
+    <span class="code-var">shrinkage</span>=<span class="code-str">'auto'</span>      <span class="code-cm"># 自動 Ledoit-Wolf 正則化防止 Sw 矩陣奇異</span>
+)
+
+<span class="code-cm"># 3. 擬合並執行降維</span>
+<span class="code-var">X_train_lda</span> = lda.<span class="code-fn">fit_transform</span>(X_train, y_train)
+<span class="code-var">X_test_lda</span> = lda.<span class="code-fn">transform</span>(X_test)
+
+<span class="code-cm"># 4. 評估分類成效</span>
+<span class="code-var">y_pred</span> = lda.<span class="code-fn">predict</span>(X_test)
+print(<span class="code-str">f"各成分解釋變異比例: {lda.explained_variance_ratio_}"</span>)
+print(<span class="code-fn">classification_report</span>(y_test, y_pred, target_names=iris.target_names))
+        </code></pre>
+      </div>
+
+      <!-- Tab 3: PyTorch -->
+      <div id="tab-pytorch" class="hidden bg-slate-950 rounded-2xl p-5 border border-slate-800 font-mono text-xs overflow-x-auto">
+        <pre><code class="leading-relaxed">
+<span class="code-kw">import</span> torch
+<span class="code-kw">import</span> torch.nn <span class="code-kw">as</span> nn
+
+<span class="code-kw">class</span> <span class="code-fn">LDALossLayer</span>(nn.Module):
+    <span class="code-cm">"""結合深度學習骨幹 (Backbone) 的神經網絡特徵 LDA 正則化損失函數"""</span>
+    <span class="code-kw">def</span> <span class="code-fn">__init__</span>(self, in_features, num_classes):
+        <span class="code-fn">super</span>().<span class="code-fn">__init__</span>()
+        self.in_features = in_features
+        self.num_classes = num_classes
+
+    <span class="code-kw">def</span> <span class="code-fn">forward</span>(self, z, labels):
+        <span class="code-cm"># z: [Batch_Size, Feature_Dim] 特徵嵌入向量</span>
+        <span class="code-var">total_mean</span> = torch.<span class="code-fn">mean</span>(z, dim=<span class="code-str">0</span>)
+        <span class="code-var">Sw</span> = torch.<span class="code-fn">zeros</span>(self.in_features, self.in_features, device=z.device)
+        <span class="code-var">Sb</span> = torch.<span class="code-fn">zeros</span>(self.in_features, self.in_features, device=z.device)
+        
+        <span class="code-kw">for</span> c <span class="code-kw">in</span> <span class="code-fn">range</span>(self.num_classes):
+            <span class="code-var">zc</span> = z[labels == c]
+            <span class="code-kw">if</span> zc.<span class="code-fn">shape</span>[<span class="code-str">0</span>] > <span class="code-str">1</span>:
+                <span class="code-var">mean_c</span> = torch.<span class="code-fn">mean</span>(zc, dim=<span class="code-str">0</span>)
+                <span class="code-var">diff_within</span> = zc - mean_c
+                Sw += torch.<span class="code-fn">matmul</span>(diff_within.T, diff_within)
+                
+                <span class="code-var">diff_between</span> = (mean_c - total_mean).<span class="code-fn">unsqueeze</span>(<span class="code-str">1</span>)
+                Sb += zc.<span class="code-fn">shape</span>[<span class="code-str">0</span>] * torch.<span class="code-fn">matmul</span>(diff_between, diff_between.T)
+        
+        <span class="code-cm"># 最大化 Trace(Sb) / Trace(Sw) 即最小化 -Tr(Sb)/Tr(Sw)</span>
+        <span class="code-var">lda_objective</span> = torch.<span class="code-fn">trace</span>(Sb) / (torch.<span class="code-fn">trace</span>(Sw) + <span class="code-str">1e-5</span>)
+        <span class="code-kw">return</span> -lda_objective  <span class="code-cm"># 梯度下降目標</span>
+        </code></pre>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Interactive Simulator Engine JS -->
+  <script>
+    // --- Data & State ---
+    let pointsA = [];
+    let pointsB = [];
+    let currentAngle = 45; // in degrees
+    let isDragging = false;
+    let autoSimInterval = null;
+    let autoSimProgress = 0;
+    let currentStep = 0;
+
+    const canvas = document.getElementById('ldaCanvas');
+    const ctx = canvas.getContext('2d');
+    const projCanvas = document.getElementById('projCanvas');
+    const pctx = projCanvas.getContext('2d');
+
+    // UI elements
+    const sliderAngle = document.getElementById('slider-angle');
+    const angleDisplay = document.getElementById('angle-display');
+    const sliderSep = document.getElementById('slider-sep');
+    const sepDisplay = document.getElementById('sep-display');
+    const valSb = document.getElementById('val-sb');
+    const valSw = document.getElementById('val-sw');
+    const valJw = document.getElementById('val-jw');
+    const overlapMetric = document.getElementById('overlap-metric');
+    const stepExplainer = document.getElementById('step-explainer');
+
+    // Initialize Canvas Resizing
+    function initCanvasDimensions() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+      const prect = projCanvas.getBoundingClientRect();
+      projCanvas.width = prect.width * window.devicePixelRatio;
+      projCanvas.height = prect.height * window.devicePixelRatio;
+      pctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+
+    // Generate Synthetic 2D Datasets
+    function generateSyntheticData(separation = 3.2) {
+      pointsA = [];
+      pointsB = [];
+      const numPts = 60;
+      
+      // Class A: Centered at (-sep/2, -0.5), correlated
+      const centerA = [-separation / 2, -0.6];
+      // Class B: Centered at (+sep/2, +0.6)
+      const centerB = [separation / 2, 0.6];
+
+      // Covariance rotation
+      for (let i = 0; i < numPts; i++) {
+        // Gaussian via Box-Muller
+        let u1 = Math.random(), u2 = Math.random();
+        let z1 = Math.sqrt(-2.0 * Math.log(u1 || 1e-6)) * Math.cos(2.0 * Math.PI * u2);
+        let z2 = Math.sqrt(-2.0 * Math.log(u1 || 1e-6)) * Math.sin(2.0 * Math.PI * u2);
+        
+        // Stretch along diagonal to give PCA high variance in a misleading direction
+        let xA = centerA[0] + (z1 * 1.6 + z2 * 0.9);
+        let yA = centerA[1] + (z1 * 0.9 + z2 * 0.8);
+        pointsA.push({x: xA, y: yA});
+
+        let u3 = Math.random(), u4 = Math.random();
+        let z3 = Math.sqrt(-2.0 * Math.log(u3 || 1e-6)) * Math.cos(2.0 * Math.PI * u4);
+        let z4 = Math.sqrt(-2.0 * Math.log(u3 || 1e-6)) * Math.sin(2.0 * Math.PI * u4);
+        let xB = centerB[0] + (z3 * 1.6 + z4 * 0.9);
+        let yB = centerB[1] + (z3 * 0.9 + z4 * 0.8);
+        pointsB.push({x: xB, y: yB});
+      }
+    }
+
+    // Compute Math Metrics: Means, Sw, Sb, J(w), LDA angle, PCA angle
+    function computeLDAMath() {
+      // Means
+      let ma = {x: 0, y: 0}, mb = {x: 0, y: 0};
+      pointsA.forEach(p => { ma.x += p.x; ma.y += p.y; });
+      pointsB.forEach(p => { mb.x += p.x; mb.y += p.y; });
+      ma.x /= pointsA.length; ma.y /= pointsA.length;
+      mb.x /= pointsB.length; mb.y /= pointsB.length;
+
+      // Sw (Within-class scatter matrix)
+      let Sxx = 0, Sxy = 0, Syy = 0;
+      pointsA.forEach(p => {
+        let dx = p.x - ma.x, dy = p.y - ma.y;
+        Sxx += dx * dx; Sxy += dx * dy; Syy += dy * dy;
+      });
+      pointsB.forEach(p => {
+        let dx = p.x - mb.x, dy = p.y - mb.y;
+        Sxx += dx * dx; Sxy += dx * dy; Syy += dy * dy;
+      });
+
+      // Sb (Between-class scatter)
+      let dmx = ma.x - mb.x;
+      let dmy = ma.y - mb.y;
+      let Sbx = dmx * dmx, Sby = dmy * dmy, Sbxy = dmx * dmy;
+
+      // Optimal LDA Vector: Sw^(-1) * (ma - mb)
+      let det = Sxx * Syy - Sxy * Sxy;
+      let w_lda_x = 1, w_lda_y = 0;
+      if (Math.abs(det) > 1e-6) {
+        w_lda_x = (Syy * dmx - Sxy * dmy) / det;
+        w_lda_y = (-Sxy * dmx + Sxx * dmy) / det;
+      }
+      let lda_angle = (Math.atan2(w_lda_y, w_lda_x) * 180 / Math.PI + 360) % 180;
+
+      // Optimal PCA direction (Total covariance matrix max eigenvector)
+      let allPoints = pointsA.concat(pointsB);
+      let totalMeanX = (ma.x + mb.x) / 2;
+      let totalMeanY = (ma.y + mb.y) / 2;
+      let Txx = 0, Txy = 0, Tyy = 0;
+      allPoints.forEach(p => {
+        let dx = p.x - totalMeanX, dy = p.y - totalMeanY;
+        Txx += dx * dx; Txy += dx * dy; Tyy += dy * dy;
+      });
+      let trace = Txx + Tyy;
+      let diff = Txx - Tyy;
+      let disc = Math.sqrt(diff * diff + 4 * Txy * Txy);
+      let lambda1 = (trace + disc) / 2;
+      let pca_vx = Txy;
+      let pca_vy = lambda1 - Txx;
+      let pca_angle = (Math.atan2(pca_vy, pca_vx) * 180 / Math.PI + 360) % 180;
+
+      // Current projection angle vector w
+      let rad = currentAngle * Math.PI / 180;
+      let wx = Math.cos(rad);
+      let wy = Math.sin(rad);
+
+      // Rayleigh Quotient components
+      let curSb = (wx * dmx + wy * dmy) ** 2;
+      let curSw = (wx * wx * Sxx + 2 * wx * wy * Sxy + wy * wy * Syy) / (pointsA.length + pointsB.length);
+      let Jw = curSw > 1e-5 ? (curSb / curSw) : 0;
+
+      return {
+        ma, mb, Sxx, Sxy, Syy,
+        lda_angle,
+        pca_angle,
+        curSb, curSw, Jw,
+        wx, wy
+      };
+    }
+
+    // Render Canvas Visualization
+    function render() {
+      const w = canvas.getBoundingClientRect().width;
+      const h = canvas.getBoundingClientRect().height;
+      ctx.clearRect(0, 0, w, h);
+
+      const math = computeLDAMath();
+
+      // World to Screen transformation
+      const scale = w / 14; 
+      const originX = w / 2;
+      const originY = h / 2;
+
+      function toScreen(x, y) {
+        return {
+          sx: originX + x * scale,
+          sy: originY - y * scale
+        };
+      }
+
+      // Draw Grid lines
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      for (let i = -6; i <= 6; i += 2) {
+        let p1 = toScreen(i, -6), p2 = toScreen(i, 6);
+        ctx.beginPath(); ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy); ctx.stroke();
+        let p3 = toScreen(-6, i), p4 = toScreen(6, i);
+        ctx.beginPath(); ctx.moveTo(p3.sx, p3.sy); ctx.lineTo(p4.sx, p4.sy); ctx.stroke();
+      }
+
+      // Draw Current Projection Line w
+      const ext = 8;
+      const rad = currentAngle * Math.PI / 180;
+      const dirX = Math.cos(rad);
+      const dirY = Math.sin(rad);
+      
+      let pLine1 = toScreen(-dirX * ext, -dirY * ext);
+      let pLine2 = toScreen(dirX * ext, dirY * ext);
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(pLine1.sx, pLine1.sy);
+      ctx.lineTo(pLine2.sx, pLine2.sy);
+      ctx.stroke();
+
+      // Normal vector arrow marker
+      let normEnd = toScreen(dirX * 2.5, dirY * 2.5);
+      let centerScreen = toScreen(0, 0);
+      ctx.strokeStyle = '#06b6d4';
+      ctx.fillStyle = '#06b6d4';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(centerScreen.sx, centerScreen.sy);
+      ctx.lineTo(normEnd.sx, normEnd.sy);
+      ctx.stroke();
+
+      // Draw Scatter Points & Projection rays
+      const projA = [];
+      const projB = [];
+
+      function drawClassPoints(pts, color, projArr) {
+        pts.forEach(p => {
+          let sp = toScreen(p.x, p.y);
+          // 1D projected scalar onto unit vector (dirX, dirY)
+          let t = p.x * dirX + p.y * dirY;
+          projArr.push(t);
+          let prjPt = toScreen(t * dirX, t * dirY);
+
+          // Ray to line
+          ctx.strokeStyle = 'rgba(100, 116, 139, 0.25)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(sp.sx, sp.sy);
+          ctx.lineTo(prjPt.sx, prjPt.sy);
+          ctx.stroke();
+
+          // Projected dot on line
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(prjPt.sx, prjPt.sy, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Original 2D dot
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(sp.sx, sp.sy, 4, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      drawClassPoints(pointsA, '#38bdf8', projA); // Cyan
+      drawClassPoints(pointsB, '#f43f5e', projB); // Rose
+
+      // Render 1D Density Histogram in bottom canvas
+      renderProjectionHistogram(projA, projB);
+
+      // Update Live UI Cards
+      valSb.innerText = math.curSb.toFixed(3);
+      valSw.innerText = math.curSw.toFixed(3);
+      valJw.innerText = math.Jw.toFixed(3);
+      angleDisplay.innerText = `${Math.round(currentAngle)}°`;
+      sliderAngle.value = Math.round(currentAngle);
+      
+      const vCoords = document.getElementById('vector-coords');
+      if (vCoords) {
+        vCoords.innerText = `[${dirX.toFixed(2)}, ${dirY.toFixed(2)}]`;
+      }
+    }
+
+    // Render 1D Projection Histogram / KDE
+    function renderProjectionHistogram(projA, projB) {
+      const pw = projCanvas.getBoundingClientRect().width;
+      const ph = projCanvas.getBoundingClientRect().height;
+      pctx.clearRect(0, 0, pw, ph);
+
+      // Compute simple overlap estimate
+      projA.sort((a,b) => a - b);
+      projB.sort((a,b) => a - b);
+
+      const minX = -6, maxX = 6;
+      function toProjX(val) {
+        return ((val - minX) / (maxX - minX)) * pw;
+      }
+
+      // Draw Center Baseline
+      pctx.strokeStyle = '#334155';
+      pctx.lineWidth = 1;
+      pctx.beginPath();
+      pctx.moveTo(0, ph - 4);
+      pctx.lineTo(pw, ph - 4);
+      pctx.stroke();
+
+      // KDE Estimation
+      const steps = 120;
+      const h_smooth = 0.55;
+      function kde(val, arr) {
+        let sum = 0;
+        for (let i = 0; i < arr.length; i++) {
+          let u = (val - arr[i]) / h_smooth;
+          sum += Math.exp(-0.5 * u * u);
+        }
+        return sum / (arr.length * h_smooth * Math.sqrt(2 * Math.PI));
+      }
+
+      let overlapAreaSum = 0;
+
+      // Draw Density Curve A
+      pctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
+      pctx.strokeStyle = '#38bdf8';
+      pctx.lineWidth = 2;
+      pctx.beginPath();
+      pctx.moveTo(0, ph - 4);
+      for (let s = 0; s <= steps; s++) {
+        let val = minX + (s / steps) * (maxX - minX);
+        let dens = kde(val, projA);
+        let yPx = (ph - 4) - dens * 32;
+        pctx.lineTo(toProjX(val), yPx);
+      }
+      pctx.lineTo(pw, ph - 4);
+      pctx.closePath();
+      pctx.fill();
+      pctx.stroke();
+
+      // Draw Density Curve B
+      pctx.fillStyle = 'rgba(244, 63, 94, 0.35)';
+      pctx.strokeStyle = '#f43f5e';
+      pctx.lineWidth = 2;
+      pctx.beginPath();
+      pctx.moveTo(0, ph - 4);
+      for (let s = 0; s <= steps; s++) {
+        let val = minX + (s / steps) * (maxX - minX);
+        let densA = kde(val, projA);
+        let densB = kde(val, projB);
+        overlapAreaSum += Math.min(densA, densB) * ((maxX - minX) / steps);
+        let yPx = (ph - 4) - densB * 32;
+        pctx.lineTo(toProjX(val), yPx);
+      }
+      pctx.lineTo(pw, ph - 4);
+      pctx.closePath();
+      pctx.fill();
+      pctx.stroke();
+
+      let overlapPercent = Math.min(100, Math.max(0, overlapAreaSum * 100)).toFixed(1);
+      overlapMetric.innerText = `估算重疊率: ${overlapPercent}%`;
+      if (overlapPercent < 10) {
+        overlapMetric.className = "text-emerald-400 font-mono font-bold";
+      } else if (overlapPercent < 25) {
+        overlapMetric.className = "text-cyan-400 font-mono font-bold";
+      } else {
+        overlapMetric.className = "text-rose-400 font-mono font-bold";
+      }
+    }
+
+    // --- Interactive Mouse Handlers ---
+    function handlePointer(e) {
+      const rect = canvas.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const mouseX = e.clientX - cx;
+      const mouseY = -(e.clientY - cy);
+      let angle = (Math.atan2(mouseY, mouseX) * 180 / Math.PI + 360) % 180;
+      currentAngle = angle;
+      render();
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      handlePointer(e);
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (isDragging) handlePointer(e);
+    });
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    // Slider inputs
+    sliderAngle.addEventListener('input', (e) => {
+      currentAngle = parseFloat(e.target.value);
+      render();
+    });
+
+    sliderSep.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      sepDisplay.innerText = val > 4 ? `強可分 (${val})` : (val < 2.2 ? `重度重疊 (${val})` : `中等 (${val})`);
+      generateSyntheticData(val);
+      render();
+    });
+
+    // Preset Snapping
+    document.getElementById('btn-snap-lda').addEventListener('click', () => {
+      const math = computeLDAMath();
+      currentAngle = math.lda_angle;
+      stepExplainer.innerHTML = `<span class="font-bold text-cyan-300 block">✨ 已對齊最優 LDA 投影軸</span>此角度下瑞利商 <span class="font-serif italic">J</span>(<span class="font-serif italic">w</span>) 達全域最高峰值，投影重疊率最低！`;
+      render();
+    });
+
+    document.getElementById('btn-snap-pca').addEventListener('click', () => {
+      const math = computeLDAMath();
+      currentAngle = math.pca_angle;
+      stepExplainer.innerHTML = `<span class="font-bold text-indigo-300 block">📊 已對齊 PCA 主成分軸</span>PCA 僅捕捉整體數據變異量最大方向，忽略標籤，在此傾斜資料上導致大量類別重疊！`;
+      render();
+    });
+
+    document.getElementById('btn-reset-data').addEventListener('click', () => {
+      generateSyntheticData(parseFloat(sliderSep.value));
+      render();
+    });
+
+    // Step-by-Step Walkthrough
+    const stepsData = [
+      {
+        text: "<span class='font-bold text-cyan-300'>步驟 1/5：計算類別平均值與總中心</span><br>找出 Class A (&mu;<sub>1</sub>) 與 Class B (&mu;<sub>2</sub>) 質心向量。",
+        angleDelta: 0
+      },
+      {
+        text: "<span class='font-bold text-cyan-300'>步驟 2/5：計算類內散布矩陣 <span class='font-serif italic'>S</span><sub>W</sub></span><br>衡量兩類各自在空間中的膨脹分佈矩陣。",
+        angleDelta: 20
+      },
+      {
+        text: "<span class='font-bold text-cyan-300'>步驟 3/5：計算類間散布矩陣 <span class='font-serif italic'>S</span><sub>B</sub></span><br>衡量兩類中心距離差的外積 (&mu;<sub>1</sub>-&mu;<sub>2</sub>)(&mu;<sub>1</sub>-&mu;<sub>2</sub>)<sup>T</sup>。",
+        angleDelta: 40
+      },
+      {
+        text: "<span class='font-bold text-cyan-300'>步驟 4/5：求解逆矩陣乘積 <span class='font-serif italic'>S</span><sub>W</sub><sup>-1</sup>(&mu;<sub>1</sub>-&mu;<sub>2</sub>)</span><br>進行廣義特徵值解析，精準找出法向量。",
+        angleDelta: 70
+      },
+      {
+        text: "<span class='font-bold text-emerald-300'>步驟 5/5：收斂至最優判別軸！</span><br>此時 1D 投影直方圖達到最大分離度與最小重疊面積！",
+        useLDA: true
+      }
+    ];
+
+    document.getElementById('btn-step-by-step').addEventListener('click', () => {
+      currentStep = (currentStep + 1) % stepsData.length;
+      const step = stepsData[currentStep];
+      stepExplainer.innerHTML = step.text;
+      if (step.useLDA) {
+        currentAngle = computeLDAMath().lda_angle;
+      } else {
+        currentAngle = (currentAngle + 25) % 180;
+      }
+      render();
+    });
+
+    // Auto Demo Simulation
+    document.getElementById('btn-auto-sim').addEventListener('click', function() {
+      if (autoSimInterval) {
+        clearInterval(autoSimInterval);
+        autoSimInterval = null;
+        this.innerHTML = `<i data-lucide="play" class="w-4 h-4"></i><span>一鍵自動模擬 (Auto Demo)</span>`;
+        lucide.createIcons();
+        return;
+      }
+
+      this.innerHTML = `<i data-lucide="pause" class="w-4 h-4"></i><span>停止模擬</span>`;
+      lucide.createIcons();
+      stepExplainer.innerHTML = "<span class='font-bold text-cyan-300'>動態搜尋中：</span>360 度旋轉測試瑞利商變化，尋求全局極大值...";
+
+      const math = computeLDAMath();
+      const targetAngle = math.lda_angle;
+
+      autoSimInterval = setInterval(() => {
+        currentAngle = (currentAngle + 2) % 180;
+        if (Math.abs(currentAngle - targetAngle) < 1.5) {
+          currentAngle = targetAngle;
+          clearInterval(autoSimInterval);
+          autoSimInterval = null;
+          document.getElementById('btn-auto-sim').innerHTML = `<i data-lucide="play" class="w-4 h-4"></i><span>一鍵自動模擬 (Auto Demo)</span>`;
+          lucide.createIcons();
+          stepExplainer.innerHTML = `<span class='font-bold text-emerald-300'>模擬完成：</span>已成功鎖定最優 Fisher 判別方向（${Math.round(targetAngle)}°）！`;
+        }
+        render();
+      }, 30);
+    });
+
+    // UI Tab Switcher
+    function switchTab(tabId) {
+      ['tab-numpy', 'tab-sklearn', 'tab-pytorch'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+        document.getElementById('btn-' + id).className = "px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition";
+      });
+      document.getElementById(tabId).classList.remove('hidden');
+      document.getElementById('btn-' + tabId).className = "px-3 py-1.5 rounded-lg tab-active transition";
+    }
+
+    // IPAS Exam Toggle
+    function toggleAnswer(ansId) {
+      const el = document.getElementById(ansId);
+      el.classList.toggle('hidden');
+    }
+
+    // Industrial Applications Tab Switcher (LDA vs PCA vs t-SNE)
+    function switchIndTab(tabName) {
+      const tabs = ['lda', 'pca', 'tsne'];
+      tabs.forEach(t => {
+        const el = document.getElementById('ind-' + t);
+        const btn = document.getElementById('tab-btn-' + t);
+        if (t === tabName) {
+          el.classList.remove('hidden');
+          btn.className = "px-2.5 py-1.5 rounded-lg tab-active transition flex items-center space-x-1.5";
+        } else {
+          el.classList.add('hidden');
+          btn.className = "px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center space-x-1.5";
+        }
+      });
+      lucide.createIcons();
+    }
+
+    // Life Examples Tab Switcher (LDA vs PCA vs t-SNE)
+    function switchLifeTab(tabName) {
+      const tabs = ['lda', 'pca', 'tsne'];
+      tabs.forEach(t => {
+        const el = document.getElementById('life-' + t);
+        const btn = document.getElementById('tab-life-btn-' + t);
+        if (t === tabName) {
+          el.classList.remove('hidden');
+          btn.className = "px-2.5 py-1.5 rounded-lg tab-active transition flex items-center space-x-1.5";
+        } else {
+          el.classList.add('hidden');
+          btn.className = "px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center space-x-1.5";
+        }
+      });
+      lucide.createIcons();
+    }
+
+    // Initialize App
+    window.addEventListener('load', () => {
+      initCanvasDimensions();
+      generateSyntheticData(3.2);
+      currentAngle = computeLDAMath().lda_angle;
+      render();
+      lucide.createIcons();
+    });
+
+    window.addEventListener('resize', () => {
+      initCanvasDimensions();
+      render();
+    });
+  </script>
+</body>
+</html>
