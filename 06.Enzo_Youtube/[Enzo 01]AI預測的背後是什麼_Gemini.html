@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>機器學習第 0 集：AI 預測背後的本質 | 互動探索教學網</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            900: '#0c4a6e',
+                        },
+                        amber: {
+                            500: '#f59e0b',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- KaTeX for crisp mathematical formulas -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .dark .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #0284c7 0%, #6366f1 50%, #ec4899 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        /* Canvas custom styling */
+        canvas {
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-sky-500 selection:text-white dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col">
+
+    <!-- Sticky Navigation -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-slate-200/80 dark:border-slate-800/80 transition-colors">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-sky-500/20">
+                    <i data-lucide="cpu" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <span class="font-bold text-lg tracking-tight flex items-center gap-2">
+                        ML 基礎圖鑑
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-950/80 dark:text-sky-300 font-semibold border border-sky-300 dark:border-sky-800">第 0 集 地圖</span>
+                    </span>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">基於 Enzo 獨自升級 核心課程解析</p>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="hidden md:flex items-center space-x-1 text-sm font-medium">
+                <a href="#core-function" class="px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition">本質與混音器</a>
+                <a href="#three-schools" class="px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition">三大門派</a>
+                <a href="#gradient-descent" class="px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition">濃霧與梯度下降</a>
+                <a href="#overfitting" class="px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition">擬合陷阱與驗證</a>
+                <a href="#roadmap" class="px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition">33集地圖</a>
+            </nav>
+
+            <div class="flex items-center gap-2">
+                <a href="https://youtu.be/LVlJ1j_hTlY" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200 dark:border-rose-900 transition">
+                    <i data-lucide="youtube" class="w-4 h-4"></i>
+                    <span>原片觀看</span>
+                </a>
+                <button id="transcript-toggle-btn" class="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition" title="查閱原片對照逐字稿">
+                    <i data-lucide="file-text" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Banner -->
+    <section class="relative overflow-hidden py-14 lg:py-20 bg-gradient-to-b from-sky-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-950 dark:to-slate-950 border-b border-slate-200 dark:border-slate-800">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 text-center relative z-10">
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-100/80 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 text-xs font-semibold mb-6 border border-sky-300 dark:border-sky-800">
+                <i data-lucide="compass" class="w-4 h-4 animate-spin-slow"></i>
+                機器學習系列特輯 · 第 0 集總綱領
+            </div>
+            <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-6">
+                AI 預測的背後是什麼？<br>
+                <span class="gradient-text">監督式學習、梯度下降、Overfitting 一次搞懂</span>
+            </h1>
+            <p class="text-base sm:text-xl text-slate-600 dark:text-slate-300 max-w-3xl mx-auto leading-relaxed mb-8">
+                每天從臉部解鎖、垃圾信過濾到 YouTube 推薦演算法，你被機器學習服務了數百次。
+                這不是枯燥的公式堆疊，也不是一行 <code class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-rose-500 font-mono text-sm">import sklearn</code> 敷衍了事。
+                這張地圖將透過直覺的比喻與互動實驗，打通所有演算法的底層脈絡！
+            </p>
+
+            <!-- Quick Summary Badges -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-3xl mx-auto text-left">
+                <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div class="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-bold text-sm mb-1">
+                        <i data-lucide="sliders" class="w-4 h-4"></i> 核心本質
+                    </div>
+                    <div class="text-xs text-slate-500 dark:text-slate-400 font-mono">Y = f(X) 旋鈕微調</div>
+                </div>
+                <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div class="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-sm mb-1">
+                        <i data-lucide="network" class="w-4 h-4"></i> 三大門派
+                    </div>
+                    <div class="text-xs text-slate-500 dark:text-slate-400">監督 / 非監督 / 強化</div>
+                </div>
+                <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div class="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-sm mb-1">
+                        <i data-lucide="mountain" class="w-4 h-4"></i> 優化引擎
+                    </div>
+                    <div class="text-xs text-slate-500 dark:text-slate-400">濃霧下的梯度下降</div>
+                </div>
+                <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div class="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold text-sm mb-1">
+                        <i data-lucide="shield-alert" class="w-4 h-4"></i> 最大陷阱
+                    </div>
+                    <div class="text-xs text-slate-500 dark:text-slate-400">過度擬合 Overfitting</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content Grid -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-1 space-y-20">
+
+        <!-- SECTION 1: 本質與混音器 -->
+        <section id="core-function" class="scroll-mt-24 space-y-8">
+            <div class="border-b border-slate-200 dark:border-slate-800 pb-4">
+                <span class="text-xs uppercase tracking-wider font-bold text-sky-600 dark:text-sky-400">CHAPTER 01</span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-3">
+                    <i data-lucide="sliders" class="w-7 h-7 text-sky-500"></i>
+                    所有的機器學習，說到底都在找那個函數
+                </h2>
+            </div>
+
+            <!-- Traditional vs ML paradigm -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Traditional Programming Card -->
+                <div class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-28 h-28 bg-rose-500/5 rounded-full blur-2xl"></div>
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="p-2.5 rounded-lg bg-rose-100 text-rose-600 dark:bg-rose-950/80 dark:text-rose-400">
+                            <i data-lucide="code-2" class="w-5 h-5"></i>
+                        </div>
+                        <h3 class="font-bold text-lg text-slate-900 dark:text-white">傳統寫程式：人寫規則</h3>
+                    </div>
+                    <p class="text-sm text-slate-600 dark:text-slate-300 mb-4 leading-relaxed">
+                        人手動訂定所有 <span class="font-mono text-rose-500 font-semibold">if / else</span> 邏輯。例如想判斷貓：「有尖尖的耳朵」、「有鬍鬚」、「毛茸茸」...
+                        但現實世界太複雜，極端案例無窮無盡，人<strong>永遠寫不完所有規則</strong>。
+                    </p>
+                    <div class="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 font-mono text-xs text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                        <span>[輸入資料 X] + [人工硬編碼規則]</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4 text-slate-400"></i>
+                        <span class="text-rose-600 font-semibold">[答案 Y]</span>
+                    </div>
+                </div>
+
+                <!-- Machine Learning Paradigm -->
+                <div class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-sky-300/60 dark:border-sky-800/60 shadow-md shadow-sky-500/5 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-28 h-28 bg-sky-500/10 rounded-full blur-2xl"></div>
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="p-2.5 rounded-lg bg-sky-100 text-sky-600 dark:bg-sky-950/80 dark:text-sky-400">
+                            <i data-lucide="sparkles" class="w-5 h-5"></i>
+                        </div>
+                        <h3 class="font-bold text-lg text-slate-900 dark:text-white">機器學習：機器自己找出規則</h3>
+                    </div>
+                    <p class="text-sm text-slate-600 dark:text-slate-300 mb-4 leading-relaxed">
+                        將流程完全顛倒。我們餵給機器成千上萬筆 <span class="font-semibold text-sky-600 dark:text-sky-400">輸入資料 X</span> 與對應的 <span class="font-semibold text-sky-600 dark:text-sky-400">標準答案 Y</span>，讓模型自己找出能夠對應的映射函數：
+                    </p>
+                    <div class="p-3.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 font-mono text-xs text-sky-900 dark:text-sky-300 flex items-center justify-between">
+                        <span>[資料 X] + [答案 Y]</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4 text-sky-500"></i>
+                        <span class="font-bold text-sky-600 dark:text-sky-400">自主摸索出函數 f(X)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Mixer Console Widget -->
+            <div class="p-6 rounded-3xl bg-slate-900 text-white shadow-xl border border-slate-800 space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <div class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-sky-400">
+                            <i data-lucide="play-circle" class="w-4 h-4"></i> 互動實驗室 #1
+                        </div>
+                        <h3 class="text-xl font-bold text-white mt-1">模型就是一台「混音器」：參數旋鈕實時調音</h3>
+                        <p class="text-xs text-slate-400 mt-1">
+                            試著旋轉斜率 $w$ 與截距 $b$ 兩個旋鈕，觀察紅線（模型預測）如何貼合房價資料點，並觀察 Loss（均方誤差）變化。
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button id="auto-tune-btn" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-xs font-bold text-white shadow-md transition flex items-center gap-2">
+                            <i data-lucide="wand-2" class="w-4 h-4"></i>
+                            自動調至最佳旋鈕
+                        </button>
+                        <button id="reset-mixer-btn" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition text-xs" title="重設旋鈕">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                    <!-- Canvas Chart -->
+                    <div class="lg:col-span-7 bg-slate-950 p-4 rounded-2xl border border-slate-800 relative">
+                        <div class="absolute top-6 left-6 text-xs text-slate-400 font-mono">
+                            房價預測：<span class="text-sky-400">Ŷ = w · X + b</span>
+                        </div>
+                        <canvas id="mixerCanvas" class="w-full h-64 sm:h-72 rounded-lg"></canvas>
+                        <div class="flex justify-between items-center text-[11px] text-slate-500 px-2 mt-1">
+                            <span>坪數 (X) 10 坪</span>
+                            <span>50 坪</span>
+                        </div>
+                    </div>
+
+                    <!-- Knobs and Loss Gauge -->
+                    <div class="lg:col-span-5 space-y-5 bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80">
+                        <!-- Knob 1: Weight -->
+                        <div>
+                            <div class="flex justify-between text-xs font-medium mb-1.5">
+                                <span class="text-slate-300 flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span> 旋鈕 1: 斜率參數 ($w$)
+                                </span>
+                                <span id="w-val-display" class="font-mono text-sky-400 font-bold">1.20</span>
+                            </div>
+                            <input id="knob-w" type="range" min="0.1" max="2.5" step="0.05" value="0.3" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-400">
+                        </div>
+
+                        <!-- Knob 2: Bias -->
+                        <div>
+                            <div class="flex justify-between text-xs font-medium mb-1.5">
+                                <span class="text-slate-300 flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-indigo-400"></span> 旋鈕 2: 截距偏移 ($b$)
+                                </span>
+                                <span id="b-val-display" class="font-mono text-indigo-400 font-bold">2.00</span>
+                            </div>
+                            <input id="knob-b" type="range" min="-10" max="20" step="0.5" value="15" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-400">
+                        </div>
+
+                        <!-- Loss Display Monitor -->
+                        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                            <div>
+                                <span class="text-xs uppercase text-slate-400 font-mono tracking-wider">目前損失函數 (Loss / MSE)</span>
+                                <div id="mixer-loss-display" class="text-2xl font-black font-mono text-rose-400 mt-0.5">245.8</div>
+                            </div>
+                            <div id="mixer-status-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-rose-950/80 text-rose-300 border border-rose-800">
+                                誤差過大！旋鈕亂轉
+                            </div>
+                        </div>
+
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            💡 <strong>大模型 vs 小模型</strong>：這個線性回歸只有 <strong>2 個旋鈕</strong>；而像 GPT 系列大型語言模型則有 <strong>上千億個旋鈕</strong>！但學習的底層邏輯完全相同：都是不停微調旋鈕，直到 Loss 縮小。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: 機器學習三大門派 -->
+        <section id="three-schools" class="scroll-mt-24 space-y-8">
+            <div class="border-b border-slate-200 dark:border-slate-800 pb-4">
+                <span class="text-xs uppercase tracking-wider font-bold text-sky-600 dark:text-sky-400">CHAPTER 02</span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-3">
+                    <i data-lucide="network" class="w-7 h-7 text-indigo-500"></i>
+                    三大門派：資料決定你如何調旋鈕
+                </h2>
+                <p class="text-slate-600 dark:text-slate-400 text-sm mt-2">
+                    手上有什麼資料，就決定了使用哪一種訓練方式。
+                </p>
+            </div>
+
+            <!-- The Three Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                <!-- School 1: Supervised -->
+                <div class="flex flex-col justify-between p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-sky-400/50 transition">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="p-2.5 rounded-xl bg-sky-100 text-sky-600 dark:bg-sky-950 dark:text-sky-400 font-bold">
+                                門派 01
+                            </span>
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">業界用最多</span>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-1">監督式學習</h3>
+                        <p class="text-xs text-sky-600 dark:text-sky-400 font-mono mb-3">Supervised Learning</p>
+                        
+                        <div class="p-3 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-xs text-slate-600 dark:text-slate-300 mb-4 border border-sky-100 dark:border-sky-900">
+                            <strong>比喻：附詳解的考古題</strong><br>
+                            每一題都有標準答案（標籤 Label），模型寫一題對一下答案，錯了就微調旋鈕。
+                        </div>
+
+                        <div class="space-y-2 text-xs text-slate-600 dark:text-slate-400 mb-4">
+                            <div class="flex items-start gap-2">
+                                <span class="font-bold text-slate-800 dark:text-slate-200 min-w-10">分類：</span>
+                                <span>輸出是「類別」（貓還是狗、是否有行人、是否為垃圾信）。</span>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <span class="font-bold text-slate-800 dark:text-slate-200 min-w-10">回歸：</span>
+                                <span>輸出是「連續數值」（房子賣多少、行人離我幾公尺、氣溫幾度）。</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-100 dark:border-slate-800 text-xs text-rose-500 dark:text-rose-400">
+                        ⚠️ <strong>痛點</strong>：標籤昂貴！需要大量人工標註（例如自駕車公司僱人一張張匡出行人）。
+                    </div>
+                </div>
+
+                <!-- School 2: Unsupervised -->
+                <div class="flex flex-col justify-between p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-indigo-400/50 transition">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="p-2.5 rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400 font-bold">
+                                門派 02
+                            </span>
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">無標籤探索</span>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-1">非監督式學習</h3>
+                        <p class="text-xs text-indigo-600 dark:text-indigo-400 font-mono mb-3">Unsupervised Learning</p>
+                        
+                        <div class="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-xs text-slate-600 dark:text-slate-300 mb-4 border border-indigo-100 dark:border-indigo-900">
+                            <strong>比喻：幫亂丟的衣服分類</strong><br>
+                            媽媽把一整堆衣服倒在床上叫你收，沒說規則。你自動把褲子放一堆、T-Shirt 放一堆，純粹因為它們長得很像。
+                        </div>
+
+                        <div class="space-y-2 text-xs text-slate-600 dark:text-slate-400 mb-4">
+                            <div class="flex items-start gap-2">
+                                <span class="font-bold text-slate-800 dark:text-slate-200 min-w-10">分群：</span>
+                                <span>尋找資料內在結構，將相似聚集（Clustering）。</span>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <span class="font-bold text-slate-800 dark:text-slate-200 min-w-10">自駕：</span>
+                                <span>光達 LiDAR 每秒噴出幾十萬點雲，自動圈成團識別出未知障礙物。</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500">
+                        💡 <strong>優勢</strong>：不用人工標註標籤，直接從龐大原始資料挖掘潛在規律。
+                    </div>
+                </div>
+
+                <!-- School 3: Reinforcement -->
+                <div class="flex flex-col justify-between p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-amber-400/50 transition">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="p-2.5 rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400 font-bold">
+                                門派 03
+                            </span>
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">互動中進化</span>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-1">強化學習</h3>
+                        <p class="text-xs text-amber-600 dark:text-amber-400 font-mono mb-3">Reinforcement Learning</p>
+                        
+                        <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-xs text-slate-600 dark:text-slate-300 mb-4 border border-amber-100 dark:border-amber-900">
+                            <strong>比喻：訓練小狗握手</strong><br>
+                            不給書看，等牠隨機動、剛好抬手就給零食（獎勵 Reward）。做對得分、做錯扣分，最後自己學會最優策略。
+                        </div>
+
+                        <div class="space-y-2 text-xs text-slate-600 dark:text-slate-400 mb-4">
+                            <div class="flex items-start gap-2">
+                                <span class="font-bold text-slate-800 dark:text-slate-200 min-w-10">代表：</span>
+                                <span>AlphaGo 下圍棋、波士頓動力機器人學走路、賽車飄移。</span>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <span class="font-bold text-slate-800 dark:text-slate-200 min-w-10">代價：</span>
+                                <span>需要巨量試錯（上百萬次嘗試），往往需在虛擬模擬器進行。</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-100 dark:border-slate-800 text-xs text-amber-600 dark:text-amber-400">
+                        ⚡ <strong>特點</strong>：不依賴靜態資料集，靠智能體在環境中的試探獲取反饋。
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SECTION 3: 損失函數與濃霧下山 (梯度下降) -->
+        <section id="gradient-descent" class="scroll-mt-24 space-y-8">
+            <div class="border-b border-slate-200 dark:border-slate-800 pb-4">
+                <span class="text-xs uppercase tracking-wider font-bold text-sky-600 dark:text-sky-400">CHAPTER 03</span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-3">
+                    <i data-lucide="mountain-snow" class="w-7 h-7 text-emerald-500"></i>
+                    濃霧下山：損失函數與梯度下降 (Gradient Descent)
+                </h2>
+                <p class="text-slate-600 dark:text-slate-400 text-sm mt-2">
+                    這是全系列最硬、但也最重要的精髓。搞懂這一段，後續一半以上的演算法都能迎刃而解！
+                </p>
+            </div>
+
+            <!-- Mathematical Insight: Loss & Square -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Step 1: Loss Function -->
+                <div class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+                    <div class="flex items-center gap-3">
+                        <span class="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-sm">1</span>
+                        <h3 class="font-bold text-lg text-slate-900 dark:text-white">損失函數：衡量模型「有多爛」</h3>
+                    </div>
+                    <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                        模型猜 800 萬，實際是 1000 萬，差了 200 萬。我們將所有誤差平方後取平均，稱為<strong>均方誤差 (MSE, Mean Squared Error)</strong>：
+                    </p>
+                    <div class="p-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-center text-slate-800 dark:text-slate-100 font-mono text-sm">
+                        <span id="formula-mse"></span>
+                    </div>
+                    <div class="text-xs text-slate-500 dark:text-slate-400 space-y-1.5 pt-2">
+                        <div class="flex items-start gap-1.5">
+                            <i data-lucide="check" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i>
+                            <span><strong>為什麼要平方？原因 1：</strong>猜高猜低皆是錯，平方確保全為正數不相抵消。</span>
+                        </div>
+                        <div class="flex items-start gap-1.5">
+                            <i data-lucide="check" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i>
+                            <span><strong>為什麼要平方？原因 2：</strong>放大嚴重的錯誤（差 10 萬算 100，差 100 萬算 1 萬），強迫模型避開離譜預測！</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: The Gradient Formula -->
+                <div class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+                    <div class="flex items-center gap-3">
+                        <span class="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-sm">2</span>
+                        <h3 class="font-bold text-lg text-slate-900 dark:text-white">梯度公式：濃霧中感應腳下坡度</h3>
+                    </div>
+                    <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                        身處大霧山頭看不見山谷，唯一的策略是<strong>「感覺哪邊坡度往下，就朝那個方向跨一步」</strong>：
+                    </p>
+                    <div class="p-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-center text-slate-800 dark:text-slate-100 font-mono text-sm">
+                        <span id="formula-gd"></span>
+                    </div>
+                    <div class="text-xs text-slate-500 dark:text-slate-400 space-y-1 pt-2">
+                        <p>• <strong>山的高度</strong>：即為當前的 Loss 損失。</p>
+                        <p>• <strong>減號（-）的意義</strong>：因為數學上的斜率（梯度）指向「上坡」，要走向谷底必須取反方向走「下坡」。</p>
+                        <p>• <strong>$\eta$（學習率 Learning Rate）</strong>：決定了每一步邁開的跨幅大小！</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Mountain Simulation -->
+            <div class="p-6 rounded-3xl bg-slate-900 text-white shadow-xl border border-slate-800 space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <div class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-400">
+                            <i data-lucide="play-circle" class="w-4 h-4"></i> 互動實驗室 #2
+                        </div>
+                        <h3 class="text-xl font-bold text-white mt-1">濃霧下山模擬器：體驗不同學習率 ($\eta$) 的下場</h3>
+                        <p class="text-xs text-slate-400 mt-1">
+                            點擊山丘任意位置放置小球，或選擇不同學習率體驗下山過程（包含局部極小值坑洞）。
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button id="run-gd-btn" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition shadow-md">
+                            <i data-lucide="play" class="w-4 h-4"></i> 開始下山 (Step by Step)
+                        </button>
+                        <button id="reset-ball-btn" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition">
+                            重置起點
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                    <!-- Simulation Canvas -->
+                    <div class="lg:col-span-8 bg-slate-950 p-4 rounded-2xl border border-slate-800 relative">
+                        <div class="flex justify-between items-center text-xs text-slate-400 font-mono px-2 mb-2">
+                            <span>山脈剖面（高處 = 高 Loss，低谷 = 最佳模型）</span>
+                            <span id="mountain-info" class="text-emerald-400">點擊山坡可自訂小球初始位置</span>
+                        </div>
+                        <canvas id="mountainCanvas" class="w-full h-72 sm:h-80 rounded-lg cursor-crosshair"></canvas>
+                        <div class="flex justify-between text-[11px] text-slate-500 mt-2 px-2">
+                            <span>左側高山</span>
+                            <span class="text-amber-400/80">⚠️ 局部極小值 (坑洞)</span>
+                            <span class="text-emerald-400">🎯 全域最佳山谷 (最低 Loss)</span>
+                            <span>右側高山</span>
+                        </div>
+                    </div>
+
+                    <!-- Learning Rate Controls -->
+                    <div class="lg:col-span-4 space-y-4 bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80">
+                        <div>
+                            <label class="text-xs font-semibold text-slate-300 block mb-2">選擇學習率預設值（Learning Rate）：</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button data-lr="0.015" class="lr-preset-btn px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-mono font-medium text-slate-200 border border-slate-700 transition">
+                                    太小<br><span class="text-[10px] text-slate-400">0.015</span>
+                                </button>
+                                <button data-lr="0.09" class="lr-preset-btn active-lr px-2.5 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500 text-xs font-mono font-bold transition">
+                                    恰當<br><span class="text-[10px] text-emerald-400">0.09</span>
+                                </button>
+                                <button data-lr="0.45" class="lr-preset-btn px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-mono font-medium text-slate-200 border border-slate-700 transition">
+                                    太大<br><span class="text-[10px] text-rose-400">0.45</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs text-slate-300 mb-1">
+                                <span>自訂 Learning Rate ($\eta$):</span>
+                                <span id="lr-val-text" class="font-mono text-emerald-400 font-bold">0.090</span>
+                            </div>
+                            <input id="lr-slider" type="range" min="0.005" max="0.5" step="0.005" value="0.09" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-400">
+                        </div>
+
+                        <!-- Step telemetry -->
+                        <div class="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5 text-xs font-mono">
+                            <div class="flex justify-between text-slate-400">
+                                <span>目前步數 Step:</span>
+                                <span id="gd-step-display" class="text-white">0</span>
+                            </div>
+                            <div class="flex justify-between text-slate-400">
+                                <span>當前 Loss 高度:</span>
+                                <span id="gd-loss-display" class="text-emerald-400">--</span>
+                            </div>
+                            <div class="flex justify-between text-slate-400">
+                                <span>狀態狀態判斷:</span>
+                                <span id="gd-status-text" class="text-slate-300">就緒</span>
+                            </div>
+                        </div>
+
+                        <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200/90 text-[11px] leading-relaxed">
+                            💡 <strong>局部最小值陷阱 (Local Minima)</strong>：如果你從小球左邊開始走，可能會掉入半山腰的小水坑，四面都是上坡，模型以為已經到谷底而卡住！
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: 欠擬合 vs 過擬合 vs 泛化 -->
+        <section id="overfitting" class="scroll-mt-24 space-y-8">
+            <div class="border-b border-slate-200 dark:border-slate-800 pb-4">
+                <span class="text-xs uppercase tracking-wider font-bold text-sky-600 dark:text-sky-400">CHAPTER 04</span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-3">
+                    <i data-lucide="activity" class="w-7 h-7 text-rose-500"></i>
+                    危險的零誤差：欠擬合 (Underfitting) 與過擬合 (Overfitting)
+                </h2>
+                <p class="text-slate-600 dark:text-slate-400 text-sm mt-2">
+                    「機器學習真正的目標，從來不是把訓練資料學到完美，而是在沒看過的資料上也對！」
+                </p>
+            </div>
+
+            <!-- The Three Students Analogy -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Student A: Underfitting -->
+                <div class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                    <div class="flex items-center gap-2 text-amber-500 font-bold text-xs uppercase mb-2">
+                        <i data-lucide="frown" class="w-4 h-4"></i> 學生 A 的下場
+                    </div>
+                    <h3 class="font-extrabold text-xl text-slate-900 dark:text-white mb-2">欠擬合 (Underfitting)</h3>
+                    <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+                        <strong>期末考完全沒讀</strong>：連平時的考古題都寫得一塌糊塗，期末考換新題目當然也徹底炸開。模型太過笨拙簡單，連最基礎的趨勢都抓不住。
+                    </p>
+                    <div class="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-900 text-xs text-amber-800 dark:text-amber-300">
+                        <strong>表現特徵</strong>：訓練集分數很差，驗證集分數也很差。
+                    </div>
+                </div>
+
+                <!-- Student B: Overfitting -->
+                <div class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-900 shadow-sm relative overflow-hidden">
+                    <div class="flex items-center gap-2 text-rose-500 font-bold text-xs uppercase mb-2">
+                        <i data-lucide="alert-triangle" class="w-4 h-4"></i> 學生 B 的下場（最危險）
+                    </div>
+                    <h3 class="font-extrabold text-xl text-slate-900 dark:text-white mb-2">過擬合 (Overfitting)</h3>
+                    <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+                        <strong>死記硬背考古題答案</strong>：「第 3 題選 C、第 7 題答案是 42」。考古題拿 100 分，但期末考數字稍改直接零分！模型太靈活，連同雜訊與巧合全部死背。
+                    </p>
+                    <div class="bg-rose-50 dark:bg-rose-950/40 p-3 rounded-xl border border-rose-200 dark:border-rose-900 text-xs text-rose-800 dark:text-rose-300">
+                        <strong>表現特徵</strong>：訓練集 Loss=0 極高分，但驗證集徹底破功！
+                    </div>
+                </div>
+
+                <!-- Student C: Generalization -->
+                <div class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 shadow-sm relative overflow-hidden">
+                    <div class="flex items-center gap-2 text-emerald-500 font-bold text-xs uppercase mb-2">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i> 學生 C 的勝利（終極目標）
+                    </div>
+                    <h3 class="font-extrabold text-xl text-slate-900 dark:text-white mb-2">泛化能力 (Generalization)</h3>
+                    <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+                        <strong>真正理解背後的核心觀念</strong>：考古題 90 分，期末考也能穩穩拿 88 分。模型學到了真正的規律與趨勢，對全新未見過的未知資料依然能準確預測。
+                    </p>
+                    <div class="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-200 dark:border-emerald-900 text-xs text-emerald-800 dark:text-emerald-300">
+                        <strong>表現特徵</strong>：訓練集與驗證集皆能維持一致的高水準。
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Curve Fitting Lab -->
+            <div class="p-6 rounded-3xl bg-slate-900 text-white shadow-xl border border-slate-800 space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <div class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-rose-400">
+                            <i data-lucide="play-circle" class="w-4 h-4"></i> 互動實驗室 #3
+                        </div>
+                        <h3 class="text-xl font-bold text-white mt-1">擬合光譜：調節模型多項式次方 (複雜度)</h3>
+                        <p class="text-xs text-slate-400 mt-1">
+                            觀察低次方（直線）與高次方（劇烈震盪穿過每一點）在未見測試點上的表現差異。
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="resample-data-btn" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 transition flex items-center gap-1.5">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> 隨機生成新資料點
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                    <div class="lg:col-span-8 bg-slate-950 p-4 rounded-2xl border border-slate-800 relative">
+                        <canvas id="fittingCanvas" class="w-full h-72 sm:h-80 rounded-lg"></canvas>
+                        <div class="flex justify-between items-center text-xs text-slate-400 mt-2 px-2">
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-sky-400 inline-block"></span> 訓練樣本（考古題）</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-400 inline-block"></span> 測試樣本（期末考）</span>
+                            <span class="flex items-center gap-1.5"><span class="w-4 h-1 bg-rose-400 inline-block"></span> 模型擬合曲線</span>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-4 space-y-5 bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80">
+                        <div>
+                            <div class="flex justify-between text-xs text-slate-300 mb-2">
+                                <span>模型複雜度（多項式次方 Degree）：</span>
+                                <span id="degree-display" class="font-mono text-rose-400 font-bold">1 次方 (直線)</span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button data-deg="1" class="deg-btn px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-mono transition active-deg border border-sky-400 text-sky-300">
+                                    Degree 1<br><span class="text-[10px] text-slate-400">欠擬合</span>
+                                </button>
+                                <button data-deg="3" class="deg-btn px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-mono transition text-slate-300">
+                                    Degree 3<br><span class="text-[10px] text-emerald-400">泛化佳</span>
+                                </button>
+                                <button data-deg="9" class="deg-btn px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-mono transition text-slate-300">
+                                    Degree 9<br><span class="text-[10px] text-rose-400">過擬合</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Score comparison -->
+                        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2 text-xs font-mono">
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">訓練集 Loss (考古題):</span>
+                                <span id="train-loss-text" class="text-white font-bold">--</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">未見測試集 Loss (期末考):</span>
+                                <span id="test-loss-text" class="text-emerald-400 font-bold">--</span>
+                            </div>
+                            <div class="pt-2 border-t border-slate-800 flex justify-between items-center">
+                                <span class="text-slate-400">綜合診斷:</span>
+                                <span id="fit-diagnostic" class="font-sans font-bold text-xs text-sky-400">分析中...</span>
+                            </div>
+                        </div>
+
+                        <div class="text-xs text-slate-400 leading-relaxed">
+                            💡 <strong>為什麼真實世界會有雜訊？</strong><br>
+                            感測器讀數誤差、人工打錯標籤、或是純粹的隨機運氣。如果模型把這些雜訊也當成鐵律硬背，面對新現實就會瞬間崩潰！
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 5: 資料集三割法與實戰陷阱 -->
+        <section class="space-y-8">
+            <div class="border-b border-slate-200 dark:border-slate-800 pb-4">
+                <span class="text-xs uppercase tracking-wider font-bold text-sky-600 dark:text-sky-400">CHAPTER 05</span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-3">
+                    <i data-lucide="shield-check" class="w-7 h-7 text-sky-500"></i>
+                    防禦之道：三割資料集與不可忽視的實戰陷阱
+                </h2>
+                <p class="text-slate-600 dark:text-slate-400 text-sm mt-2">
+                    你不能用模型學過的資料來考它，否則就像讓學生做一模一樣的考古題，永遠不知道他是不是在硬背。
+                </p>
+            </div>
+
+            <!-- The Split Bar -->
+            <div class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+                <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <i data-lucide="divide" class="w-5 h-5 text-sky-500"></i>
+                    標準資料切割結構：一開始就切好
+                </h3>
+
+                <!-- Visual Bar -->
+                <div class="h-14 rounded-2xl overflow-hidden flex font-mono text-xs font-bold text-white shadow-inner">
+                    <div class="bg-sky-500 flex flex-col items-center justify-center w-[65%] hover:brightness-110 transition p-2 text-center">
+                        <span>訓練集 Training Set (60~70%)</span>
+                        <span class="text-[10px] font-normal opacity-90 font-sans">考古題：讓模型調旋鈕</span>
+                    </div>
+                    <div class="bg-indigo-500 flex flex-col items-center justify-center w-[15%] hover:brightness-110 transition p-2 text-center border-l border-r border-white/20">
+                        <span>驗證集 Val (15~20%)</span>
+                        <span class="text-[10px] font-normal opacity-90 font-sans">模擬考：調超參數/學習率</span>
+                    </div>
+                    <div class="bg-emerald-600 flex flex-col items-center justify-center w-[20%] hover:brightness-110 transition p-2 text-center">
+                        <span>測試集 Test (15~20%)</span>
+                        <span class="text-[10px] font-normal opacity-90 font-sans">保險箱期末考：最後只開一次</span>
+                    </div>
+                </div>
+
+                <!-- Two Crucial Traps -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                    <!-- Trap 1: Data Leakage -->
+                    <div class="p-5 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 space-y-2">
+                        <div class="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-sm">
+                            <i data-lucide="eye" class="w-4 h-4"></i>
+                            陷阱 1：資料洩漏 (Data Leakage)
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                            期末考的題目不小心混進了考古題。例如同一段行人錄影中：<strong>前一秒放在訓練集，後一秒放在測試集</strong>。模型測驗分數好得不可思議，但一上真實道路就出重大車禍！
+                        </p>
+                    </div>
+
+                    <!-- Trap 2: Distribution Shift -->
+                    <div class="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 space-y-2">
+                        <div class="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold text-sm">
+                            <i data-lucide="cloud-snow" class="w-4 h-4"></i>
+                            陷阱 2：分布偏移 (Distribution Shift)
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                            就算資料切得再完美，如果你的自駕車只在天天晴朗的<strong>亞利桑那州</strong>收集數據，開去下暴雪的<strong>匹茲堡</strong>直接呆掉——因為它從沒見過雪！真實世界永遠比資料集更廣闊。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 6: 33 集演算法航海全圖 -->
+        <section id="roadmap" class="scroll-mt-24 space-y-8">
+            <div class="border-b border-slate-200 dark:border-slate-800 pb-4">
+                <span class="text-xs uppercase tracking-wider font-bold text-sky-600 dark:text-sky-400">CHAPTER 06</span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-3">
+                    <i data-lucide="map" class="w-7 h-7 text-indigo-500"></i>
+                    接下來的征途：33 個機器學習演算法五大季度
+                </h2>
+                <p class="text-slate-600 dark:text-slate-400 text-sm mt-2">
+                    每一集都維持黃金四部曲：<strong>直覺建立 $\to$ 數學拆解 $\to$ 優缺點剖析 $\to$ 從零手寫 Code + sklearn 三行搞定！</strong>
+                </p>
+            </div>
+
+            <!-- 5 Seasons Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <!-- S1 -->
+                <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-sky-300 dark:border-sky-800 shadow-sm space-y-3">
+                    <div class="text-xs font-bold px-2.5 py-1 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300 inline-block">
+                        第一季
+                    </div>
+                    <h4 class="font-bold text-sm text-slate-900 dark:text-white">經典監督式學習</h4>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">新手村開局，最關鍵的基本功底！</p>
+                    <ul class="text-xs space-y-1.5 text-slate-600 dark:text-slate-300 font-mono">
+                        <li class="flex items-center gap-1.5 text-sky-600 dark:text-sky-400 font-bold">
+                            <i data-lucide="compass" class="w-3.5 h-3.5"></i> Ep.01 線性回歸 (下集)
+                        </li>
+                        <li>• 邏輯回歸 Logistic</li>
+                        <li>• 決策樹 Decision Tree</li>
+                        <li>• 隨機森林 Random Forest</li>
+                        <li>• SVM 支援向量機</li>
+                        <li>• XGBoost / GBDT</li>
+                    </ul>
+                </div>
+
+                <!-- S2 -->
+                <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+                    <div class="text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 inline-block">
+                        第二季
+                    </div>
+                    <h4 class="font-bold text-sm text-slate-900 dark:text-white">非監督式學習</h4>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">無標籤資料的大規模結構發掘</p>
+                    <ul class="text-xs space-y-1.5 text-slate-600 dark:text-slate-300 font-mono">
+                        <li>• K-Means 分群演算法</li>
+                        <li>• DBSCAN 密度分群</li>
+                        <li>• PCA 主成分分析降維</li>
+                        <li>• t-SNE / UMAP</li>
+                        <li>• 高斯混合模型 GMM</li>
+                    </ul>
+                </div>
+
+                <!-- S3 -->
+                <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+                    <div class="text-xs font-bold px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 inline-block">
+                        第三季
+                    </div>
+                    <h4 class="font-bold text-sm text-slate-900 dark:text-white">機率與時序模型</h4>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">處理不確定性與時間序列推演</p>
+                    <ul class="text-xs space-y-1.5 text-slate-600 dark:text-slate-300 font-mono">
+                        <li>• 樸素貝氏 Naive Bayes</li>
+                        <li>• 隱馬可夫模型 HMM</li>
+                        <li>• ARIMA 時序預測</li>
+                        <li>• 卡爾曼濾波 Kalman</li>
+                    </ul>
+                </div>
+
+                <!-- S4 -->
+                <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+                    <div class="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 inline-block">
+                        第四季
+                    </div>
+                    <h4 class="font-bold text-sm text-slate-900 dark:text-white">神經網路與深度學習</h4>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">邁向現代大型 AI 的基石</p>
+                    <ul class="text-xs space-y-1.5 text-slate-600 dark:text-slate-300 font-mono">
+                        <li>• 感知機 Perceptron</li>
+                        <li>• MLP 多層感知機</li>
+                        <li>• 反向傳播 Backprop</li>
+                        <li>• CNN 卷積神經網絡</li>
+                        <li>• Transformer 架構初探</li>
+                    </ul>
+                </div>
+
+                <!-- S5 -->
+                <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+                    <div class="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 inline-block">
+                        第五季
+                    </div>
+                    <h4 class="font-bold text-sm text-slate-900 dark:text-white">強化學習</h4>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">智能體環境互動與決策終局</p>
+                    <ul class="text-xs space-y-1.5 text-slate-600 dark:text-slate-300 font-mono">
+                        <li>• Q-Learning</li>
+                        <li>• DQN 深度強化學習</li>
+                        <li>• Policy Gradient 策略梯度</li>
+                        <li>• PPO 演算法</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 7: 隨堂快問快答 (自我檢測) -->
+        <section class="p-8 rounded-3xl bg-gradient-to-br from-sky-500/10 via-indigo-500/10 to-transparent border border-sky-300/40 dark:border-sky-800/40 space-y-6">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 rounded-xl bg-sky-500 text-white">
+                    <i data-lucide="help-circle" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-slate-900 dark:text-white">本集核心概念快測</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">點擊選項，即刻驗證你是否掌握了本集核心觀念！</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="quiz-container">
+                <!-- Q1 -->
+                <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
+                    <span class="text-xs font-bold text-sky-600 dark:text-sky-400 font-mono">Q1. 判斷題</span>
+                    <p class="text-sm font-semibold text-slate-900 dark:text-white">只要模型在訓練集上的 Loss 降為 0，就代表它是一個完美的好模型？</p>
+                    <div class="space-y-2">
+                        <button onclick="checkQuiz(this, false, '正確！Loss=0 很可能是學生 B（Overfitting），把雜訊都死記下來，對全新未知資料往往一塌糊塗。')" class="w-full text-left p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                            A. 是的，誤差為零說明沒有任何缺陷
+                        </button>
+                        <button onclick="checkQuiz(this, true, '賓果！太靈活的模型會死背雜訊，真正目標是泛化到沒見過的資料。')" class="w-full text-left p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                            B. 不是，這很可能發生嚴重的過擬合 (Overfitting)
+                        </button>
+                    </div>
+                    <div class="quiz-feedback hidden text-xs p-2.5 rounded-lg mt-2 font-medium"></div>
+                </div>
+
+                <!-- Q2 -->
+                <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
+                    <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 font-mono">Q2. 下山參數</span>
+                    <p class="text-sm font-semibold text-slate-900 dark:text-white">如果在梯度下降中將學習率 ($\eta$) 設定得太大，會發生什麼事？</p>
+                    <div class="space-y-2">
+                        <button onclick="checkQuiz(this, true, '沒錯！步幅太大會一步跨過山谷左右亂跳，甚至跳到更高處導致 Loss 爆炸。')" class="w-full text-left p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                            A. 一步跨過山谷左右亂跳，甚至 Loss 爆炸
+                        </button>
+                        <button onclick="checkQuiz(this, false, '錯誤。一步一公分走不到谷底那是學習率「太小」的情況。')" class="w-full text-left p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                            B. 下山非常緩慢，走到天亮都還在山腰
+                        </button>
+                    </div>
+                    <div class="quiz-feedback hidden text-xs p-2.5 rounded-lg mt-2 font-medium"></div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Transcript Off-Canvas Drawer (對照逐字稿) -->
+    <div id="transcript-drawer" class="fixed inset-y-0 right-0 z-50 w-full sm:w-[520px] bg-white dark:bg-slate-900 shadow-2xl border-l border-slate-200 dark:border-slate-800 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+        <!-- Drawer Header -->
+        <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950">
+            <div class="flex items-center gap-2">
+                <i data-lucide="file-text" class="w-5 h-5 text-sky-500"></i>
+                <h3 class="font-bold text-base text-slate-900 dark:text-white">原片完整逐字稿對照</h3>
+            </div>
+            <button id="close-drawer-btn" class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 transition">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <!-- Search Transcript Filter -->
+        <div class="p-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <div class="relative">
+                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+                <input id="transcript-search" type="text" placeholder="搜尋關鍵字（例如：旋鈕、梯度、自駕車...）" class="w-full pl-9 pr-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs border-none focus:ring-2 focus:ring-sky-500 text-slate-800 dark:text-slate-100 outline-none">
+            </div>
+        </div>
+
+        <!-- Drawer Body -->
+        <div id="transcript-list" class="flex-1 overflow-y-auto p-4 space-y-3 divide-y divide-slate-100 dark:divide-slate-800/60 font-sans text-xs">
+            <!-- Dynamically populated via JS -->
+        </div>
+    </div>
+    <!-- Drawer Overlay -->
+    <div id="drawer-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 hidden transition-opacity"></div>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-8 transition-colors">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
+            <div class="flex items-center gap-2">
+                <i data-lucide="sparkles" class="w-4 h-4 text-sky-500"></i>
+                <span>機器學習系列第 0 集互動筆記 · 原作 Enzo 獨自升級</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <span>下集預告：線性回歸手把手紙筆微分</span>
+                <a href="#core-function" class="text-sky-600 dark:text-sky-400 hover:underline">回到頂部 ↑</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // Render Math with KaTeX
+            try {
+                katex.render(
+                    "\\text{MSE} = \\frac{1}{N} \\sum_{i=1}^{N} (Y_i - \\hat{Y}_i)^2",
+                    document.getElementById("formula-mse"),
+                    { throwOnError: false }
+                );
+                katex.render(
+                    "\\theta_{\\text{new}} = \\theta_{\\text{old}} - \\eta \\cdot \\nabla \\text{Loss}(\\theta)",
+                    document.getElementById("formula-gd"),
+                    { throwOnError: false }
+                );
+            } catch (err) {
+                console.error("KaTeX rendering error", err);
+            }
+
+            // Initialize Lucide icons
+            lucide.createIcons();
+
+            // Populate transcript drawer
+            initTranscriptDrawer();
+
+            // Initialize Canvas Simulations
+            initMixerSimulation();
+            initMountainSimulation();
+            initFittingSimulation();
+        });
+
+        const transcriptRaw = [
+            { time: "00:00:00", text: "嗨大家好我是 Enzo。你今天從起床到現在大概已經被機器學習服務了幾百次，手機看一眼你的臉就解鎖了，垃圾信件自己跑去垃圾桶，然後 YouTube 很準的知道你現在需要看這一支影片。" },
+            { time: "00:00:16", text: "大家都知道這些東西叫做 AI、叫機器學習，但如果我問你機器到底在學什麼？他怎麼學？學完之後怎麼知道他有沒有學會？大部分人就會卡住。" },
+            { time: "00:00:28", text: "這不是你的問題，是大部分教學的問題。他不是一開始就丟一堆公式，就是直接 import sklearn 跑完收工。" },
+            { time: "00:00:36", text: "所以從今天開始我要做一個特輯，一集講一個機器學習演算法，總共 33 個。每一集都從最底層的直覺開始，講到原理優缺點，最後自己手寫 code。但在進入演算法之前我們需要一張地圖，這集就是這張地圖。" },
+            { time: "00:01:02", text: "我們做個小實驗：叫你寫個程式判斷這張照片裡有沒有貓。如果有尖尖耳朵是貓、有鬍鬚是貓...但世界太複雜，你永遠寫不完所有的規則。" },
+            { time: "00:01:21", text: "機器學習的想法是把整件事情反過來。傳統寫程式是人把規則寫好，丟資料進去他給你答案；機器學習則是給他一堆資料和對應答案，讓他自己找出規則。" },
+            { time: "00:01:41", text: "請記下這句話：所有的機器學習說到底都是在找那個函數 Y = f(X)。X 是輸入（照片、坪數、感測器），Y 是答案（是不是貓、房價）。" },
+            { time: "00:02:00", text: "模型就像一台混音器，上面每個旋鈕叫參數。一開始亂轉輸出很差，學習就是不斷調旋鈕，直到輸出跟正確答案越來越接近。小模型只有 2 個旋鈕，GPT 則有上千億個。" },
+            { time: "00:02:46", text: "門派一：監督式學習（Supervised Learning）。就像附詳解的考古題，每一題都有標準答案（標籤 Label）。分成分類（類別：貓/狗）與回歸（數值：房價/距離）。" },
+            { time: "00:03:48", text: "門派二：非監督式學習（Unsupervised Learning）。像媽媽把整堆衣服倒在床上叫你整理，沒說怎麼分，你自動把褲子放一堆、襪子放一堆。最常見的是分群（Clustering）。" },
+            { time: "00:04:38", text: "門派三：強化學習（Reinforcement Learning）。不是看資料學，而是做了才知道。像訓練狗握手，抬手給零食、做錯扣分。AlphaGo 下棋就是這個門派。" },
+            { time: "00:05:45", text: "第一步：你需要一個分數衡量模型有多爛，叫做 Loss 損失函數。例如均方誤差（MSE）：算每筆誤差平方後取平均。平方確保為正數且會放大嚴重錯誤。" },
+            { time: "00:06:46", text: "第二步：怎麼找到 Loss 最小的地方？梯度下降（Gradient Descent）。想像濃霧山中看不到山腳，腳感覺哪邊是往下的就往那走一步，一直重複直到不再往下。" },
+            { time: "00:08:19", text: "第三步：步伐要多大？η 叫學習率（Learning Rate）。太小一步一公分走到天亮都沒到；太大一步跨過山谷左右亂跳甚至爆炸；剛好就能穩穩走到谷底。" },
+            { time: "00:08:52", text: "陷阱：局部最小值（Local Minimum）。走到半山腰的小坑周圍都是上坡，誤以為已經到谷底。" },
+            { time: "00:09:22", text: "Loss 一路降到幾乎是 0 完美了嗎？小心 Overfitting！學生 A 沒讀（欠擬合）；學生 B 把考古題死背下來（過擬合）；學生 C 理解觀念考古題與期末考都好（泛化 Generalization）。" },
+            { time: "00:11:00", text: "機器學習真正的目標從來不是把資料學到完美，而是在沒看過的資料上也對！" },
+            { time: "00:11:45", text: "解法：一開始把資料切成三份：訓練集（考古題）、驗證集（模擬考）、測試集（鎖保險箱的期末考）。" },
+            { time: "00:12:28", text: "注意資料洩漏（Data Leakage，期末考混進考古題）與分布偏移（Distribution Shift，自駕車只在好天氣訓練，遇到下雪就當機）。" },
+            { time: "00:13:24", text: "接下來 33 集分成五個季度：經典監督式學習、非監督式、機率時序、深度學習、強化學習。下集：線性回歸手把手紙筆微分！" }
+        ];
+
+        function initTranscriptDrawer() {
+            const listEl = document.getElementById("transcript-list");
+            const drawerEl = document.getElementById("transcript-drawer");
+            const overlayEl = document.getElementById("drawer-overlay");
+            const toggleBtn = document.getElementById("transcript-toggle-btn");
+            const closeBtn = document.getElementById("close-drawer-btn");
+            const searchInput = document.getElementById("transcript-search");
+
+            function renderItems(filter = "") {
+                listEl.innerHTML = "";
+                const filtered = transcriptRaw.filter(item => 
+                    item.text.toLowerCase().includes(filter.toLowerCase()) || 
+                    item.time.includes(filter)
+                );
+
+                if (filtered.length === 0) {
+                    listEl.innerHTML = `<div class="text-center py-8 text-slate-400">沒有符合搜尋的段落</div>`;
+                    return;
+                }
+
+                filtered.forEach(item => {
+                    const row = document.createElement("div");
+                    row.className = "pt-3 pb-1 space-y-1 hover:bg-slate-50 dark:hover:bg-slate-800/40 p-2 rounded-lg transition";
+                    row.innerHTML = `
+                        <div class="flex items-center justify-between text-slate-400 text-[11px] font-mono">
+                            <span class="px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300 font-semibold">${item.time}</span>
+                            <a href="https://youtu.be/LVlJ1j_hTlY?t=${timeToSeconds(item.time)}" target="_blank" class="hover:text-rose-500 flex items-center gap-1">
+                                <i data-lucide="external-link" class="w-3 h-3"></i> 跳轉原片
+                            </a>
+                        </div>
+                        <p class="text-slate-700 dark:text-slate-300 leading-relaxed">${item.text}</p>
+                    `;
+                    listEl.appendChild(row);
+                });
+                lucide.createIcons();
+            }
+
+            function timeToSeconds(timeStr) {
+                const parts = timeStr.split(":").map(Number);
+                return parts[0] * 3600 + parts[1] * 60 + parts[2];
+            }
+
+            function openDrawer() {
+                drawerEl.classList.remove("translate-x-full");
+                overlayEl.classList.remove("hidden");
+            }
+
+            function closeDrawer() {
+                drawerEl.classList.add("translate-x-full");
+                overlayEl.classList.add("hidden");
+            }
+
+            toggleBtn.addEventListener("click", openDrawer);
+            closeBtn.addEventListener("click", closeDrawer);
+            overlayEl.addEventListener("click", closeDrawer);
+
+            searchInput.addEventListener("input", (e) => {
+                renderItems(e.target.value);
+            });
+
+            renderItems();
+        }
+
+        function initMixerSimulation() {
+            const canvas = document.getElementById("mixerCanvas");
+            const ctx = canvas.getContext("2d");
+            const knobW = document.getElementById("knob-w");
+            const knobB = document.getElementById("knob-b");
+            const wDisplay = document.getElementById("w-val-display");
+            const bDisplay = document.getElementById("b-val-display");
+            const lossDisplay = document.getElementById("mixer-loss-display");
+            const statusBadge = document.getElementById("mixer-status-badge");
+            const autoTuneBtn = document.getElementById("auto-tune-btn");
+            const resetBtn = document.getElementById("reset-mixer-btn");
+
+            // Fixed realistic data points (House size: ping -> price in 100k)
+            const dataPoints = [
+                { x: 12, y: 18 },
+                { x: 18, y: 24 },
+                { x: 22, y: 32 },
+                { x: 28, y: 36 },
+                { x: 33, y: 48 },
+                { x: 38, y: 52 },
+                { x: 44, y: 62 },
+                { x: 48, y: 70 }
+            ];
+
+            function resizeCanvas() {
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width * window.devicePixelRatio;
+                canvas.height = rect.height * window.devicePixelRatio;
+                ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+                draw();
+            }
+            window.addEventListener("resize", resizeCanvas);
+
+            function computeLoss(w, b) {
+                let sumSq = 0;
+                dataPoints.forEach(p => {
+                    const yPred = w * p.x + b;
+                    sumSq += Math.pow(p.y - yPred, 2);
+                });
+                return sumSq / dataPoints.length;
+            }
+
+            function draw() {
+                const w = parseFloat(knobW.value);
+                const b = parseFloat(knobB.value);
+                wDisplay.textContent = w.toFixed(2);
+                bDisplay.textContent = b.toFixed(1);
+
+                const loss = computeLoss(w, b);
+                lossDisplay.textContent = loss.toFixed(1);
+
+                if (loss < 15) {
+                    statusBadge.textContent = "完美！旋鈕與資料極度契合 🎯";
+                    statusBadge.className = "px-3 py-1 rounded-full text-xs font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-800";
+                    lossDisplay.className = "text-2xl font-black font-mono text-emerald-400 mt-0.5";
+                } else if (loss < 60) {
+                    statusBadge.textContent = "接近中！還可稍微微調";
+                    statusBadge.className = "px-3 py-1 rounded-full text-xs font-bold bg-amber-950/80 text-amber-300 border border-amber-800";
+                    lossDisplay.className = "text-2xl font-black font-mono text-amber-400 mt-0.5";
+                } else {
+                    statusBadge.textContent = "誤差過大！旋鈕亂轉";
+                    statusBadge.className = "px-3 py-1 rounded-full text-xs font-bold bg-rose-950/80 text-rose-300 border border-rose-800";
+                    lossDisplay.className = "text-2xl font-black font-mono text-rose-400 mt-0.5";
+                }
+
+                const rect = canvas.getBoundingClientRect();
+                const width = rect.width;
+                const height = rect.height;
+
+                ctx.clearRect(0, 0, width, height);
+
+                // Mapping functions
+                const minX = 5, maxX = 55;
+                const minY = 5, maxY = 80;
+                const mapX = (x) => ((x - minX) / (maxX - minX)) * (width - 60) + 40;
+                const mapY = (y) => height - 30 - ((y - minY) / (maxY - minY)) * (height - 60);
+
+                // Draw Grid
+                ctx.strokeStyle = "#1e293b";
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                for (let x = 10; x <= 50; x += 10) {
+                    ctx.moveTo(mapX(x), 10);
+                    ctx.lineTo(mapX(x), height - 30);
+                }
+                for (let y = 10; y <= 70; y += 20) {
+                    ctx.moveTo(40, mapY(y));
+                    ctx.lineTo(width - 20, mapY(y));
+                }
+                ctx.stroke();
+
+                // Draw Error Lines from points to the prediction line
+                ctx.strokeStyle = "rgba(244, 63, 94, 0.4)";
+                ctx.setLineDash([3, 3]);
+                dataPoints.forEach(p => {
+                    const yHat = w * p.x + b;
+                    ctx.beginPath();
+                    ctx.moveTo(mapX(p.x), mapY(p.y));
+                    ctx.lineTo(mapX(p.x), mapY(yHat));
+                    ctx.stroke();
+                });
+                ctx.setLineDash([]);
+
+                // Draw Model Prediction Line
+                ctx.strokeStyle = "#38bdf8";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                const xStart = minX;
+                const yStart = w * xStart + b;
+                const xEnd = maxX;
+                const yEnd = w * xEnd + b;
+                ctx.moveTo(mapX(xStart), mapY(yStart));
+                ctx.lineTo(mapX(xEnd), mapY(yEnd));
+                ctx.stroke();
+
+                // Draw Data Points
+                dataPoints.forEach(p => {
+                    ctx.fillStyle = "#818cf8";
+                    ctx.beginPath();
+                    ctx.arc(mapX(p.x), mapY(p.y), 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = "#ffffff";
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                });
+            }
+
+            knobW.addEventListener("input", draw);
+            knobB.addEventListener("input", draw);
+
+            autoTuneBtn.addEventListener("click", () => {
+                // Optimal linear regression fit for this dataset: w ~ 1.45, b ~ -0.8
+                knobW.value = 1.45;
+                knobB.value = -0.8;
+                draw();
+            });
+
+            resetBtn.addEventListener("click", () => {
+                knobW.value = 0.3;
+                knobB.value = 15;
+                draw();
+            });
+
+            setTimeout(resizeCanvas, 50);
+        }
+
+        function initMountainSimulation() {
+            const canvas = document.getElementById("mountainCanvas");
+            const ctx = canvas.getContext("2d");
+            const runBtn = document.getElementById("run-gd-btn");
+            const resetBtn = document.getElementById("reset-ball-btn");
+            const lrSlider = document.getElementById("lr-slider");
+            const lrValText = document.getElementById("lr-val-text");
+            const stepDisplay = document.getElementById("gd-step-display");
+            const lossDisplay = document.getElementById("gd-loss-display");
+            const statusText = document.getElementById("gd-status-text");
+            const mountainInfo = document.getElementById("mountain-info");
+            const presetBtns = document.querySelectorAll(".lr-preset-btn");
+
+            // Double well landscape: loss = 0.08*x^4 - 0.2*x^3 - 0.9*x^2 + 0.3*x + 4
+            // Range x: [-3.2, 4.0]
+            function lossFn(x) {
+                return 0.08 * Math.pow(x, 4) - 0.2 * Math.pow(x, 3) - 0.9 * Math.pow(x, 2) + 0.3 * x + 4;
+            }
+
+            function gradFn(x) {
+                return 0.32 * Math.pow(x, 3) - 0.6 * Math.pow(x, 2) - 1.8 * x + 0.3;
+            }
+
+            let ballX = 3.6; // initial position on right slope
+            let path = [{ x: ballX, y: lossFn(ballX) }];
+            let isRunning = false;
+            let animId = null;
+            let steps = 0;
+
+            function resizeCanvas() {
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width * window.devicePixelRatio;
+                canvas.height = rect.height * window.devicePixelRatio;
+                ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+                draw();
+            }
+            window.addEventListener("resize", resizeCanvas);
+
+            function mapCoord(x, y, w, h) {
+                const minX = -3.5, maxX = 4.2;
+                const minY = -0.5, maxY = 8.5;
+                const px = ((x - minX) / (maxX - minX)) * (w - 40) + 20;
+                const py = h - 25 - ((y - minY) / (maxY - minY)) * (h - 50);
+                return { px, py };
+            }
+
+            function draw() {
+                const rect = canvas.getBoundingClientRect();
+                const width = rect.width;
+                const height = rect.height;
+
+                ctx.clearRect(0, 0, width, height);
+
+                // Draw Mountain Surface
+                ctx.beginPath();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = "#10b981";
+
+                for (let x = -3.5; x <= 4.2; x += 0.05) {
+                    const y = lossFn(x);
+                    const { px, py } = mapCoord(x, y, width, height);
+                    if (x === -3.5) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.stroke();
+
+                // Mountain fill
+                ctx.lineTo(width - 20, height - 25);
+                ctx.lineTo(20, height - 25);
+                ctx.closePath();
+                const grad = ctx.createLinearGradient(0, 0, 0, height);
+                grad.addColorStop(0, "rgba(16, 185, 129, 0.2)");
+                grad.addColorStop(1, "rgba(15, 23, 42, 0.8)");
+                ctx.fillStyle = grad;
+                ctx.fill();
+
+                // Draw descent path dots
+                if (path.length > 1) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = "rgba(244, 63, 94, 0.7)";
+                    ctx.lineWidth = 2;
+                    path.forEach((pt, i) => {
+                        const { px, py } = mapCoord(pt.x, pt.y, width, height);
+                        if (i === 0) ctx.moveTo(px, py);
+                        else ctx.lineTo(px, py);
+                    });
+                    ctx.stroke();
+
+                    path.forEach(pt => {
+                        const { px, py } = mapCoord(pt.x, pt.y, width, height);
+                        ctx.fillStyle = "#f43f5e";
+                        ctx.beginPath();
+                        ctx.arc(px, py, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                }
+
+                // Draw Ball at current position
+                const currentY = lossFn(ballX);
+                const { px: bPx, py: bPy } = mapCoord(ballX, currentY, width, height);
+
+                ctx.fillStyle = "#facc15";
+                ctx.beginPath();
+                ctx.arc(bPx, bPy, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Telemetry
+                stepDisplay.textContent = steps;
+                lossDisplay.textContent = currentY.toFixed(3);
+            }
+
+            function stepDescent() {
+                const lr = parseFloat(lrSlider.value);
+                const grad = gradFn(ballX);
+                const stepChange = lr * grad;
+
+                // Stop conditions
+                if (Math.abs(stepChange) < 0.0005) {
+                    stopDescent("收斂完成：到達山谷底部 🎯");
+                    return;
+                }
+
+                if (Math.abs(ballX) > 6 || lossFn(ballX) > 30) {
+                    stopDescent("💥 學習率過大！梯度爆炸飛出山谷！");
+                    return;
+                }
+
+                ballX = ballX - stepChange;
+                steps++;
+                path.push({ x: ballX, y: lossFn(ballX) });
+                draw();
+
+                if (steps > 200) {
+                    stopDescent("步數超過上限 (可能震盪或學習率極慢)");
+                    return;
+                }
+
+                animId = requestAnimationFrame(stepDescent);
+            }
+
+            function stopDescent(msg) {
+                isRunning = false;
+                cancelAnimationFrame(animId);
+                runBtn.innerHTML = `<i data-lucide="play" class="w-4 h-4"></i> 重新下山`;
+                statusText.textContent = msg;
+                lucide.createIcons();
+            }
+
+            runBtn.addEventListener("click", () => {
+                if (isRunning) {
+                    cancelAnimationFrame(animId);
+                    isRunning = false;
+                    runBtn.innerHTML = `<i data-lucide="play" class="w-4 h-4"></i> 繼續下山`;
+                } else {
+                    isRunning = true;
+                    statusText.textContent = "濃霧摸索下山中...";
+                    runBtn.innerHTML = `<i data-lucide="pause" class="w-4 h-4"></i> 暫停`;
+                    stepDescent();
+                }
+                lucide.createIcons();
+            });
+
+            resetBtn.addEventListener("click", () => {
+                cancelAnimationFrame(animId);
+                isRunning = false;
+                ballX = 3.6;
+                steps = 0;
+                path = [{ x: ballX, y: lossFn(ballX) }];
+                statusText.textContent = "已重置至起點";
+                runBtn.innerHTML = `<i data-lucide="play" class="w-4 h-4"></i> 開始下山`;
+                lucide.createIcons();
+                draw();
+            });
+
+            // Click canvas to drop ball
+            canvas.addEventListener("click", (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const minX = -3.5, maxX = 4.2;
+                ballX = minX + (clickX / rect.width) * (maxX - minX);
+                ballX = Math.max(-3.4, Math.min(4.0, ballX));
+
+                cancelAnimationFrame(animId);
+                isRunning = false;
+                steps = 0;
+                path = [{ x: ballX, y: lossFn(ballX) }];
+                statusText.textContent = `小球位置設為 x=${ballX.toFixed(2)}`;
+                runBtn.innerHTML = `<i data-lucide="play" class="w-4 h-4"></i> 開始下山`;
+                lucide.createIcons();
+                draw();
+            });
+
+            lrSlider.addEventListener("input", (e) => {
+                const val = parseFloat(e.target.value);
+                lrValText.textContent = val.toFixed(3);
+                presetBtns.forEach(btn => btn.classList.remove("active-lr", "border-emerald-500", "bg-emerald-500/20", "text-emerald-300"));
+            });
+
+            presetBtns.forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const lr = parseFloat(btn.dataset.lr);
+                    lrSlider.value = lr;
+                    lrValText.textContent = lr.toFixed(3);
+                    presetBtns.forEach(b => b.classList.remove("active-lr", "border-emerald-500", "bg-emerald-500/20", "text-emerald-300"));
+                    btn.classList.add("active-lr", "border-emerald-500", "bg-emerald-500/20", "text-emerald-300");
+                });
+            });
+
+            setTimeout(resizeCanvas, 50);
+        }
+
+        function initFittingSimulation() {
+            const canvas = document.getElementById("fittingCanvas");
+            const ctx = canvas.getContext("2d");
+            const degDisplay = document.getElementById("degree-display");
+            const trainLossText = document.getElementById("train-loss-text");
+            const testLossText = document.getElementById("test-loss-text");
+            const fitDiagnostic = document.getElementById("fit-diagnostic");
+            const resampleBtn = document.getElementById("resample-data-btn");
+            const degBtns = document.querySelectorAll(".deg-btn");
+
+            let currentDegree = 1;
+            let trainPoints = [];
+            let testPoints = [];
+
+            // True underlying function: f(x) = sin(x * 0.9) * 2.5 + noise
+            function generateData() {
+                trainPoints = [];
+                testPoints = [];
+                // 10 training points
+                for (let i = 0; i < 9; i++) {
+                    const x = -3.5 + i * 0.9 + (Math.random() - 0.5) * 0.4;
+                    const trueY = Math.sin(x * 0.9) * 2.5;
+                    const noise = (Math.random() - 0.5) * 1.4;
+                    trainPoints.push({ x, y: trueY + noise });
+                }
+                // 6 test points
+                for (let i = 0; i < 6; i++) {
+                    const x = -3.2 + i * 1.3 + (Math.random() - 0.5) * 0.3;
+                    const trueY = Math.sin(x * 0.9) * 2.5;
+                    const noise = (Math.random() - 0.5) * 1.4;
+                    testPoints.push({ x, y: trueY + noise });
+                }
+                draw();
+            }
+
+            function resizeCanvas() {
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width * window.devicePixelRatio;
+                canvas.height = rect.height * window.devicePixelRatio;
+                ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+                draw();
+            }
+            window.addEventListener("resize", resizeCanvas);
+
+            // Polynomial least squares fit via Gauss-Jordan elimination
+            function fitPolynomial(points, degree) {
+                const n = degree + 1;
+                const A = Array.from({ length: n }, () => Array(n).fill(0));
+                const B = Array(n).fill(0);
+
+                for (let i = 0; i < n; i++) {
+                    for (let j = 0; j < n; j++) {
+                        let sum = 0;
+                        points.forEach(p => sum += Math.pow(p.x, i + j));
+                        A[i][j] = sum;
+                    }
+                    let sumB = 0;
+                    points.forEach(p => sumB += p.y * Math.pow(p.x, i));
+                    B[i] = sumB;
+                }
+
+                // Solve system A * coeffs = B
+                for (let i = 0; i < n; i++) {
+                    let maxRow = i;
+                    for (let k = i + 1; k < n; k++) {
+                        if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) maxRow = k;
+                    }
+                    [A[i], A[maxRow]] = [A[maxRow], A[i]];
+                    [B[i], B[maxRow]] = [B[maxRow], B[i]];
+
+                    const diag = A[i][i] || 1e-7;
+                    for (let k = i; k < n; k++) A[i][k] /= diag;
+                    B[i] /= diag;
+
+                    for (let k = 0; k < n; k++) {
+                        if (k !== i) {
+                            const factor = A[k][i];
+                            for (let j = i; j < n; j++) A[k][j] -= factor * A[i][j];
+                            B[k] -= factor * B[i];
+                        }
+                    }
+                }
+                return B; // Coefficients [c0, c1, c2, ...]
+            }
+
+            function evalPoly(coeffs, x) {
+                return coeffs.reduce((acc, c, idx) => acc + c * Math.pow(x, idx), 0);
+            }
+
+            function draw() {
+                if (trainPoints.length === 0) return;
+                const rect = canvas.getBoundingClientRect();
+                const width = rect.width;
+                const height = rect.height;
+
+                ctx.clearRect(0, 0, width, height);
+
+                const coeffs = fitPolynomial(trainPoints, currentDegree);
+
+                // Compute loss
+                let trainLoss = 0;
+                trainPoints.forEach(p => trainLoss += Math.pow(p.y - evalPoly(coeffs, p.x), 2));
+                trainLoss /= trainPoints.length;
+
+                let testLoss = 0;
+                testPoints.forEach(p => testLoss += Math.pow(p.y - evalPoly(coeffs, p.x), 2));
+                testLoss /= testPoints.length;
+
+                trainLossText.textContent = trainLoss.toFixed(2);
+                testLossText.textContent = testLoss.toFixed(2);
+
+                if (currentDegree === 1) {
+                    degDisplay.textContent = "1 次方 (直線)";
+                    fitDiagnostic.textContent = "⚠️ 欠擬合 (Underfitting)：兩邊 Loss 都高";
+                    fitDiagnostic.className = "font-sans font-bold text-xs text-amber-400";
+                } else if (currentDegree === 3) {
+                    degDisplay.textContent = "3 次方 (剛好)";
+                    fitDiagnostic.textContent = "🎯 良好泛化 (Generalization)：測試 Loss 最低";
+                    fitDiagnostic.className = "font-sans font-bold text-xs text-emerald-400";
+                } else {
+                    degDisplay.textContent = "9 次方 (高度震盪)";
+                    fitDiagnostic.textContent = "💥 嚴重過擬合 (Overfitting)：訓練 Loss ≈ 0，測試爆表！";
+                    fitDiagnostic.className = "font-sans font-bold text-xs text-rose-400";
+                }
+
+                // Coordinate Mapping
+                const minX = -4.0, maxX = 4.0;
+                const minY = -4.5, maxY = 4.5;
+                const mapX = (x) => ((x - minX) / (maxX - minX)) * (width - 40) + 20;
+                const mapY = (y) => height - 20 - ((y - minY) / (maxY - minY)) * (height - 40);
+
+                // Draw fitted curve
+                ctx.beginPath();
+                ctx.strokeStyle = currentDegree === 9 ? "#f43f5e" : (currentDegree === 3 ? "#10b981" : "#38bdf8");
+                ctx.lineWidth = 3;
+
+                for (let x = -4.0; x <= 4.0; x += 0.05) {
+                    const y = evalPoly(coeffs, x);
+                    const clampedY = Math.max(-5, Math.min(5, y));
+                    const px = mapX(x);
+                    const py = mapY(clampedY);
+                    if (x === -4.0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.stroke();
+
+                // Draw Training Points (Blue)
+                trainPoints.forEach(p => {
+                    ctx.fillStyle = "#38bdf8";
+                    ctx.beginPath();
+                    ctx.arc(mapX(p.x), mapY(p.y), 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = "#ffffff";
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                });
+
+                // Draw Test Points (Green)
+                testPoints.forEach(p => {
+                    ctx.fillStyle = "#34d399";
+                    ctx.beginPath();
+                    ctx.arc(mapX(p.x), mapY(p.y), 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = "#ffffff";
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                });
+            }
+
+            degBtns.forEach(btn => {
+                btn.addEventListener("click", () => {
+                    degBtns.forEach(b => {
+                        b.classList.remove("border-sky-400", "text-sky-300");
+                        b.classList.add("text-slate-300");
+                    });
+                    btn.classList.add("border-sky-400", "text-sky-300");
+                    currentDegree = parseInt(btn.dataset.deg);
+                    draw();
+                });
+            });
+
+            resampleBtn.addEventListener("click", generateData);
+
+            generateData();
+            setTimeout(resizeCanvas, 50);
+        }
+
+        window.checkQuiz = function(button, isCorrect, explanation) {
+            const parent = button.closest(".space-y-3");
+            const feedback = parent.querySelector(".quiz-feedback");
+            feedback.classList.remove("hidden");
+
+            if (isCorrect) {
+                feedback.className = "quiz-feedback text-xs p-2.5 rounded-lg mt-2 font-medium bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800";
+                feedback.innerHTML = `✅ ${explanation}`;
+            } else {
+                feedback.className = "quiz-feedback text-xs p-2.5 rounded-lg mt-2 font-medium bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800";
+                feedback.innerHTML = `❌ ${explanation}`;
+            }
+        };
+    </script>
+</body>
+</html>
