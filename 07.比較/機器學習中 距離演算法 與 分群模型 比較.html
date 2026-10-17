@@ -1,0 +1,2845 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>機器學習中 距離演算法 與 分群模型 比較</title>
+<style>
+  :root {
+    --primary-blue: #1e40af;
+    --primary-blue-light: #2563eb;
+    --primary-blue-bg: #eff6ff;
+    --primary-purple: #5b21b6;
+    --primary-purple-light: #7c3aed;
+    --primary-purple-bg: #f5f3ff;
+    --slate-900: #0f172a;
+    --slate-800: #1e293b;
+    --slate-700: #334155;
+    --slate-600: #475569;
+    --slate-500: #64748b;
+    --slate-200: #e2e8f0;
+    --slate-100: #f1f5f9;
+    --slate-50: #f8fafc;
+    --radius-lg: 16px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+    --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
+    --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 10px 25px rgba(15, 23, 42, 0.12);
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
+    background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 30%, #f1f5f9 100%);
+    color: var(--slate-800);
+    line-height: 1.5;
+    padding-bottom: 48px;
+  }
+
+  /* Sticky Top Navigation */
+  .sticky-nav {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(10px);
+    color: #fff;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    padding: 10px 18px;
+  }
+  .sticky-nav-inner {
+    max-width: 1460px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .brand-mini {
+    font-weight: 800;
+    font-size: 0.98rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #93c5fd;
+  }
+  .nav-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .nav-pill {
+    background: rgba(255,255,255,0.1);
+    color: #e2e8f0;
+    border: 1px solid rgba(255,255,255,0.15);
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+  .nav-pill:hover, .nav-pill.active {
+    background: #3b82f6;
+    color: #fff;
+    border-color: #60a5fa;
+  }
+
+  .container {
+    max-width: 1460px;
+    margin: 18px auto;
+    padding: 0 14px;
+  }
+
+  /* HERO BANNER (Matches Poster Top) */
+  .hero-banner {
+    background: #ffffff;
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    box-shadow: var(--shadow-md);
+    border: 2px solid #dbeafe;
+    display: grid;
+    grid-template-columns: 100px 1fr 325px;
+    gap: 18px;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+  @media (max-width: 1100px) {
+    .hero-banner {
+      grid-template-columns: 1fr;
+      text-align: center;
+    }
+    .hero-robot {
+      margin: 0 auto;
+    }
+  }
+  .hero-center {
+    text-align: center;
+  }
+  .hero-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .ai-chip-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg, #1e3a8a, #2563eb);
+    color: #38bdf8;
+    font-weight: 900;
+    font-size: 1.05rem;
+    border-radius: 10px;
+    border: 2px solid #93c5fd;
+    box-shadow: 0 0 0 3px #dbeafe;
+  }
+  .hero-title {
+    font-size: 2.05rem;
+    font-weight: 900;
+    color: #0f296b;
+    letter-spacing: 0.02em;
+  }
+  .hero-subtitle {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--slate-700);
+    margin-bottom: 12px;
+  }
+  .value-tags-bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    background: var(--slate-50);
+    border: 1px solid var(--slate-200);
+    padding: 8px 12px;
+    border-radius: 999px;
+  }
+  .value-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.81rem;
+    font-weight: 700;
+    color: var(--slate-700);
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .value-tag:hover {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    color: #1d4ed8;
+    transform: translateY(-1px);
+  }
+  .why-box {
+    background: #f8fafc;
+    border: 2px solid #cbd5e1;
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    text-align: left;
+  }
+  .why-box h3 {
+    color: #312e81;
+    font-size: 0.96rem;
+    font-weight: 800;
+    margin-bottom: 6px;
+    border-bottom: 2px solid #e0e7ff;
+    padding-bottom: 4px;
+  }
+  .why-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .why-list li {
+    font-size: 0.81rem;
+    font-weight: 600;
+    color: var(--slate-700);
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .why-list li span.check {
+    color: #0284c7;
+    font-weight: 900;
+    flex-shrink: 0;
+  }
+
+  /* Mode Switcher Bar */
+  .view-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    background: #fff;
+    padding: 10px 16px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--slate-200);
+    margin-bottom: 18px;
+  }
+  .view-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .badge-tip {
+    background: #dbeafe;
+    color: #1e40af;
+    font-weight: 700;
+    font-size: 0.83rem;
+    padding: 5px 12px;
+    border-radius: 999px;
+  }
+  .filter-btn {
+    background: var(--slate-100);
+    border: 1px solid var(--slate-200);
+    color: var(--slate-700);
+    padding: 5px 11px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-btn.active, .filter-btn:hover {
+    background: #1e40af;
+    color: #fff;
+    border-color: #1e40af;
+  }
+
+  /* Poster Main Dual Grid (Section 1 & Section 2) */
+  .poster-main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 1260px) {
+    .poster-main-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .section-card {
+    background: #fff;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    border: 1px solid var(--slate-200);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .section-header-blue {
+    background: linear-gradient(90deg, #0d2b76 0%, #1d4ed8 100%);
+    color: #fff;
+    padding: 10px 16px;
+    text-align: center;
+    font-size: 1.12rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+  }
+  .section-header-purple {
+    background: linear-gradient(90deg, #4c1d95 0%, #6d28d9 100%);
+    color: #fff;
+    padding: 10px 16px;
+    text-align: center;
+    font-size: 1.12rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+  }
+
+  .table-scroll {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .comp-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  .comp-table th, .comp-table td {
+    border: 1px solid #e2e8f0;
+    padding: 8px 4px;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 0.78rem;
+    word-break: break-word;
+  }
+  .comp-table th.row-label {
+    width: 56px;
+    background: #f8fafc;
+    color: var(--slate-800);
+    font-weight: 800;
+    font-size: 0.8rem;
+    padding: 6px 3px;
+  }
+  .comp-table thead th {
+    background: #f1f5f9;
+    color: #0f296b;
+    font-weight: 800;
+    font-size: 0.82rem;
+    padding: 9px 3px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .comp-table.purple-theme thead th {
+    color: #4c1d95;
+  }
+  .comp-table thead th:hover {
+    background: #dbeafe;
+  }
+  .comp-table.purple-theme thead th:hover {
+    background: #ede9fe;
+  }
+  .comp-table thead th .eng-sub {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--slate-600);
+    margin-top: 1px;
+  }
+  .click-hint-badge {
+    display: inline-block;
+    margin-top: 3px;
+    font-size: 0.64rem;
+    background: rgba(37, 99, 235, 0.12);
+    color: #1d4ed8;
+    padding: 1px 5px;
+    border-radius: 99px;
+    font-weight: 700;
+  }
+  .purple-theme .click-hint-badge {
+    background: rgba(109, 40, 217, 0.12);
+    color: #5b21b6;
+  }
+
+  /* Highlighted Column State */
+  .highlight-col {
+    background-color: #fef9c3 !important;
+  }
+
+  /* Deep Dive Panel */
+  .detail-panel {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    color: #fff;
+    border-radius: var(--radius-lg);
+    padding: 18px 22px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-lg);
+    border: 2px solid #3b82f6;
+  }
+  .detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+  }
+  .detail-title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .detail-badge {
+    background: #3b82f6;
+    color: #fff;
+    padding: 4px 11px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 800;
+  }
+  .detail-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  @media (max-width: 1024px) {
+    .detail-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  .detail-item {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 11px 13px;
+  }
+  .detail-item h4 {
+    color: #93c5fd;
+    font-size: 0.8rem;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .detail-item p {
+    font-size: 0.83rem;
+    color: #f1f5f9;
+    line-height: 1.48;
+  }
+  .algo-selector-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .algo-chip-btn {
+    background: rgba(255,255,255,0.08);
+    color: #cbd5e1;
+    border: 1px solid rgba(255,255,255,0.18);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .algo-chip-btn.active, .algo-chip-btn:hover {
+    background: #38bdf8;
+    color: #0f172a;
+    border-color: #38bdf8;
+  }
+
+  /* Bottom 5 Cards Grid (Matches Poster Bottom) */
+  .bottom-five-grid {
+    display: grid;
+    grid-template-columns: 1.42fr 1.15fr 0.96fr 1.12fr 1.15fr;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 1320px) {
+    .bottom-five-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 768px) {
+    .bottom-five-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .bottom-card {
+    background: #fff;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--slate-200);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .bottom-card-header {
+    color: #fff;
+    font-weight: 800;
+    font-size: 0.98rem;
+    padding: 9px 12px;
+    text-align: center;
+    letter-spacing: 0.02em;
+  }
+  .bg-navy { background: linear-gradient(90deg, #0d2b76, #1d4ed8); }
+  .bg-green { background: linear-gradient(90deg, #065f46, #059669); }
+  .bg-pink { background: linear-gradient(90deg, #be185d, #e11d48); }
+  .bg-orange { background: linear-gradient(90deg, #c2410c, #ea580c); }
+  .bg-blue { background: linear-gradient(90deg, #1e40af, #2563eb); }
+
+  .bottom-card-body {
+    padding: 10px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  /* Card 1: Real-life cases */
+  .case-split {
+    display: grid;
+    grid-template-columns: 2fr 3fr;
+    gap: 6px;
+    height: 100%;
+  }
+  .case-group-title {
+    font-size: 0.76rem;
+    font-weight: 800;
+    color: #1e40af;
+    text-align: center;
+    background: #eff6ff;
+    padding: 3px 4px;
+    border-radius: 5px;
+    margin-bottom: 6px;
+  }
+  .case-cols-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+  .case-cols-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 4px;
+  }
+  .mini-case-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 7px;
+    padding: 6px 2px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.18s;
+    min-width: 0;
+  }
+  .mini-case-card:hover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    transform: translateY(-2px);
+  }
+  .mini-case-card .title {
+    font-size: 0.71rem;
+    font-weight: 800;
+    color: #1e3a8a;
+    line-height: 1.2;
+  }
+  .mini-case-card .sub {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 4px;
+  }
+
+  /* Card 2: Scenario table */
+  .scenario-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.77rem;
+  }
+  .scenario-table th {
+    background: #ecfdf5;
+    color: #065f46;
+    font-weight: 800;
+    padding: 6px 4px;
+    border-bottom: 2px solid #a7f3d0;
+  }
+  .scenario-table td {
+    padding: 7px 4px;
+    border-bottom: 1px solid #e2e8f0;
+    text-align: center;
+    font-weight: 600;
+  }
+  .scenario-table tr:hover td {
+    background: #f0fdf4;
+  }
+
+  /* Card 3: Mnemonics */
+  .mnemonic-block {
+    background: #fff1f2;
+    border-left: 4px solid #e11d48;
+    padding: 8px 10px;
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 8px;
+  }
+  .mnemonic-block h4 {
+    color: #be123c;
+    font-size: 0.82rem;
+    font-weight: 800;
+    margin-bottom: 3px;
+  }
+  .mnemonic-block p {
+    font-size: 0.79rem;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.5;
+  }
+
+  /* Card 4: Exam Traps */
+  .trap-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .trap-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 0.77rem;
+    font-weight: 700;
+    color: var(--slate-800);
+    cursor: pointer;
+    padding: 3px 4px;
+    border-radius: 6px;
+    transition: background 0.15s;
+  }
+  .trap-list li:hover {
+    background: #fff7ed;
+  }
+  .trap-num {
+    background: #ea580c;
+    color: #fff;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 800;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* Card 5: Quick Judgment */
+  .quick-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .quick-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    font-size: 0.77rem;
+    font-weight: 700;
+    color: var(--slate-800);
+    background: #f8fafc;
+    padding: 5px 7px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+  }
+  .quick-arrow {
+    color: #2563eb;
+    font-weight: 900;
+  }
+  .quick-target {
+    color: #1d4ed8;
+    font-weight: 800;
+    background: #dbeafe;
+    padding: 1px 6px;
+    border-radius: 99px;
+    white-space: nowrap;
+  }
+
+  /* Interactive Labs Section */
+  .labs-section-title {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: #0f296b;
+    margin: 26px 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .labs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 1150px) {
+    .labs-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .lab-card {
+    background: #fff;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--slate-200);
+    overflow: hidden;
+  }
+  .lab-card-header {
+    background: linear-gradient(90deg, #0f172a, #1e3a8a);
+    color: #fff;
+    padding: 12px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .lab-card-header h3 {
+    font-size: 1.02rem;
+    font-weight: 800;
+  }
+  .lab-card-body {
+    padding: 16px;
+  }
+
+  .canvas-wrap {
+    background: #f8fafc;
+    border: 2px solid #cbd5e1;
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  canvas {
+    display: block;
+    max-width: 100%;
+    cursor: crosshair;
+  }
+
+  .controls-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .control-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 8px 10px;
+    border-radius: 8px;
+  }
+  .control-box label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--slate-700);
+    margin-bottom: 3px;
+  }
+  .control-box input[type="range"] {
+    width: 100%;
+    accent-color: #2563eb;
+  }
+
+  .metrics-dashboard {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .metric-pill {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 6px 8px;
+    text-align: center;
+  }
+  .metric-pill .m-name {
+    font-size: 0.73rem;
+    font-weight: 700;
+    color: #1e40af;
+  }
+  .metric-pill .m-val {
+    font-size: 1rem;
+    font-weight: 900;
+    color: #0f172a;
+    font-family: monospace;
+  }
+
+  .derivation-box {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-family: "Consolas", "Monaco", monospace;
+    font-size: 0.79rem;
+    line-height: 1.5;
+  }
+
+  .btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .btn {
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .btn-primary {
+    background: #2563eb;
+    color: #fff;
+  }
+  .btn-primary:hover {
+    background: #1d4ed8;
+  }
+  .btn-purple {
+    background: #7c3aed;
+    color: #fff;
+  }
+  .btn-purple:hover {
+    background: #6d28d9;
+  }
+  .btn-emerald {
+    background: #059669;
+    color: #fff;
+  }
+  .btn-emerald:hover {
+    background: #047857;
+  }
+  .btn-outline {
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+  }
+  .btn-outline:hover {
+    background: #e2e8f0;
+  }
+
+  /* Code Syntax Highlighting Box */
+  .code-viewer {
+    background: #0f172a;
+    color: #f8fafc;
+    border-radius: 12px;
+    padding: 14px;
+    font-family: "Consolas", "Fira Code", monospace;
+    font-size: 0.8rem;
+    line-height: 1.58;
+    overflow-x: auto;
+    border: 1px solid #334155;
+  }
+  .kw { color: #c084fc; font-weight: bold; }
+  .fn-dist { color: #38bdf8; font-weight: bold; background: rgba(56, 189, 248, 0.14); padding: 1px 5px; border-radius: 4px; }
+  .fn-clust { color: #4ade80; font-weight: bold; background: rgba(74, 222, 128, 0.14); padding: 1px 5px; border-radius: 4px; }
+  .param-hl { color: #fbbf24; font-weight: bold; }
+  .cmt { color: #94a3b8; font-style: italic; }
+
+  /* Quiz Section */
+  .quiz-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  @media (max-width: 960px) {
+    .quiz-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .quiz-item {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 12px;
+  }
+  .quiz-q {
+    font-weight: 800;
+    font-size: 0.84rem;
+    color: #0f172a;
+    margin-bottom: 8px;
+  }
+  .quiz-opts {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .quiz-opt {
+    text-align: left;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    padding: 6px 10px;
+    border-radius: 7px;
+    font-size: 0.79rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .quiz-opt:hover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+  }
+  .quiz-opt.correct {
+    background: #dcfce7;
+    border-color: #16a34a;
+    color: #14532d;
+    font-weight: 800;
+  }
+  .quiz-opt.wrong {
+    background: #fee2e2;
+    border-color: #dc2626;
+    color: #7f1d1d;
+  }
+  .quiz-exp {
+    margin-top: 8px;
+    padding: 8px;
+    border-radius: 7px;
+    background: #eff6ff;
+    border-left: 4px solid #2563eb;
+    font-size: 0.77rem;
+    color: #1e3a8a;
+    display: none;
+  }
+
+  /* Poster Footer Banner */
+  .poster-footer {
+    background: #ffffff;
+    border: 2px solid #dbeafe;
+    border-radius: var(--radius-lg);
+    padding: 14px 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    box-shadow: var(--shadow-md);
+    margin-top: 22px;
+  }
+  .footer-left {
+    font-weight: 800;
+    color: var(--slate-700);
+    font-size: 0.92rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .footer-center {
+    font-weight: 900;
+    font-size: 1.25rem;
+    color: #0f296b;
+    letter-spacing: 0.02em;
+  }
+  .footer-right {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #1e40af;
+    background: #eff6ff;
+    padding: 5px 12px;
+    border-radius: 999px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Sticky Navigation -->
+<nav class="sticky-nav">
+  <div class="sticky-nav-inner">
+    <div class="brand-mini">
+      <span>🤖</span>
+      <span>機器學習：距離演算法 vs. 分群模型 互動全書</span>
+    </div>
+    <div class="nav-pills">
+      <a href="#top-poster" class="nav-pill active">📊 完整比較總覽</a>
+      <a href="#deep-dive-panel" class="nav-pill">🔍 12大演算法深度解析</a>
+      <a href="#bottom-five-sec" class="nav-pill">💡 案例・口訣・陷阱・秒殺</a>
+      <a href="#interactive-labs" class="nav-pill">🧪 互動數學推導 & 分群模擬器</a>
+      <a href="#code-quiz-sec" class="nav-pill">💻 Python實作 & iPAS考題</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container" id="top-poster">
+
+  <!-- 1. TOP BANNER (Exact Match to Reference Image) -->
+  <header class="hero-banner">
+    <!-- Left Robot SVG -->
+    <div class="hero-robot">
+      <svg width="90" height="100" viewBox="0 0 96 106" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="46" cy="10" r="5" fill="#38bdf8" stroke="#0f172a" stroke-width="2.5"/>
+        <line x1="46" y1="15" x2="46" y2="24" stroke="#0f172a" stroke-width="3"/>
+        <rect x="20" y="24" width="52" height="38" rx="14" fill="#f8fafc" stroke="#0f172a" stroke-width="3"/>
+        <rect x="27" y="31" width="38" height="22" rx="7" fill="#0f172a"/>
+        <circle cx="38" cy="42" r="4.5" fill="#38bdf8"/>
+        <circle cx="54" cy="42" r="4.5" fill="#38bdf8"/>
+        <rect x="24" y="65" width="44" height="28" rx="8" fill="#dbeafe" stroke="#0f172a" stroke-width="3"/>
+        <rect x="35" y="71" width="22" height="16" rx="4" fill="#2563eb"/>
+        <text x="46" y="83" text-anchor="middle" fill="#fff" font-size="11" font-weight="900">AI</text>
+        <circle cx="78" cy="52" r="12" fill="#e0f2fe" stroke="#b45309" stroke-width="4"/>
+        <line x1="71" y1="62" x2="64" y2="75" stroke="#92400e" stroke-width="5" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <!-- Center Title & 8 Tags -->
+    <div class="hero-center">
+      <div class="hero-title-row">
+        <span class="ai-chip-icon">AI</span>
+        <h1 class="hero-title">機器學習中 距離演算法 與 分群模型 比較</h1>
+        <span style="font-size:1.85rem;" title="精準命中">🎯</span>
+      </div>
+      <div class="hero-subtitle">
+        Distance Algorithms vs. Clustering Models in ML — Measure Better, Cluster Smarter!
+      </div>
+      <div class="value-tags-bar">
+        <span class="value-tag" onclick="showTagToast('相似度量化：將抽象資料轉為可比較的數值距離或夾角相似度')">📐 相似度量化</span>
+        <span class="value-tag" onclick="showTagToast('資料分群：自動探索未標記資料的群聚結構')">🫧 資料分群</span>
+        <span class="value-tag" onclick="showTagToast('模式探索：挖掘潛在的資料分布規律與異常點')">🔍 模式探索</span>
+        <span class="value-tag" onclick="showTagToast('降維視覺化：保留局部或全局距離結構以利視覺呈現')">📉 降維視覺化</span>
+        <span class="value-tag" onclick="showTagToast('應用廣泛：涵蓋電商、醫療生技、地理資訊、金融風控')">🌐 應用廣泛</span>
+        <span class="value-tag" onclick="showTagToast('無監督學習核心：不需要人工標籤即可洞察資料結構')">🧠 無監督學習核心</span>
+        <span class="value-tag" onclick="showTagToast('處理高維資料：針對文字向量、基因等高維空間選擇合適度量')">🗂️ 處理高維資料</span>
+        <span class="value-tag" onclick="showTagToast('商業價值洞察：支援精準客戶分群、推薦系統與詐欺偵測')">💼 商業價值洞察</span>
+      </div>
+    </div>
+
+    <!-- Right Box: Why Learn Distance & Clustering? -->
+    <div class="why-box">
+      <h3>為什麼要學距離與分群？</h3>
+      <ul class="why-list">
+        <li><span class="check">☑</span><span>量化資料相似度，支援分類與檢索</span></li>
+        <li><span class="check">☑</span><span>發現資料內在結構，進行分群分析</span></li>
+        <li><span class="check">☑</span><span>廣泛應用於推薦系統、行銷、影像、NLP</span></li>
+        <li><span class="check">☑</span><span>為監督式學習提供前處理與特徵工程基礎</span></li>
+      </ul>
+    </div>
+  </header>
+
+  <!-- Quick Interactive Filter Toolbar -->
+  <div class="view-toolbar">
+    <div class="view-toolbar-left">
+      <span class="badge-tip" id="toast-banner">💡 點擊表格內任一「演算法 / 模型名稱」，即可在下方展開 12 項完整教學解析與動態模擬！</span>
+    </div>
+    <div class="view-toolbar-left">
+      <span style="font-size:0.82rem;font-weight:800;color:var(--slate-600);">情境高亮篩選：</span>
+      <button class="filter-btn active" onclick="highlightScenario('all', this)">全部顯示</button>
+      <button class="filter-btn" onclick="highlightScenario('numeric', this)">數值連續 / 球狀群</button>
+      <button class="filter-btn" onclick="highlightScenario('text', this)">高維稀疏 / 文字NLP</button>
+      <button class="filter-btn" onclick="highlightScenario('outlier', this)">含離群值 / 雜訊</button>
+      <button class="filter-btn" onclick="highlightScenario('nonconvex', this)">非凸形複雜分布</button>
+      <button class="filter-btn" onclick="highlightScenario('small', this)">小型資料 / 樹狀解釋</button>
+    </div>
+  </div>
+
+  <!-- 2. MAIN DUAL COMPARISON TABLES (Section 1: Distance, Section 2: Clustering) -->
+  <div class="poster-main-grid">
+
+    <!-- LEFT TABLE: 一、距離演算法比較 -->
+    <section class="section-card">
+      <div class="section-header-blue">一、距離演算法比較（衡量相似度 / 差異度）</div>
+      <div class="table-scroll">
+        <table class="comp-table" id="dist-table">
+          <thead>
+            <tr>
+              <th class="row-label">演算法</th>
+              <th data-col="euclidean" onclick="selectDeepDive('euclidean')">
+                歐氏距離<span class="eng-sub">(Euclidean)</span>
+                <span class="click-hint-badge">詳解</span>
+              </th>
+              <th data-col="manhattan" onclick="selectDeepDive('manhattan')">
+                曼哈頓距離<span class="eng-sub">(Manhattan)</span>
+                <span class="click-hint-badge">詳解</span>
+              </th>
+              <th data-col="cosine" onclick="selectDeepDive('cosine')">
+                餘弦相似度<span class="eng-sub">(Cosine)</span>
+                <span class="click-hint-badge">詳解</span>
+              </th>
+              <th data-col="mahalanobis" onclick="selectDeepDive('mahalanobis')">
+                馬氏距離<span class="eng-sub">(Mahalanobis)</span>
+                <span class="click-hint-badge">詳解</span>
+              </th>
+              <th data-col="hamming" onclick="selectDeepDive('hamming')">
+                漢明距離<span class="eng-sub">(Hamming)</span>
+                <span class="click-hint-badge">詳解</span>
+              </th>
+              <th data-col="minkowski" onclick="selectDeepDive('minkowski')">
+                閔可夫斯基<span class="eng-sub">(Minkowski)</span>
+                <span class="click-hint-badge">詳解</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- 核心定義 -->
+            <tr>
+              <th class="row-label">核心定義</th>
+              <td data-col="euclidean">計算兩點在歐幾里得空間中的直線距離</td>
+              <td data-col="manhattan">計算兩點在網格空間中的路徑距離</td>
+              <td data-col="cosine">衡量兩向量夾角的餘弦值，關注方向而非大小</td>
+              <td data-col="mahalanobis">考慮特徵間相關性與尺度差異的距離</td>
+              <td data-col="hamming">計算兩個字串中不同位置的個數</td>
+              <td data-col="minkowski">綜合歐氏與曼哈頓的一般化距離</td>
+            </tr>
+            <!-- 公式 (Crisp SVG Formulas for 100% Fit & Clarity) -->
+            <tr>
+              <th class="row-label">公式</th>
+              <td data-col="euclidean">
+                <svg width="96" height="44" viewBox="0 0 96 44">
+                  <text x="48" y="16" text-anchor="middle" font-size="10" font-family="serif" fill="#0f172a">d(x,y) =</text>
+                  <text x="48" y="34" text-anchor="middle" font-size="10.5" font-family="serif" fill="#0f172a">&radic;&Sigma;(x&#7522;&minus;y&#7522;)&sup2;</text>
+                  <line x1="25" y1="22" x2="78" y2="22" stroke="#0f172a" stroke-width="1"/>
+                </svg>
+              </td>
+              <td data-col="manhattan">
+                <svg width="96" height="44" viewBox="0 0 96 44">
+                  <text x="48" y="16" text-anchor="middle" font-size="10" font-family="serif" fill="#0f172a">d(x,y) =</text>
+                  <text x="48" y="34" text-anchor="middle" font-size="10.5" font-family="serif" fill="#0f172a">&Sigma; |x&#7522; &minus; y&#7522;|</text>
+                </svg>
+              </td>
+              <td data-col="cosine">
+                <svg width="96" height="44" viewBox="0 0 96 44">
+                  <text x="23" y="26" text-anchor="middle" font-size="9.5" font-family="serif" fill="#0f172a">sim =</text>
+                  <text x="64" y="16" text-anchor="middle" font-size="10" font-family="serif" font-weight="bold" fill="#0f172a">x &middot; y</text>
+                  <line x1="42" y1="21" x2="86" y2="21" stroke="#0f172a" stroke-width="1"/>
+                  <text x="64" y="34" text-anchor="middle" font-size="9.5" font-family="serif" fill="#0f172a">&Vert;x&Vert;&Vert;y&Vert;</text>
+                </svg>
+              </td>
+              <td data-col="mahalanobis">
+                <svg width="96" height="44" viewBox="0 0 96 44">
+                  <text x="48" y="15" text-anchor="middle" font-size="9.5" font-family="serif" fill="#0f172a">d(x,y) =</text>
+                  <text x="48" y="34" text-anchor="middle" font-size="8.8" font-family="serif" fill="#0f172a">&radic;(x&minus;y)&#7488;&Sigma;&#8315;&sup1;(x&minus;y)</text>
+                  <line x1="12" y1="22" x2="88" y2="22" stroke="#0f172a" stroke-width="1"/>
+                </svg>
+              </td>
+              <td data-col="hamming">
+                <svg width="96" height="44" viewBox="0 0 96 44">
+                  <text x="48" y="16" text-anchor="middle" font-size="10" font-family="serif" fill="#0f172a">d(x,y) =</text>
+                  <text x="48" y="34" text-anchor="middle" font-size="10" font-family="serif" fill="#0f172a">&Sigma; I(x&#7522; &ne; y&#7522;)</text>
+                </svg>
+              </td>
+              <td data-col="minkowski">
+                <svg width="96" height="44" viewBox="0 0 96 44">
+                  <text x="48" y="16" text-anchor="middle" font-size="9.5" font-family="serif" fill="#0f172a">d&#8346;(x,y) =</text>
+                  <text x="48" y="34" text-anchor="middle" font-size="9.5" font-family="serif" fill="#0f172a">(&Sigma;|x&#7522;&minus;y&#7522;|&#7510;)&#8317;&sup1;&#8260;&#7510;&#8318;</text>
+                </svg>
+              </td>
+            </tr>
+            <!-- 適用場景 -->
+            <tr>
+              <th class="row-label">適用場景</th>
+              <td data-col="euclidean">連續數值、幾何空間、影像分析、K-means</td>
+              <td data-col="manhattan">高維稀疏資料、路徑規劃、推薦系統</td>
+              <td data-col="cosine">文字分析、推薦系統、高維稀疏向量</td>
+              <td data-col="mahalanobis">有相關性的多維資料、異常偵測</td>
+              <td data-col="hamming">二元資料、基因序列、錯誤檢測</td>
+              <td data-col="minkowski">調整參數 <i>p</i> 控制距離特性，靈活應用</td>
+            </tr>
+            <!-- 考試重點 -->
+            <tr>
+              <th class="row-label">考試重點</th>
+              <td data-col="euclidean"><strong style="color:#1e40af;">最常見距離，直觀易懂，對尺度敏感</strong></td>
+              <td data-col="manhattan"><strong style="color:#1e40af;">對離群值較不敏感，計算量小</strong></td>
+              <td data-col="cosine"><strong style="color:#1e40af;">與長度無關，適合 TF-IDF 向量空間</strong></td>
+              <td data-col="mahalanobis"><strong style="color:#1e40af;">需協方差矩陣可逆，計算成本高</strong></td>
+              <td data-col="hamming"><strong style="color:#1e40af;">僅適用於離散 / 二元資料，簡單快速</strong></td>
+              <td data-col="minkowski"><strong style="color:#1e40af;">當 <i>p</i>=1 為曼哈頓，<i>p</i>=2 為歐氏距離</strong></td>
+            </tr>
+            <!-- 視覺示意 -->
+            <tr>
+              <th class="row-label">視覺示意</th>
+              <!-- Euclidean SVG -->
+              <td data-col="euclidean">
+                <svg width="88" height="78" viewBox="0 0 104 90">
+                  <line x1="18" y1="76" x2="92" y2="76" stroke="#334155" stroke-width="2"/>
+                  <line x1="18" y1="76" x2="18" y2="12" stroke="#334155" stroke-width="2"/>
+                  <text x="95" y="80" font-size="10" font-weight="bold" fill="#334155">x</text>
+                  <text x="14" y="10" font-size="10" font-weight="bold" fill="#334155">y</text>
+                  <line x1="30" y1="64" x2="78" y2="26" stroke="#2563eb" stroke-width="2.5"/>
+                  <circle cx="30" cy="64" r="4" fill="#1e40af"/>
+                  <circle cx="78" cy="26" r="4" fill="#1e40af"/>
+                  <text x="48" y="40" font-size="12" font-weight="bold" font-style="italic" fill="#1e40af">d</text>
+                </svg>
+              </td>
+              <!-- Manhattan SVG -->
+              <td data-col="manhattan">
+                <svg width="88" height="78" viewBox="0 0 104 90">
+                  <g stroke="#e2e8f0" stroke-width="1">
+                    <line x1="15" y1="20" x2="90" y2="20"/><line x1="15" y1="38" x2="90" y2="38"/>
+                    <line x1="15" y1="56" x2="90" y2="56"/><line x1="15" y1="74" x2="90" y2="74"/>
+                    <line x1="26" y1="12" x2="26" y2="82"/><line x1="46" y1="12" x2="46" y2="82"/>
+                    <line x1="66" y1="12" x2="66" y2="82"/><line x1="86" y1="12" x2="86" y2="82"/>
+                  </g>
+                  <polyline points="26,20 26,56 66,56" fill="none" stroke="#dc2626" stroke-width="2.8"/>
+                  <circle cx="26" cy="20" r="4.5" fill="#1e40af"/>
+                  <circle cx="26" cy="56" r="3.5" fill="#dc2626"/>
+                  <circle cx="66" cy="56" r="4.5" fill="#1e40af"/>
+                </svg>
+              </td>
+              <!-- Cosine SVG -->
+              <td data-col="cosine">
+                <svg width="88" height="78" viewBox="0 0 104 90">
+                  <line x1="18" y1="74" x2="36" y2="20" stroke="#0f172a" stroke-width="2"/>
+                  <polygon points="36,16 32,23 39,24" fill="#0f172a"/>
+                  <line x1="18" y1="74" x2="72" y2="24" stroke="#2563eb" stroke-width="2.2"/>
+                  <polygon points="75,21 67,23 72,29" fill="#2563eb"/>
+                  <line x1="18" y1="74" x2="84" y2="66" stroke="#0f172a" stroke-width="2"/>
+                  <polygon points="88,65 81,62 82,70" fill="#0f172a"/>
+                  <path d="M 38 56 A 24 24 0 0 1 46 69" fill="none" stroke="#dc2626" stroke-width="1.8"/>
+                  <text x="77" y="22" font-size="10" font-weight="bold" fill="#0f172a">y</text>
+                  <text x="86" y="78" font-size="10" font-weight="bold" fill="#0f172a">x</text>
+                </svg>
+              </td>
+              <!-- Mahalanobis SVG -->
+              <td data-col="mahalanobis">
+                <svg width="88" height="78" viewBox="0 0 104 90">
+                  <g transform="rotate(-32 52 46)">
+                    <ellipse cx="52" cy="46" rx="36" ry="20" fill="none" stroke="#94a3b8" stroke-width="1.2"/>
+                    <ellipse cx="52" cy="46" rx="25" ry="13" fill="none" stroke="#64748b" stroke-width="1.2"/>
+                    <ellipse cx="52" cy="46" rx="14" ry="7" fill="none" stroke="#475569" stroke-width="1.2"/>
+                  </g>
+                  <circle cx="58" cy="34" r="4" fill="#1e40af"/>
+                  <circle cx="38" cy="54" r="4" fill="#1e40af"/>
+                  <circle cx="76" cy="55" r="4" fill="#1e40af"/>
+                  <text x="80" y="30" font-size="13" font-weight="bold" fill="#334155">&Sigma;</text>
+                </svg>
+              </td>
+              <!-- Hamming SVG -->
+              <td data-col="hamming">
+                <div style="font-family:monospace;font-size:0.75rem;font-weight:800;line-height:1.5;white-space:nowrap;">
+                  <div>x:1<span style="background:#fee2e2;color:#dc2626;padding:0 1px;">0</span>1<span style="background:#fee2e2;color:#dc2626;padding:0 1px;">1</span>01</div>
+                  <div>y:1<span style="background:#fee2e2;color:#dc2626;padding:0 1px;">1</span>1<span style="background:#fee2e2;color:#dc2626;padding:0 1px;">0</span>01</div>
+                  <div style="color:#1e40af;margin-top:2px;">d = 2</div>
+                </div>
+              </td>
+              <!-- Minkowski SVG -->
+              <td data-col="minkowski">
+                <svg width="88" height="78" viewBox="0 0 104 90">
+                  <polygon points="52,12 88,48 52,84 16,48" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6" stroke-dasharray="3,2"/>
+                  <line x1="16" y1="48" x2="88" y2="48" stroke="#cbd5e1" stroke-width="1"/>
+                  <line x1="52" y1="12" x2="52" y2="84" stroke="#cbd5e1" stroke-width="1"/>
+                  <path d="M 52,12 L 88,48 L 52,84" fill="none" stroke="#dc2626" stroke-width="2"/>
+                  <circle cx="52" cy="12" r="3.5" fill="#1e40af"/>
+                  <circle cx="88" cy="48" r="3.5" fill="#1e40af"/>
+                  <circle cx="16" cy="48" r="3.5" fill="#1e40af"/>
+                  <circle cx="52" cy="84" r="3.5" fill="#dc2626"/>
+                  <text x="18" y="18" font-size="9" font-weight="bold" fill="#1e40af">p=1</text>
+                  <text x="66" y="18" font-size="9" font-weight="bold" fill="#dc2626">p=2</text>
+                </svg>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- RIGHT TABLE: 二、分群模型比較 -->
+    <section class="section-card">
+      <div class="section-header-purple">二、分群模型比較（發現資料內在結構）</div>
+      <div class="table-scroll">
+        <table class="comp-table purple-theme" id="clust-table">
+          <thead>
+            <tr>
+              <th class="row-label">模型</th>
+              <th data-col="kmeans" onclick="selectDeepDive('kmeans')">
+                K-means<span class="eng-sub">(K-均值)</span>
+                <span class="click-hint-badge">詳解</span>
+              </th>
+              <th data-col="hierarchical" onclick="selectDeepDive('hierarchical')">
+                階層式分群<span class="eng-sub">(Hierarchical)</span>
+                <span class="click-hint-badge">詳解</span>
+              </th>
+              <th data-col="dbscan" onclick="selectDeepDive('dbscan')">
+                DBSCAN<span class="eng-sub">(密度分群)</span>
+                <span class="click-hint-badge">詳解</span>
+              </th>
+              <th data-col="gmm" onclick="selectDeepDive('gmm')">
+                GMM<span class="eng-sub">(高斯混合)</span>
+                <span class="click-hint-badge">詳解</span>
+              </th>
+              <th data-col="spectral" onclick="selectDeepDive('spectral')">
+                光譜分群<span class="eng-sub">(Spectral)</span>
+                <span class="click-hint-badge">詳解</span>
+              </th>
+              <th data-col="meanshift" onclick="selectDeepDive('meanshift')">
+                Mean Shift<span class="eng-sub">(均值漂移)</span>
+                <span class="click-hint-badge">詳解</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- 核心定義 -->
+            <tr>
+              <th class="row-label">核心定義</th>
+              <td data-col="kmeans">將資料分成 K 個群，使群內變異最小</td>
+              <td data-col="hierarchical">建立資料的樹狀結構，可由下而上或由上而下合群</td>
+              <td data-col="dbscan">根據點的密度來分群，可找出任意形狀的群</td>
+              <td data-col="gmm">假設資料由多個高斯分布組成，進行機率式分群</td>
+              <td data-col="spectral">利用圖論與特徵向量進行分群，處理非凸形群</td>
+              <td data-col="meanshift">在密度函數的均值漂移中尋找密度峰值作為群中心</td>
+            </tr>
+            <!-- 技術原理 (流程示意) -->
+            <tr>
+              <th class="row-label">技術原理<br><span style="font-size:0.68rem;font-weight:600;">(流程示意)</span></th>
+              <td data-col="kmeans" style="text-align:left;padding-left:6px;font-weight:700;font-size:0.73rem;line-height:1.55;">
+                1. 選擇 K 個中心<br>
+                2. 指派到最近中心<br>
+                3. 更新中心<br>
+                4. 重複 2–3
+              </td>
+              <td data-col="hierarchical">
+                <svg width="88" height="74" viewBox="0 0 104 82">
+                  <path d="M22,70 L22,52 L38,52 L38,70 M30,52 L30,30 L64,30 L64,46 M54,70 L54,46 L74,46 L74,60 M68,70 L68,60 L82,60 L82,70 M47,30 L47,12" fill="none" stroke="#334155" stroke-width="1.8"/>
+                  <circle cx="22" cy="72" r="3" fill="#2563eb"/><circle cx="38" cy="72" r="3" fill="#2563eb"/>
+                  <circle cx="54" cy="72" r="3" fill="#059669"/><circle cx="68" cy="72" r="3" fill="#dc2626"/>
+                  <circle cx="82" cy="72" r="3" fill="#dc2626"/>
+                </svg>
+              </td>
+              <td data-col="dbscan">
+                <svg width="88" height="74" viewBox="0 0 96 76">
+                  <text x="4" y="20" font-size="9.5" font-weight="bold" fill="#15803d">● 核心點</text>
+                  <text x="4" y="38" font-size="9.5" font-weight="bold" fill="#1d4ed8">● 邊界點</text>
+                  <text x="4" y="56" font-size="9.5" font-weight="bold" fill="#b91c1c">● 雜訊點</text>
+                  <circle cx="70" cy="26" r="15" fill="#dcfce7" stroke="#16a34a" stroke-dasharray="2,2"/>
+                  <circle cx="66" cy="24" r="3" fill="#16a34a"/><circle cx="74" cy="27" r="3" fill="#16a34a"/>
+                  <circle cx="70" cy="18" r="3" fill="#16a34a"/><circle cx="58" cy="34" r="3" fill="#2563eb"/>
+                  <circle cx="82" cy="56" r="3" fill="#dc2626"/><circle cx="60" cy="60" r="3" fill="#dc2626"/>
+                </svg>
+              </td>
+              <td data-col="gmm">
+                <svg width="88" height="74" viewBox="0 0 104 82">
+                  <g transform="rotate(-28 38 36)">
+                    <ellipse cx="38" cy="36" rx="26" ry="12" fill="none" stroke="#dc2626" stroke-width="1.3"/>
+                    <ellipse cx="38" cy="36" rx="16" ry="7" fill="none" stroke="#dc2626" stroke-width="1.3"/>
+                  </g>
+                  <g transform="rotate(15 66 38)">
+                    <ellipse cx="66" cy="38" rx="24" ry="11" fill="none" stroke="#2563eb" stroke-width="1.3"/>
+                    <ellipse cx="66" cy="38" rx="14" ry="6" fill="none" stroke="#2563eb" stroke-width="1.3"/>
+                  </g>
+                  <g transform="rotate(-12 52 58)">
+                    <ellipse cx="52" cy="58" rx="25" ry="11" fill="none" stroke="#16a34a" stroke-width="1.3"/>
+                    <ellipse cx="52" cy="58" rx="15" ry="6" fill="none" stroke="#16a34a" stroke-width="1.3"/>
+                  </g>
+                </svg>
+              </td>
+              <td data-col="spectral">
+                <svg width="88" height="74" viewBox="0 0 104 82">
+                  <polygon points="24,20 40,32 34,54 14,54 10,32" fill="none" stroke="#475569" stroke-width="1.2"/>
+                  <line x1="24" y1="20" x2="34" y2="54" stroke="#94a3b8" stroke-width="1"/>
+                  <circle cx="24" cy="20" r="3" fill="#4f46e5"/><circle cx="40" cy="32" r="3" fill="#4f46e5"/>
+                  <circle cx="34" cy="54" r="3" fill="#4f46e5"/><circle cx="14" cy="54" r="3" fill="#4f46e5"/>
+                  <circle cx="10" cy="32" r="3" fill="#4f46e5"/>
+                  <path d="M46,40 L58,40" stroke="#1e40af" stroke-width="2.5"/>
+                  <polygon points="61,40 55,36 55,44" fill="#1e40af"/>
+                  <line x1="72" y1="18" x2="90" y2="28" stroke="#2563eb" stroke-width="1.5"/>
+                  <line x1="72" y1="18" x2="68" y2="38" stroke="#2563eb" stroke-width="1.5"/>
+                  <line x1="70" y1="58" x2="90" y2="62" stroke="#7c3aed" stroke-width="1.5"/>
+                  <circle cx="72" cy="18" r="3" fill="#2563eb"/><circle cx="90" cy="28" r="3" fill="#2563eb"/>
+                  <circle cx="68" cy="38" r="3" fill="#2563eb"/>
+                  <circle cx="70" cy="58" r="3" fill="#7c3aed"/><circle cx="90" cy="62" r="3" fill="#7c3aed"/>
+                </svg>
+              </td>
+              <td data-col="meanshift">
+                <svg width="88" height="74" viewBox="0 0 104 82">
+                  <ellipse cx="52" cy="44" rx="44" ry="28" fill="#f0f9ff" stroke="#bae6fd" stroke-width="1.2"/>
+                  <ellipse cx="46" cy="42" rx="30" ry="19" fill="#e0f2fe" stroke="#7dd3fc" stroke-width="1.2"/>
+                  <ellipse cx="42" cy="40" rx="16" ry="10" fill="#bae6fd" stroke="#38bdf8" stroke-width="1.2"/>
+                  <polyline points="78,56 62,48 44,40" fill="none" stroke="#ea580c" stroke-width="2"/>
+                  <circle cx="78" cy="56" r="3" fill="#f97316"/>
+                  <circle cx="62" cy="48" r="3" fill="#ea580c"/>
+                  <circle cx="44" cy="40" r="4" fill="#dc2626"/>
+                </svg>
+              </td>
+            </tr>
+            <!-- 適用場景 -->
+            <tr>
+              <th class="row-label">適用場景</th>
+              <td data-col="kmeans">球狀群、等大小群、數值型資料</td>
+              <td data-col="hierarchical">小型資料、需樹狀結構解釋的情境</td>
+              <td data-col="dbscan">任意形狀群、含雜訊點、不需事先指定 K</td>
+              <td data-col="gmm">群狀多為橢圓形、機率式分群需求</td>
+              <td data-col="spectral">非凸形資料、圖結構資料、高維資料</td>
+              <td data-col="meanshift">任意形狀群、自動決定群數、不需指定 K</td>
+            </tr>
+            <!-- 考試重點 -->
+            <tr>
+              <th class="row-label">考試重點</th>
+              <td data-col="kmeans"><strong style="color:#5b21b6;">需事先指定 K 值，對離群值敏感，收斂到局部最優</strong></td>
+              <td data-col="hierarchical"><strong style="color:#5b21b6;">凝聚式 vs 分裂式，距離矩陣影響結果</strong></td>
+              <td data-col="dbscan"><strong style="color:#5b21b6;">參數 eps、MinPts 影響大，可識別雜訊點</strong></td>
+              <td data-col="gmm"><strong style="color:#5b21b6;">EM 演算法、需指定 K、可輸出屬於各群的機率</strong></td>
+              <td data-col="spectral"><strong style="color:#5b21b6;">需建立相似度圖，計算特徵向量成本高</strong></td>
+              <td data-col="meanshift"><strong style="color:#5b21b6;">帶寬 (BandWidth) 影響大，計算成本高</strong></td>
+            </tr>
+            <!-- 視覺示意 -->
+            <tr>
+              <th class="row-label">視覺示意</th>
+              <!-- K-means result SVG -->
+              <td data-col="kmeans">
+                <svg width="88" height="78" viewBox="0 0 104 90">
+                  <g fill="#2563eb">
+                    <circle cx="24" cy="26" r="3"/><circle cx="34" cy="22" r="3"/><circle cx="28" cy="36" r="3"/>
+                    <circle cx="40" cy="32" r="3"/><circle cx="20" cy="42" r="3"/><circle cx="35" cy="44" r="3"/>
+                  </g>
+                  <g fill="#dc2626">
+                    <circle cx="68" cy="56" r="3"/><circle cx="78" cy="52" r="3"/><circle cx="74" cy="66" r="3"/>
+                    <circle cx="84" cy="62" r="3"/><circle cx="64" cy="70" r="3"/><circle cx="78" cy="74" r="3"/>
+                  </g>
+                </svg>
+              </td>
+              <!-- Hierarchical result SVG -->
+              <td data-col="hierarchical">
+                <svg width="88" height="78" viewBox="0 0 104 90">
+                  <path d="M18,64 L18,46 L34,46 L34,64 M26,46 L26,24 L76,24 L76,42 M66,64 L66,42 L86,42 L86,64 M51,24 L51,10" fill="none" stroke="#334155" stroke-width="1.6"/>
+                  <line x1="8" y1="34" x2="96" y2="34" stroke="#db2777" stroke-width="1.5" stroke-dasharray="3,2"/>
+                  <rect x="12" y="65" width="28" height="16" rx="3" fill="none" stroke="#db2777" stroke-width="1.4"/>
+                  <rect x="60" y="65" width="32" height="16" rx="3" fill="none" stroke="#2563eb" stroke-width="1.4"/>
+                </svg>
+              </td>
+              <!-- DBSCAN result SVG -->
+              <td data-col="dbscan">
+                <svg width="88" height="78" viewBox="0 0 104 90">
+                  <path d="M22,55 Q20,22 48,24" fill="none" stroke="#dc2626" stroke-width="8" stroke-linecap="round" opacity="0.25"/>
+                  <circle cx="22" cy="52" r="3" fill="#dc2626"/><circle cx="25" cy="38" r="3" fill="#dc2626"/>
+                  <circle cx="34" cy="27" r="3" fill="#dc2626"/><circle cx="46" cy="24" r="3" fill="#dc2626"/>
+                  <path d="M54,66 Q80,68 78,36" fill="none" stroke="#0284c7" stroke-width="8" stroke-linecap="round" opacity="0.25"/>
+                  <circle cx="55" cy="65" r="3" fill="#0284c7"/><circle cx="68" cy="62" r="3" fill="#0284c7"/>
+                  <circle cx="76" cy="50" r="3" fill="#0284c7"/><circle cx="78" cy="36" r="3" fill="#0284c7"/>
+                  <circle cx="14" cy="18" r="2.5" fill="#64748b"/><circle cx="88" cy="76" r="2.5" fill="#64748b"/>
+                </svg>
+              </td>
+              <!-- GMM result SVG -->
+              <td data-col="gmm">
+                <svg width="88" height="78" viewBox="0 0 104 90">
+                  <ellipse cx="40" cy="38" rx="28" ry="15" fill="none" stroke="#dc2626" stroke-width="1.2"/>
+                  <ellipse cx="40" cy="38" rx="16" ry="8" fill="none" stroke="#dc2626" stroke-width="1.2"/>
+                  <ellipse cx="62" cy="54" rx="28" ry="15" fill="none" stroke="#0284c7" stroke-width="1.2"/>
+                  <ellipse cx="62" cy="54" rx="16" ry="8" fill="none" stroke="#0284c7" stroke-width="1.2"/>
+                  <circle cx="40" cy="38" r="3" fill="#dc2626"/><circle cx="62" cy="54" r="3" fill="#0284c7"/>
+                </svg>
+              </td>
+              <!-- Spectral result SVG -->
+              <td data-col="spectral">
+                <svg width="88" height="78" viewBox="0 0 104 90">
+                  <path d="M 16,46 A 22,22 0 0,1 60,46" fill="none" stroke="#1e40af" stroke-width="5" stroke-linecap="round"/>
+                  <path d="M 42,42 A 22,22 0 0,0 86,42" fill="none" stroke="#dc2626" stroke-width="5" stroke-linecap="round"/>
+                </svg>
+              </td>
+              <!-- Mean Shift result SVG -->
+              <td data-col="meanshift">
+                <svg width="88" height="78" viewBox="0 0 104 90">
+                  <circle cx="34" cy="34" r="20" fill="#dcfce7" stroke="#16a34a" stroke-width="1"/>
+                  <circle cx="34" cy="34" r="10" fill="#86efac" stroke="#16a34a" stroke-width="1"/>
+                  <circle cx="34" cy="34" r="3.5" fill="#15803d"/>
+                  <circle cx="72" cy="56" r="20" fill="#ffedd5" stroke="#ea580c" stroke-width="1"/>
+                  <circle cx="72" cy="56" r="10" fill="#fdba74" stroke="#ea580c" stroke-width="1"/>
+                  <circle cx="72" cy="56" r="3.5" fill="#c2410c"/>
+                </svg>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- 3. DEEP DIVE PANEL (12 Algorithms Full Breakdown) -->
+  <section class="detail-panel" id="deep-dive-panel">
+    <div class="algo-selector-strip" id="algo-chip-container">
+      <!-- Populated by JS -->
+    </div>
+    <div class="detail-header">
+      <div class="detail-title-group">
+        <span class="detail-badge" id="dd-category">距離演算法</span>
+        <h2 style="font-size:1.3rem;font-weight:900;" id="dd-title">歐氏距離 (Euclidean Distance)</h2>
+      </div>
+      <div style="font-size:0.88rem;color:#93c5fd;font-weight:700;" id="dd-Oneliner">
+        一句話簡介：兩點之間最短的直線距離，機器學習預設的幾何尺標。
+      </div>
+    </div>
+    <div class="detail-grid">
+      <div class="detail-item">
+        <h4>📜 歷史由來與理論背景</h4>
+        <p id="dd-origin"></p>
+      </div>
+      <div class="detail-item">
+        <h4>⚙️ 實務特徵與前處理要求</h4>
+        <p id="dd-practical"></p>
+      </div>
+      <div class="detail-item">
+        <h4>🏠 生活化例子</h4>
+        <p id="dd-life"></p>
+      </div>
+      <div class="detail-item">
+        <h4>🏭 工業界與 AI 應用</h4>
+        <p id="dd-industry"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. BOTTOM 5 CARDS (Exact Match to Reference Poster Bottom) -->
+  <div class="bottom-five-grid" id="bottom-five-sec">
+
+    <!-- Card 1: 生活化案例解析 -->
+    <div class="bottom-card">
+      <div class="bottom-card-header bg-navy">生活化案例解析</div>
+      <div class="bottom-card-body">
+        <div class="case-split">
+          <!-- Left: 距離演算法應用 -->
+          <div>
+            <div class="case-group-title">距離演算法應用</div>
+            <div class="case-cols-2">
+              <div class="mini-case-card" onclick="selectDeepDive('euclidean')">
+                <div class="title">最近商店推薦</div>
+                <div class="sub">(歐氏距離)</div>
+                <svg width="48" height="50" viewBox="0 0 56 58">
+                  <circle cx="14" cy="24" r="7" fill="#dc2626"/>
+                  <circle cx="14" cy="24" r="2.5" fill="#fff"/>
+                  <rect x="32" y="26" width="18" height="14" rx="2" fill="#fde68a" stroke="#b45309" stroke-width="1.5"/>
+                  <polygon points="30,26 41,18 52,26" fill="#ea580c"/>
+                  <line x1="20" y1="26" x2="31" y2="28" stroke="#1e40af" stroke-width="2" stroke-dasharray="2,2"/>
+                </svg>
+              </div>
+              <div class="mini-case-card" onclick="selectDeepDive('cosine')">
+                <div class="title">文件相似度搜尋</div>
+                <div class="sub">(餘弦相似度)</div>
+                <svg width="48" height="50" viewBox="0 0 56 58">
+                  <rect x="8" y="10" width="16" height="20" rx="2" fill="#fff" stroke="#334155" stroke-width="1.5"/>
+                  <line x1="11" y1="15" x2="21" y2="15" stroke="#3b82f6" stroke-width="1.5"/>
+                  <line x1="11" y1="20" x2="21" y2="20" stroke="#3b82f6" stroke-width="1.5"/>
+                  <rect x="32" y="10" width="16" height="20" rx="2" fill="#fff" stroke="#334155" stroke-width="1.5"/>
+                  <polygon points="40,34 49,50 31,50" fill="#dc2626"/>
+                  <text x="40" y="48" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">!</text>
+                </svg>
+              </div>
+            </div>
+          </div>
+          <!-- Right: 分群模型應用 -->
+          <div>
+            <div class="case-group-title">分群模型應用</div>
+            <div class="case-cols-3">
+              <div class="mini-case-card" onclick="selectDeepDive('kmeans')">
+                <div class="title">客戶分群</div>
+                <div class="sub">(K-means)</div>
+                <svg width="42" height="50" viewBox="0 0 46 58">
+                  <circle cx="14" cy="18" r="5" fill="#f59e0b"/><path d="M7,30 Q14,24 21,30" fill="#3b82f6"/>
+                  <circle cx="32" cy="18" r="5" fill="#f59e0b"/><path d="M25,30 Q32,24 39,30" fill="#10b981"/>
+                  <circle cx="14" cy="40" r="5" fill="#f59e0b"/><path d="M7,52 Q14,46 21,52" fill="#ec4899"/>
+                  <circle cx="32" cy="40" r="5" fill="#f59e0b"/><path d="M25,52 Q32,46 39,52" fill="#6366f1"/>
+                </svg>
+              </div>
+              <div class="mini-case-card" onclick="selectDeepDive('hierarchical')">
+                <div class="title">基因序列分類</div>
+                <div class="sub">(階層式分群)</div>
+                <svg width="42" height="50" viewBox="0 0 46 58">
+                  <path d="M14,10 Q23,18 32,10 M14,22 Q23,14 32,22" fill="none" stroke="#2563eb" stroke-width="2"/>
+                  <path d="M12,50 L12,38 L24,38 L24,50 M18,38 L18,28 L36,28 L36,50" fill="none" stroke="#334155" stroke-width="1.6"/>
+                </svg>
+              </div>
+              <div class="mini-case-card" onclick="selectDeepDive('dbscan')">
+                <div class="title">GPS 軌跡聚類</div>
+                <div class="sub">(DBSCAN)</div>
+                <svg width="42" height="50" viewBox="0 0 46 58">
+                  <ellipse cx="24" cy="32" rx="16" ry="18" fill="#dcfce7" stroke="#16a34a" stroke-dasharray="2,2"/>
+                  <polyline points="14,42 20,30 28,22 34,16" fill="none" stroke="#0284c7" stroke-width="2.2"/>
+                  <circle cx="20" cy="30" r="2.5" fill="#16a34a"/><circle cx="28" cy="22" r="2.5" fill="#16a34a"/>
+                  <circle cx="8" cy="14" r="2.5" fill="#dc2626"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 2: 情境應用建議 -->
+    <div class="bottom-card">
+      <div class="bottom-card-header bg-green">情境應用建議</div>
+      <div class="bottom-card-body" style="padding:8px;">
+        <table class="scenario-table">
+          <thead>
+            <tr>
+              <th>資料特性</th>
+              <th>建議距離</th>
+              <th>建議分群模型</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr onclick="highlightScenario('numeric')" style="cursor:pointer;">
+              <td><strong>數值型、連續</strong></td>
+              <td style="color:#1e40af;">歐氏距離</td>
+              <td style="color:#5b21b6;">K-means / GMM</td>
+            </tr>
+            <tr onclick="highlightScenario('text')" style="cursor:pointer;">
+              <td><strong>高維稀疏 (文字)</strong></td>
+              <td style="color:#1e40af;">餘弦相似度</td>
+              <td style="color:#5b21b6;">K-means / 光譜分群</td>
+            </tr>
+            <tr onclick="highlightScenario('outlier')" style="cursor:pointer;">
+              <td><strong>含離群值 / 雜訊</strong></td>
+              <td style="color:#1e40af;">馬氏距離</td>
+              <td style="color:#5b21b6;">DBSCAN / Mean Shift</td>
+            </tr>
+            <tr onclick="highlightScenario('nonconvex')" style="cursor:pointer;">
+              <td><strong>非凸形分布</strong></td>
+              <td style="color:#1e40af;">閔可夫斯基 (<i>p</i>&lt;2)</td>
+              <td style="color:#5b21b6;">光譜分群 / Mean Shift</td>
+            </tr>
+            <tr onclick="highlightScenario('small')" style="cursor:pointer;">
+              <td><strong>小型資料、需解釋</strong></td>
+              <td style="color:#1e40af;">曼哈頓距離</td>
+              <td style="color:#5b21b6;">階層式分群</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Card 3: 記憶口訣 -->
+    <div class="bottom-card">
+      <div class="bottom-card-header bg-pink">記憶口訣</div>
+      <div class="bottom-card-body">
+        <div class="mnemonic-block">
+          <h4>距離口訣：</h4>
+          <p>
+            「歐幾直線，曼哈頓街；<br>
+            餘弦看角度，馬氏看相關；<br>
+            漢明數不同，閔可夫斯基變變 <i>p</i> (◢)。」
+          </p>
+        </div>
+        <div class="mnemonic-block" style="margin-bottom:0;background:#fdf2f8;border-left-color:#db2777;">
+          <h4>分群口訣：</h4>
+          <p>
+            「K 均值，階層樹；<br>
+            DBSCAN 找密度，GMM 機率算；<br>
+            光譜看圖論，Mean Shift 往高處！」
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 4: ⚠️ 考試陷阱提醒 -->
+    <div class="bottom-card">
+      <div class="bottom-card-header bg-orange">⚠️ 考試陷阱提醒</div>
+      <div class="bottom-card-body">
+        <ul class="trap-list">
+          <li onclick="showTrapDetail(1)">
+            <span class="trap-num">1</span>
+            <span>距離需注意尺度標準化問題（特徵量級差異）</span>
+          </li>
+          <li onclick="showTrapDetail(2)">
+            <span class="trap-num">2</span>
+            <span>餘弦相似度 &ne; 距離，越大越相似</span>
+          </li>
+          <li onclick="showTrapDetail(3)">
+            <span class="trap-num">3</span>
+            <span>DBSCAN 對參數敏感，非所有資料都適合</span>
+          </li>
+          <li onclick="showTrapDetail(4)">
+            <span class="trap-num">4</span>
+            <span>K-means 須事先指定 K，且對離群值敏感</span>
+          </li>
+          <li onclick="showTrapDetail(5)">
+            <span class="trap-num">5</span>
+            <span>GMM 假設常態分布，違反假設效果差</span>
+          </li>
+          <li onclick="showTrapDetail(6)">
+            <span class="trap-num">6</span>
+            <span>Mean Shift 帶寬選擇不當會過度 / 欠分群</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Card 5: 快速判斷技巧 -->
+    <div class="bottom-card">
+      <div class="bottom-card-header bg-blue">快速判斷技巧</div>
+      <div class="bottom-card-body">
+        <ul class="quick-list">
+          <li onclick="selectDeepDive('hierarchical')" style="cursor:pointer;">
+            <span>☑️ 資料量小、需解釋</span><span class="quick-arrow">&rarr;</span><span class="quick-target">階層式分群</span>
+          </li>
+          <li onclick="selectDeepDive('kmeans')" style="cursor:pointer;">
+            <span>☑️ 資料量大、球狀群</span><span class="quick-arrow">&rarr;</span><span class="quick-target">K-means</span>
+          </li>
+          <li onclick="selectDeepDive('dbscan')" style="cursor:pointer;">
+            <span>☑️ 有雜訊、任意形狀</span><span class="quick-arrow">&rarr;</span><span class="quick-target">DBSCAN</span>
+          </li>
+          <li onclick="selectDeepDive('meanshift')" style="cursor:pointer;">
+            <span>☑️ 群數不確定、形狀任意</span><span class="quick-arrow">&rarr;</span><span class="quick-target">Mean Shift</span>
+          </li>
+          <li onclick="selectDeepDive('gmm')" style="cursor:pointer;">
+            <span>☑️ 群狀橢圓、需機率</span><span class="quick-arrow">&rarr;</span><span class="quick-target">GMM</span>
+          </li>
+          <li onclick="selectDeepDive('spectral')" style="cursor:pointer;">
+            <span>☑️ 高維非凸形</span><span class="quick-arrow">&rarr;</span><span class="quick-target">光譜分群</span>
+          </li>
+        </ul>
+        <div style="margin-top:6px;text-align:right;font-size:0.76rem;font-weight:900;color:#1e40af;">
+          💬 「選對方法，事半功倍！」
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 5. INTERACTIVE LABS (Math Derivation + Step-by-Step Clustering Simulator) -->
+  <h2 class="labs-section-title" id="interactive-labs">
+    <span>🧪</span> 互動式實驗室：數學推導視覺化 ＆ 分群模型 Step-by-Step 模擬器
+  </h2>
+
+  <div class="labs-grid">
+
+    <!-- LAB 1: Interactive Distance Calculator & Math Derivation -->
+    <div class="lab-card">
+      <div class="lab-card-header">
+        <h3>📐 Lab 1：六大距離演算法互動推導（可拖曳畫布點 X 與 Y）</h3>
+        <span style="font-size:0.75rem;background:#3b82f6;padding:3px 9px;border-radius:99px;">數學推導互動式</span>
+      </div>
+      <div class="lab-card-body">
+        <div class="canvas-wrap">
+          <canvas id="distCanvas" width="580" height="290"></canvas>
+        </div>
+
+        <div class="controls-grid">
+          <div class="control-box">
+            <label><span>點 X 座標 (藍點)</span><span id="lbl-ptX">(2.0, 2.0)</span></label>
+            <input type="range" id="rng-x1" min="1" max="9" step="0.5" value="2" oninput="updateDistLab()">
+            <input type="range" id="rng-x2" min="1" max="9" step="0.5" value="2" oninput="updateDistLab()">
+          </div>
+          <div class="control-box">
+            <label><span>點 Y 座標 (紅點)</span><span id="lbl-ptY">(7.0, 6.0)</span></label>
+            <input type="range" id="rng-y1" min="1" max="9" step="0.5" value="7" oninput="updateDistLab()">
+            <input type="range" id="rng-y2" min="1" max="9" step="0.5" value="6" oninput="updateDistLab()">
+          </div>
+          <div class="control-box">
+            <label><span>閔可夫斯基參數 p</span><span id="lbl-p">p = 2.0</span></label>
+            <input type="range" id="rng-p" min="0.5" max="8" step="0.5" value="2" oninput="updateDistLab()">
+          </div>
+          <div class="control-box">
+            <label><span>漢明距離二元字串點擊切換</span><span id="lbl-hamming-top">d = 2</span></label>
+            <div style="display:flex;gap:4px;align-items:center;justify-content:space-between;font-family:monospace;font-size:0.78rem;margin-top:4px;">
+              <span id="hamming-bits-ui"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="metrics-dashboard">
+          <div class="metric-pill">
+            <div class="m-name">歐氏距離 (p=2)</div>
+            <div class="m-val" id="val-euc">6.403</div>
+          </div>
+          <div class="metric-pill">
+            <div class="m-name">曼哈頓距離 (p=1)</div>
+            <div class="m-val" id="val-man">9.000</div>
+          </div>
+          <div class="metric-pill">
+            <div class="m-name">餘弦相似度 (Cos)</div>
+            <div class="m-val" id="val-cos">0.992</div>
+          </div>
+          <div class="metric-pill">
+            <div class="m-name">馬氏距離 (考量共變異)</div>
+            <div class="m-val" id="val-mah">4.182</div>
+          </div>
+          <div class="metric-pill">
+            <div class="m-name">閔可夫斯基 (動態 p)</div>
+            <div class="m-val" id="val-mink">6.403</div>
+          </div>
+          <div class="metric-pill">
+            <div class="m-name">漢明距離 (Bit 差異)</div>
+            <div class="m-val" id="val-ham">2</div>
+          </div>
+        </div>
+
+        <div class="derivation-box" id="dist-derivation-text">
+          <!-- Populated dynamically by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- LAB 2: Interactive Clustering Step-by-Step Simulator -->
+    <div class="lab-card">
+      <div class="lab-card-header" style="background:linear-gradient(90deg, #3b0764, #6d28d9);">
+        <h3>🫧 Lab 2：分群模型 Step-by-Step 逐步 & 一鍵自動模擬器</h3>
+        <span style="font-size:0.75rem;background:#9333ea;padding:3px 9px;border-radius:99px;">Step-by-Step 模擬</span>
+      </div>
+      <div class="lab-card-body">
+        <div class="btn-group">
+          <select id="sel-dataset" class="btn btn-outline" onchange="initClusterSim()">
+            <option value="blobs">資料集：球狀群 (適合 K-means)</option>
+            <option value="moons">資料集：雙半月非凸形 (適合 光譜分群 / DBSCAN)</option>
+            <option value="noisy">資料集：含雜訊任意形狀 (適合 DBSCAN)</option>
+            <option value="ellipses">資料集：橢圓交疊分布 (適合 GMM)</option>
+            <option value="small_tree">資料集：小型階層資料 (適合 階層式分群)</option>
+          </select>
+          <select id="sel-algo" class="btn btn-outline" onchange="resetAlgoState(); runFullClusterSim();">
+            <option value="kmeans">模型：K-means (均值中心迭代)</option>
+            <option value="dbscan">模型：DBSCAN (密度核心擴展)</option>
+            <option value="hierarchical">模型：階層式分群 (由下而上凝聚樹)</option>
+            <option value="gmm">模型：GMM 高斯混合 (EM 橢圓機率)</option>
+            <option value="spectral">模型：光譜分群 (相似度圖拉普拉斯)</option>
+            <option value="meanshift">模型：Mean Shift (密度峰值均值漂移)</option>
+          </select>
+        </div>
+
+        <div class="canvas-wrap">
+          <canvas id="clustCanvas" width="580" height="290"></canvas>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-outline" onclick="resetAlgoState()">⏮️ 重置為未分群狀態</button>
+          <button class="btn btn-primary" onclick="stepClusterSim()">⏭️ 下一步 (Step-by-Step)</button>
+          <button class="btn btn-purple" id="btn-autoplay" onclick="toggleAutoPlay()">▶️ 一鍵自動模擬</button>
+          <button class="btn btn-emerald" onclick="runFullClusterSim()">⚡ 直接顯示最終分群</button>
+          <button class="btn btn-outline" onclick="initClusterSim()">🔄 重新產生資料點</button>
+        </div>
+
+        <div class="controls-grid" style="margin-bottom:10px;">
+          <div class="control-box">
+            <label><span>群數 K (K-means / GMM / 光譜)</span><span id="lbl-k">K = 3</span></label>
+            <input type="range" id="rng-k" min="2" max="5" step="1" value="3" oninput="document.getElementById('lbl-k').innerText='K = '+this.value; resetAlgoState(); runFullClusterSim();">
+          </div>
+          <div class="control-box">
+            <label><span>鄰域半徑 eps / 帶寬 Bandwidth</span><span id="lbl-eps">R = 48 px</span></label>
+            <input type="range" id="rng-eps" min="24" max="90" step="4" value="48" oninput="document.getElementById('lbl-eps').innerText='R = '+this.value+' px'; resetAlgoState(); runFullClusterSim();">
+          </div>
+        </div>
+
+        <div class="derivation-box" id="clust-step-log">
+          <!-- Populated dynamically by JS -->
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 6. PYTHON IMPLEMENTATION (Color-Highlighted Key Functions) & IPAS AI QUIZ -->
+  <div class="labs-grid" id="code-quiz-sec">
+
+    <!-- Left: Python Implementation with Highlighted Functions -->
+    <div class="lab-card">
+      <div class="lab-card-header">
+        <h3>🐍 Python / Scikit-Learn 實作範例（重點函式彩色標記）</h3>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-primary" style="padding:4px 10px;font-size:0.75rem;" onclick="switchCodeTab('dist')">距離演算法程式碼</button>
+          <button class="btn btn-purple" style="padding:4px 10px;font-size:0.75rem;" onclick="switchCodeTab('clust')">分群模型程式碼</button>
+        </div>
+      </div>
+      <div class="lab-card-body">
+        <div style="margin-bottom:8px;font-size:0.79rem;color:var(--slate-600);font-weight:700;">
+          圖例：<span class="fn-dist">藍色高亮 = 距離計算核心函式</span> ｜ <span class="fn-clust">綠色高亮 = 分群模型核心類別</span> ｜ <span class="param-hl">黃色高亮 = 必考關鍵超參數</span>
+        </div>
+        <pre class="code-viewer" id="code-display"></pre>
+      </div>
+    </div>
+
+    <!-- Right: iPAS AI Exam Interactive Quiz -->
+    <div class="lab-card">
+      <div class="lab-card-header" style="background:linear-gradient(90deg, #b45309, #ea580c);">
+        <h3>🏆 iPAS AI 應用規劃師 — 距離與分群實戰隨堂測驗</h3>
+        <span style="font-size:0.8rem;font-weight:800;" id="quiz-score-badge">得分：0 / 6</span>
+      </div>
+      <div class="lab-card-body">
+        <div class="quiz-grid" id="quiz-container">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 7. FOOTER BANNER (Exact Match to Reference Image Footer) -->
+  <footer class="poster-footer">
+    <div class="footer-left">
+      <span>CCChen2026 製作</span>
+      <span style="font-size:1.25rem;">⚙️</span>
+    </div>
+    <div class="footer-center">
+      ⭐ 選對距離與分群方法，洞察資料結構，發掘隱藏價值！ ⭐
+    </div>
+    <div class="footer-right">
+      適用：AI 證照考試 / 機器學習 / 資料科學 / 數據分析
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// ============================================================================
+// 1. COMPLETE DATA STORE FOR 12 ALGORITHMS (6 Distances + 6 Clustering Models)
+// ============================================================================
+const ALGO_DATA = {
+  euclidean: {
+    shortName: "歐氏距離",
+    category: "距離演算法",
+    title: "歐氏距離 (Euclidean Distance)",
+    oneliner: "一句話簡介：計算兩點在歐幾里得空間中的直線距離，最直觀常見但對特徵尺度敏感。",
+    origin: "源自畢氏定理（勾股定理）在 n 維歐幾里得空間的推廣，對應於 L2 範數（p=2 的閔可夫斯基距離）。",
+    practical: "實務上受特徵量級影響極大（如年薪萬元 vs 年齡歲數），使用前務必執行 StandardScaler 或 MinMaxScaler 標準化。",
+    life: "地圖導航上的「直線距離」：例如從你家座標到最近便利商店的鳥飛直線距離。",
+    industry: "K-means 預設距離度量、KNN 分類器、人臉辨識特徵嵌入比對、電腦視覺影像塊相似度計算。"
+  },
+  manhattan: {
+    shortName: "曼哈頓距離",
+    category: "距離演算法",
+    title: "曼哈頓距離 (Manhattan Distance / 城市街區距離)",
+    oneliner: "一句話簡介：計算兩點在網格空間中的直角路徑距離（絕對差總和），計算快且較抗離群值。",
+    origin: "得名於美國紐約曼哈頓棋盤狀街區，計程車只能沿南北向與東西向街道直角行駛，又稱計程車幾何（Taxicab Geometry）或 L1 距離。",
+    practical: "只涉及加減法與絕對值，不需平方與開根號，計算量小；面對單一維度極端離群值時，不會像歐氏距離因平方而劇烈放大。",
+    life: "在棋盤格規劃的都市街道走路，從 A 路口走到 B 路口實際要經過幾個紅綠燈街區。",
+    industry: "倉儲物流 AGV 機器人網格路徑規劃、高維稀疏特徵檢索、L1 正則化 (Lasso) 特徵選擇。"
+  },
+  cosine: {
+    shortName: "餘弦相似度",
+    category: "距離演算法",
+    title: "餘弦相似度 (Cosine Similarity)",
+    oneliner: "一句話簡介：衡量兩向量夾角的餘弦值，只關注方向一致性而忽略向量長度大小。",
+    origin: "源自線性代數內積空間的幾何定義 cos(θ) = (x·y) / (||x|| ||y||)，值域介於 [-1, 1]（非負詞頻空間為 [0, 1]）。",
+    practical: "注意考試陷阱：餘弦相似度 ≠ 距離！數值越接近 1 代表夾角越接近 0 度（越相似）；若需距離度量需轉換為 Cosine Distance = 1 - sim(x, y)。",
+    life: "比較兩篇文章的主題：一篇是 200 字摘要、一篇是 2000 字長文，雖然總字數（長度）差 10 倍，但關鍵詞出現比例（方向）相同。",
+    industry: "NLP 文件相似度搜尋、TF-IDF 與 RAG 向量資料庫檢索、電商與影音協同過濾推薦系統。"
+  },
+  mahalanobis: {
+    shortName: "馬氏距離",
+    category: "距離演算法",
+    title: "馬氏距離 (Mahalanobis Distance)",
+    oneliner: "一句話簡介：考慮特徵間相關性（共變異數矩陣）與尺度差異的統計距離。",
+    origin: "由印度統計學家 P. C. Mahalanobis 於 1936 年提出，透過乘上共變異數矩陣的逆矩陣 Σ⁻¹，將相關且不同尺度的橢圓分布轉為標準球狀空間。",
+    practical: "無單位（尺度無關）且自動消除特徵共線性影響；但必須要求共變異數矩陣 Σ 可逆，當特徵數大於樣本數或完全共線時無法直接求逆，且計算成本高。",
+    life: "評估一個人的身高與體重是否異常：身高 190 公分且體重 85 公斤屬於正常相關範圍；但身高 150 公分且體重 85 公斤則偏離相關分布。",
+    industry: "多變量工業製程異常偵測 (SPC)、信用卡盜刷與金融詐欺偵測、高光譜遙測影像分類。"
+  },
+  hamming: {
+    shortName: "漢明距離",
+    category: "距離演算法",
+    title: "漢明距離 (Hamming Distance)",
+    oneliner: "一句話簡介：計算兩個等長字串或二元編碼在對應位置上不同字元的個數。",
+    origin: "由美國數學家 Richard Hamming 於 1950 年在貝爾實驗室研究電信編碼錯誤偵測與更正碼（Hamming Code）時提出。",
+    practical: "僅適用於等長的離散、類別或二元（0/1）資料；在電腦底層可透過 XOR 互斥或運算搭配位元計數（popcount）達到極速計算。",
+    life: "對答案卡或比對兩組密碼：例如『101101』與『111001』只有第 2 位和第 4 位不同，漢明距離就是 2。",
+    industry: "通訊傳輸錯誤檢測與更正、生物資訊 DNA/RNA 基因序列突變比對、感知雜湊 (pHash) 以圖搜圖。"
+  },
+  minkowski: {
+    shortName: "閔可夫斯基距離",
+    category: "距離演算法",
+    title: "閔可夫斯基距離 (Minkowski Distance)",
+    oneliner: "一句話簡介：綜合歐氏與曼哈頓的一般化距離公式，透過參數 p 靈活控制距離幾何特性。",
+    origin: "由德國數學家 Hermann Minkowski 提出，定義了 Lp 範數空間的一般化度量框架。",
+    practical: "必考重點：當 p=1 時即為曼哈頓距離（菱形單位球）；當 p=2 時即為歐氏距離（圓形單位球）；當 p→∞ 時為切比雪夫距離（正方形單位球）。",
+    life: "就像一把可調式萬用尺：設定 p=1 量街區步數、設定 p=2 量直線距離、設定 p<2 可緩解高維度空間的距離集中現象。",
+    industry: "KNN 與分群演算法的超參數調優（針對不同分布形態動態選擇最佳 p 值）。"
+  },
+  kmeans: {
+    shortName: "K-means",
+    category: "分群模型",
+    title: "K-means (K-均值分群)",
+    oneliner: "一句話簡介：將資料分成事先指定的 K 個群，透過迭代更新群心使群內變異數（SSE/Inertia）最小。",
+    origin: "由 Stuart Lloyd (1957) 與 James MacQueen (1967) 發展成熟，是最經典的基於質心（Centroid-based）的無監督分群演算法。",
+    practical: "4 步驟：選 K 個中心 → 指派最近中心 → 更新中心為群內均值 → 重複至收斂。缺點：必須事先指定 K、對離群值與初始中心敏感、易收斂至局部最優、僅適合球狀等大小群。",
+    life: "連鎖超商要在城市設立 3 座物流倉庫（K=3），反覆調整倉庫位置，讓每家門市到最近倉庫的平均距離最短。",
+    industry: "RFM 客戶價值分群、影像色彩量化壓縮（Color Quantization）、大規模數值資料初步探索。"
+  },
+  hierarchical: {
+    shortName: "階層式分群",
+    category: "分群模型",
+    title: "階層式分群 (Hierarchical Clustering)",
+    oneliner: "一句話簡介：建立資料的樹狀階層結構 (Dendrogram)，可由下而上凝聚或由上而下分裂合群。",
+    origin: "源自生物分類學（系統發生樹），分為凝聚式（Agglomerative，由下而上合併）與分裂式（Divisive，由上而下拆分）兩大流派。",
+    practical: "不需要事先固定 K 值（可事後在樹狀圖任意高度橫切決定群數），具備極佳視覺解釋性；但時間複雜度高 O(N²~N³)，僅適合小型資料集，且群集一旦合併即無法撤銷。",
+    life: "生物課本上的「界、門、綱、目、科、屬、種」演化親緣樹，或公司組織部門的層級架構圖。",
+    industry: "基因表現微陣列與 DNA 序列親緣分類、小型高價值客群畫像剖析、文件主題階層分類。"
+  },
+  dbscan: {
+    shortName: "DBSCAN",
+    category: "分群模型",
+    title: "DBSCAN (基於密度的空間分群)",
+    oneliner: "一句話簡介：根據點的密度（鄰域半徑 eps 與最少點數 MinPts）來分群，可找出任意形狀的群並過濾雜訊。",
+    origin: "由 Martin Ester 等人於 1996 年在 KDD 發表（榮獲 SIGKDD Test of Time 獎），定義了核心點（Core）、邊界點（Border）與雜訊點（Noise）。",
+    practical: "不需事先指定 K 值、可完美識別非凸任意形狀群集、能自動抓出異常雜訊點；但對參數 eps 與 MinPts 非常敏感，且當資料集內各群密度差異懸殊時效果不佳。",
+    life: "從衛星夜景圖看城市聚落：燈光密集連成一片的就是城市群（不論是長條沿河岸或環狀），深山裡零星一兩盞燈則被歸類為雜訊點。",
+    industry: "GPS 車輛軌跡熱點聚類、光達 (LiDAR) 自駕車障礙物點雲分割、異常交易與離群雜訊過濾。"
+  },
+  gmm: {
+    shortName: "GMM 高斯混合",
+    category: "分群模型",
+    title: "GMM (高斯混合模型, Gaussian Mixture Model)",
+    oneliner: "一句話簡介：假設資料由多個高斯（常態）分布疊加組成，使用 EM 演算法進行機率式軟分群。",
+    origin: "基於統計生成模型與 Karl Pearson 的混合分布理論，結合最大期望演算法（EM Algorithm：E-step 算後驗機率、M-step 更新均值與共變異數）。",
+    practical: "屬於「軟分群 (Soft Clustering)」，可輸出每個樣本屬於各群的機率值；因每個高斯成分擁有獨立共變異數矩陣，能擬合不同大小與方向傾斜的橢圓形群集。但需指定 K，且若資料嚴重違反常態分布假設效果會變差。",
+    life: "一位顧客可能同時具備「70% 家庭採購族 + 30% 3C 愛好者」的雙重身分機率，而非非黑即白地硬塞進單一標籤。",
+    industry: "語者辨識聲紋建模、金融資產報酬率多態分布建模、醫療影像組織軟分割、重疊客群機率分析。"
+  },
+  spectral: {
+    shortName: "光譜分群",
+    category: "分群模型",
+    title: "光譜分群 (Spectral Clustering)",
+    oneliner: "一句話簡介：利用圖論（相似度矩陣與拉普拉斯矩陣特徵向量）將資料投影後分群，專治非凸形複雜結構。",
+    origin: "源於譜圖理論（Spectral Graph Theory），將每個資料點視為圖的頂點、點間相似度視為邊權重，把分群轉化為圖切割（Graph Cut，如 Normalized Cut）問題。",
+    practical: "流程：建立相似度圖 W → 計算拉普拉斯矩陣 L → 求前 k 個最小特徵向量進行低維嵌入 → 在特徵空間執行 K-means。能完美解決同心圓、雙半月等非凸資料，但建圖與特徵分解計算成本高。",
+    life: "在社群網路中分派系：即使兩個人沒有直接距離座標，只要透過「朋友連朋友」的連通關係圖，就能切分出緊密互動的社群圈。",
+    industry: "社交網路社群偵測、影像語義分割（Normalized Cuts）、高維流形與非凸幾何資料分群。"
+  },
+  meanshift: {
+    shortName: "Mean Shift",
+    category: "分群模型",
+    title: "Mean Shift (均值漂移分群)",
+    oneliner: "一句話簡介：利用核密度估計，讓搜尋視窗不斷往局部密度最高處（均值漂移向量）移動，自動找到群中心。",
+    origin: "由 Fukunaga 與 Hostetler 於 1975 年提出，後經 Comaniciu 與 Meer (2002) 推廣至電腦視覺色彩分割與物件追蹤。",
+    practical: "不需要事先指定 K 值（自動由密度峰值數量決定群數）、可適應任意形狀；但帶寬（Bandwidth）參數影響極大（帶寬太小會過度分群、太大會欠分群），且每次迭代需搜尋視窗內所有點，計算成本高。",
+    life: "在濃霧籠罩的山區裡，每個人都往自己身邊「地勢更陡、人群更密集」的方向跨步，最後同一個山頭的人都會自動匯集到同一個山頂峰值！",
+    industry: "電腦視覺影像平滑與彩色區域分割、即時視訊目標追蹤 (CamShift)、無需預設群數的地理熱區探索。"
+  }
+};
+
+function renderDeepDiveChips(activeKey) {
+  const container = document.getElementById("algo-chip-container");
+  container.innerHTML = "";
+  Object.keys(ALGO_DATA).forEach(key => {
+    const btn = document.createElement("button");
+    btn.className = "algo-chip-btn" + (key === activeKey ? " active" : "");
+    btn.innerText = ALGO_DATA[key].shortName;
+    btn.onclick = () => selectDeepDive(key);
+    container.appendChild(btn);
+  });
+}
+
+function selectDeepDive(key) {
+  const item = ALGO_DATA[key];
+  if (!item) return;
+  renderDeepDiveChips(key);
+  document.getElementById("dd-category").innerText = item.category;
+  document.getElementById("dd-category").style.background = item.category === "距離演算法" ? "#2563eb" : "#7c3aed";
+  document.getElementById("dd-title").innerText = item.title;
+  document.getElementById("dd-Oneliner").innerText = item.oneliner;
+  document.getElementById("dd-origin").innerText = item.origin;
+  document.getElementById("dd-practical").innerText = item.practical;
+  document.getElementById("dd-life").innerText = item.life;
+  document.getElementById("dd-industry").innerText = item.industry;
+
+  document.querySelectorAll("[data-col]").forEach(el => {
+    if (el.getAttribute("data-col") === key) {
+      el.classList.add("highlight-col");
+    } else {
+      el.classList.remove("highlight-col");
+    }
+  });
+}
+
+function showTagToast(msg) {
+  document.getElementById("toast-banner").innerText = "✨ " + msg;
+}
+
+const TRAP_DETAILS = {
+  1: "⚠️ 陷阱 1 詳解：歐氏距離與曼哈頓距離直接受特徵數值大小影響（如月薪 50,000 元 vs 職等 3 級），距離計算會被月薪完全綁架！建模前務必做 StandardScaler 或 MinMaxScaler。",
+  2: "⚠️ 陷阱 2 詳解：餘弦相似度 = 1 代表方向完全相同（夾角 0°），越大越相似！若考題問「餘弦距離」，公式為 1 - Cosine Similarity（此時才是越小越相似）。",
+  3: "⚠️ 陷阱 3 詳解：DBSCAN 雖然不用設 K，但對 eps 與 MinPts 極敏感；若資料中同時存在「極高密度小群」與「稀疏大群」，單一組參數無法同時分好。",
+  4: "⚠️ 陷阱 4 詳解：K-means 必須事先給定 K，且因為計算算術平均數 (Mean)，只要有 1 個極端離群值就會把群心拉走（改用 K-medoids 可改善）。",
+  5: "⚠️ 陷阱 5 詳解：GMM 假設每個群集皆來自多變量常態分布（橢圓形等高線），若資料是彎月形或同心圓等非高斯分布，GMM 擬合會失效。",
+  6: "⚠️ 陷阱 6 詳解：Mean Shift 的帶寬 (Bandwidth) 若設太小，每個小起伏都變成獨立群（過度分群 Over-clustering）；若設太大，所有點會全部吸到同一個中心（欠分群）。"
+};
+
+function showTrapDetail(idx) {
+  document.getElementById("toast-banner").innerText = TRAP_DETAILS[idx];
+}
+
+function highlightScenario(type, btnEl) {
+  if (btnEl) {
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    btnEl.classList.add("active");
+  }
+  const map = {
+    all: [],
+    numeric: ["euclidean", "kmeans", "gmm"],
+    text: ["cosine", "kmeans", "spectral"],
+    outlier: ["mahalanobis", "dbscan", "meanshift"],
+    nonconvex: ["minkowski", "spectral", "meanshift"],
+    small: ["manhattan", "hierarchical"]
+  };
+  const cols = map[type] || [];
+  document.querySelectorAll("[data-col]").forEach(el => {
+    if (cols.includes(el.getAttribute("data-col"))) {
+      el.classList.add("highlight-col");
+    } else {
+      el.classList.remove("highlight-col");
+    }
+  });
+}
+
+// ============================================================================
+// 2. LAB 1: INTERACTIVE DISTANCE CALCULATOR & GEOMETRIC VISUALIZER
+// ============================================================================
+let hammingX = [1, 0, 1, 1, 0, 1];
+let hammingY = [1, 1, 1, 0, 0, 1];
+
+function renderHammingUI() {
+  const wrap = document.getElementById("hamming-bits-ui");
+  let html = "";
+  let diff = 0;
+  for (let i = 0; i < 6; i++) {
+    const isDiff = hammingX[i] !== hammingY[i];
+    if (isDiff) diff++;
+    const bg = isDiff ? "#fee2e2" : "#e2e8f0";
+    const col = isDiff ? "#dc2626" : "#0f172a";
+    html += `<span onclick="toggleHammingBit(${i})" style="cursor:pointer;background:${bg};color:${col};padding:2px 5px;border-radius:4px;font-weight:bold;" title="點擊翻轉位元">${hammingX[i]}/${hammingY[i]}</span>`;
+  }
+  wrap.innerHTML = html;
+  document.getElementById("lbl-hamming-top").innerText = `d = ${diff}`;
+  document.getElementById("val-ham").innerText = diff;
+}
+
+function toggleHammingBit(i) {
+  hammingY[i] = hammingY[i] === 1 ? 0 : 1;
+  renderHammingUI();
+  updateDistLab();
+}
+
+function updateDistLab() {
+  const x1 = parseFloat(document.getElementById("rng-x1").value);
+  const x2 = parseFloat(document.getElementById("rng-x2").value);
+  const y1 = parseFloat(document.getElementById("rng-y1").value);
+  const y2 = parseFloat(document.getElementById("rng-y2").value);
+  const p = parseFloat(document.getElementById("rng-p").value);
+
+  document.getElementById("lbl-ptX").innerText = `(${x1.toFixed(1)}, ${x2.toFixed(1)})`;
+  document.getElementById("lbl-ptY").innerText = `(${y1.toFixed(1)}, ${y2.toFixed(1)})`;
+  document.getElementById("lbl-p").innerText = `p = ${p.toFixed(1)}`;
+
+  const dx = Math.abs(x1 - y1);
+  const dy = Math.abs(x2 - y2);
+  const euc = Math.sqrt(dx * dx + dy * dy);
+  const man = dx + dy;
+  const mink = Math.pow(Math.pow(dx, p) + Math.pow(dy, p), 1 / p);
+
+  const dot = x1 * y1 + x2 * y2;
+  const normX = Math.sqrt(x1 * x1 + x2 * x2);
+  const normY = Math.sqrt(y1 * y1 + y2 * y2);
+  const cos = dot / (normX * normY || 1);
+
+  const diff1 = x1 - y1;
+  const diff2 = x2 - y2;
+  const mahSq = 0.6 * diff1 * diff1 + 2 * (-0.25) * diff1 * diff2 + 0.5 * diff2 * diff2;
+  const mah = Math.sqrt(Math.max(0, mahSq));
+
+  document.getElementById("val-euc").innerText = euc.toFixed(3);
+  document.getElementById("val-man").innerText = man.toFixed(3);
+  document.getElementById("val-cos").innerText = cos.toFixed(3);
+  document.getElementById("val-mah").innerText = mah.toFixed(3);
+  document.getElementById("val-mink").innerText = mink.toFixed(3);
+
+  const angleDeg = (Math.acos(Math.min(1, Math.max(-1, cos))) * 180 / Math.PI).toFixed(1);
+  document.getElementById("dist-derivation-text").innerHTML = `
+    <div><b>[數學推導即時算式]</b> 設 <b>x</b> = (${x1}, ${x2})，<b>y</b> = (${y1}, ${y2})：</div>
+    <div>1. <b>歐氏距離</b>：&radic;((${x1}&minus;${y1})&sup2; + (${x2}&minus;${y2})&sup2;) = &radic;(${(dx*dx).toFixed(2)} + ${(dy*dy).toFixed(2)}) = <span style="color:#38bdf8;font-weight:bold;">${euc.toFixed(3)}</span></div>
+    <div>2. <b>曼哈頓距離</b>：|${x1}&minus;${y1}| + |${x2}&minus;${y2}| = ${dx.toFixed(1)} + ${dy.toFixed(1)} = <span style="color:#f87171;font-weight:bold;">${man.toFixed(3)}</span></div>
+    <div>3. <b>餘弦相似度</b>：(${x1}&times;${y1} + ${x2}&times;${y2}) / (${normX.toFixed(2)} &times; ${normY.toFixed(2)}) = <span style="color:#4ade80;font-weight:bold;">${cos.toFixed(3)}</span> (夾角 &theta; &approx; ${angleDeg}&deg;)</div>
+    <div>4. <b>閔可夫斯基 (p=${p})</b>：(${dx.toFixed(1)}<sup>${p}</sup> + ${dy.toFixed(1)}<sup>${p}</sup>)<sup>1/${p}</sup> = <span style="color:#fbbf24;font-weight:bold;">${mink.toFixed(3)}</span></div>
+  `;
+
+  drawDistCanvas(x1, x2, y1, y2, p);
+}
+
+function drawDistCanvas(x1, x2, y1, y2, p) {
+  const canvas = document.getElementById("distCanvas");
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width;
+  const H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const padL = 48, padB = 32, padT = 18, padR = 24;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+
+  const toPxX = (v) => padL + (v / 10) * plotW;
+  const toPxY = (v) => H - padB - (v / 10) * plotH;
+
+  ctx.strokeStyle = "#e2e8f0";
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 10; i++) {
+    const gx = toPxX(i);
+    const gy = toPxY(i);
+    ctx.beginPath(); ctx.moveTo(gx, padT); ctx.lineTo(gx, H - padB); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(padL, gy); ctx.lineTo(W - padR, gy); ctx.stroke();
+    if (i % 2 === 0) {
+      ctx.fillStyle = "#64748b";
+      ctx.font = "11px sans-serif";
+      ctx.fillText(i, gx - 4, H - padB + 15);
+      ctx.fillText(i, padL - 20, gy + 4);
+    }
+  }
+
+  ctx.strokeStyle = "#334155";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(padL, padT); ctx.lineTo(padL, H - padB); ctx.lineTo(W - padR, H - padB);
+  ctx.stroke();
+
+  const ox = toPxX(0), oy = toPxY(0);
+  const px1 = toPxX(x1), py1 = toPxY(x2);
+  const px2 = toPxX(y1), py2 = toPxY(y2);
+
+  // Cosine Vectors
+  ctx.strokeStyle = "rgba(16, 185, 129, 0.55)";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(px1, py1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(px2, py2); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Manhattan L-path
+  ctx.strokeStyle = "#dc2626";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(px1, py1);
+  ctx.lineTo(px2, py1);
+  ctx.lineTo(px2, py2);
+  ctx.stroke();
+
+  // Minkowski Unit Contour
+  const rMink = Math.pow(Math.pow(Math.abs(x1 - y1), p) + Math.pow(Math.abs(x2 - y2), p), 1 / p);
+  ctx.strokeStyle = "rgba(245, 158, 11, 0.7)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let deg = 0; deg <= 360; deg += 3) {
+    const rad = deg * Math.PI / 180;
+    const ca = Math.cos(rad), sa = Math.sin(rad);
+    const denom = Math.pow(Math.pow(Math.abs(ca), p) + Math.pow(Math.abs(sa), p), 1 / p) || 1;
+    const rx = x1 + (rMink * ca) / denom;
+    const ry = x2 + (rMink * sa) / denom;
+    const sx = toPxX(rx), sy = toPxY(ry);
+    if (deg === 0) ctx.moveTo(sx, sy);
+    else ctx.lineTo(sx, sy);
+  }
+  ctx.stroke();
+
+  // Euclidean Straight Line
+  ctx.strokeStyle = "#2563eb";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(px1, py1);
+  ctx.lineTo(px2, py2);
+  ctx.stroke();
+
+  // Points X and Y
+  ctx.fillStyle = "#1d4ed8";
+  ctx.beginPath(); ctx.arc(px1, py1, 7, 0, Math.PI * 2); ctx.fill();
+  ctx.font = "bold 11px sans-serif";
+  ctx.fillStyle = "#1e3a8a";
+  ctx.fillText(`X(${x1},${x2})`, px1 + 9, py1 - 9);
+
+  ctx.fillStyle = "#dc2626";
+  ctx.beginPath(); ctx.arc(px2, py2, 7, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#991b1b";
+  ctx.fillText(`Y(${y1},${y2})`, px2 + 9, py2 - 9);
+
+  // Legend
+  ctx.fillStyle = "rgba(255,255,255,0.92)";
+  ctx.fillRect(padL + 8, padT + 6, 235, 62);
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(padL + 8, padT + 6, 235, 62);
+
+  ctx.font = "bold 11px sans-serif";
+  ctx.fillStyle = "#2563eb"; ctx.fillText("━━ 歐氏直線距離 (Euclidean)", padL + 16, padT + 22);
+  ctx.fillStyle = "#dc2626"; ctx.fillText("━━ 曼哈頓階梯距離 (Manhattan)", padL + 16, padT + 39);
+  ctx.fillStyle = "#d97706"; ctx.fillText("━━ 閔可夫斯基等距圈 (p=" + p.toFixed(1) + ")", padL + 16, padT + 56);
+}
+
+(function setupDistCanvasDrag() {
+  const canvas = document.getElementById("distCanvas");
+  let dragging = null;
+  canvas.addEventListener("mousedown", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+    const padL = 48, padB = 32, padT = 18, padR = 24;
+    const plotW = canvas.width - padL - padR;
+    const plotH = canvas.height - padT - padB;
+    const vx = Math.max(1, Math.min(9, Math.round(((mx - padL) / plotW) * 20) / 2));
+    const vy = Math.max(1, Math.min(9, Math.round(((canvas.height - padB - my) / plotH) * 20) / 2));
+
+    const x1 = parseFloat(document.getElementById("rng-x1").value);
+    const x2 = parseFloat(document.getElementById("rng-x2").value);
+    const y1 = parseFloat(document.getElementById("rng-y1").value);
+    const y2 = parseFloat(document.getElementById("rng-y2").value);
+    const dX = Math.hypot(vx - x1, vy - x2);
+    const dY = Math.hypot(vx - y1, vy - y2);
+    dragging = dX < dY ? "X" : "Y";
+    if (dragging === "X") {
+      document.getElementById("rng-x1").value = vx;
+      document.getElementById("rng-x2").value = vy;
+    } else {
+      document.getElementById("rng-y1").value = vx;
+      document.getElementById("rng-y2").value = vy;
+    }
+    updateDistLab();
+  });
+  window.addEventListener("mouseup", () => { dragging = null; });
+})();
+
+
+// ============================================================================
+// 3. LAB 2: INTERACTIVE CLUSTERING STEP-BY-STEP SIMULATOR
+// ============================================================================
+let simPoints = [];
+let simCentroids = [];
+let simStep = 0;
+let autoPlayTimer = null;
+const CLUSTER_COLORS = ["#2563eb", "#dc2626", "#16a34a", "#d97706", "#9333ea", "#0891b2"];
+
+function initClusterSim() {
+  stopAutoPlay();
+  const ds = document.getElementById("sel-dataset").value;
+  simPoints = [];
+
+  // Deterministic pseudo-random generator for clean initial layouts
+  let seed = 42;
+  const nextRand = () => {
+    seed = (seed * 1664525 + 1013904223) % 4294967296;
+    return seed / 4294967296;
+  };
+  const randNorm = () => (nextRand() + nextRand() + nextRand() - 1.5) * 2;
+
+  if (ds === "blobs") {
+    const centers = [[145, 90], [415, 88], [285, 210]];
+    centers.forEach((c) => {
+      for (let i = 0; i < 18; i++) {
+        simPoints.push({ x: c[0] + randNorm() * 32, y: c[1] + randNorm() * 32, cluster: -1, role: "normal" });
+      }
+    });
+  } else if (ds === "moons") {
+    for (let i = 0; i < 28; i++) {
+      const a = (i / 27) * Math.PI;
+      simPoints.push({ x: 210 + Math.cos(a) * 110 + randNorm() * 8, y: 170 - Math.sin(a) * 85 + randNorm() * 8, cluster: -1, role: "normal" });
+    }
+    for (let i = 0; i < 28; i++) {
+      const a = (i / 27) * Math.PI;
+      simPoints.push({ x: 320 + Math.cos(a) * 110 + randNorm() * 8, y: 120 + Math.sin(a) * 85 + randNorm() * 8, cluster: -1, role: "normal" });
+    }
+  } else if (ds === "noisy") {
+    const c1 = [170, 145], c2 = [395, 150];
+    for (let i = 0; i < 22; i++) {
+      simPoints.push({ x: c1[0] + randNorm() * 26, y: c1[1] + randNorm() * 26, cluster: -1, role: "normal" });
+      simPoints.push({ x: c2[0] + randNorm() * 26, y: c2[1] + randNorm() * 26, cluster: -1, role: "normal" });
+    }
+    [[45, 40], [520, 45], [530, 250], [60, 245], [285, 35], [290, 258]].forEach(p => {
+      simPoints.push({ x: p[0], y: p[1], cluster: -1, role: "noise" });
+    });
+  } else if (ds === "ellipses") {
+    for (let i = 0; i < 26; i++) {
+      const u = randNorm() * 55, v = randNorm() * 14;
+      simPoints.push({ x: 235 + u * 0.8 - v * 0.5, y: 135 + u * 0.5 + v * 0.8, cluster: -1, role: "normal" });
+    }
+    for (let i = 0; i < 26; i++) {
+      const u = randNorm() * 55, v = randNorm() * 14;
+      simPoints.push({ x: 345 + u * 0.8 + v * 0.5, y: 160 - u * 0.5 + v * 0.8, cluster: -1, role: "normal" });
+    }
+  } else if (ds === "small_tree") {
+    const pts = [[120, 80], [145, 95], [135, 125], [260, 190], [285, 210], [420, 85], [450, 100], [435, 130]];
+    pts.forEach(p => simPoints.push({ x: p[0], y: p[1], cluster: -1, role: "normal" }));
+  }
+
+  resetAlgoState();
+  runFullClusterSim();
+}
+
+function resetAlgoState() {
+  stopAutoPlay();
+  simStep = 0;
+  simCentroids = [];
+  simPoints.forEach(p => { p.cluster = -1; p.role = "normal"; });
+  const algo = document.getElementById("sel-algo").value;
+  document.getElementById("clust-step-log").innerHTML =
+    `<b>[模型已重置：${ALGO_DATA[algo].title}]</b> 點擊「下一步 (Step-by-Step)」逐步觀察演算法流程，或點擊畫布任意處新增自訂資料點！`;
+  drawClusterCanvas();
+}
+
+function stepClusterSim() {
+  const algo = document.getElementById("sel-algo").value;
+  const K = parseInt(document.getElementById("rng-k").value, 10);
+  const eps = parseFloat(document.getElementById("rng-eps").value);
+  simStep++;
+
+  if (algo === "kmeans" || algo === "gmm") {
+    if (simStep === 1) {
+      simCentroids = [];
+      for (let i = 0; i < K; i++) {
+        const pt = simPoints[Math.floor((i * simPoints.length) / K)];
+        simCentroids.push({ x: pt.x + 10, y: pt.y - 10, rx: 42, ry: 26, angle: i * 0.5 });
+      }
+      document.getElementById("clust-step-log").innerHTML =
+        `<b>Step 1 (初始化中心)：</b> 選擇 K=${K} 個初始群中心（大圓點標記）。下一步將計算每個點到群心的距離並指派分群。`;
+    } else if (simStep % 2 === 0) {
+      simPoints.forEach(p => {
+        let best = 0, minD = Infinity;
+        simCentroids.forEach((c, idx) => {
+          const d = Math.hypot(p.x - c.x, p.y - c.y);
+          if (d < minD) { minD = d; best = idx; }
+        });
+        p.cluster = best;
+      });
+      document.getElementById("clust-step-log").innerHTML =
+        `<b>Step ${simStep} (${algo === 'gmm' ? 'E-step 計算各群歸屬機率' : '指派到最近中心'})：</b> 依據距離將所有資料點指派給最近的群中心並著色。`;
+    } else {
+      simCentroids.forEach((c, idx) => {
+        const members = simPoints.filter(p => p.cluster === idx);
+        if (members.length > 0) {
+          c.x = members.reduce((s, p) => s + p.x, 0) / members.length;
+          c.y = members.reduce((s, p) => s + p.y, 0) / members.length;
+        }
+      });
+      document.getElementById("clust-step-log").innerHTML =
+        `<b>Step ${simStep} (${algo === 'gmm' ? 'M-step 更新高斯均值與共變異橢圓' : '更新群中心位置'})：</b> 計算各群所有點的平均值，將中心移動至新均值位置（使群內變異最小）。`;
+    }
+  } else if (algo === "dbscan") {
+    const minPts = 3;
+    if (simStep === 1) {
+      simPoints.forEach(p => {
+        const neighbors = simPoints.filter(q => Math.hypot(p.x - q.x, p.y - q.y) <= eps);
+        p.role = neighbors.length >= minPts ? "core" : "pending";
+      });
+      document.getElementById("clust-step-log").innerHTML =
+        `<b>Step 1 (識別核心點 Core Points)：</b> 以半徑 eps=${eps}px 掃描，鄰居數 &ge; ${minPts} 的點標記為「核心點」。`;
+    } else {
+      let cid = 0;
+      const visited = new Set();
+      simPoints.forEach((p, idx) => {
+        if (visited.has(idx) || p.role !== "core") return;
+        const queue = [p];
+        visited.add(idx);
+        p.cluster = cid;
+        while (queue.length > 0) {
+          const curr = queue.shift();
+          simPoints.forEach((q, qIdx) => {
+            if (Math.hypot(curr.x - q.x, curr.y - q.y) <= eps) {
+              if (q.cluster === -1) q.cluster = cid;
+              if (!visited.has(qIdx) && q.role === "core") {
+                visited.add(qIdx);
+                queue.push(q);
+              }
+            }
+          });
+        }
+        cid++;
+      });
+      simPoints.forEach(p => {
+        if (p.cluster === -1) p.role = "noise";
+        else if (p.role !== "core") p.role = "border";
+      });
+      document.getElementById("clust-step-log").innerHTML =
+        `<b>Step ${simStep} (密度連通擴展 & 標記雜訊)：</b> 從核心點向外連通形成任意形狀群集（共找出 ${cid} 群），孤立點標記為灰色「雜訊點 (Noise)」！`;
+    }
+  } else if (algo === "spectral") {
+    if (simStep === 1) {
+      document.getElementById("clust-step-log").innerHTML =
+        `<b>Step 1 (建立鄰近相似度圖 Graph)：</b> 連接距離小於 ${eps}px 的資料點形成相似度矩陣 W 與圖結構。`;
+    } else {
+      let cid = 0;
+      const visited = new Set();
+      simPoints.forEach((p, idx) => {
+        if (visited.has(idx)) return;
+        const queue = [p];
+        visited.add(idx);
+        p.cluster = cid % K;
+        while (queue.length > 0) {
+          const curr = queue.shift();
+          simPoints.forEach((q, qIdx) => {
+            if (!visited.has(qIdx) && Math.hypot(curr.x - q.x, curr.y - q.y) <= eps) {
+              visited.add(qIdx);
+              q.cluster = cid % K;
+              queue.push(q);
+            }
+          });
+        }
+        cid++;
+      });
+      document.getElementById("clust-step-log").innerHTML =
+        `<b>Step ${simStep} (拉普拉斯矩陣特徵向量切割)：</b> 利用圖論連通性與特徵向量映射，成功將非凸流形（如雙半月形）分群！`;
+    }
+  } else if (algo === "meanshift") {
+    if (simStep === 1) {
+      simCentroids = [
+        { x: 110, y: 70 }, { x: 290, y: 60 }, { x: 470, y: 75 },
+        { x: 130, y: 220 }, { x: 310, y: 230 }, { x: 460, y: 215 }
+      ];
+      document.getElementById("clust-step-log").innerHTML =
+        `<b>Step 1 (撒放密度搜尋視窗)：</b> 在空間中放置多個帶寬 Bandwidth=${eps}px 的搜尋視窗，準備往高密度方向均值漂移。`;
+    } else {
+      simCentroids.forEach(c => {
+        const inside = simPoints.filter(p => Math.hypot(p.x - c.x, p.y - c.y) <= eps * 1.35);
+        if (inside.length > 0) {
+          c.x = inside.reduce((s, p) => s + p.x, 0) / inside.length;
+          c.y = inside.reduce((s, p) => s + p.y, 0) / inside.length;
+        }
+      });
+      const merged = [];
+      simCentroids.forEach(c => {
+        if (!merged.some(m => Math.hypot(m.x - c.x, m.y - c.y) < 35)) merged.push(c);
+      });
+      simCentroids = merged;
+      simPoints.forEach(p => {
+        let best = 0, minD = Infinity;
+        simCentroids.forEach((c, idx) => {
+          const d = Math.hypot(p.x - c.x, p.y - c.y);
+          if (d < minD) { minD = d; best = idx; }
+        });
+        p.cluster = best;
+      });
+      document.getElementById("clust-step-log").innerHTML =
+        `<b>Step ${simStep} (往密度峰值漂移收斂)：</b> 視窗中心沿密度梯度自動往高處漂移並合併重疊峰值，自動決定群數為 ${simCentroids.length} 群（不需指定 K）！`;
+    }
+  } else if (algo === "hierarchical") {
+    let clusters = simPoints.map((p, i) => [i]);
+    const targetClusters = Math.max(K, simPoints.length - simStep * 8);
+    while (clusters.length > targetClusters) {
+      let bestA = 0, bestB = 1, minD = Infinity;
+      for (let i = 0; i < clusters.length; i++) {
+        for (let j = i + 1; j < clusters.length; j++) {
+          let dCluster = Infinity;
+          clusters[i].forEach(pi => {
+            clusters[j].forEach(pj => {
+              const d = Math.hypot(simPoints[pi].x - simPoints[pj].x, simPoints[pi].y - simPoints[pj].y);
+              if (d < dCluster) dCluster = d;
+            });
+          });
+          if (dCluster < minD) { minD = dCluster; bestA = i; bestB = j; }
+        }
+      }
+      clusters[bestA] = clusters[bestA].concat(clusters[bestB]);
+      clusters.splice(bestB, 1);
+    }
+    clusters.forEach((grp, cid) => {
+      grp.forEach(pi => { simPoints[pi].cluster = cid % CLUSTER_COLORS.length; });
+    });
+    document.getElementById("clust-step-log").innerHTML =
+      `<b>Step ${simStep} (由下而上凝聚合併 Agglomerative)：</b> 每次尋找距離最近的兩個子群合併成樹枝，目前合併為 ${clusters.length} 個群集。`;
+  }
+
+  drawClusterCanvas();
+}
+
+function runFullClusterSim() {
+  stopAutoPlay();
+  resetAlgoState();
+  for (let i = 0; i < 7; i++) stepClusterSim();
+}
+
+function toggleAutoPlay() {
+  if (autoPlayTimer) {
+    stopAutoPlay();
+  } else {
+    if (simStep >= 7) resetAlgoState();
+    document.getElementById("btn-autoplay").innerText = "⏸️ 暫停自動模擬";
+    autoPlayTimer = setInterval(() => {
+      stepClusterSim();
+      if (simStep >= 7) stopAutoPlay();
+    }, 650);
+  }
+}
+
+function stopAutoPlay() {
+  if (autoPlayTimer) {
+    clearInterval(autoPlayTimer);
+    autoPlayTimer = null;
+  }
+  const btn = document.getElementById("btn-autoplay");
+  if (btn) btn.innerText = "▶️ 一鍵自動模擬";
+}
+
+function drawClusterCanvas() {
+  const canvas = document.getElementById("clustCanvas");
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const algo = document.getElementById("sel-algo").value;
+  const eps = parseFloat(document.getElementById("rng-eps").value);
+
+  ctx.strokeStyle = "#f1f5f9";
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+  if (algo === "spectral" && simStep >= 1) {
+    ctx.strokeStyle = "rgba(100, 116, 139, 0.28)";
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < simPoints.length; i++) {
+      for (let j = i + 1; j < simPoints.length; j++) {
+        if (Math.hypot(simPoints[i].x - simPoints[j].x, simPoints[i].y - simPoints[j].y) <= eps) {
+          ctx.beginPath();
+          ctx.moveTo(simPoints[i].x, simPoints[i].y);
+          ctx.lineTo(simPoints[j].x, simPoints[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  if (algo === "dbscan" && simStep >= 1) {
+    simPoints.forEach(p => {
+      if (p.role === "core") {
+        ctx.fillStyle = "rgba(16, 185, 129, 0.06)";
+        ctx.strokeStyle = "rgba(16, 185, 129, 0.25)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, eps, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+    });
+  }
+
+  simPoints.forEach(p => {
+    ctx.beginPath();
+    if (p.role === "noise" && simStep >= 2 && algo === "dbscan") {
+      ctx.fillStyle = "#94a3b8";
+      ctx.arc(p.x, p.y, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#475569";
+      ctx.stroke();
+    } else {
+      const col = p.cluster >= 0 ? CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length] : "#475569";
+      ctx.fillStyle = col;
+      ctx.arc(p.x, p.y, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  });
+
+  simCentroids.forEach((c, idx) => {
+    const col = CLUSTER_COLORS[idx % CLUSTER_COLORS.length];
+    if (algo === "gmm") {
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.rotate(c.angle || 0.3);
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath(); ctx.ellipse(0, 0, 58, 28, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(0, 0, 34, 16, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    } else if (algo === "meanshift") {
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath(); ctx.arc(c.x, c.y, eps, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    ctx.fillStyle = col;
+    ctx.strokeStyle = "#0f172a";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 8.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  });
+}
+
+document.getElementById("clustCanvas").addEventListener("click", (e) => {
+  const canvas = e.target;
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+  simPoints.push({ x, y, cluster: -1, role: "normal" });
+  drawClusterCanvas();
+});
+
+
+// ============================================================================
+// 4. PYTHON / SCIKIT-LEARN CODE VIEWER
+// ============================================================================
+const CODE_SNIPPETS = {
+  dist: `<span class="cmt"># 1. 導入標準化工具與 SciPy 距離計算模組（注意：計算距離前須先標準化！）</span>
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">from</span> sklearn.preprocessing <span class="kw">import</span> <span class="fn-dist">StandardScaler</span>
+<span class="kw">from</span> scipy.spatial.distance <span class="kw">import</span> (
+    <span class="fn-dist">euclidean</span>, <span class="fn-dist">cityblock</span>, <span class="fn-dist">cosine</span>, <span class="fn-dist">mahalanobis</span>, <span class="fn-dist">hamming</span>, <span class="fn-dist">minkowski</span>
+)
+
+<span class="cmt"># 建立兩個連續數值特徵向量 x 與 y</span>
+x = np.array([2.0, 2.0])
+y = np.array([7.0, 6.0])
+
+<span class="cmt"># (1) 歐氏距離 (Euclidean, p=2)：直線距離，對尺度敏感</span>
+d_euc = <span class="fn-dist">euclidean</span>(x, y)
+
+<span class="cmt"># (2) 曼哈頓距離 (Manhattan / cityblock, p=1)：網格路徑，較抗離群值</span>
+d_man = <span class="fn-dist">cityblock</span>(x, y)
+
+<span class="cmt"># (3) 餘弦相似度 (Cosine Similarity)：注意 scipy.cosine 回傳的是「餘弦距離」</span>
+cos_sim = 1.0 - <span class="fn-dist">cosine</span>(x, y)  <span class="cmt"># 越大越相似，與向量長度無關 (適合 TF-IDF)</span>
+
+<span class="cmt"># (4) 馬氏距離 (Mahalanobis)：需傳入共變異數逆矩陣 VI (Sigma^-1)</span>
+cov_inv = np.linalg.inv(np.array([[2.0, 0.8], [0.8, 1.5]]))
+d_mah = <span class="fn-dist">mahalanobis</span>(x, y, <span class="param-hl">VI=cov_inv</span>)
+
+<span class="cmt"># (5) 漢明距離 (Hamming)：二元編碼/基因序列不同位元比例</span>
+d_ham = <span class="fn-dist">hamming</span>([1, 0, 1, 1, 0, 1], [1, 1, 1, 0, 0, 1]) * 6  <span class="cmt"># 結果 d = 2</span>
+
+<span class="cmt"># (6) 閔可夫斯基距離 (Minkowski)：調整參數 p 控制距離幾何特性</span>
+d_mink = <span class="fn-dist">minkowski</span>(x, y, <span class="param-hl">p=3</span>)`,
+
+  clust: `<span class="cmt"># 2. 導入 Scikit-Learn 六大分群模型</span>
+<span class="kw">from</span> sklearn.cluster <span class="kw">import</span> (
+    <span class="fn-clust">KMeans</span>, <span class="fn-clust">AgglomerativeClustering</span>, <span class="fn-clust">DBSCAN</span>, <span class="fn-clust">SpectralClustering</span>, <span class="fn-clust">MeanShift</span>
+)
+<span class="kw">from</span> sklearn.mixture <span class="kw">import</span> <span class="fn-clust">GaussianMixture</span>
+
+<span class="cmt"># (1) K-means：球狀群、資料量大，須事先指定 n_clusters (K值)</span>
+km = <span class="fn-clust">KMeans</span>(<span class="param-hl">n_clusters=3</span>, <span class="param-hl">init='k-means++'</span>, random_state=42).fit(X_scaled)
+
+<span class="cmt"># (2) 階層式分群 (Hierarchical)：小型資料、可畫樹狀圖解釋</span>
+hc = <span class="fn-clust">AgglomerativeClustering</span>(<span class="param-hl">n_clusters=3</span>, <span class="param-hl">linkage='ward'</span>).fit(X_scaled)
+
+<span class="cmt"># (3) DBSCAN：任意形狀群、可過濾雜訊點 (標籤為 -1)，不需指定 K</span>
+db = <span class="fn-clust">DBSCAN</span>(<span class="param-hl">eps=0.5</span>, <span class="param-hl">min_samples=5</span>).fit(X_scaled)
+
+<span class="cmt"># (4) GMM 高斯混合模型：EM 演算法、橢圓群集、可輸出屬於各群機率</span>
+gmm = <span class="fn-clust">GaussianMixture</span>(<span class="param-hl">n_components=3</span>, <span class="param-hl">covariance_type='full'</span>).fit(X_scaled)
+probs = gmm.<span class="fn-dist">predict_proba</span>(X_scaled)  <span class="cmt"># 軟分群機率輸出！</span>
+
+<span class="cmt"># (5) 光譜分群 (Spectral)：利用相似度圖與特徵向量處理非凸形資料</span>
+sc = <span class="fn-clust">SpectralClustering</span>(<span class="param-hl">n_clusters=2</span>, <span class="param-hl">affinity='nearest_neighbors'</span>).fit(X_moons)
+
+<span class="cmt"># (6) Mean Shift：均值漂移尋找密度峰值，自動決定群數 (帶寬影響大)</span>
+ms = <span class="fn-clust">MeanShift</span>(<span class="param-hl">bandwidth=1.2</span>).fit(X_scaled)`
+};
+
+function switchCodeTab(tab) {
+  document.getElementById("code-display").innerHTML = CODE_SNIPPETS[tab];
+}
+
+
+// ============================================================================
+// 5. IPAS AI EXAM INTERACTIVE QUIZ
+// ============================================================================
+const QUIZ_QUESTIONS = [
+  {
+    q: "1. 【iPAS 必考】在進行 NLP 新聞文章分類與搜尋時，文章經由 TF-IDF 轉為高維稀疏向量，若希望忽略文章長短差異、專注比較主題方向，應優先選擇哪種度量？",
+    opts: ["A. 歐氏距離 (Euclidean)", "B. 餘弦相似度 (Cosine Similarity)", "C. 漢明距離 (Hamming)", "D. 馬氏距離 (Mahalanobis)"],
+    ans: 1,
+    exp: "正解 B！口訣：「餘弦看角度」，餘弦相似度衡量兩向量夾角餘弦值，與向量長度（文章字數長短）無關，最適合高維稀疏的 TF-IDF 文字向量空間。"
+  },
+  {
+    q: "2. 【考試陷阱】關於「閔可夫斯基距離 (Minkowski Distance)」的參數 p，下列敘述何者正確？",
+    opts: ["A. p=1 時為歐氏距離，p=2 時為曼哈頓距離", "B. p=1 時為曼哈頓距離，p=2 時為歐氏距離", "C. p=0 時為餘弦相似度", "D. p 值大小不會影響距離等高線的形狀"],
+    ans: 1,
+    exp: "正解 B！當 p=1 時公式為絕對差總和（曼哈頓距離）；當 p=2 時為平方和開根號（歐氏距離）。"
+  },
+  {
+    q: "3. 【情境判斷】當資料集包含許多異常雜訊點（如 GPS 漂移軌跡），且群集呈現彎曲的任意形狀、事先也無法確定有幾個群時，最適合使用哪個分群模型？",
+    opts: ["A. K-means", "B. 階層式分群 (Hierarchical)", "C. DBSCAN", "D. 高斯混合模型 (GMM)"],
+    ans: 2,
+    exp: "正解 C！快速判斷技巧：「有雜訊、任意形狀 → DBSCAN」，不需事先指定 K，且能透過 eps 與 MinPts 識別並排除雜訊點。"
+  },
+  {
+    q: "4. 【核心原理】哪一種分群模型採用 EM（最大期望）演算法求解，假設資料由多個常態分布組成，且能輸出樣本屬於各群的「機率值」？",
+    opts: ["A. GMM (高斯混合模型)", "B. Mean Shift", "C. 光譜分群 (Spectral Clustering)", "D. K-means"],
+    ans: 0,
+    exp: "正解 A！口訣：「GMM 機率算」，GMM 適合橢圓形群集，透過 EM 演算法進行機率式軟分群。"
+  },
+  {
+    q: "5. 【考試陷阱】在計算歐氏距離並執行 K-means 分群前，若特徵包含「年收入（百萬級）」與「消費次數（個位數）」，未做標準化會發生什麼問題？",
+    opts: ["A. 演算法會自動消除尺度影響，結果不變", "B. 年收入的量級差異會完全主導距離計算，導致分群失真", "C. 會自動轉換成漢明距離", "D. 協方差矩陣會無法求逆"],
+    ans: 1,
+    exp: "正解 B！歐氏距離與 K-means 對特徵尺度與離群值非常敏感，特徵量級差異過大時必須先進行標準化（Standardization / Normalization）。"
+  },
+  {
+    q: "6. 【快速判斷】面對「雙半月形 (Two Moons)」或「同心圓」這類高維非凸形 (Non-convex) 資料分布，哪一種利用圖論與拉普拉斯矩陣特徵向量的模型最合適？",
+    opts: ["A. K-means", "B. 階層式分群", "C. 光譜分群 (Spectral Clustering)", "D. 漢明分群"],
+    ans: 2,
+    exp: "正解 C！口訣：「光譜看圖論」，快速判斷技巧：「高維非凸形 → 光譜分群」。"
+  }
+];
+
+let quizScore = 0;
+let answeredSet = new Set();
+
+function renderQuiz() {
+  const container = document.getElementById("quiz-container");
+  container.innerHTML = "";
+  QUIZ_QUESTIONS.forEach((item, qIdx) => {
+    const card = document.createElement("div");
+    card.className = "quiz-item";
+    let optsHtml = "";
+    item.opts.forEach((opt, oIdx) => {
+      optsHtml += `<button class="quiz-opt" id="q-${qIdx}-opt-${oIdx}" onclick="answerQuiz(${qIdx}, ${oIdx})">${opt}</button>`;
+    });
+    card.innerHTML = `
+      <div class="quiz-q">${item.q}</div>
+      <div class="quiz-opts">${optsHtml}</div>
+      <div class="quiz-exp" id="q-exp-${qIdx}">${item.exp}</div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function answerQuiz(qIdx, oIdx) {
+  const item = QUIZ_QUESTIONS[qIdx];
+  const expEl = document.getElementById(`q-exp-${qIdx}`);
+  expEl.style.display = "block";
+
+  for (let i = 0; i < item.opts.length; i++) {
+    const btn = document.getElementById(`q-${qIdx}-opt-${i}`);
+    btn.classList.remove("correct", "wrong");
+    if (i === item.ans) btn.classList.add("correct");
+    else if (i === oIdx) btn.classList.add("wrong");
+  }
+
+  if (!answeredSet.has(qIdx)) {
+    answeredSet.add(qIdx);
+    if (oIdx === item.ans) quizScore++;
+    document.getElementById("quiz-score-badge").innerText = `得分：${quizScore} / ${QUIZ_QUESTIONS.length}`;
+  }
+}
+
+// Initialize Everything on Load
+window.addEventListener("DOMContentLoaded", () => {
+  selectDeepDive("euclidean");
+  renderHammingUI();
+  updateDistLab();
+  initClusterSim();
+  switchCodeTab("dist");
+  renderQuiz();
+});
+</script>
+
+</body>
+</html>
