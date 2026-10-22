@@ -1,0 +1,2780 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>0203.VGG16 深度學習互動全解析</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+          onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    .glow-cyan { box-shadow: 0 0 20px rgba(6, 182, 212, 0.25); }
+    .glow-purple { box-shadow: 0 0 20px rgba(168, 85, 247, 0.25); }
+    .code-hl-torch { color: #f43f5e; font-weight: 600; }
+    .code-hl-nn { color: #38bdf8; font-weight: 600; }
+    .code-hl-func { color: #fbbf24; font-weight: 600; }
+    .code-hl-comment { color: #64748b; font-style: italic; }
+    .code-hl-param { color: #34d399; }
+    
+    /* Interactive SVG Animation Keyframes */
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.85; filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.8)); }
+      50% { opacity: 0.45; filter: drop-shadow(0 0 2px rgba(6, 182, 212, 0.3)); }
+    }
+    @keyframes beamFlow {
+      0% { stroke-dashoffset: 40; }
+      100% { stroke-dashoffset: 0; }
+    }
+    .svg-beam {
+      stroke-dasharray: 6 4;
+      animation: beamFlow 1.2s linear infinite;
+    }
+    .svg-pulse {
+      animation: pulseGlow 2s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen selection:bg-cyan-500/30">
+
+  <!-- Navigation Bar -->
+  <header class="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span class="p-2 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-lg text-white font-black text-xl shadow-lg shadow-cyan-500/20">
+          V16
+        </span>
+        <div>
+          <h1 class="text-lg font-bold bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-300 bg-clip-text text-transparent">
+            VGG16 深度學習互動全解析
+          </h1>
+          <p class="text-xs text-slate-400">經典卷積神經網路 (Visual Geometry Group 16-Layer)</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2 text-xs">
+        <a href="#taxonomy-domain" class="px-3 py-1.5 rounded-md bg-indigo-600/80 hover:bg-indigo-500 text-white font-medium transition flex items-center gap-1.5">
+          <i class="fa-solid fa-sitemap text-xs"></i> 領域定位
+        </a>
+        <a href="#architecture-3d-svg" class="px-3 py-1.5 rounded-md bg-rose-600/90 hover:bg-rose-500 text-white font-medium transition flex items-center gap-1.5">
+          <i class="fa-solid fa-cube text-xs"></i> 3D立體架構圖
+        </a>
+        <a href="#simulator" class="px-3 py-1.5 rounded-md bg-cyan-600 hover:bg-cyan-500 text-white font-medium transition flex items-center gap-1.5">
+          <i class="fa-solid fa-play text-xs"></i> 互動模擬器
+        </a>
+        <a href="#fruit-hq" class="px-3 py-1.5 rounded-md bg-amber-600/80 hover:bg-amber-500 text-white font-medium transition flex items-center gap-1.5">
+          <i class="fa-solid fa-apple-whole text-xs"></i> 水果鑑定總部比喻
+        </a>
+        <a href="#math" class="px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 transition">
+          <i class="fa-solid fa-square-root-variable mr-1"></i>感受野推導
+        </a>
+        <a href="#quiz" class="px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 transition">
+          <i class="fa-solid fa-graduation-cap mr-1"></i>IPAS 試題
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+    <!-- 00. 深度學習範疇精準定位 (Deep Learning Taxonomy & Classification) -->
+    <section id="taxonomy-domain" class="bg-gradient-to-r from-indigo-950/70 via-slate-900 to-slate-900 p-6 sm:p-7 rounded-2xl border border-indigo-500/40 shadow-xl relative overflow-hidden">
+      <div class="absolute -right-8 -top-8 w-44 h-44 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <!-- Domain Breadcrumb Hierarchy -->
+      <div class="flex flex-wrap items-center gap-2 text-xs font-mono mb-4 text-slate-400">
+        <span class="px-2.5 py-1 rounded-md bg-slate-800/80 text-slate-300 border border-slate-700">
+          <i class="fa-solid fa-brain mr-1 text-slate-400"></i> 人工智慧 (AI)
+        </span>
+        <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+        <span class="px-2.5 py-1 rounded-md bg-slate-800/80 text-slate-300 border border-slate-700">
+          <i class="fa-solid fa-gear mr-1 text-slate-400"></i> 機器學習 (ML)
+        </span>
+        <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+        <span class="px-2.5 py-1 rounded-md bg-indigo-900/60 text-indigo-300 border border-indigo-700/80 font-bold">
+          <i class="fa-solid fa-network-wired mr-1 text-indigo-400"></i> 深度學習 (Deep Learning)
+        </span>
+        <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+        <span class="px-2.5 py-1 rounded-md bg-cyan-900/60 text-cyan-300 border border-cyan-700/80 font-bold">
+          <i class="fa-solid fa-camera mr-1 text-cyan-400"></i> 電腦視覺 (Computer Vision, CV)
+        </span>
+        <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+        <span class="px-2.5 py-1 rounded-md bg-rose-900/60 text-rose-300 border border-rose-700/80 font-bold animate-pulse">
+          <i class="fa-solid fa-cubes mr-1 text-rose-400"></i> 卷積神經網路 (CNN) 骨幹主幹
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-8 space-y-3">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/30">
+            <i class="fa-solid fa-compass"></i> 技術範疇確立：VGG16 在 AI 知識地圖上的精確座標
+          </div>
+          <h2 class="text-xl sm:text-2xl font-black text-white leading-snug">
+            VGG16 屬於深度學習中的 <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-indigo-300 to-rose-400">「電腦視覺 (CV)」</span> 領域，是代表性的 <span class="text-cyan-300 underline decoration-cyan-500/50 underline-offset-4">「卷積神經網路 (CNN)」</span> 經典影像特徵提取主幹。
+          </h2>
+          <p class="text-slate-300 text-xs sm:text-sm leading-relaxed">
+            它不屬於自然語言處理 (NLP / LLM) 或強化學習 (RL)，而是<strong>專為 2D 格點空間資訊（影像、切片、光學圖譜）所設計的判別式模型（Discriminative Deep CNN）</strong>。其標準任務為<strong>百萬級圖像分類 (Image Classification)</strong>，並常作為物件偵測 (SSD / Faster R-CNN) 與語意分割 (FCN / UNet) 的預訓練編碼器（Backbone / Feature Extractor）。
+          </p>
+        </div>
+
+        <!-- Visual 4-Pillars Comparison Pill Grid -->
+        <div class="lg:col-span-4 bg-slate-950/80 p-4 rounded-xl border border-slate-800/80 grid grid-cols-2 gap-2 text-[11px]">
+          <div class="p-2.5 rounded-lg bg-cyan-950/40 border border-cyan-500/50">
+            <div class="font-bold text-cyan-300 flex items-center gap-1.5 mb-1">
+              <i class="fa-solid fa-circle-check text-cyan-400"></i> 核心領域
+            </div>
+            <div class="text-slate-200 font-medium">電腦視覺 (CV)</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">影像/影片特徵辨識</div>
+          </div>
+
+          <div class="p-2.5 rounded-lg bg-indigo-950/40 border border-indigo-500/50">
+            <div class="font-bold text-indigo-300 flex items-center gap-1.5 mb-1">
+              <i class="fa-solid fa-diagram-project text-indigo-400"></i> 模型架構
+            </div>
+            <div class="text-slate-200 font-medium">前饋卷積網 (CNN)</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">平移不變性與局部感受野</div>
+          </div>
+
+          <div class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800">
+            <div class="font-bold text-slate-400 flex items-center gap-1.5 mb-1">
+              <i class="fa-solid fa-minus text-slate-500"></i> 非屬範疇
+            </div>
+            <div class="text-slate-300 font-medium">非 NLP / 非 LLM</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">無自注意力與文字Token</div>
+          </div>
+
+          <div class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800">
+            <div class="font-bold text-slate-400 flex items-center gap-1.5 mb-1">
+              <i class="fa-solid fa-minus text-slate-500"></i> 非屬範疇
+            </div>
+            <div class="text-slate-300 font-medium">非強化學習 (RL)</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">非 Agent/環境獎勵機制</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 01-EXT. 經典立體 3D 結構重繪與各部分深度解析 (Interactive 3D SVG Architecture) -->
+    <section id="architecture-3d-svg" class="bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/30 p-6 sm:p-8 rounded-2xl border border-cyan-500/30 shadow-2xl relative overflow-hidden">
+      <div class="absolute -right-20 -top-20 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between pb-6 border-b border-slate-800 gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 mb-2">
+            <i class="fa-solid fa-cubes-stacked"></i> 經典架構透視 • 3D Isometric 向量重繪
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
+            <span>VGG16 全網 3D 立體特徵張量架構解析</span>
+          </h2>
+          <p class="text-slate-300 text-sm mt-1 max-w-3xl">
+            重現經典論文與教科書中最著名的立體透視圖（Isometric Projection）。觀察特徵圖如何從「<strong>面積大、通道淺</strong>」逐步壓縮折疊為「<strong>面積小、通道極深</strong>」的高階語意立方體，最終拉直為全連接條狀神經元。
+          </p>
+        </div>
+        <div class="flex items-center gap-2 bg-slate-950 px-3.5 py-2 rounded-xl border border-slate-800 text-xs text-slate-300 self-start lg:self-auto">
+          <i class="fa-solid fa-hand-pointer text-cyan-400"></i>
+          <span>可點擊或懸停於各立方體查看詳細參數</span>
+        </div>
+      </div>
+
+      <!-- 3D SVG Architecture Canvas -->
+      <div class="my-6 p-4 sm:p-6 bg-slate-950/95 rounded-2xl border border-slate-800/80 shadow-inner">
+        <div class="w-full overflow-x-auto">
+          <svg id="vgg3dSvg" viewBox="0 0 1150 480" class="w-full min-w-[950px] h-auto select-none font-sans" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <!-- Gradients for realistic isometric volumetric rendering -->
+              <linearGradient id="imgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#0284c7" stop-opacity="0.9"/>
+                <stop offset="35%" stop-color="#0f766e" stop-opacity="0.8"/>
+                <stop offset="70%" stop-color="#1e293b" stop-opacity="0.95"/>
+                <stop offset="100%" stop-color="#090d16" stop-opacity="1"/>
+              </linearGradient>
+
+              <!-- Conv Layer Colors (Clean White / Light Slate) -->
+              <linearGradient id="convFace" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="100%" stop-color="#f1f5f9"/>
+              </linearGradient>
+              <linearGradient id="convTop" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#e2e8f0"/>
+                <stop offset="100%" stop-color="#cbd5e1"/>
+              </linearGradient>
+              <linearGradient id="convSide" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#94a3b8"/>
+                <stop offset="100%" stop-color="#64748b"/>
+              </linearGradient>
+
+              <!-- MaxPool Slab Colors (Red / Coral Outlined) -->
+              <linearGradient id="poolFace" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#fff1f2"/>
+                <stop offset="100%" stop-color="#ffe4e6"/>
+              </linearGradient>
+              <linearGradient id="poolSide" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#fda4af"/>
+                <stop offset="100%" stop-color="#f43f5e"/>
+              </linearGradient>
+
+              <!-- FC Layer Colors (Cyan/Sky) -->
+              <linearGradient id="fcFace" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#e0f2fe"/>
+                <stop offset="100%" stop-color="#bae6fd"/>
+              </linearGradient>
+              <linearGradient id="fcSide" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#38bdf8"/>
+                <stop offset="100%" stop-color="#0284c7"/>
+              </linearGradient>
+
+              <!-- Softmax Colors (Gold/Amber) -->
+              <linearGradient id="smFace" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#fef3c7"/>
+                <stop offset="100%" stop-color="#fde68a"/>
+              </linearGradient>
+              <linearGradient id="smSide" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#f59e0b"/>
+                <stop offset="100%" stop-color="#d97706"/>
+              </linearGradient>
+
+              <!-- Drop shadow for 3D realism -->
+              <filter id="shadow3d" x="-10%" y="-10%" width="130%" height="130%">
+                <feDropShadow dx="3" dy="6" stdDeviation="4" flood-color="#000000" flood-opacity="0.45"/>
+              </filter>
+            </defs>
+
+            <!-- BACKGROUND GRID LINES FOR SCIENTIFIC APPEAL -->
+            <line x1="40" y1="440" x2="1110" y2="440" stroke="#1e293b" stroke-width="1.5" stroke-dasharray="6 4"/>
+
+            <!-- ======================================================== -->
+            <!-- 0. INPUT IMAGE (224x224x3) -->
+            <!-- ======================================================== -->
+            <g id="svg-part-input" class="cursor-pointer transition-transform duration-200 hover:opacity-90" onclick="show3dInfo('input')">
+              <!-- Top Dimension Text -->
+              <text x="75" y="32" fill="#e2e8f0" font-size="13" font-family="monospace" font-weight="bold" text-anchor="middle">224 × 224 × 3</text>
+              <line x1="75" y1="40" x2="75" y2="52" stroke="#64748b" stroke-width="1.5" stroke-dasharray="2 2"/>
+
+              <!-- Front oblique image plate with car vector -->
+              <polygon points="30,440 30,120 120,40 120,360" fill="url(#imgGrad)" stroke="#38bdf8" stroke-width="2" filter="url(#shadow3d)"/>
+              
+              <!-- Subtle Car and scenery illustration on isometric plane -->
+              <g transform="matrix(0.9 0 0 1 0 0)">
+                <!-- Sky & Ground on tilted plate -->
+                <polygon points="33,123 118,43 118,170 33,250" fill="#0284c7" opacity="0.25"/>
+                <!-- Car body silhouette on plate -->
+                <path d="M 45 350 L 55 310 Q 75 270 100 270 L 115 285 L 115 330 L 45 350 Z" fill="#0369a1" opacity="0.6"/>
+                <ellipse cx="65" cy="340" rx="9" ry="16" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5"/>
+                <ellipse cx="102" cy="315" rx="7" ry="14" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5"/>
+                <path d="M 70 295 L 90 280 L 105 285 L 85 300 Z" fill="#bae6fd" opacity="0.7"/>
+              </g>
+
+              <!-- Image Side Thickness (3 channels) -->
+              <polygon points="120,40 124,43 124,363 120,360" fill="#0284c7" stroke="#0369a1" stroke-width="1"/>
+              <text x="75" y="460" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle">輸入影像 (RGB)</text>
+            </g>
+
+            <!-- ======================================================== -->
+            <!-- 1. BLOCK 1 (224x224x64): 2 Conv + 1 MaxPool -->
+            <!-- ======================================================== -->
+            <g id="svg-part-b1" class="cursor-pointer" onclick="show3dInfo('b1')">
+              <text x="180" y="32" fill="#e2e8f0" font-size="13" font-family="monospace" font-weight="bold" text-anchor="middle">224 × 224 × 64</text>
+              <line x1="180" y1="40" x2="180" y2="52" stroke="#64748b" stroke-width="1.5" stroke-dasharray="2 2"/>
+
+              <!-- Conv 1-1 -->
+              <!-- Front -->
+              <polygon points="145,440 145,120 205,67 205,387" fill="url(#convFace)" stroke="#1e293b" stroke-width="1.5" filter="url(#shadow3d)"/>
+              <!-- Top -->
+              <polygon points="145,120 155,111 215,58 205,67" fill="url(#convTop)" stroke="#1e293b" stroke-width="1.5"/>
+              <!-- Right Side -->
+              <polygon points="205,67 215,58 215,378 205,387" fill="url(#convSide)" stroke="#1e293b" stroke-width="1.5"/>
+
+              <!-- Conv 1-2 -->
+              <!-- Front -->
+              <polygon points="160,440 160,120 220,67 220,387" fill="url(#convFace)" stroke="#1e293b" stroke-width="1.5" filter="url(#shadow3d)"/>
+              <!-- Top -->
+              <polygon points="160,120 170,111 230,58 220,67" fill="url(#convTop)" stroke="#1e293b" stroke-width="1.5"/>
+              <!-- Right Side -->
+              <polygon points="220,67 230,58 230,378 220,387" fill="url(#convSide)" stroke="#1e293b" stroke-width="1.5"/>
+
+              <!-- MaxPool 1 (Red outline slab) -->
+              <!-- Front -->
+              <polygon points="230,387 230,225 260,198 260,360" fill="url(#poolFace)" stroke="#f43f5e" stroke-width="1.8"/>
+              <!-- Top -->
+              <polygon points="230,225 238,218 268,191 260,198" fill="#ffe4e6" stroke="#f43f5e" stroke-width="1.5"/>
+              <!-- Right Side -->
+              <polygon points="260,198 268,191 268,353 260,360" fill="url(#poolSide)" stroke="#f43f5e" stroke-width="1.5"/>
+
+              <text x="200" y="460" fill="#94a3b8" font-size="11" font-weight="bold" text-anchor="middle">Block 1</text>
+            </g>
+
+            <!-- ======================================================== -->
+            <!-- 2. BLOCK 2 (112x112x128): 2 Conv + 1 MaxPool -->
+            <!-- ======================================================== -->
+            <g id="svg-part-b2" class="cursor-pointer" onclick="show3dInfo('b2')">
+              <text x="270" y="145" fill="#e2e8f0" font-size="12" font-family="monospace" font-weight="bold" text-anchor="middle">112 × 112 × 128</text>
+              <line x1="270" y1="152" x2="270" y2="168" stroke="#64748b" stroke-width="1.5" stroke-dasharray="2 2"/>
+
+              <!-- Conv 2-1 -->
+              <polygon points="250,387 250,225 295,185 295,347" fill="url(#convFace)" stroke="#1e293b" stroke-width="1.5" filter="url(#shadow3d)"/>
+              <polygon points="250,225 260,216 305,176 295,185" fill="url(#convTop)" stroke="#1e293b" stroke-width="1.5"/>
+              <polygon points="295,185 305,176 305,338 295,347" fill="url(#convSide)" stroke="#1e293b" stroke-width="1.5"/>
+
+              <!-- Conv 2-2 -->
+              <polygon points="265,387 265,225 310,185 310,347" fill="url(#convFace)" stroke="#1e293b" stroke-width="1.5" filter="url(#shadow3d)"/>
+              <polygon points="265,225 277,214 322,174 310,185" fill="url(#convTop)" stroke="#1e293b" stroke-width="1.5"/>
+              <polygon points="310,185 322,174 322,336 310,347" fill="url(#convSide)" stroke="#1e293b" stroke-width="1.5"/>
+
+              <!-- MaxPool 2 (Red slab) -->
+              <polygon points="322,347 322,250 346,229 346,326" fill="url(#poolFace)" stroke="#f43f5e" stroke-width="1.8"/>
+              <polygon points="322,250 330,243 354,222 346,229" fill="#ffe4e6" stroke="#f43f5e" stroke-width="1.5"/>
+              <polygon points="346,229 354,222 354,319 346,326" fill="url(#poolSide)" stroke="#f43f5e" stroke-width="1.5"/>
+
+              <text x="300" y="460" fill="#94a3b8" font-size="11" font-weight="bold" text-anchor="middle">Block 2</text>
+            </g>
+
+            <!-- ======================================================== -->
+            <!-- 3. BLOCK 3 (56x56x256): 3 Conv + 1 MaxPool -->
+            <!-- ======================================================== -->
+            <g id="svg-part-b3" class="cursor-pointer" onclick="show3dInfo('b3')">
+              <text x="375" y="210" fill="#e2e8f0" font-size="12" font-family="monospace" font-weight="bold" text-anchor="middle">56 × 56 × 256</text>
+              <line x1="375" y1="216" x2="375" y2="230" stroke="#64748b" stroke-width="1.5" stroke-dasharray="2 2"/>
+
+              <!-- Conv 3-1 -->
+              <polygon points="350,347 350,250 380,223 380,320" fill="url(#convFace)" stroke="#1e293b" stroke-width="1.5"/>
+              <polygon points="350,250 360,241 390,214 380,223" fill="url(#convTop)" stroke="#1e293b" stroke-width="1.5"/>
+              <polygon points="380,223 390,214 390,311 380,320" fill="url(#convSide)" stroke="#1e293b" stroke-width="1.5"/>
+
+              <!-- Conv 3-2 -->
+              <polygon points="368,347 368,250 398,223 398,320" fill="url(#convFace)" stroke="#1e293b" stroke-width="1.5"/>
+              <polygon points="368,250 378,241 408,214 398,223" fill="url(#convTop)" stroke="#1e293b" stroke-width="1.5"/>
+              <polygon points="398,223 408,214 408,311 398,320" fill="url(#convSide)" stroke="#1e293b" stroke-width="1.5"/>
+
+              <!-- Conv 3-3 -->
+              <polygon points="386,347 386,250 416,223 416,320" fill="url(#convFace)" stroke="#1e293b" stroke-width="1.5"/>
+              <polygon points="386,250 398,239 428,212 416,223" fill="url(#convTop)" stroke="#1e293b" stroke-width="1.5"/>
+              <polygon points="416,223 428,212 428,309 416,320" fill="url(#convSide)" stroke="#1e293b" stroke-width="1.5"/>
+
+              <!-- MaxPool 3 -->
+              <polygon points="426,320 426,265 444,249 444,304" fill="url(#poolFace)" stroke="#f43f5e" stroke-width="1.8"/>
+              <polygon points="426,265 434,258 452,242 444,249" fill="#ffe4e6" stroke="#f43f5e" stroke-width="1.5"/>
+              <polygon points="444,249 452,242 452,297 444,304" fill="url(#poolSide)" stroke="#f43f5e" stroke-width="1.5"/>
+
+              <text x="400" y="460" fill="#94a3b8" font-size="11" font-weight="bold" text-anchor="middle">Block 3</text>
+            </g>
+
+            <!-- ======================================================== -->
+            <!-- 4. BLOCK 4 (28x28x512): 3 Conv + 1 MaxPool -->
+            <!-- ======================================================== -->
+            <g id="svg-part-b4" class="cursor-pointer" onclick="show3dInfo('b4')">
+              <text x="475" y="240" fill="#e2e8f0" font-size="12" font-family="monospace" font-weight="bold" text-anchor="middle">28 × 28 × 512</text>
+              <line x1="475" y1="246" x2="475" y2="258" stroke="#64748b" stroke-width="1.5" stroke-dasharray="2 2"/>
+
+              <!-- Conv 4-1 -->
+              <polygon points="446,310 446,265 464,249 464,294" fill="url(#convFace)" stroke="#1e293b" stroke-width="1.5"/>
+              <polygon points="446,265 454,258 472,242 464,249" fill="url(#convTop)" stroke="#1e293b" stroke-width="1.5"/>
+              <polygon points="464,249 472,242 472,287 464,294" fill="url(#convSide)" stroke="#1e293b" stroke-width="1.5"/>
+
+              <!-- Conv 4-2 -->
+              <polygon points="466,310 466,265 484,249 484,294" fill="url(#convFace)" stroke="#1e293b" stroke-width="1.5"/>
+              <polygon points="466,265 474,258 492,242 484,249" fill="url(#convTop)" stroke="#1e293b" stroke-width="1.5"/>
+              <polygon points="484,249 492,242 492,287 484,294" fill="url(#convSide)" stroke="#1e293b" stroke-width="1.5"/>
+
+              <!-- Conv 4-3 -->
+              <polygon points="486,310 486,265 504,249 504,294" fill="url(#convFace)" stroke="#1e293b" stroke-width="1.5"/>
+              <polygon points="486,265 496,256 514,240 504,249" fill="url(#convTop)" stroke="#1e293b" stroke-width="1.5"/>
+              <polygon points="504,249 514,240 514,285 504,294" fill="url(#convSide)" stroke="#1e293b" stroke-width="1.5"/>
+
+              <!-- MaxPool 4 -->
+              <polygon points="515,296 515,268 528,256 528,284" fill="url(#poolFace)" stroke="#f43f5e" stroke-width="1.8"/>
+              <polygon points="515,268 522,262 535,250 528,256" fill="#ffe4e6" stroke="#f43f5e" stroke-width="1.5"/>
+              <polygon points="528,256 535,250 535,278 528,284" fill="url(#poolSide)" stroke="#f43f5e" stroke-width="1.5"/>
+
+              <text x="495" y="460" fill="#94a3b8" font-size="11" font-weight="bold" text-anchor="middle">Block 4</text>
+            </g>
+
+            <!-- ======================================================== -->
+            <!-- 5. BLOCK 5 (14x14x512): 3 Conv + 1 MaxPool -->
+            <!-- ======================================================== -->
+            <g id="svg-part-b5" class="cursor-pointer" onclick="show3dInfo('b5')">
+              <text x="560" y="250" fill="#e2e8f0" font-size="12" font-family="monospace" font-weight="bold" text-anchor="middle">14 × 14 × 512</text>
+              <line x1="560" y1="256" x2="560" y2="265" stroke="#64748b" stroke-width="1.5" stroke-dasharray="2 2"/>
+
+              <!-- Conv 5-1 -->
+              <polygon points="536,290 536,267 549,255 549,278" fill="url(#convFace)" stroke="#1e293b" stroke-width="1.3"/>
+              <polygon points="536,267 542,262 555,250 549,255" fill="url(#convTop)" stroke="#1e293b" stroke-width="1.3"/>
+              <polygon points="549,255 555,250 555,273 549,278" fill="url(#convSide)" stroke="#1e293b" stroke-width="1.3"/>
+
+              <!-- Conv 5-2 -->
+              <polygon points="553,290 553,267 566,255 566,278" fill="url(#convFace)" stroke="#1e293b" stroke-width="1.3"/>
+              <polygon points="553,267 559,262 572,250 566,255" fill="url(#convTop)" stroke="#1e293b" stroke-width="1.3"/>
+              <polygon points="566,255 572,250 572,273 566,278" fill="url(#convSide)" stroke="#1e293b" stroke-width="1.3"/>
+
+              <!-- Conv 5-3 -->
+              <polygon points="570,290 570,267 583,255 583,278" fill="url(#convFace)" stroke="#1e293b" stroke-width="1.3"/>
+              <polygon points="570,267 576,262 589,250 583,255" fill="url(#convTop)" stroke="#1e293b" stroke-width="1.3"/>
+              <polygon points="583,255 589,250 589,273 583,278" fill="url(#convSide)" stroke="#1e293b" stroke-width="1.3"/>
+
+              <!-- MaxPool 5 (Red slab reducing to 7x7) -->
+              <polygon points="593,285 593,270 602,262 602,277" fill="url(#poolFace)" stroke="#f43f5e" stroke-width="1.5"/>
+              <polygon points="593,270 598,266 607,258 602,262" fill="#ffe4e6" stroke="#f43f5e" stroke-width="1.2"/>
+              <polygon points="602,262 607,258 607,273 602,277" fill="url(#poolSide)" stroke="#f43f5e" stroke-width="1.2"/>
+
+              <text x="575" y="460" fill="#94a3b8" font-size="11" font-weight="bold" text-anchor="middle">Block 5</text>
+            </g>
+
+            <!-- 7x7x512 Output Label above MaxPool 5 -->
+            <text x="635" y="210" fill="#e2e8f0" font-size="12" font-family="monospace" font-weight="bold" text-anchor="middle">7 × 7 × 512</text>
+            <line x1="635" y1="216" x2="615" y2="255" stroke="#64748b" stroke-width="1.5" stroke-dasharray="2 2"/>
+
+            <!-- ======================================================== -->
+            <!-- 6. FULLY CONNECTED LAYERS (1x1x4096 & 1x1x1000) -->
+            <!-- ======================================================== -->
+            <!-- FC 1 (1x1x4096) -->
+            <g id="svg-part-fc1" class="cursor-pointer" onclick="show3dInfo('fc1')">
+              <text x="740" y="240" fill="#38bdf8" font-size="12" font-family="monospace" font-weight="bold" text-anchor="middle">1 × 1 × 4096</text>
+              <line x1="740" y1="246" x2="740" y2="265" stroke="#0284c7" stroke-width="1.5" stroke-dasharray="2 2"/>
+
+              <!-- Slim elongated rod 1 -->
+              <polygon points="630,280 630,273 695,273 695,280" fill="url(#fcFace)" stroke="#0284c7" stroke-width="1.3"/>
+              <polygon points="630,273 634,269 699,269 695,273" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+              <polygon points="695,273 699,269 699,276 695,280" fill="url(#fcSide)" stroke="#0284c7" stroke-width="1.3"/>
+
+              <text x="665" y="460" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle">FC-4096</text>
+            </g>
+
+            <!-- FC 2 (1x1x4096) -->
+            <g id="svg-part-fc2" class="cursor-pointer" onclick="show3dInfo('fc2')">
+              <!-- Slim elongated rod 2 -->
+              <polygon points="708,280 708,273 773,273 773,280" fill="url(#fcFace)" stroke="#0284c7" stroke-width="1.3"/>
+              <polygon points="708,273 712,269 777,269 773,273" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+              <polygon points="773,273 777,269 777,276 773,280" fill="url(#fcSide)" stroke="#0284c7" stroke-width="1.3"/>
+
+              <text x="742" y="460" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle">FC-4096</text>
+            </g>
+
+            <!-- Softmax Output Layer (1x1x1000) -->
+            <g id="svg-part-fc3" class="cursor-pointer" onclick="show3dInfo('softmax')">
+              <text x="850" y="240" fill="#fbbf24" font-size="12" font-family="monospace" font-weight="bold" text-anchor="middle">1 × 1 × 1000</text>
+              <line x1="850" y1="246" x2="825" y2="265" stroke="#d97706" stroke-width="1.5" stroke-dasharray="2 2"/>
+
+              <!-- Shorter gold rod -->
+              <polygon points="786,280 786,273 835,273 835,280" fill="url(#smFace)" stroke="#d97706" stroke-width="1.3"/>
+              <polygon points="786,273 790,269 839,269 835,273" fill="#fef3c7" stroke="#d97706" stroke-width="1.3"/>
+              <polygon points="835,273 839,269 839,276 835,280" fill="url(#smSide)" stroke="#d97706" stroke-width="1.3"/>
+
+              <text x="815" y="460" fill="#fbbf24" font-size="11" font-weight="bold" text-anchor="middle">Softmax-1000</text>
+            </g>
+
+            <!-- ======================================================== -->
+            <!-- 7. COMPLETE VISUAL LEGEND (Matching User's Original Diagram) -->
+            <!-- ======================================================== -->
+            <g transform="translate(560, 335)">
+              <rect width="360" height="98" rx="10" fill="#090d16" stroke="#1e293b" stroke-width="1.5"/>
+              
+              <!-- Legend Item 1: Convolution + ReLU -->
+              <g transform="translate(15, 14)">
+                <!-- 3D Mini Cube White -->
+                <polygon points="0,15 0,3 15,-5 15,7" fill="#ffffff" stroke="#1e293b" stroke-width="1.2"/>
+                <polygon points="0,3 4,0 19,-8 15,-5" fill="#cbd5e1" stroke="#1e293b" stroke-width="1.2"/>
+                <polygon points="15,-5 19,-8 19,4 15,7" fill="#94a3b8" stroke="#1e293b" stroke-width="1.2"/>
+                <text x="32" y="8" fill="#e2e8f0" font-size="12" font-family="sans-serif">convolution + ReLU (共 13 層)</text>
+              </g>
+
+              <!-- Legend Item 2: Max Pooling -->
+              <g transform="translate(15, 36)">
+                <!-- 3D Mini Slab Red -->
+                <polygon points="0,15 0,5 15,-2 15,8" fill="#ffe4e6" stroke="#f43f5e" stroke-width="1.2"/>
+                <polygon points="0,5 4,2 19,-5 15,-2" fill="#fecdd3" stroke="#f43f5e" stroke-width="1.2"/>
+                <polygon points="15,-2 19,-5 19,5 15,8" fill="#fb7185" stroke="#f43f5e" stroke-width="1.2"/>
+                <text x="32" y="8" fill="#fda4af" font-size="12" font-family="sans-serif">max pooling (2×2, Stride=2, 共 5 次)</text>
+              </g>
+
+              <!-- Legend Item 3: Fully Connected + ReLU -->
+              <g transform="translate(15, 58)">
+                <!-- 3D Mini Bar Blue -->
+                <polygon points="0,11 0,5 20,5 20,11" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+                <polygon points="0,5 3,2 23,2 20,5" fill="#bae6fd" stroke="#0284c7" stroke-width="1.2"/>
+                <polygon points="20,5 23,2 23,8 20,11" fill="#38bdf8" stroke="#0284c7" stroke-width="1.2"/>
+                <text x="32" y="8" fill="#7dd3fc" font-size="12" font-family="sans-serif">fully connected + ReLU (4096 神經元)</text>
+              </g>
+
+              <!-- Legend Item 4: Softmax -->
+              <g transform="translate(15, 80)">
+                <!-- 3D Mini Bar Gold -->
+                <polygon points="0,11 0,5 20,5 20,11" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+                <polygon points="0,5 3,2 23,2 20,5" fill="#fde68a" stroke="#d97706" stroke-width="1.2"/>
+                <polygon points="20,5 23,2 23,8 20,11" fill="#fbbf24" stroke="#d97706" stroke-width="1.2"/>
+                <text x="32" y="8" fill="#fde047" font-size="12" font-family="sans-serif">softmax (1000 類別輸出機率)</text>
+              </g>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Live Inspector for Clicked 3D Layer -->
+      <div id="inspector3dCard" class="p-5 bg-slate-950 rounded-xl border border-cyan-500/40 grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+        <div class="md:col-span-2 space-y-2">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-cyan-400"></span>
+            <h4 class="text-base font-bold text-white" id="ins3dTitle">點擊上方任一立體區塊查看深度剖析</h4>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed" id="ins3dDesc">
+            此圖清晰展示了 VGG16 的空間維度壓縮與通道數擴張節奏：寬高自 $224 \rightarrow 112 \rightarrow 56 \rightarrow 28 \rightarrow 14 \rightarrow 7$ 經歷五次減半；通道數自 $3 \rightarrow 64 \rightarrow 128 \rightarrow 256 \rightarrow 512$ 連續倍增。
+          </p>
+        </div>
+        <div class="bg-slate-900/90 p-3.5 rounded-lg border border-slate-800 space-y-2 text-xs font-mono">
+          <div class="flex justify-between">
+            <span class="text-slate-400">當前張量維度:</span>
+            <span class="text-cyan-300 font-bold" id="ins3dDim">224 × 224 × 3</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">權重層數量:</span>
+            <span class="text-emerald-400 font-bold" id="ins3dWeights">0 層</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">主要幾何變換:</span>
+            <span class="text-amber-300 font-bold" id="ins3dOperation">原始彩色 RGB 輸入</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comprehensive Architectural Explanations (Detailed Text Analysis of the Diagram) -->
+      <div class="mt-8 pt-6 border-t border-slate-800 space-y-6">
+        <div class="flex items-center gap-2 text-sm font-bold text-white uppercase tracking-wider">
+          <i class="fa-solid fa-list-check text-rose-400"></i> 原圖各部位深度拆解與數值推移詳解
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+          <!-- Item 1: Convolution + ReLU -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center gap-2 font-bold text-white text-sm mb-2">
+                <span class="w-4 h-4 rounded bg-slate-100 border border-slate-400 inline-block"></span>
+                <span>白立方體：Conv + ReLU</span>
+              </div>
+              <p class="text-slate-300 leading-relaxed text-[11px] space-y-1.5">
+                • <strong>總數量：</strong>整網共有 <strong>13 個卷積層</strong>。<br>
+                • <strong>規格統一：</strong>皆為 $3 \times 3$ 卷積核，步長 $s=1$，填充 $p=1$。<br>
+                • <strong>幾何特性：</strong>此運算<strong>完全不改變特徵圖寬高</strong>，只負責提取特徵並變更通道數（例如 $3 \rightarrow 64$ 或 $64 \rightarrow 128$）。
+              </p>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] text-cyan-400 font-mono">
+              公式: (W - 3 + 2)/1 + 1 = W
+            </div>
+          </div>
+
+          <!-- Item 2: Max Pooling -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-rose-500/30 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center gap-2 font-bold text-rose-300 text-sm mb-2">
+                <span class="w-4 h-4 rounded bg-rose-500/20 border border-rose-500 inline-block"></span>
+                <span>紅框薄片：Max Pooling</span>
+              </div>
+              <p class="text-slate-300 leading-relaxed text-[11px] space-y-1.5">
+                • <strong>總數量：</strong>共 <strong>5 個池化層</strong>，位於每個 Block 的尾端。<br>
+                • <strong>池化規格：</strong>固定為 $2 \times 2$，步長 $s=2$。<br>
+                • <strong>幾何特性：</strong>無可學習權重！其作用為<strong>強迫特徵圖長與寬精確減半</strong>（面積縮小至 $1/4$），並賦予特徵平移不變性。
+              </p>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] text-rose-400 font-mono">
+              維度變換: W / 2, H / 2
+            </div>
+          </div>
+
+          <!-- Item 3: Fully Connected + ReLU -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-sky-500/30 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center gap-2 font-bold text-sky-300 text-sm mb-2">
+                <span class="w-4 h-4 rounded bg-sky-500/20 border border-sky-400 inline-block"></span>
+                <span>藍長條：FC + ReLU</span>
+              </div>
+              <p class="text-slate-300 leading-relaxed text-[11px] space-y-1.5">
+                • <strong>總數量：</strong>前 <strong>2 個全連接層</strong>。<br>
+                • <strong>神經元數量：</strong>每層各有 <strong>4,096 個神經元</strong>。<br>
+                • <strong>參數量巨獸：</strong>將空間 $7 \times 7 \times 512 = 25,088$ 向量拉平後連接到 4096，此單一步驟便產生了超過 1 億個參數！
+              </p>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] text-sky-400 font-mono">
+              FC1 參數量: 25088 × 4096 ≈ 102M
+            </div>
+          </div>
+
+          <!-- Item 4: Softmax Output -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-amber-500/30 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center gap-2 font-bold text-amber-300 text-sm mb-2">
+                <span class="w-4 h-4 rounded bg-amber-500/20 border border-amber-400 inline-block"></span>
+                <span>金長條：Softmax Output</span>
+              </div>
+              <p class="text-slate-300 leading-relaxed text-[11px] space-y-1.5">
+                • <strong>總數量：</strong>第 <strong>3 個全連接層 + Softmax</strong>。<br>
+                • <strong>輸出長度：</strong>固定為 <strong>1,000 維向量</strong>（對應 ImageNet 競賽的 1,000 個物件類別標籤）。<br>
+                • <strong>作用：</strong>將前層的特徵分數轉化為加總為 1.0 的預測機率分佈。
+              </p>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] text-amber-400 font-mono">
+              機率公式: P(i) = e^(z_i) / Σ e^(z_j)
+            </div>
+          </div>
+        </div>
+
+        <!-- 5-Block Dimension Progression Summary Table -->
+        <div class="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950">
+          <table class="w-full text-left text-xs font-mono">
+            <thead class="bg-slate-900 text-slate-300 border-b border-slate-800">
+              <tr>
+                <th class="p-3">階段結構 (Stage)</th>
+                <th class="p-3">運算層序列 (Layers)</th>
+                <th class="p-3">輸入張量 (Input)</th>
+                <th class="p-3">輸出張量 (Output)</th>
+                <th class="p-3">空間降維比率</th>
+                <th class="p-3">代表意義 (Semantics)</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60 text-slate-300">
+              <tr class="hover:bg-slate-900/40">
+                <td class="p-3 font-bold text-white">Input Layer</td>
+                <td class="p-3 text-slate-400">標準化影像陣列</td>
+                <td class="p-3">-</td>
+                <td class="p-3 text-cyan-300 font-bold">224 × 224 × 3</td>
+                <td class="p-3">1× (原始尺寸)</td>
+                <td class="p-3 font-sans">汽車、風景等原始 RGB 像素</td>
+              </tr>
+              <tr class="hover:bg-slate-900/40">
+                <td class="p-3 font-bold text-white">Block 1</td>
+                <td class="p-3 text-slate-400">2× Conv3-64 + MaxPool</td>
+                <td class="p-3">224 × 224 × 3</td>
+                <td class="p-3 text-cyan-300 font-bold">112 × 112 × 64</td>
+                <td class="p-3 text-rose-400">面積縮為 1/4</td>
+                <td class="p-3 font-sans">水平/垂直方向邊緣、車身反光邊界</td>
+              </tr>
+              <tr class="hover:bg-slate-900/40">
+                <td class="p-3 font-bold text-white">Block 2</td>
+                <td class="p-3 text-slate-400">2× Conv3-128 + MaxPool</td>
+                <td class="p-3">112 × 112 × 64</td>
+                <td class="p-3 text-cyan-300 font-bold">56 × 56 × 128</td>
+                <td class="p-3 text-rose-400">面積縮為 1/16</td>
+                <td class="p-3 font-sans">輪框圓弧、車窗轉折角點</td>
+              </tr>
+              <tr class="hover:bg-slate-900/40">
+                <td class="p-3 font-bold text-white">Block 3</td>
+                <td class="p-3 text-slate-400">3× Conv3-256 + MaxPool</td>
+                <td class="p-3">56 × 56 × 128</td>
+                <td class="p-3 text-cyan-300 font-bold">28 × 28 × 256</td>
+                <td class="p-3 text-rose-400">面積縮為 1/64</td>
+                <td class="p-3 font-sans">輪胎花紋、車燈複合結構</td>
+              </tr>
+              <tr class="hover:bg-slate-900/40">
+                <td class="p-3 font-bold text-white">Block 4</td>
+                <td class="p-3 text-slate-400">3× Conv3-512 + MaxPool</td>
+                <td class="p-3">28 × 28 × 256</td>
+                <td class="p-3 text-cyan-300 font-bold">14 × 14 × 512</td>
+                <td class="p-3 text-rose-400">面積縮為 1/256</td>
+                <td class="p-3 font-sans">整顆車輪、車尾燈組、車門局部</td>
+              </tr>
+              <tr class="hover:bg-slate-900/40">
+                <td class="p-3 font-bold text-white">Block 5</td>
+                <td class="p-3 text-slate-400">3× Conv3-512 + MaxPool</td>
+                <td class="p-3">14 × 14 × 512</td>
+                <td class="p-3 text-cyan-300 font-bold">7 × 7 × 512</td>
+                <td class="p-3 text-rose-400">面積縮為 1/1024</td>
+                <td class="p-3 font-sans">整輛轎車的整體抽象輪廓</td>
+              </tr>
+              <tr class="hover:bg-slate-900/40">
+                <td class="p-3 font-bold text-white">FC Layers</td>
+                <td class="p-3 text-slate-400">Dense(4096) + Dense(4096) + Dense(1000)</td>
+                <td class="p-3">1 × 25,088 (Flatten)</td>
+                <td class="p-3 text-amber-300 font-bold">1 × 1,000</td>
+                <td class="p-3 text-sky-400">全域拉直映射</td>
+                <td class="p-3 font-sans">輸出各類別機率（例如：跑車 88%、轎車 10%）</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02, 06, 04, 07: 核心原理、生活比喻、實務特徵與工業應用 -->
+    <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <!-- 02 核心原理 -->
+      <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 hover:border-cyan-500/40 transition">
+        <div class="w-10 h-10 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-3 text-lg font-bold">
+          02
+        </div>
+        <h3 class="text-base font-bold text-white mb-2">核心原理 (Core Principles)</h3>
+        <p class="text-xs text-slate-300 leading-relaxed space-y-2">
+          <strong>1. 小卷積核堆疊：</strong>使用兩個 $3\times3$ 卷積獲得相當於 $5\times5$ 的感受野；三個 $3\times3$ 獲得 $7\times7$ 感受野。<br>
+          <strong>2. 更多非線性映射：</strong>每層後面皆銜接 ReLU 激勵函數，增加網路判斷複雜函數的能力。<br>
+          <strong>3. 通道倍增規律：</strong>空間降維（MaxPool）時，通道擴展 2 倍，保證資訊承載容量（Channel Capacity）。
+        </p>
+      </div>
+
+      <!-- 06 生活化例子 -->
+      <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 hover:border-emerald-500/40 transition">
+        <div class="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-3 text-lg font-bold">
+          06
+        </div>
+        <h3 class="text-base font-bold text-white mb-2">生活化例子 (Fruit HQ)</h3>
+        <p class="text-xs text-slate-300 leading-relaxed mb-3">
+          <strong>「水果連鎖鑑定總部的 16 職等專家團隊」</strong><br>
+          把辨識蘋果或香蕉拆解為：基層助理拿 $3\times3$ 放大鏡抓局部邊緣，中階主管拼成果蒂與月牙零件，最終由高層總監根據清單投票拍板！
+        </p>
+        <a href="#fruit-hq" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1">
+          瀏覽下方圖文並茂詳細故事與互動體驗 <i class="fa-solid fa-arrow-down text-[10px]"></i>
+        </a>
+      </div>
+
+      <!-- 04 實務特徵 -->
+      <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 hover:border-amber-500/40 transition">
+        <div class="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center mb-3 text-lg font-bold">
+          04
+        </div>
+        <h3 class="text-base font-bold text-white mb-2">實務特徵 (Practical Traits)</h3>
+        <p class="text-xs text-slate-300 leading-relaxed space-y-1.5">
+          • <strong>結構極為規律：</strong>重複 Conv-Conv-Pool 節奏，易於硬體加速與理解。<br>
+          • <strong>特徵遷移力極強：</strong>預訓練權重是遷移學習（Transfer Learning）首選骨幹之一。<br>
+          • <strong>參數量肥大：</strong>FC 層吃掉 80% 以上參數量，對邊緣端推論記憶體挑戰大。
+        </p>
+      </div>
+
+      <!-- 07 工業上應用 -->
+      <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 hover:border-purple-500/40 transition">
+        <div class="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center mb-3 text-lg font-bold">
+          07
+        </div>
+        <h3 class="text-base font-bold text-white mb-2">工業上應用 (Industrial Uses)</h3>
+        <p class="text-xs text-slate-300 leading-relaxed space-y-1.5">
+          • <strong>AOI 瑕疵檢測：</strong>半導體晶圓刮痕、PCB 銲點缺陷分類。<br>
+          • <strong>風格遷移 (Style Transfer)：</strong>經典神經風格轉移必備的感知特徵提取器。<br>
+          • <strong>生醫影像分類：</strong>X 光胸透肺部病變初篩、病理切片細胞特徵抓取。
+        </p>
+      </div>
+    </section>
+
+    <!-- 06-SPECIAL. 水果連鎖鑑定總部：圖文並茂生活化比喻與互動展示 -->
+    <section id="fruit-hq" class="bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/20 p-6 sm:p-8 rounded-2xl border border-amber-500/30 shadow-xl relative overflow-hidden">
+      <div class="absolute -right-16 -top-16 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-800 gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 mb-2">
+            <i class="fa-solid fa-lemon"></i> 06. 生活化比喻故事：水果連鎖鑑定總部
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
+            <span>如果 VGG16 是一間「水果連鎖鑑定總部」？</span>
+          </h2>
+          <p class="text-slate-300 text-sm mt-1 max-w-3xl">
+            想像一下，你的目標是訓練一隻專家團隊，只要看一眼照片，就能精準分辨出這是<strong>蘋果、香蕉還是西瓜</strong>。VGG16 的運作方式，正是這家鑑定總部裡層層分工的 <span class="text-amber-400 font-bold">16 職等專家團隊</span>！
+          </p>
+        </div>
+
+        <!-- Interactive Fruit Test Selector -->
+        <div class="bg-slate-950 p-2 rounded-xl border border-slate-800 flex items-center gap-1 self-start md:self-auto">
+          <span class="text-[11px] text-slate-400 px-2 font-medium">切換測試樣本：</span>
+          <button onclick="switchFruit('apple')" id="btn-fruit-apple" class="fruit-btn px-3 py-1.5 rounded-lg bg-rose-500/20 border border-rose-500/60 text-rose-300 text-xs font-bold transition flex items-center gap-1.5">
+            🍎 蘋果
+          </button>
+          <button onclick="switchFruit('banana')" id="btn-fruit-banana" class="fruit-btn px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 text-xs font-semibold hover:text-white transition flex items-center gap-1.5">
+            🍌 香蕉
+          </button>
+          <button onclick="switchFruit('watermelon')" id="btn-fruit-watermelon" class="fruit-btn px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 text-xs font-semibold hover:text-white transition flex items-center gap-1.5">
+            🍉 西瓜
+          </button>
+        </div>
+      </div>
+
+      <!-- Interactive SVG Stage Diagram for Fruit HQ -->
+      <div class="my-6 p-4 bg-slate-950/90 rounded-2xl border border-amber-500/30">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-3 mb-3 border-b border-slate-800/80 gap-2">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+            <span class="text-xs font-bold text-amber-300">🏢 水果鑑定總部全景動態 SVG 視覺流水線</span>
+            <span class="text-[10px] text-slate-400">(點擊下方水果切換即可驅動光束與特徵流)</span>
+          </div>
+          <div class="text-[11px] font-mono text-cyan-400 flex items-center gap-1">
+            <i class="fa-solid fa-bolt"></i> 訊號流向: 原圖 ➔ 3×3 鏡頭 ➔ 零件拼裝 ➔ 喇叭宣判
+          </div>
+        </div>
+
+        <div class="w-full overflow-x-auto">
+          <svg id="fruitHqSvg" viewBox="0 0 920 280" class="w-full min-w-[760px] h-auto select-none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="svgGradFlow" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.9" />
+                <stop offset="50%" stop-color="#818cf8" stop-opacity="0.9" />
+                <stop offset="100%" stop-color="#10b981" stop-opacity="0.9" />
+              </linearGradient>
+              <filter id="svgGlow">
+                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+
+            <!-- Background connecting pipeline tracks -->
+            <path d="M 170 140 L 290 140" stroke="#1e293b" stroke-width="6" stroke-linecap="round" />
+            <path d="M 450 140 L 570 140" stroke="#1e293b" stroke-width="6" stroke-linecap="round" />
+            <path d="M 730 140 L 780 140" stroke="#1e293b" stroke-width="6" stroke-linecap="round" />
+
+            <!-- Animated laser signals -->
+            <path d="M 170 140 L 290 140" stroke="#38bdf8" stroke-width="3" class="svg-beam" />
+            <path d="M 450 140 L 570 140" stroke="#818cf8" stroke-width="3" class="svg-beam" />
+            <path d="M 730 140 L 780 140" stroke="#34d399" stroke-width="3" class="svg-beam" />
+
+            <!-- STAGE 0: 原圖進件處 -->
+            <g transform="translate(30, 60)" class="cursor-pointer">
+              <rect width="135" height="160" rx="14" fill="#0f172a" stroke="#334155" stroke-width="2"/>
+              <text x="67" y="28" fill="#94a3b8" font-size="11" font-weight="bold" text-anchor="middle">0. 待檢水果照片</text>
+              
+              <!-- Fruit Vector Display Area -->
+              <g id="svgFruitPreview" transform="translate(67, 85)">
+                <!-- Apple vector (default) -->
+                <circle cx="0" cy="5" r="32" fill="#ef4444" opacity="0.9" filter="url(#svgGlow)"/>
+                <path d="M 0 -27 Q 4 -40 10 -43" stroke="#78350f" stroke-width="4" fill="none" stroke-linecap="round"/>
+                <path d="M 3 -36 Q 16 -38 14 -28 Z" fill="#22c55e"/>
+                <ellipse cx="-8" cy="-5" rx="8" ry="14" fill="#f87171" opacity="0.4" transform="rotate(-25 -8 -5)"/>
+              </g>
+              <text id="svgFruitTitle" x="67" y="145" fill="#f43f5e" font-size="11" font-family="monospace" font-weight="bold" text-anchor="middle">🍎 紅富士蘋果</text>
+            </g>
+
+            <!-- STAGE 1: 基層員工 3x3 放大鏡 -->
+            <g transform="translate(290, 45)">
+              <rect width="160" height="190" rx="14" fill="#0f172a" stroke="#0891b2" stroke-width="2"/>
+              <rect x="10" y="10" width="140" height="24" rx="6" fill="#0e7490" opacity="0.3"/>
+              <text x="80" y="26" fill="#22d3ee" font-size="11" font-weight="bold" text-anchor="middle">1. 基層 3×3 放大鏡小隊</text>
+              
+              <!-- Magnifier Lens Drawing -->
+              <circle cx="60" cy="85" r="32" fill="#164e63" stroke="#22d3ee" stroke-width="3" opacity="0.8"/>
+              <line x1="84" y1="108" x2="108" y2="132" stroke="#22d3ee" stroke-width="6" stroke-linecap="round"/>
+              
+              <!-- 3x3 Micro Grid inside lens -->
+              <g transform="translate(42, 67)">
+                <rect x="0" y="0" width="11" height="11" fill="#0284c7" stroke="#082f49"/>
+                <rect x="13" y="0" width="11" height="11" fill="#0284c7" stroke="#082f49"/>
+                <rect x="26" y="0" width="11" height="11" fill="#38bdf8" stroke="#082f49" class="svg-pulse"/>
+                <rect x="0" y="13" width="11" height="11" fill="#0284c7" stroke="#082f49"/>
+                <rect x="13" y="13" width="11" height="11" fill="#f43f5e" stroke="#082f49" id="svgGridFeature"/>
+                <rect x="26" y="13" width="11" height="11" fill="#0284c7" stroke="#082f49"/>
+                <rect x="0" y="26" width="11" height="11" fill="#0284c7" stroke="#082f49"/>
+                <rect x="13" y="26" width="11" height="11" fill="#38bdf8" stroke="#082f49"/>
+                <rect x="26" y="26" width="11" height="11" fill="#0284c7" stroke="#082f49"/>
+              </g>
+
+              <text id="svgClueLine1" x="80" y="152" fill="#cbd5e1" font-size="10" text-anchor="middle">• 捕捉微小圓弧線條</text>
+              <text id="svgClueLine2" x="80" y="170" fill="#38bdf8" font-size="10" font-weight="bold" text-anchor="middle">紅色邊界特徵</text>
+            </g>
+
+            <!-- STAGE 2: 中階主管 拼裝零件 -->
+            <g transform="translate(570, 45)">
+              <rect width="160" height="190" rx="14" fill="#0f172a" stroke="#6366f1" stroke-width="2"/>
+              <rect x="10" y="10" width="140" height="24" rx="6" fill="#4338ca" opacity="0.3"/>
+              <text x="80" y="26" fill="#a5b4fc" font-size="11" font-weight="bold" text-anchor="middle">2. 中階主管零件拼裝室</text>
+              
+              <!-- Puzzle / Part Assembly Icon -->
+              <g id="svgPartAssembly" transform="translate(80, 85)">
+                <!-- Dynamic Assembly Shapes -->
+                <path id="svgPartShapeA" d="M -25 -5 Q 0 -30 25 -5 Q 20 25 0 25 Q -20 25 -25 -5 Z" fill="#6366f1" opacity="0.7"/>
+                <circle cx="0" cy="-10" r="8" fill="#c7d2fe"/>
+                <path d="M 0 -18 L 0 -26" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
+              </g>
+
+              <text id="svgPartLine1" x="80" y="152" fill="#cbd5e1" font-size="10" text-anchor="middle">• 拼裝果蒂與頂部凹槽</text>
+              <text id="svgPartLine2" x="80" y="170" fill="#a5b4fc" font-size="10" font-weight="bold" text-anchor="middle">飽滿球形零件完成</text>
+            </g>
+
+            <!-- STAGE 3: 高層委員會 大喇叭投票 -->
+            <g transform="translate(780, 45)">
+              <rect width="125" height="190" rx="14" fill="#0f172a" stroke="#10b981" stroke-width="2"/>
+              <rect x="8" y="10" width="109" height="24" rx="6" fill="#065f46" opacity="0.4"/>
+              <text x="62" y="26" fill="#6ee7b7" font-size="11" font-weight="bold" text-anchor="middle">3. 總監決策大喇叭</text>
+              
+              <!-- Loudspeaker Graphic -->
+              <g transform="translate(55, 80)">
+                <path d="M -22 -12 L -6 -12 L 14 -28 L 14 28 L -6 12 L -22 12 Z" fill="#10b981" stroke="#34d399" stroke-width="2"/>
+                <rect x="-26" y="-8" width="6" height="16" rx="2" fill="#059669"/>
+                <!-- Sound waves -->
+                <path d="M 22 -14 Q 30 0 22 14" fill="none" stroke="#6ee7b7" stroke-width="2" stroke-linecap="round" class="svg-pulse"/>
+                <path d="M 28 -22 Q 40 0 28 22" fill="none" stroke="#a7f3d0" stroke-width="2" stroke-linecap="round" class="svg-pulse" style="animation-delay: 0.3s;"/>
+              </g>
+
+              <!-- Final Output Badge in SVG -->
+              <rect x="12" y="138" width="101" height="34" rx="8" fill="#064e3b" stroke="#059669" stroke-width="1.5"/>
+              <text id="svgDecisionScore" x="62" y="160" fill="#34d399" font-size="12" font-family="monospace" font-weight="bold" text-anchor="middle">95.2% 蘋果</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <!-- 3 大階段卡片：圖文並茂視覺流 -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 my-8">
+        
+        <!-- 階段 1: 基層員工 -->
+        <div class="bg-slate-950/80 rounded-2xl p-6 border border-cyan-500/30 flex flex-col justify-between hover:border-cyan-400/60 transition group relative">
+          <div class="absolute top-4 right-4 text-xs font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">
+            層級: 淺層卷積 (Conv 1~2)
+          </div>
+          <div>
+            <div class="w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-2xl mb-4 border border-cyan-500/20 group-hover:scale-110 transition">
+              <i class="fa-solid fa-magnifying-glass"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-1 flex items-center gap-2">
+              <span>1. 基層員工</span>
+              <span class="text-xs text-cyan-400 font-normal">觀察極小細節</span>
+            </h3>
+            <p class="text-xs text-slate-400 mb-4">
+              照片剛送進公司時，先交給最基層的助理。每個人拿著規格統一的 <strong class="text-cyan-300">3×3 小放大鏡</strong>，只觀察微小區域。
+            </p>
+
+            <div class="p-3.5 bg-slate-900/90 rounded-xl border border-slate-800 space-y-2 text-xs">
+              <div class="font-bold text-cyan-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-clipboard-list text-[11px]"></i> 助理們看到的線索報告：
+              </div>
+              <ul class="space-y-1.5 text-slate-300" id="fruit-stage1-notes">
+                <li class="flex items-start gap-1.5">
+                  <span class="text-cyan-400">•</span>
+                  <span><strong>助理 A：</strong>「這裡偵測到一條微彎的紅弧線條。」</span>
+                </li>
+                <li class="flex items-start gap-1.5">
+                  <span class="text-cyan-400">•</span>
+                  <span><strong>助理 B：</strong>「頂部發現一條垂直的深褐色短直線。」</span>
+                </li>
+                <li class="flex items-start gap-1.5">
+                  <span class="text-cyan-400">•</span>
+                  <span><strong>助理 C：</strong>「偵測到大面積反光紅色色塊與光澤。」</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+            <span><strong>生活對應：</strong>捕捉邊緣、線條、顏色與基礎紋理。</span>
+          </div>
+        </div>
+
+        <!-- 階段 2: 中階主管 -->
+        <div class="bg-slate-950/80 rounded-2xl p-6 border border-indigo-500/30 flex flex-col justify-between hover:border-indigo-400/60 transition group relative">
+          <div class="absolute top-4 right-4 text-xs font-mono px-2 py-0.5 rounded bg-indigo-950 text-indigo-400 border border-indigo-800">
+            層級: 深層卷積 (Conv 3~5)
+          </div>
+          <div>
+            <div class="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-2xl mb-4 border border-indigo-500/20 group-hover:scale-110 transition">
+              <i class="fa-solid fa-puzzle-piece"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-1 flex items-center gap-2">
+              <span>2. 中階主管</span>
+              <span class="text-xs text-indigo-400 font-normal">拼湊組裝零件</span>
+            </h3>
+            <p class="text-xs text-slate-400 mb-4">
+              組長與經理不看單一像素點，而是彙整多份助理的線索，把零散的線條拼裝成具有意義的「水果局部零件」。
+            </p>
+
+            <div class="p-3.5 bg-slate-900/90 rounded-xl border border-slate-800 space-y-2 text-xs">
+              <div class="font-bold text-indigo-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-diagram-project text-[11px]"></i> 主管們拼出的零件清單：
+              </div>
+              <ul class="space-y-1.5 text-slate-300" id="fruit-stage2-notes">
+                <li class="flex items-start gap-1.5">
+                  <span class="text-indigo-400">•</span>
+                  <span><strong>組長 X：</strong>把短直線與凹槽弧線結合成「<strong>果蒂與頂部凹陷</strong>」。</span>
+                </li>
+                <li class="flex items-start gap-1.5">
+                  <span class="text-indigo-400">•</span>
+                  <span><strong>組長 Y：</strong>把大範圍圓弧與紅色組合為「<strong>飽滿球型外輪廓</strong>」。</span>
+                </li>
+                <li class="flex items-start gap-1.5">
+                  <span class="text-indigo-400">•</span>
+                  <span><strong>經理 Z：</strong>確認未發現任何黃黑條紋，確認為光滑球體。</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+            <span><strong>生活對應：</strong>將特徵階層化，組合成具體局部結構。</span>
+          </div>
+        </div>
+
+        <!-- 階段 3: 高層總監 -->
+        <div class="bg-slate-950/80 rounded-2xl p-6 border border-emerald-500/30 flex flex-col justify-between hover:border-emerald-400/60 transition group relative">
+          <div class="absolute top-4 right-4 text-xs font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">
+            層級: 全連接層 (FC 1~3)
+          </div>
+          <div>
+            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-2xl mb-4 border border-emerald-500/20 group-hover:scale-110 transition">
+              <i class="fa-solid fa-users-between-lines"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-1 flex items-center gap-2">
+              <span>3. 高層總監委員會</span>
+              <span class="text-xs text-emerald-400 font-normal">綜合評分投票</span>
+            </h3>
+            <p class="text-xs text-slate-400 mb-4">
+              坐在頂樓辦公室，<strong>完全不看原始像素</strong>！只根據中階主管遞上來的零件清單，經由 4096 位顧問投票，給出機率判斷。
+            </p>
+
+            <div class="p-3.5 bg-slate-900/90 rounded-xl border border-slate-800 space-y-3 text-xs">
+              <div class="font-bold text-emerald-300 flex items-center justify-between">
+                <span class="flex items-center gap-1.5">
+                  <i class="fa-solid fa-bullhorn text-[11px]"></i> 最終決策喇叭宣判：
+                </span>
+                <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-900/60 text-emerald-300 border border-emerald-700 font-mono" id="fruit-decision-badge">
+                  信心度 95%
+                </span>
+              </div>
+              
+              <!-- Probability Bars -->
+              <div class="space-y-2 font-mono text-[11px]" id="fruit-probability-bars">
+                <div>
+                  <div class="flex justify-between text-slate-300 mb-0.5">
+                    <span>🍎 蘋果 (Apple)</span>
+                    <span class="font-bold text-rose-400">95.2%</span>
+                  </div>
+                  <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div class="bg-rose-500 h-full rounded-full transition-all duration-500" style="width: 95.2%"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-slate-300 mb-0.5">
+                    <span>🍌 香蕉 (Banana)</span>
+                    <span class="text-amber-400">3.1%</span>
+                  </div>
+                  <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div class="bg-amber-400 h-full rounded-full transition-all duration-500" style="width: 3.1%"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-slate-300 mb-0.5">
+                    <span>🍉 西瓜 (Watermelon)</span>
+                    <span class="text-emerald-400">1.7%</span>
+                  </div>
+                  <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 1.7%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span><strong>生活對應：</strong>FC 全連接層將高階零件特徵加權映射為分類機率。</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 💡 VGG16 兩個核心特色：生活話深度剖析卡片 -->
+      <div class="mt-6 pt-6 border-t border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+        
+        <div class="bg-slate-950 p-5 rounded-xl border border-slate-800/80 flex gap-4">
+          <div class="w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-400 flex-shrink-0 flex items-center justify-center text-lg font-black">
+            16
+          </div>
+          <div>
+            <h4 class="font-bold text-white text-sm mb-1.5 flex items-center gap-2">
+              💡 為什麼叫「16」？
+            </h4>
+            <p class="text-slate-300 leading-relaxed">
+              因為這家鑑定公司實質上有 <strong class="text-cyan-300">16 條嚴格的管理階層</strong>：<br>
+              • <strong>13 層負責看圖的經理</strong>（13 個卷積層，提取不同顆粒度的線條與特徵）。<br>
+              • <strong>3 層負責決策的高層</strong>（3 個全連接層，綜合零件清單進行投票）。<br>
+              在 2014 年時，這種多達 16 層的「極深（Very Deep）」架構震撼了整個人工智慧領域！
+            </p>
+          </div>
+        </div>
+
+        <div class="bg-slate-950 p-5 rounded-xl border border-slate-800/80 flex gap-4">
+          <div class="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex-shrink-0 flex items-center justify-center text-lg font-black">
+            3²
+          </div>
+          <div>
+            <h4 class="font-bold text-white text-sm mb-1.5 flex items-center gap-2">
+              💡 為什麼大家都拿 3×3 的小放大鏡？
+            </h4>
+            <p class="text-slate-300 leading-relaxed">
+              VGG16 的招牌特色是所有員工都統一使用規格極小且標準的 <strong class="text-amber-300">3×3 小放大鏡</strong>。
+              雖然每個人一次只看很小的局部，但只要<strong>「基層助理看完了傳給組長，組長看完了傳給經理」</strong>，經理眼中的一個點，其實已經涵蓋了基層好幾個人的視野！<br>
+              這就像是<strong>「用一群聽話的小跟班，拼湊出大局」</strong>，不僅參數量大幅節省，而且絕不容易漏掉微小細節！
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 總結金句 Banner -->
+      <div class="mt-6 p-4 bg-gradient-to-r from-amber-500/10 via-indigo-500/10 to-cyan-500/10 rounded-xl border border-amber-500/20 text-center text-xs text-slate-300 font-medium">
+        🎯 <strong>總結一句話：</strong> VGG16 就是一個「<span class="text-cyan-300">把大問題拆成無數小線索</span>，再把<span class="text-indigo-300">小線索層層上報、重組為零件</span>，最後<span class="text-emerald-300">交由決策委員會投票宣判</span>」的視覺辨識專家團隊！
+      </div>
+    </section>
+
+    <!-- 06-WEAPONS. 辦公室兩大秘密武器：ReLU 與 Max-pooling 圖文並茂互動剖析 -->
+    <section id="secret-weapons" class="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/40 p-6 sm:p-8 rounded-2xl border border-indigo-500/30 shadow-xl relative overflow-hidden">
+      <div class="absolute -left-12 -bottom-12 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-800 gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 mb-2">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> 06-附錄. 辦公秘密武器 (Office Secret Weapons)
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
+            <span>鑑定總部的兩大神隊友：ReLU 與 Max-pooling</span>
+          </h2>
+          <p class="text-slate-300 text-sm mt-1 max-w-3xl">
+            光是基層看圖、中階主管整合還不夠！如果每個細節與負面廢話都往上報，高層腦袋一定會當機。這時就需要兩大「辦公神器」出場！
+          </p>
+        </div>
+        <div class="flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-xl border border-slate-800 text-xs text-slate-300">
+          <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>高效率傳遞機制</span>
+        </div>
+      </div>
+
+      <!-- 架構定位與具體作用專區 (精確工程架構對照) -->
+      <div class="mt-6 p-5 sm:p-6 bg-slate-950/90 rounded-2xl border border-cyan-500/40 shadow-lg">
+        <div class="flex items-center gap-2 text-cyan-300 text-sm font-bold mb-3">
+          <i class="fa-solid fa-layer-group text-cyan-400"></i>
+          <span>VGG 網路架構中 ReLU 與 Max-pooling 的具體位置與作用全貌</span>
+        </div>
+        <p class="text-slate-300 text-xs sm:text-sm leading-relaxed mb-5">
+          在 VGG 網路架構中，<strong class="text-rose-400">ReLU</strong> 屬於<strong>啟用函數（Activation Function）層</strong>，緊跟在每個卷積層之後；而 <strong class="text-sky-400">Max-pooling</strong> 則是<strong>池化層（Pooling Layer）</strong>，位於特定卷積組合之間。這兩個部分在 VGG 中的具體位置與作用如下：
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <!-- 1. ReLU 的位置與作用 -->
+          <div class="p-4 rounded-xl bg-slate-900/90 border border-rose-500/30 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+                <span class="font-bold text-rose-300 text-sm flex items-center gap-2">
+                  <i class="fa-solid fa-bolt text-rose-400"></i> 1. ReLU (Rectified Linear Unit) 的位置與作用
+                </span>
+                <span class="font-mono text-[10px] text-rose-400 bg-rose-950/60 px-2 py-0.5 rounded border border-rose-800">
+                  啟用函數層
+                </span>
+              </div>
+              <ul class="space-y-2 text-slate-300 leading-relaxed">
+                <li class="flex items-start gap-2">
+                  <span class="text-rose-400 font-bold">•</span>
+                  <span><strong class="text-white">所在位置：</strong>緊跟在<strong>每一個卷積層（Convolutional Layer）的後面</strong>。</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-rose-400 font-bold">•</span>
+                  <span><strong class="text-white">主要作用：</strong><strong>引入非線性特徵</strong>。卷積運算本身是線性的，ReLU（公式為 $f(x) = \max(0, x)$）可以將負值歸零、保留正值，讓網路能夠學習複雜的非線性模式，同時有效緩解梯度消失問題。</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-rose-400 font-bold">•</span>
+                  <span><strong class="text-white">結構範例：</strong>在 VGG 中，你會看到 <code class="text-rose-300 bg-rose-950/40 px-1.5 py-0.5 rounded font-mono border border-rose-800/60">Conv -&gt; ReLU -&gt; Conv -&gt; ReLU</code> 這樣的連續組合。</span>
+                </li>
+              </ul>
+            </div>
+            <div class="mt-3 pt-2.5 border-t border-slate-800/80 text-[11px] font-mono text-slate-400 flex items-center justify-between">
+              <span>數學式：$f(x) = \max(0, x)$</span>
+              <span class="text-rose-400">非線性擬合核心</span>
+            </div>
+          </div>
+
+          <!-- 2. Max-pooling 的位置與作用 -->
+          <div class="p-4 rounded-xl bg-slate-900/90 border border-sky-500/30 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+                <span class="font-bold text-sky-300 text-sm flex items-center gap-2">
+                  <i class="fa-solid fa-compress text-sky-400"></i> 2. Max-pooling 的位置與作用
+                </span>
+                <span class="font-mono text-[10px] text-sky-400 bg-sky-950/60 px-2 py-0.5 rounded border border-sky-800">
+                  池化降維層
+                </span>
+              </div>
+              <ul class="space-y-2 text-slate-300 leading-relaxed">
+                <li class="flex items-start gap-2">
+                  <span class="text-sky-400 font-bold">•</span>
+                  <span><strong class="text-white">所在位置：</strong>位於<strong>幾組卷積層（通常是 2 到 3 個卷積層）的尾端</strong>。</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-sky-400 font-bold">•</span>
+                  <span><strong class="text-white">主要作用：</strong><strong>進行空間降維（Subsampling）</strong>。VGG 使用 $2 \times 2$、步長（stride）為 2 的 Max-pooling，將特徵圖（Feature Map）的長寬各縮小一半，藉此減少計算量、擴大後續層的感受野（Receptive Field），並提供一定程度的平移不變性。</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-sky-400 font-bold">•</span>
+                  <span><strong class="text-white">結構範例：</strong>整個 VGG 的主體骨架可以看作是<strong>五個大區塊（5 Blocks）</strong>，每個區塊的結尾都是一個 Max-pooling。</span>
+                </li>
+              </ul>
+            </div>
+            <div class="mt-3 pt-2.5 border-t border-slate-800/80 text-[11px] font-mono text-slate-400 flex items-center justify-between">
+              <span>規律：2×2, Stride=2 (長寬減半)</span>
+              <span class="text-sky-400">5 次降維至 7×7</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Two Weapons Side-by-Side Cards -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 my-8">
+
+        <!-- Weapon 1: ReLU -->
+        <div class="bg-slate-950/90 rounded-2xl p-6 border border-rose-500/30 hover:border-rose-400/60 transition flex flex-col justify-between group">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center text-2xl border border-rose-500/20 group-hover:scale-110 transition">
+                  <i class="fa-solid fa-filter-circle-xmark"></i>
+                </div>
+                <div>
+                  <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    1. ReLU 激活函數
+                  </h3>
+                  <p class="text-xs text-rose-300 font-medium">去蕪存菁的「正能量篩選器」</p>
+                </div>
+              </div>
+              <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800">
+                f(x) = max(0, x)
+              </span>
+            </div>
+
+            <p class="text-xs text-slate-300 leading-relaxed mb-4">
+              在傳遞報告時，員工會收集到正面和負面的各種訊息。ReLU 就像一個<strong>「只看正能量、拒絕垃圾負面情緒」的嚴格審查員</strong>。
+            </p>
+
+            <!-- Illustrated Comparison Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 text-xs">
+              <div class="p-3 bg-slate-900 rounded-xl border border-emerald-500/30">
+                <div class="font-bold text-emerald-400 flex items-center gap-1.5 mb-1.5">
+                  <i class="fa-solid fa-circle-check"></i> 正分回報（> 0）
+                </div>
+                <p class="text-slate-300 text-[11px] leading-relaxed">
+                  <strong>基層員工：</strong>「這裡有 80% 的機率是紅色線條！」(+0.80)<br>
+                  <span class="text-emerald-300 font-semibold">→ 審查員：</span>「很好！這很有用，原封不動傳下去！」
+                </p>
+              </div>
+
+              <div class="p-3 bg-slate-900 rounded-xl border border-rose-500/30">
+                <div class="font-bold text-rose-400 flex items-center gap-1.5 mb-1.5">
+                  <i class="fa-solid fa-ban"></i> 負分回報（≤ 0）
+                </div>
+                <p class="text-slate-300 text-[11px] leading-relaxed">
+                  <strong>基層員工：</strong>「這裡有 -50% 機率是藍色（根本沒藍色）」(-0.50)<br>
+                  <span class="text-rose-300 font-semibold">→ 審查員：</span>「廢話！沒東西不用寫在報告裡佔版面，直接歸 0！」
+                </p>
+              </div>
+            </div>
+
+            <!-- Interactive SVG ReLU Positive Energy Filter Gate -->
+            <div class="my-3 p-3 bg-slate-900 rounded-xl border border-rose-500/30">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-bold text-rose-300 flex items-center gap-1.5">
+                  <i class="fa-solid fa-microchip"></i> ReLU 審查關卡動態 SVG 視覺過濾門
+                </span>
+                <span class="text-[10px] text-slate-400 font-mono">f(x) = max(0, x)</span>
+              </div>
+              <svg viewBox="0 0 420 130" class="w-full h-auto select-none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="gateGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#f43f5e" stop-opacity="0.8"/>
+                    <stop offset="50%" stop-color="#ec4899" stop-opacity="0.9"/>
+                    <stop offset="100%" stop-color="#881337" stop-opacity="0.8"/>
+                  </linearGradient>
+                </defs>
+
+                <!-- Flow pipeline -->
+                <line x1="20" y1="65" x2="180" y2="65" stroke="#334155" stroke-width="4" stroke-dasharray="4 3"/>
+                <line x1="240" y1="65" x2="400" y2="65" stroke="#334155" stroke-width="4" stroke-dasharray="4 3"/>
+
+                <!-- Left Input Token Box (Dynamic via Slider) -->
+                <g id="svgReluInputToken" transform="translate(60, 65)">
+                  <circle cx="0" cy="0" r="26" fill="#1e1b4b" stroke="#f43f5e" stroke-width="2.5" class="svg-pulse"/>
+                  <text id="svgReluInText" x="0" y="5" fill="#fb7185" font-size="13" font-family="monospace" font-weight="bold" text-anchor="middle">-2.5</text>
+                  <text x="0" y="38" fill="#94a3b8" font-size="9" text-anchor="middle">輸入訊號</text>
+                </g>
+
+                <!-- Center Gate: The ReLU Examiner -->
+                <g transform="translate(210, 65)">
+                  <!-- Gate post and scanning beam -->
+                  <rect x="-14" y="-55" width="28" height="110" rx="8" fill="url(#gateGrad)" stroke="#fda4af" stroke-width="2"/>
+                  <line x1="0" y1="-45" x2="0" y2="45" stroke="#ffffff" stroke-width="2" stroke-dasharray="3 3"/>
+                  <circle cx="0" cy="0" r="8" fill="#ffffff" filter="url(#svgGlow)"/>
+                  <text x="0" y="-4" fill="#9f1239" font-size="8" font-weight="black" text-anchor="middle">R</text>
+                  <text x="0" y="70" fill="#f43f5e" font-size="9" font-weight="bold" text-anchor="middle">ReLU 審查門</text>
+                </g>
+
+                <!-- Right Output Token Box -->
+                <g id="svgReluOutputToken" transform="translate(340, 65)">
+                  <circle id="svgReluOutCircle" cx="0" cy="0" r="26" fill="#0f172a" stroke="#64748b" stroke-width="2"/>
+                  <text id="svgReluOutText" x="0" y="5" fill="#94a3b8" font-size="13" font-family="monospace" font-weight="bold" text-anchor="middle">0.0</text>
+                  <text id="svgReluStatusText" x="0" y="38" fill="#cbd5e1" font-size="9" text-anchor="middle">已阻擋歸零</text>
+                </g>
+              </svg>
+            </div>
+
+            <!-- Interactive Live ReLU Filter Demo -->
+            <div class="p-4 bg-slate-900/90 rounded-xl border border-slate-800 space-y-3">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-bold text-slate-200 flex items-center gap-1.5">
+                  <i class="fa-solid fa-sliders text-rose-400"></i> 動態互動測試：給審查員輸入一個數值
+                </span>
+                <span class="text-[11px] font-mono text-cyan-400" id="reluRawValDisplay">輸入數值: -2.5</span>
+              </div>
+              <input type="range" id="reluSlider" min="-10" max="10" step="0.5" value="-2.5" class="w-full accent-rose-500 cursor-pointer">
+              <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-xs font-mono">
+                <div class="text-slate-400">原始回報: <span id="reluInputVal" class="text-rose-400 font-bold">-2.5</span></div>
+                <div class="text-slate-500"><i class="fa-solid fa-arrow-right"></i> 經 ReLU 審查 <i class="fa-solid fa-arrow-right"></i></div>
+                <div class="text-slate-200">最終通過: <span id="reluOutputVal" class="text-emerald-400 font-bold">0.0</span></div>
+              </div>
+            </div>
+
+            <!-- Why Needed Callout -->
+            <div class="mt-4 p-3 bg-rose-950/20 rounded-xl border border-rose-900/40 text-[11px] text-slate-300 leading-relaxed">
+              <strong class="text-rose-400">💡 為什麼需要它？</strong> 強迫團隊只專注在「<strong>有發現什麼特徵</strong>」，而不是花時間去討論「沒發現什麼」，大幅提升公司運作效率，更為神經網路注入關鍵的<strong>非線性擬合能力</strong>！
+            </div>
+          </div>
+        </div>
+
+        <!-- Weapon 2: Max-pooling -->
+        <div class="bg-slate-950/90 rounded-2xl p-6 border border-sky-500/30 hover:border-sky-400/60 transition flex flex-col justify-between group">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center text-2xl border border-sky-500/20 group-hover:scale-110 transition">
+                  <i class="fa-solid fa-highlighter"></i>
+                </div>
+                <div>
+                  <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    2. Max-pooling 最大池化
+                  </h3>
+                  <p class="text-xs text-sky-300 font-medium">抓重點的「螢光筆精簡法」</p>
+                </div>
+              </div>
+              <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-800">
+                2×2 Stride=2 (面積縮小 1/4)
+              </span>
+            </div>
+
+            <p class="text-xs text-slate-300 leading-relaxed mb-4">
+              照片傳遞時資訊量極其龐大（數百萬像素）。如果每個細節一字不漏往上呈報，主管腦袋絕對爆炸！Max-pooling 就是負責<strong>「精簡報告、抓出最大重點」的貼身秘書</strong>。
+            </p>
+
+            <!-- Interactive SVG Visual for 2x2 Max-pooling Highlighter Scanner -->
+            <div class="my-3 p-3 bg-slate-900 rounded-xl border border-sky-500/30">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-bold text-sky-300 flex items-center gap-1.5">
+                  <i class="fa-solid fa-highlighter"></i> 螢光筆掃描縮小池化動態 SVG 示意圖
+                </span>
+                <span class="text-[10px] text-slate-400 font-mono">Kernel 2×2, Stride=2</span>
+              </div>
+              <svg viewBox="0 0 420 150" class="w-full h-auto select-none" xmlns="http://www.w3.org/2000/svg">
+                <!-- Left 2x2 Grid with Highlighter Box -->
+                <g transform="translate(30, 20)">
+                  <rect x="0" y="0" width="50" height="50" rx="6" fill="#0f172a" stroke="#334155" id="svgPoolCellBox-0"/>
+                  <text x="25" y="32" fill="#94a3b8" font-size="16" font-family="monospace" font-weight="bold" text-anchor="middle" id="svgPoolVal-0">2</text>
+
+                  <rect x="56" y="0" width="50" height="50" rx="6" fill="#0f172a" stroke="#334155" id="svgPoolCellBox-1"/>
+                  <text x="81" y="32" fill="#94a3b8" font-size="16" font-family="monospace" font-weight="bold" text-anchor="middle" id="svgPoolVal-1">0</text>
+
+                  <rect x="0" y="56" width="50" height="50" rx="6" fill="#0f172a" stroke="#334155" id="svgPoolCellBox-2"/>
+                  <text x="25" y="88" fill="#94a3b8" font-size="16" font-family="monospace" font-weight="bold" text-anchor="middle" id="svgPoolVal-2">9</text>
+
+                  <rect x="56" y="56" width="50" height="50" rx="6" fill="#0f172a" stroke="#334155" id="svgPoolCellBox-3"/>
+                  <text x="81" y="88" fill="#94a3b8" font-size="16" font-family="monospace" font-weight="bold" text-anchor="middle" id="svgPoolVal-3">5</text>
+
+                  <!-- Dynamic SVG Highlighter Frame around Winner -->
+                  <rect id="svgHighlighterFrame" x="-2" y="54" width="54" height="54" rx="8" fill="none" stroke="#f59e0b" stroke-width="3" filter="url(#svgGlow)"/>
+                  <text x="53" y="122" fill="#94a3b8" font-size="9" text-anchor="middle">2×2 局部報告區塊</text>
+                </g>
+
+                <!-- Processing Flow Beam -->
+                <g transform="translate(160, 75)">
+                  <line x1="0" y1="0" x2="80" y2="0" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" class="svg-beam"/>
+                  <!-- Highlighter Pen Icon -->
+                  <g transform="translate(38, -12) rotate(45)">
+                    <rect x="-4" y="-14" width="8" height="24" rx="2" fill="#38bdf8"/>
+                    <polygon points="-4,10 4,10 0,18" fill="#f59e0b"/>
+                  </g>
+                  <text x="40" y="24" fill="#38bdf8" font-size="9" font-weight="bold" text-anchor="middle">螢光筆精簡提取</text>
+                </g>
+
+                <!-- Right Condensed 1x1 Output Block -->
+                <g transform="translate(290, 35)">
+                  <rect x="0" y="0" width="76" height="76" rx="12" fill="#1e1b4b" stroke="#38bdf8" stroke-width="2.5" filter="url(#svgGlow)"/>
+                  <text x="38" y="47" fill="#fbbf24" font-size="28" font-family="monospace" font-weight="black" text-anchor="middle" id="svgPoolOutWinner">9</text>
+                  <text x="38" y="96" fill="#38bdf8" font-size="10" font-weight="bold" text-anchor="middle">濃縮為單一精華</text>
+                </g>
+              </svg>
+            </div>
+
+            <!-- Illustrated 2x2 Interactive Grid Box -->
+            <div class="p-4 bg-slate-900/90 rounded-xl border border-slate-800 mb-4">
+              <div class="flex items-center justify-between mb-3 text-xs">
+                <span class="font-bold text-slate-200 flex items-center gap-1.5">
+                  <i class="fa-solid fa-table-cells-large text-sky-400"></i> 秘書的 2×2 報告審閱小格子（點擊格子可自訂數值）:
+                </span>
+                <button onclick="randomizePoolGrid()" class="text-[11px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-sky-300 border border-slate-700 transition">
+                  <i class="fa-solid fa-dice mr-1"></i> 換一組數值
+                </button>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 items-center">
+                <!-- 2x2 Input Matrix -->
+                <div class="sm:col-span-3 grid grid-cols-2 gap-2 text-center text-xs font-mono">
+                  <div id="pool-0" onclick="editPoolCell(0)" class="pool-cell p-2.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-sky-500 cursor-pointer transition">
+                    <span class="text-[10px] text-slate-500 block">左上: 有點像蘋果</span>
+                    <span class="text-base font-bold text-slate-300 cell-val">2</span>
+                  </div>
+                  <div id="pool-1" onclick="editPoolCell(1)" class="pool-cell p-2.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-sky-500 cursor-pointer transition">
+                    <span class="text-[10px] text-slate-500 block">右上: 完全不像</span>
+                    <span class="text-base font-bold text-slate-300 cell-val">0</span>
+                  </div>
+                  <div id="pool-2" onclick="editPoolCell(2)" class="pool-cell p-2.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-sky-500 cursor-pointer transition">
+                    <span class="text-[10px] text-slate-500 block">左下: 超級像蘋果</span>
+                    <span class="text-base font-bold text-slate-300 cell-val">9</span>
+                  </div>
+                  <div id="pool-3" onclick="editPoolCell(3)" class="pool-cell p-2.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-sky-500 cursor-pointer transition">
+                    <span class="text-[10px] text-slate-500 block">右下: 普通像</span>
+                    <span class="text-base font-bold text-slate-300 cell-val">5</span>
+                  </div>
+                </div>
+
+                <!-- Arrow & Result Highlight -->
+                <div class="sm:col-span-2 flex flex-col items-center justify-center p-3 bg-slate-950 rounded-xl border border-sky-900/40 text-center">
+                  <div class="text-[10px] text-sky-400 font-bold mb-1 flex items-center gap-1">
+                    <i class="fa-solid fa-highlighter"></i> 螢光筆畫下重點
+                  </div>
+                  <div class="text-2xl font-black font-mono text-amber-300 my-1 px-4 py-1 rounded bg-amber-500/10 border border-amber-500/30" id="poolWinnerVal">
+                    9
+                  </div>
+                  <span class="text-[10px] text-slate-400">其餘 3 個劃掉，整頁濃縮為單一精華</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Two Big Benefits of MaxPool -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-300">
+              <div class="p-2.5 bg-slate-900 rounded-lg border border-slate-800">
+                <strong class="text-sky-300 block mb-0.5">1. 精簡特徵、降低負擔</strong>
+                報告面積直接縮減為 1/4，讓後續主管只看精華，減輕運算壓力。
+              </div>
+              <div class="p-2.5 bg-slate-900 rounded-lg border border-slate-800">
+                <strong class="text-indigo-300 block mb-0.5">2. 圖案歪了也認得 (平移不變性)</strong>
+                不管蘋果稍微偏左還是偏右，最強烈的特徵（9）都會被挑中上報！
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 總結 VGG16 完整流水線 4 步驟 -->
+      <div class="mt-6 pt-6 border-t border-slate-800">
+        <h4 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-arrows-split-up-and-left text-cyan-400"></i> 當一張照片送進 VGG16 的完整流水線（重複執行數輪）：
+        </h4>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+          <!-- Step 1 -->
+          <div class="p-4 bg-slate-950 rounded-xl border border-cyan-500/30 relative">
+            <span class="absolute top-2 right-2 text-xs font-mono font-bold text-cyan-500/30">01</span>
+            <div class="font-bold text-cyan-400 flex items-center gap-1.5 mb-1.5">
+              <i class="fa-solid fa-magnifying-glass"></i> 1. 卷積層 (Conv)
+            </div>
+            <p class="text-slate-300 leading-relaxed text-[11px]">
+              基層員工手持 <strong>3×3 放大鏡</strong>，地毯式搜索微小線條、邊緣與色彩斑塊。
+            </p>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="p-4 bg-slate-950 rounded-xl border border-rose-500/30 relative">
+            <span class="absolute top-2 right-2 text-xs font-mono font-bold text-rose-500/30">02</span>
+            <div class="font-bold text-rose-400 flex items-center gap-1.5 mb-1.5">
+              <i class="fa-solid fa-filter"></i> 2. ReLU 審查員
+            </div>
+            <p class="text-slate-300 leading-relaxed text-[11px]">
+              立刻把<strong>負分與沒意義的廢話直接歸零</strong>，只留下正向有價值的線索。
+            </p>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="p-4 bg-slate-950 rounded-xl border border-sky-500/30 relative">
+            <span class="absolute top-2 right-2 text-xs font-mono font-bold text-sky-500/30">03</span>
+            <div class="font-bold text-sky-400 flex items-center gap-1.5 mb-1.5">
+              <i class="fa-solid fa-highlighter"></i> 3. Max-pooling 秘書
+            </div>
+            <p class="text-slate-300 leading-relaxed text-[11px]">
+              使用<strong>螢光筆精簡法</strong>，只抓出 2×2 格子裡最強特徵，報告縮小為 1/4。
+            </p>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="p-4 bg-slate-950 rounded-xl border border-emerald-500/30 relative">
+            <span class="absolute top-2 right-2 text-xs font-mono font-bold text-emerald-500/30">04</span>
+            <div class="font-bold text-emerald-400 flex items-center gap-1.5 mb-1.5">
+              <i class="fa-solid fa-users"></i> 4. 全連接層 (FC) 投票
+            </div>
+            <p class="text-slate-300 leading-relaxed text-[11px]">
+              「找線索 → 留正分 → 抓重點」循環多輪後，由<strong>高層決策委員會拍板投票</strong>。
+            </p>
+          </div>
+        </div>
+
+        <!-- Follow-on Questions Prompt Banner -->
+        <div class="mt-6 p-4 bg-indigo-950/40 rounded-xl border border-indigo-500/30 flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
+          <div class="space-y-1 text-slate-300">
+            <div class="font-bold text-indigo-300 flex items-center gap-2">
+              <i class="fa-solid fa-compass text-sm"></i> 了解了這些核心組件後，想深入探索哪個方向？
+            </div>
+            <p class="text-slate-400">
+              • 想要了解 PyTorch 程式碼是如何把 Conv, ReLU, MaxPool 模組串接起來的嗎？<br>
+              • 還是對後來為了解決 VGG 缺點而誕生的 <strong>ResNet（殘差網路）</strong> 的生活化比喻也有興趣呢？
+            </p>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <a href="#pytorchCode" class="px-3 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-medium transition flex items-center gap-1.5">
+              <i class="fa-brands fa-python"></i> 前往查看 PyTorch 程式碼
+            </a>
+            <button onclick="showResNetTeaserModal()" class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition flex items-center gap-1.5">
+              <i class="fa-solid fa-lightbulb"></i> ResNet 生活比喻預覽
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 08 & 09 數學推導與感受野互動實驗室 -->
+    <section id="math" class="bg-slate-900 p-6 sm:p-8 rounded-2xl border border-slate-800">
+      <div class="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-800 gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 mb-2">
+            08 & 09. 理論簡介與互動數學推導
+          </div>
+          <h2 class="text-2xl font-bold text-white">為什麼 2 個 3×3 可以替代 1 個 5×5？為什麼能省參數？</h2>
+          <p class="text-slate-400 text-sm mt-1">
+            探討感受野（Receptive Field, RF）遞推公式與參數量（Parameter Count）比率
+          </p>
+        </div>
+        <div class="flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-lg border border-slate-800 text-xs text-cyan-400">
+          <i class="fa-solid fa-calculator"></i> 經典論證：參數量減少 28% ~ 45%
+        </div>
+      </div>
+
+      <!-- Mathematical Derivation Formula Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 my-6">
+        <div class="space-y-4 text-sm text-slate-300">
+          <h3 class="text-base font-bold text-cyan-300 flex items-center gap-2">
+            <i class="fa-solid fa-circle-nodes"></i> 1. 感受野計算公式 (Receptive Field)
+          </h3>
+          <p>
+            設輸入為單步步長（$s=1$）的連續卷積。第 $l$ 層感受野 $RF_l$ 之關係式為：
+          </p>
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
+            $$RF_l = RF_{l-1} + (k_l - 1) \times S_{in}$$
+          </div>
+          <p class="text-xs text-slate-400">
+            其中 $k_l$ 為卷積核大小，$S_{in}$ 為前幾層累積之步長（在無步幅縮放時 $S_{in} = 1$）：
+          </p>
+          <ul class="text-xs space-y-2 bg-slate-950/50 p-3.5 rounded-lg border border-slate-800/60 font-mono">
+            <li>• 第 1 層 ($3\times3$): $RF_1 = 1 + (3 - 1) = 3$</li>
+            <li>• 第 2 層 ($3\times3$): $RF_2 = 3 + (3 - 1) = 5$ <span class="text-emerald-400 font-bold">(等效單個 5×5)</span></li>
+            <li>• 第 3 層 ($3\times3$): $RF_3 = 5 + (3 - 1) = 7$ <span class="text-cyan-400 font-bold">(等效單個 7×7)</span></li>
+          </ul>
+        </div>
+
+        <div class="space-y-4 text-sm text-slate-300">
+          <h3 class="text-base font-bold text-amber-300 flex items-center gap-2">
+            <i class="fa-solid fa-scale-balanced"></i> 2. 參數量 (Parameter Savings) 比較推導
+          </h3>
+          <p>
+            假設輸入與輸出通道皆為 $C$：
+          </p>
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs sm:text-sm font-mono space-y-2">
+            <div class="flex justify-between border-b border-slate-800 pb-2">
+              <span class="text-slate-400">單個 7×7 卷積核參數:</span>
+              <span class="text-rose-400 font-bold">1 × (7 × 7 × C × C) = 49 C²</span>
+            </div>
+            <div class="flex justify-between border-b border-slate-800 pb-2">
+              <span class="text-slate-400">三個 3×3 卷積核參數:</span>
+              <span class="text-emerald-400 font-bold">3 × (3 × 3 × C × C) = 27 C²</span>
+            </div>
+            <div class="flex justify-between pt-1">
+              <span class="text-cyan-300 font-bold">參數節省比率 (Reduction):</span>
+              <span class="text-cyan-400 font-bold">$$\frac{49 - 27}{49} \approx 44.9\%$$</span>
+            </div>
+          </div>
+          <p class="text-xs text-slate-400">
+            不僅參數節省近一半，還多插入了 2 次 ReLU 激活，使決策函數更具辨識能力！
+          </p>
+        </div>
+      </div>
+
+      <!-- Interactive Calculator for Channel & Params -->
+      <div class="mt-6 p-5 bg-slate-950 rounded-xl border border-indigo-900/40">
+        <h4 class="text-sm font-bold text-white mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-cyan-400"></i> 動態參數推導器：自訂通道數 $C$ 比較參數量
+        </h4>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">自訂特徵通道數 $C$</label>
+            <input type="range" id="paramChannelRange" min="16" max="512" step="16" value="64" class="w-full accent-cyan-500 cursor-pointer">
+            <div class="text-xs text-right font-mono text-cyan-400 mt-1" id="channelDisplay">C = 64 通道</div>
+          </div>
+          <div class="sm:col-span-2 grid grid-cols-2 gap-3 text-center text-xs">
+            <div class="p-3 bg-slate-900 rounded-lg border border-slate-800">
+              <div class="text-slate-400 mb-1">1 層 7×7 卷積核參數</div>
+              <div class="text-base sm:text-lg font-mono font-bold text-rose-400" id="params7x7">200,704</div>
+            </div>
+            <div class="p-3 bg-slate-900 rounded-lg border border-slate-800">
+              <div class="text-slate-400 mb-1">3 層 3×3 卷積核參數</div>
+              <div class="text-base sm:text-lg font-mono font-bold text-emerald-400" id="params3x3">110,592</div>
+              <span class="text-[10px] text-cyan-300">節省約 44.9% 參數量</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. 深度學習範疇互動網頁：VGG16 拓撲分解與特徵層次 -->
+    <section class="bg-slate-900 p-6 sm:p-8 rounded-2xl border border-slate-800">
+      <div class="pb-6 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-2">
+            10. 深度學習應用範疇互動
+          </div>
+          <h2 class="text-2xl font-bold text-white">VGG16 網路結構積木（5 大 Block + 分類頭 FC）</h2>
+          <p class="text-slate-400 text-sm mt-1">點擊各區塊探勘各階段特徵解析度、通道數以及代表性語意特徵</p>
+        </div>
+      </div>
+
+      <!-- Interactive Block Tabs -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6">
+        <button onclick="selectBlock(0)" id="block-btn-0" class="block-tab px-3 py-3 rounded-xl border border-cyan-500 bg-cyan-950/40 text-left transition">
+          <span class="text-[10px] font-mono text-cyan-400 font-bold block">BLOCK 1</span>
+          <span class="text-xs font-bold text-white">2× Conv (64)</span>
+          <span class="text-[10px] text-slate-400 block mt-1">224×224</span>
+        </button>
+        <button onclick="selectBlock(1)" id="block-btn-1" class="block-tab px-3 py-3 rounded-xl border border-slate-800 bg-slate-950/50 hover:bg-slate-800 text-left transition">
+          <span class="text-[10px] font-mono text-slate-400 font-bold block">BLOCK 2</span>
+          <span class="text-xs font-bold text-white">2× Conv (128)</span>
+          <span class="text-[10px] text-slate-400 block mt-1">112×112</span>
+        </button>
+        <button onclick="selectBlock(2)" id="block-btn-2" class="block-tab px-3 py-3 rounded-xl border border-slate-800 bg-slate-950/50 hover:bg-slate-800 text-left transition">
+          <span class="text-[10px] font-mono text-slate-400 font-bold block">BLOCK 3</span>
+          <span class="text-xs font-bold text-white">3× Conv (256)</span>
+          <span class="text-[10px] text-slate-400 block mt-1">56×56</span>
+        </button>
+        <button onclick="selectBlock(3)" id="block-btn-3" class="block-tab px-3 py-3 rounded-xl border border-slate-800 bg-slate-950/50 hover:bg-slate-800 text-left transition">
+          <span class="text-[10px] font-mono text-slate-400 font-bold block">BLOCK 4</span>
+          <span class="text-xs font-bold text-white">3× Conv (512)</span>
+          <span class="text-[10px] text-slate-400 block mt-1">28×28</span>
+        </button>
+        <button onclick="selectBlock(4)" id="block-btn-4" class="block-tab px-3 py-3 rounded-xl border border-slate-800 bg-slate-950/50 hover:bg-slate-800 text-left transition">
+          <span class="text-[10px] font-mono text-slate-400 font-bold block">BLOCK 5</span>
+          <span class="text-xs font-bold text-white">3× Conv (512)</span>
+          <span class="text-[10px] text-slate-400 block mt-1">14×14</span>
+        </button>
+        <button onclick="selectBlock(5)" id="block-btn-5" class="block-tab px-3 py-3 rounded-xl border border-slate-800 bg-slate-950/50 hover:bg-slate-800 text-left transition">
+          <span class="text-[10px] font-mono text-purple-400 font-bold block">FC CLASSIFIER</span>
+          <span class="text-xs font-bold text-white">3× Dense</span>
+          <span class="text-[10px] text-slate-400 block mt-1">4096 $\rightarrow$ 1000</span>
+        </button>
+      </div>
+
+      <!-- Detail Card of Selected Block -->
+      <div id="blockDetailPanel" class="mt-6 p-6 bg-slate-950 rounded-xl border border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+        <!-- Content filled dynamically via JS -->
+      </div>
+    </section>
+
+    <!-- 12. 模擬：Step-by-step 一鍵自動模擬實驗室 -->
+    <section id="simulator" class="bg-slate-900 p-6 sm:p-8 rounded-2xl border border-slate-800">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center pb-6 border-b border-slate-800 gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 mb-2">
+            12. 前向傳播 Step-by-Step 模擬器
+          </div>
+          <h2 class="text-2xl font-bold text-white">Tensor 維度流與特徵萃取狀態機</h2>
+          <p class="text-slate-400 text-sm mt-1">
+            親自體驗 224×224×3 輸入圖像如何歷經 5 個卷積池化階段並進入分類器
+          </p>
+        </div>
+        <div class="flex items-center gap-3">
+          <button id="btnStep" onclick="stepSimulation()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-semibold transition border border-slate-700 flex items-center gap-2">
+            <i class="fa-solid fa-forward-step"></i> 單步執行 (Step)
+          </button>
+          <button id="btnAuto" onclick="toggleAutoSimulation()" class="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-lg text-xs font-semibold shadow-lg shadow-cyan-500/20 transition flex items-center gap-2">
+            <i class="fa-solid fa-play" id="autoIcon"></i> <span id="autoText">一鍵自動模擬</span>
+          </button>
+          <button onclick="resetSimulation()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition" title="重設">
+            <i class="fa-solid fa-arrow-rotate-left"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Simulation Visual Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+        <!-- Visual Architecture Canvas / Representation -->
+        <div class="lg:col-span-8 bg-slate-950 p-6 rounded-xl border border-slate-800 flex flex-col justify-between min-h-[360px]">
+          <div>
+            <div class="flex justify-between items-center text-xs text-slate-400 mb-4">
+              <span>當前步驟進度 (Step <span id="currentStepNum" class="text-cyan-400 font-bold">0</span> / 6)</span>
+              <span id="layerStatusBadge" class="px-2.5 py-0.5 rounded-full text-[11px] bg-slate-800 text-slate-300 border border-slate-700">準備就緒</span>
+            </div>
+
+            <!-- Pipeline Visualizer -->
+            <div class="grid grid-cols-7 gap-2 my-6 items-center">
+              <div id="pipe-0" class="pipe-node p-2 rounded-lg bg-cyan-900/40 border border-cyan-400 text-center transition-all duration-300">
+                <div class="text-[10px] text-slate-400">Input</div>
+                <div class="text-xs font-bold text-white">224²</div>
+                <div class="text-[9px] text-cyan-300 font-mono">3 ch</div>
+              </div>
+              <div class="text-center text-slate-600"><i class="fa-solid fa-chevron-right text-xs"></i></div>
+              <div id="pipe-1" class="pipe-node p-2 rounded-lg bg-slate-900 border border-slate-800 text-center transition-all duration-300">
+                <div class="text-[10px] text-slate-400">Block 1</div>
+                <div class="text-xs font-bold text-white">112²</div>
+                <div class="text-[9px] text-cyan-300 font-mono">64 ch</div>
+              </div>
+              <div id="pipe-2" class="pipe-node p-2 rounded-lg bg-slate-900 border border-slate-800 text-center transition-all duration-300">
+                <div class="text-[10px] text-slate-400">Block 2</div>
+                <div class="text-xs font-bold text-white">56²</div>
+                <div class="text-[9px] text-cyan-300 font-mono">128 ch</div>
+              </div>
+              <div id="pipe-3" class="pipe-node p-2 rounded-lg bg-slate-900 border border-slate-800 text-center transition-all duration-300">
+                <div class="text-[10px] text-slate-400">Block 3</div>
+                <div class="text-xs font-bold text-white">28²</div>
+                <div class="text-[9px] text-cyan-300 font-mono">256 ch</div>
+              </div>
+              <div id="pipe-4" class="pipe-node p-2 rounded-lg bg-slate-900 border border-slate-800 text-center transition-all duration-300">
+                <div class="text-[10px] text-slate-400">Block 4/5</div>
+                <div class="text-xs font-bold text-white">7²</div>
+                <div class="text-[9px] text-cyan-300 font-mono">512 ch</div>
+              </div>
+              <div id="pipe-5" class="pipe-node p-2 rounded-lg bg-slate-900 border border-slate-800 text-center transition-all duration-300">
+                <div class="text-[10px] text-slate-400">FC Head</div>
+                <div class="text-xs font-bold text-white">1×1</div>
+                <div class="text-[9px] text-purple-300 font-mono">1000 cls</div>
+              </div>
+            </div>
+
+            <!-- Simulated Feature Map canvas view -->
+            <div class="mt-4 p-4 bg-slate-900/90 rounded-lg border border-slate-800">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                  <i class="fa-solid fa-eye text-cyan-400"></i> 特徵空間視覺抽象示意
+                </span>
+                <span id="receptiveFieldIndicator" class="text-[11px] font-mono text-cyan-400">感受野: 1×1</span>
+              </div>
+              <div class="w-full bg-slate-950 h-32 rounded flex items-center justify-center p-3 relative overflow-hidden" id="featureVisualBox">
+                <!-- Visual Feature Representation generated via JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Step Narration -->
+          <div class="mt-4 p-3.5 bg-slate-900 rounded-lg border border-slate-800 text-xs">
+            <span class="text-cyan-400 font-bold block mb-1" id="stepTitle">步驟 0: 原始影像準備</span>
+            <p class="text-slate-300 leading-relaxed" id="stepDesc">
+              輸入彩色影像經標準化預處理（減去 ImageNet 均值 [123.68, 116.78, 103.94]），張量形狀為 $(1, 3, 224, 224)$。點擊「單步執行」或「一鍵自動模擬」觀察張量變換。
+            </p>
+          </div>
+        </div>
+
+        <!-- Live Tensor Metrics Panel -->
+        <div class="lg:col-span-4 bg-slate-950 p-6 rounded-xl border border-slate-800 space-y-4">
+          <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-microchip text-indigo-400"></i> 即時張量監控 (Tensor Inspector)
+          </h4>
+
+          <div class="space-y-3 font-mono text-xs">
+            <div class="p-3 bg-slate-900 rounded-lg border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">CURRENT SHAPE</span>
+              <span class="text-sm font-bold text-cyan-400" id="statShape">[1, 3, 224, 224]</span>
+            </div>
+            <div class="p-3 bg-slate-900 rounded-lg border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">MEMORY TENSOR SIZE</span>
+              <span class="text-sm font-bold text-amber-300" id="statMem">約 0.58 MB</span>
+            </div>
+            <div class="p-3 bg-slate-900 rounded-lg border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">ACCUMULATED WEIGHT PARAMS</span>
+              <span class="text-sm font-bold text-emerald-400" id="statParams">0 Params</span>
+            </div>
+            <div class="p-3 bg-slate-900 rounded-lg border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">FEATURE SEMANTICS</span>
+              <span class="text-xs text-slate-200" id="statSemantics">RGB 原生像素亮度與色彩空間</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11. Python / PyTorch 實作與重點高亮 -->
+    <section class="bg-slate-900 p-6 sm:p-8 rounded-2xl border border-slate-800">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-6 border-b border-slate-800 gap-3">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20 mb-2">
+            11. Python / PyTorch 實作
+          </div>
+          <h2 class="text-2xl font-bold text-white">標準模組化 VGG16 網路架構代碼</h2>
+          <p class="text-slate-400 text-sm mt-1">重點核心函式以顏色高亮標記，並附詳細註解與參數量驗證</p>
+        </div>
+        <button onclick="copyCode()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg border border-slate-700 flex items-center gap-1.5 transition">
+          <i class="fa-regular fa-copy"></i> <span id="copyBtnText">複製程式碼</span>
+        </button>
+      </div>
+
+      <!-- Code Block with Custom Highlight Colors -->
+      <div class="mt-6 bg-slate-950 rounded-xl p-5 border border-slate-800 overflow-x-auto text-xs sm:text-sm font-mono leading-relaxed text-slate-200">
+        <pre><code id="pytorchCode"><span class="code-hl-torch">import</span> torch
+<span class="code-hl-torch">import</span> torch.nn <span class="code-hl-torch">as</span> nn
+
+<span class="code-hl-comment"># VGG16 配置清單：數字代表卷積輸出通道數，'M' 代表 MaxPool2d</span>
+cfgs = {
+    <span class="code-hl-param">'vgg16'</span>: [64, 64, <span class="code-hl-param">'M'</span>, 128, 128, <span class="code-hl-param">'M'</span>, 256, 256, 256, <span class="code-hl-param">'M'</span>, 512, 512, 512, <span class="code-hl-param">'M'</span>, 512, 512, 512, <span class="code-hl-param">'M'</span>]
+}
+
+<span class="code-hl-torch">class</span> <span class="code-hl-func">VGG16</span>(nn.Module):
+    <span class="code-hl-torch">def</span> <span class="code-hl-func">__init__</span>(self, num_classes=1000):
+        <span class="code-hl-func">super</span>(VGG16, self).__init__()
+        <span class="code-hl-comment"># 構建 13 層卷積特徵提取主幹</span>
+        self.<span class="code-hl-nn">features</span> = self.<span class="code-hl-func">_make_layers</span>(cfgs[<span class="code-hl-param">'vgg16'</span>])
+        
+        <span class="code-hl-comment"># 自適應池化至 7x7 (相容各種尺寸輸入)</span>
+        self.<span class="code-hl-nn">avgpool</span> = nn.<span class="code-hl-func">AdaptiveAvgPool2d</span>((7, 7))
+        
+        <span class="code-hl-comment"># 構建 3 層全連接分類頭（參數量巨大處）</span>
+        self.<span class="code-hl-nn">classifier</span> = nn.<span class="code-hl-func">Sequential</span>(
+            nn.<span class="code-hl-func">Linear</span>(512 * 7 * 7, 4096),  <span class="code-hl-comment"># 第 14 權重層 (約 102M 參數)</span>
+            nn.<span class="code-hl-func">ReLU</span>(inplace=True),
+            nn.<span class="code-hl-func">Dropout</span>(p=0.5),
+            nn.<span class="code-hl-func">Linear</span>(4096, 4096),        <span class="code-hl-comment"># 第 15 權重層 (約 16.7M 參數)</span>
+            nn.<span class="code-hl-func">ReLU</span>(inplace=True),
+            nn.<span class="code-hl-func">Dropout</span>(p=0.5),
+            nn.<span class="code-hl-func">Linear</span>(4096, num_classes)  <span class="code-hl-comment"># 第 16 權重層 (輸出 1000 類)</span>
+        )
+
+    <span class="code-hl-torch">def</span> <span class="code-hl-func">_make_layers</span>(self, cfg):
+        layers = []
+        in_channels = 3
+        <span class="code-hl-torch">for</span> v <span class="code-hl-torch">in</span> cfg:
+            <span class="code-hl-torch">if</span> v == <span class="code-hl-param">'M'</span>:
+                layers += [nn.<span class="code-hl-func">MaxPool2d</span>(kernel_size=2, stride=2)]
+            <span class="code-hl-torch">else</span>:
+                <span class="code-hl-comment"># 核心重點：固定 3x3 卷積、padding=1 維持尺寸</span>
+                conv2d = nn.<span class="code-hl-func">Conv2d</span>(in_channels, v, kernel_size=3, padding=1)
+                layers += [conv2d, nn.<span class="code-hl-func">ReLU</span>(inplace=True)]
+                in_channels = v
+        <span class="code-hl-torch">return</span> nn.<span class="code-hl-func">Sequential</span>(*layers)
+
+    <span class="code-hl-torch">def</span> <span class="code-hl-func">forward</span>(self, x):
+        x = self.<span class="code-hl-nn">features</span>(x)
+        x = self.<span class="code-hl-nn">avgpool</span>(x)
+        x = torch.<span class="code-hl-func">flatten</span>(x, 1)          <span class="code-hl-comment"># 展平成一維特徵向量 (Batch, 25088)</span>
+        x = self.<span class="code-hl-nn">classifier</span>(x)
+        <span class="code-hl-torch">return</span> x
+
+<span class="code-hl-comment"># 測試運行與驗證參數量</span>
+<span class="code-hl-torch">if</span> __name__ == <span class="code-hl-param">'__main__'</span>:
+    model = VGG16(num_classes=1000)
+    dummy_x = torch.<span class="code-hl-func">randn</span>(1, 3, 224, 224)
+    out = model(dummy_x)
+    total_params = <span class="code-hl-func">sum</span>(p.<span class="code-hl-func">numel</span>() <span class="code-hl-torch">for</span> p <span class="code-hl-torch">in</span> model.<span class="code-hl-func">parameters</span>())
+    <span class="code-hl-func">print</span>(f<span class="code-hl-param">"Output Shape: {out.shape}"</span>)          <span class="code-hl-comment"># [1, 1000]</span>
+    <span class="code-hl-func">print</span>(f<span class="code-hl-param">"總參數量: {total_params / 1e6:.2f}M"</span>)   <span class="code-hl-comment"># 約 138.36M</span></code></pre>
+      </div>
+
+      <!-- Core Highlights Explanations -->
+      <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+        <div class="p-3 bg-slate-950 rounded-lg border border-slate-800">
+          <span class="font-bold text-rose-400 block mb-1">1. 固定 Padding=1</span>
+          卷積運算尺寸公式為 $\frac{W - K + 2P}{S} + 1$。當 $K=3, P=1, S=1$ 時，尺寸完美保持不變，只在 MaxPool 減半。
+        </div>
+        <div class="p-3 bg-slate-950 rounded-lg border border-slate-800">
+          <span class="font-bold text-sky-400 block mb-1">2. Flatten 銜接尺寸</span>
+          經過 5 次池化，尺寸變為 $224 / 2^5 = 7$。因此展開維度為 $512 \times 7 \times 7 = 25,088$。
+        </div>
+        <div class="p-3 bg-slate-950 rounded-lg border border-slate-800">
+          <span class="font-bold text-amber-400 block mb-1">3. Inplace ReLU</span>
+          啟用 <code>inplace=True</code> 避免開闢新記憶體空間保存中介張量，對早期 VGG 訓練記憶體優化極為關鍵。
+        </div>
+      </div>
+    </section>
+
+    <!-- 03. IPAS AI 經濟部能力鑑定 考題實戰 -->
+    <section id="quiz" class="bg-slate-900 p-6 sm:p-8 rounded-2xl border border-slate-800">
+      <div class="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 mb-3 w-fit">
+        <i class="fa-solid fa-graduation-cap"></i> 03. IPAS AI 證照精選試題
+      </div>
+      <h2 class="text-2xl font-bold text-white mb-2">經濟部 IPAS AI 應用工程師檢定 - 考題模擬與解析</h2>
+      <p class="text-slate-400 text-sm mb-6">
+        測試你對卷積特徵維度、VGG16 結構特性及參數量瓶頸的掌握程度。
+      </p>
+
+      <div class="space-y-6">
+        <!-- Question 1 -->
+        <div class="p-5 bg-slate-950 rounded-xl border border-slate-800">
+          <div class="flex items-start justify-between gap-4">
+            <span class="font-bold text-sm text-cyan-300">
+              Q1. 【單選題】關於經典模型 VGG16 的架構設計理念，下列敘述何者最正確？
+            </span>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">考點: 架構哲學</span>
+          </div>
+          <div class="grid grid-cols-1 gap-2 mt-4 text-xs text-slate-300">
+            <button onclick="checkQuiz(1, 'A')" id="q1-A" class="quiz-btn text-left p-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 transition">
+              (A) 採用多尺度卷積核並聯（如 $1\times1, 3\times3, 5\times5$）以捕捉不同尺度特徵
+            </button>
+            <button onclick="checkQuiz(1, 'B')" id="q1-B" class="quiz-btn text-left p-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 transition">
+              (B) 透過連續堆疊 $3\times3$ 卷積核替代較大卷積核，在保持相同感受野時減少參數並提升非線性
+            </button>
+            <button onclick="checkQuiz(1, 'C')" id="q1-C" class="quiz-btn text-left p-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 transition">
+              (C) 導入殘差跳躍連接（Residual Shortcut）以解決梯度消失難題
+            </button>
+            <button onclick="checkQuiz(1, 'D')" id="q1-D" class="quiz-btn text-left p-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 transition">
+              (D) 全面廢除全連接層（FC Layers），改以 Global Average Pooling 取代
+            </button>
+          </div>
+          <div id="q1-explanation" class="hidden mt-3 p-3 bg-slate-900 rounded-lg text-xs leading-relaxed border border-slate-800"></div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="p-5 bg-slate-950 rounded-xl border border-slate-800">
+          <div class="flex items-start justify-between gap-4">
+            <span class="font-bold text-sm text-cyan-300">
+              Q2. 【單選題】VGG16 全網約有 1.38 億（138M）個權重參數，請問其中超過 70% 的參數量集中在何處？
+            </span>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">考點: 參數量分佈</span>
+          </div>
+          <div class="grid grid-cols-1 gap-2 mt-4 text-xs text-slate-300">
+            <button onclick="checkQuiz(2, 'A')" id="q2-A" class="quiz-btn text-left p-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 transition">
+              (A) 第一個全連接層（由 $7\times7\times512$ 連接到第一個 4096 神經元）
+            </button>
+            <button onclick="checkQuiz(2, 'B')" id="q2-B" class="quiz-btn text-left p-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 transition">
+              (B) 第五個卷積區塊（Block 5）中 3 個通道數為 512 的卷積層
+            </button>
+            <button onclick="checkQuiz(2, 'C')" id="q2-C" class="quiz-btn text-left p-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 transition">
+              (C) 第一個卷積區塊（Block 1）接收 3 通道輸入的卷積層
+            </button>
+            <button onclick="checkQuiz(2, 'D')" id="q2-D" class="quiz-btn text-left p-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 transition">
+              (D) 最後一個輸出 1000 類別的 Softmax 分類層
+            </button>
+          </div>
+          <div id="q2-explanation" class="hidden mt-3 p-3 bg-slate-900 rounded-lg text-xs leading-relaxed border border-slate-800"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal for ResNet Analogy Teaser -->
+  <div id="resnetModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
+      <button onclick="closeResNetModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-xl mb-3">
+        <i class="fa-solid fa-route"></i>
+      </div>
+      <h3 class="text-lg font-bold text-white mb-2">ResNet 的生活比喻：綠色直通免檢通道</h3>
+      <p class="text-xs text-slate-300 leading-relaxed mb-3">
+        VGG16 雖然靠著 16 層大獲成功，但如果再加深到 50 層、100 層，基層的報告傳到頂樓就會<strong>「以訛傳訛、信息失真」</strong>（即梯度消失/退化問題）。
+      </p>
+      <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs text-slate-300 leading-relaxed mb-4">
+        💡 <strong>ResNet 的聰明之處（殘差跳躍連接）：</strong><br>
+        就像在辦公大樓裡裝設了<strong>「專用直達電梯（Skip Connection）」</strong>！報告在交給經理審查時，同時影印一份未經修改的原稿直達後面，經理只需要學習<strong>「修正後的微調差額（Residual）」</strong>，即使堆疊到 152 層也絕不失真！
+      </div>
+      <button onclick="closeResNetModal()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-semibold transition">
+        瞭解！關閉視窗
+      </button>
+    </div>
+  </div>
+
+  <!-- Interactive JavaScript Engine -->
+  <script>
+    // --- 06-WEAPONS. ReLU Interactive Slider & SVG Syncer ---
+    const reluSlider = document.getElementById('reluSlider');
+    const reluRawValDisplay = document.getElementById('reluRawValDisplay');
+    const reluInputVal = document.getElementById('reluInputVal');
+    const reluOutputVal = document.getElementById('reluOutputVal');
+    const svgReluInText = document.getElementById('svgReluInText');
+    const svgReluOutText = document.getElementById('svgReluOutText');
+    const svgReluStatusText = document.getElementById('svgReluStatusText');
+    const svgReluOutCircle = document.getElementById('svgReluOutCircle');
+
+    function syncReluVisual(val) {
+      const signStr = val > 0 ? '+' : '';
+      const textVal = `${signStr}${val.toFixed(1)}`;
+      const outVal = Math.max(0, val);
+      const outText = outVal.toFixed(1);
+
+      reluRawValDisplay.innerText = `輸入數值: ${textVal}`;
+      reluInputVal.innerText = textVal;
+      reluOutputVal.innerText = outText;
+
+      // Sync SVG elements
+      if(svgReluInText) svgReluInText.textContent = textVal;
+      if(svgReluOutText) svgReluOutText.textContent = outText;
+
+      if(val <= 0) {
+        reluInputVal.className = "text-rose-400 font-bold";
+        reluOutputVal.className = "text-slate-400 font-bold";
+        if(svgReluStatusText) {
+          svgReluStatusText.textContent = "已阻擋歸零";
+          svgReluStatusText.setAttribute('fill', '#f43f5e');
+        }
+        if(svgReluOutCircle) {
+          svgReluOutCircle.setAttribute('stroke', '#64748b');
+          svgReluOutCircle.setAttribute('fill', '#0f172a');
+        }
+        if(svgReluOutText) svgReluOutText.setAttribute('fill', '#64748b');
+      } else {
+        reluInputVal.className = "text-emerald-400 font-bold";
+        reluOutputVal.className = "text-emerald-400 font-bold";
+        if(svgReluStatusText) {
+          svgReluStatusText.textContent = "正分安全通過！";
+          svgReluStatusText.setAttribute('fill', '#34d399');
+        }
+        if(svgReluOutCircle) {
+          svgReluOutCircle.setAttribute('stroke', '#10b981');
+          svgReluOutCircle.setAttribute('fill', '#064e3b');
+        }
+        if(svgReluOutText) svgReluOutText.setAttribute('fill', '#34d399');
+      }
+    }
+
+    if(reluSlider) {
+      reluSlider.addEventListener('input', (e) => {
+        syncReluVisual(parseFloat(e.target.value));
+      });
+      syncReluVisual(-2.5);
+    }
+
+    // --- 06-WEAPONS. Max-pooling Interactive 2x2 Grid & SVG Syncer ---
+    let poolCells = [2, 0, 9, 5];
+    const cellPositions = [
+      { x: -2, y: -2 }, // idx 0: top-left
+      { x: 54, y: -2 }, // idx 1: top-right
+      { x: -2, y: 54 }, // idx 2: bottom-left
+      { x: 54, y: 54 }  // idx 3: bottom-right
+    ];
+
+    function updatePoolDisplay() {
+      const maxVal = Math.max(...poolCells);
+      const winnerIdx = poolCells.indexOf(maxVal);
+
+      const winnerEl = document.getElementById('poolWinnerVal');
+      if(winnerEl) winnerEl.innerText = maxVal;
+
+      const svgOutWinner = document.getElementById('svgPoolOutWinner');
+      if(svgOutWinner) svgOutWinner.textContent = maxVal;
+
+      // Move SVG Highlighter Frame
+      const svgFrame = document.getElementById('svgHighlighterFrame');
+      if(svgFrame && cellPositions[winnerIdx]) {
+        svgFrame.setAttribute('x', cellPositions[winnerIdx].x);
+        svgFrame.setAttribute('y', cellPositions[winnerIdx].y);
+      }
+
+      poolCells.forEach((val, idx) => {
+        const cellEl = document.getElementById(`pool-${idx}`);
+        if(cellEl) {
+          const valSpan = cellEl.querySelector('.cell-val');
+          valSpan.innerText = val;
+
+          if(val === maxVal) {
+            cellEl.className = "pool-cell p-2.5 rounded-lg bg-amber-500/10 border-2 border-amber-400 shadow-md shadow-amber-500/20 cursor-pointer transition";
+            valSpan.className = "text-base font-bold text-amber-300 cell-val";
+          } else {
+            cellEl.className = "pool-cell p-2.5 rounded-lg bg-slate-950 border border-slate-800 opacity-60 line-through decoration-rose-500/60 hover:opacity-100 cursor-pointer transition";
+            valSpan.className = "text-base font-bold text-slate-400 cell-val";
+          }
+        }
+
+        // Sync SVG Cell Values and Box Colors
+        const svgCellText = document.getElementById(`svgPoolVal-${idx}`);
+        const svgCellBox = document.getElementById(`svgPoolCellBox-${idx}`);
+        if(svgCellText) svgCellText.textContent = val;
+        if(svgCellBox) {
+          if(val === maxVal) {
+            svgCellBox.setAttribute('fill', '#451a03');
+            svgCellBox.setAttribute('stroke', '#f59e0b');
+            if(svgCellText) svgCellText.setAttribute('fill', '#fbbf24');
+          } else {
+            svgCellBox.setAttribute('fill', '#0f172a');
+            svgCellBox.setAttribute('stroke', '#334155');
+            if(svgCellText) svgCellText.setAttribute('fill', '#64748b');
+          }
+        }
+      });
+    }
+
+    function editPoolCell(idx) {
+      const current = poolCells[idx];
+      const next = (current + 3) % 11;
+      poolCells[idx] = next;
+      updatePoolDisplay();
+    }
+
+    function randomizePoolGrid() {
+      poolCells = [
+        Math.floor(Math.random() * 10),
+        Math.floor(Math.random() * 10),
+        Math.floor(Math.random() * 10),
+        Math.floor(Math.random() * 10)
+      ];
+      if(new Set(poolCells).size === 1) poolCells[2] = 9;
+      updatePoolDisplay();
+    }
+
+    updatePoolDisplay();
+
+    // --- ResNet Modal Logic ---
+    function showResNetTeaserModal() {
+      const modal = document.getElementById('resnetModal');
+      modal.classList.remove('hidden');
+    }
+
+    function closeResNetModal() {
+      const modal = document.getElementById('resnetModal');
+      modal.classList.add('hidden');
+    }
+
+    // --- 01-EXT. 3D Isometric Architecture Interactive Inspector ---
+    const layer3dData = {
+      input: {
+        title: "輸入影像層 (Input Tensor)",
+        desc: "接收標準解析度 224×224、通道數為 3 的彩色 RGB 影像。輸入時會先進行均值減除預處理，通道數為最淺但空間解析度最大。",
+        dim: "224 × 224 × 3",
+        weights: "0 (非權重層)",
+        op: "RGB 像素輸入 (224×224)"
+      },
+      b1: {
+        title: "Block 1: 淺層特徵提取區塊",
+        desc: "包含 2 個 3×3 卷積層（64 通道）與 1 個 2×2 MaxPool（長寬減半至 112×112）。主要捕捉影像高頻資訊（細緻邊緣、水平/垂直對比線與顏色斑塊）。",
+        dim: "112 × 112 × 64",
+        weights: "2 個權重層 (Conv1_1, Conv1_2)",
+        op: "2× Conv(3×3, 64) + MaxPool"
+      },
+      b2: {
+        title: "Block 2: 幾何基元區塊",
+        desc: "包含 2 個 3×3 卷積層（128 通道）與 1 個 2×2 MaxPool（長寬減半至 56×56）。通道數倍增至 128，將邊緣組合成簡單圓弧、網格與夾角特徵。",
+        dim: "56 × 56 × 128",
+        weights: "2 個權重層 (Conv2_1, Conv2_2)",
+        op: "2× Conv(3×3, 128) + MaxPool"
+      },
+      b3: {
+        title: "Block 3: 紋理與結構組裝區塊",
+        desc: "包含 3 個 3×3 卷積層（256 通道）與 1 個 2×2 MaxPool（降維至 28×28）。特徵具備局部物體語意，如車輪花紋、動物毛皮質感與蜂窩圖形。",
+        dim: "28 × 28 × 256",
+        weights: "3 個權重層 (Conv3_1 ~ 3_3)",
+        op: "3× Conv(3×3, 256) + MaxPool"
+      },
+      b4: {
+        title: "Block 4: 高階物件零件區塊",
+        desc: "包含 3 個 3×3 卷積層（512 通道）與 1 個 2×2 MaxPool（降維至 14×14）。特徵開始具備明確物件部件識別力（如車燈、車窗、狗的眼睛與耳朵）。",
+        dim: "14 × 14 × 512",
+        weights: "3 個權重層 (Conv4_1 ~ 4_3)",
+        op: "3× Conv(3×3, 512) + MaxPool"
+      },
+      b5: {
+        title: "Block 5: 全域抽象幾何特徵區塊",
+        desc: "包含 3 個 3×3 卷積層（512 通道）與最後 1 個 2×2 MaxPool（降維至 7×7）。覆蓋全圖絕大多數感受野，濃縮出具有強大分類判別力的高階特徵圖。",
+        dim: "7 × 7 × 512",
+        weights: "3 個權重層 (Conv5_1 ~ 5_3)",
+        op: "3× Conv(3×3, 512) + MaxPool"
+      },
+      fc1: {
+        title: "全連接層 FC1 (Fully Connected)",
+        desc: "將 7×7×512 特徵圖展平為長度 25,088 的向量，連接至 4,096 個神經元。此單一層包含約 1.02 億個權重參數，佔全網約 74% 的記憶體體積！",
+        dim: "1 × 1 × 4096 (Vector)",
+        weights: "第 14 個權重層 (約 102M 參數)",
+        op: "Flatten (25088) -> Linear(4096)"
+      },
+      fc2: {
+        title: "全連接層 FC2 (Fully Connected)",
+        desc: "第二層 4,096 維全連接隱藏層，包含 Dropout(p=0.5) 避免過度擬合。綜合評估各部件清單，進行高階抽象特徵的重新組合。",
+        dim: "1 × 1 × 4096 (Vector)",
+        weights: "第 15 個權重層 (約 16.7M 參數)",
+        op: "Linear(4096 -> 4096) + ReLU"
+      },
+      softmax: {
+        title: "分類輸出頭 Softmax Layer (FC3)",
+        desc: "最後的分類預測層。將 4,096 維特徵投射至 1,000 個類別 logits，經由 Softmax 函數計算各類別之預測機率分佈，加總必為 1.0。",
+        dim: "1 × 1 × 1000 (Softmax)",
+        weights: "第 16 個權重層 (約 4M 參數)",
+        op: "Linear(4096 -> 1000) + Softmax"
+      }
+    };
+
+    function show3dInfo(partKey) {
+      const data = layer3dData[partKey];
+      if(!data) return;
+
+      document.getElementById('ins3dTitle').innerText = data.title;
+      document.getElementById('ins3dDesc').innerText = data.desc;
+      document.getElementById('ins3dDim').innerText = data.dim;
+      document.getElementById('ins3dWeights').innerText = data.weights;
+      document.getElementById('ins3dOperation').innerText = data.op;
+    }
+
+    // --- 06. Fruit HQ Metaphor Interactive Data & SVG Syncer ---
+    const fruitHQData = {
+      apple: {
+        badgeText: "信心度 95.2%",
+        svgTitle: "🍎 紅富士蘋果",
+        svgScore: "95.2% 蘋果",
+        svgClue1: "• 捕捉微小圓弧線條",
+        svgClue2: "紅色光澤果皮",
+        svgPart1: "• 拼裝果蒂與頂部凹槽",
+        svgPart2: "飽滿球形零件完成",
+        svgFruitSvg: `
+          <circle cx="0" cy="5" r="32" fill="#ef4444" opacity="0.9" filter="url(#svgGlow)"/>
+          <path d="M 0 -27 Q 4 -40 10 -43" stroke="#78350f" stroke-width="4" fill="none" stroke-linecap="round"/>
+          <path d="M 3 -36 Q 16 -38 14 -28 Z" fill="#22c55e"/>
+          <ellipse cx="-8" cy="-5" rx="8" ry="14" fill="#f87171" opacity="0.4" transform="rotate(-25 -8 -5)"/>
+        `,
+        svgPartShape: `
+          <path d="M -25 -5 Q 0 -30 25 -5 Q 20 25 0 25 Q -20 25 -25 -5 Z" fill="#6366f1" opacity="0.7"/>
+          <circle cx="0" cy="-10" r="8" fill="#c7d2fe"/>
+          <path d="M 0 -18 L 0 -26" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
+        `,
+        gridFeatureColor: "#ef4444",
+        stage1: [
+          `<span class="text-cyan-400">•</span><span><strong>助理 A：</strong>「這裡偵測到一條微彎的紅弧線條。」</span>`,
+          `<span class="text-cyan-400">•</span><span><strong>助理 B：</strong>「頂部發現一條垂直的深褐色短直線。」</span>`,
+          `<span class="text-cyan-400">•</span><span><strong>助理 C：</strong>「偵測到大面積反光紅色色塊與光滑果皮紋理。」</span>`
+        ],
+        stage2: [
+          `<span class="text-indigo-400">•</span><span><strong>組長 X：</strong>把短直線與凹槽弧線結合成「<strong>果蒂與頂部凹陷</strong>」。</span>`,
+          `<span class="text-indigo-400">•</span><span><strong>組長 Y：</strong>把大範圍圓弧與紅色組合為「<strong>飽滿球型外輪廓</strong>」。</span>`,
+          `<span class="text-indigo-400">•</span><span><strong>經理 Z：</strong>確認未發現任何綠黑條紋或長條月牙彎曲。</span>`
+        ],
+        bars: `
+          <div>
+            <div class="flex justify-between text-slate-300 mb-0.5">
+              <span>🍎 蘋果 (Apple)</span>
+              <span class="font-bold text-rose-400">95.2%</span>
+            </div>
+            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div class="bg-rose-500 h-full rounded-full transition-all duration-500" style="width: 95.2%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-slate-300 mb-0.5">
+              <span>🍌 香蕉 (Banana)</span>
+              <span class="text-amber-400">3.1%</span>
+            </div>
+            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div class="bg-amber-400 h-full rounded-full transition-all duration-500" style="width: 3.1%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-slate-300 mb-0.5">
+              <span>🍉 西瓜 (Watermelon)</span>
+              <span class="text-emerald-400">1.7%</span>
+            </div>
+            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 1.7%"></div>
+            </div>
+          </div>
+        `
+      },
+      banana: {
+        badgeText: "信心度 94.6%",
+        svgTitle: "🍌 熟成黃香蕉",
+        svgScore: "94.6% 香蕉",
+        svgClue1: "• 捕捉平行黃色弧線",
+        svgClue2: "微小熟成黑斑點",
+        svgPart1: "• 拼裝長條月牙弧度",
+        svgPart2: "墨綠果柄接頭完成",
+        svgFruitSvg: `
+          <path d="M -32 -25 Q 0 -5 28 22 Q 10 32 -18 10 Q -38 -12 -32 -25 Z" fill="#eab308" filter="url(#svgGlow)"/>
+          <path d="M -32 -25 L -38 -32" stroke="#15803d" stroke-width="5" stroke-linecap="round"/>
+          <circle cx="5" cy="10" r="1.5" fill="#713f12"/>
+          <circle cx="-12" cy="-4" r="1.5" fill="#713f12"/>
+        `,
+        svgPartShape: `
+          <path d="M -25 -20 Q 5 0 25 20 Q 15 26 -5 10 Z" fill="#818cf8" opacity="0.8"/>
+          <circle cx="20" cy="18" r="4" fill="#fbbf24"/>
+        `,
+        gridFeatureColor: "#eab308",
+        stage1: [
+          `<span class="text-cyan-400">•</span><span><strong>助理 A：</strong>「偵測到連續黃色色塊，帶有淺黑點點（熟成斑）。」</span>`,
+          `<span class="text-cyan-400">•</span><span><strong>助理 B：</strong>「偵測到兩條平行的長形弧狀輪廓線條。」</span>`,
+          `<span class="text-cyan-400">•</span><span><strong>助理 C：</strong>「頂部發現墨綠色堅硬小柄把手。」</span>`
+        ],
+        stage2: [
+          `<span class="text-indigo-400">•</span><span><strong>組長 X：</strong>把平行弧線拼裝成「<strong>長條月牙彎曲形狀</strong>」。</span>`,
+          `<span class="text-indigo-400">•</span><span><strong>組長 Y：</strong>把黃色與斑點結合成「<strong>典型成熟香蕉表皮零件</strong>」。</span>`,
+          `<span class="text-indigo-400">•</span><span><strong>經理 Z：</strong>確認此長條形狀完全排除球型特徵。</span>`
+        ],
+        bars: `
+          <div>
+            <div class="flex justify-between text-slate-300 mb-0.5">
+              <span>🍌 香蕉 (Banana)</span>
+              <span class="font-bold text-amber-400">94.6%</span>
+            </div>
+            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div class="bg-amber-400 h-full rounded-full transition-all duration-500" style="width: 94.6%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-slate-300 mb-0.5">
+              <span>🍎 蘋果 (Apple)</span>
+              <span class="text-rose-400">3.8%</span>
+            </div>
+            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div class="bg-rose-500 h-full rounded-full transition-all duration-500" style="width: 3.8%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-slate-300 mb-0.5">
+              <span>🍉 西瓜 (Watermelon)</span>
+              <span class="text-emerald-400">1.6%</span>
+            </div>
+            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 1.6%"></div>
+            </div>
+          </div>
+        `
+      },
+      watermelon: {
+        badgeText: "信心度 96.8%",
+        svgTitle: "🍉 大花紋西瓜",
+        svgScore: "96.8% 西瓜",
+        svgClue1: "• 捕捉墨綠交錯波浪線",
+        svgClue2: "巨幅半徑球形輪廓",
+        svgPart1: "• 拼裝深淺相間斑紋皮",
+        svgPart2: "大型重球體結構完成",
+        svgFruitSvg: `
+          <circle cx="0" cy="5" r="34" fill="#16a34a" filter="url(#svgGlow)"/>
+          <path d="M -26 -14 Q -18 5 -24 24" stroke="#052e16" stroke-width="4" fill="none" stroke-linecap="round"/>
+          <path d="M -8 -26 Q 0 5 -5 36" stroke="#052e16" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+          <path d="M 12 -25 Q 18 5 14 34" stroke="#052e16" stroke-width="4" fill="none" stroke-linecap="round"/>
+        `,
+        svgPartShape: `
+          <circle cx="0" cy="0" r="24" fill="#047857" opacity="0.8"/>
+          <path d="M -14 -18 Q -4 0 -10 18 M 4 -18 Q 14 0 8 18" stroke="#022c22" stroke-width="3" fill="none"/>
+        `,
+        gridFeatureColor: "#16a34a",
+        stage1: [
+          `<span class="text-cyan-400">•</span><span><strong>助理 A：</strong>「偵測到規律交替的深墨綠與淺翠綠波浪線條。」</span>`,
+          `<span class="text-cyan-400">•</span><span><strong>助理 B：</strong>「邊緣呈現巨大半徑的圓弧線段。」</span>`,
+          `<span class="text-cyan-400">•</span><span><strong>助理 C：</strong>「偵測到底部微黃色接地面斑塊與微小卷鬚。」</span>`
+        ],
+        stage2: [
+          `<span class="text-indigo-400">•</span><span><strong>組長 X：</strong>把波浪交替線條組合成「<strong>西瓜典型斑紋外皮零件</strong>」。</span>`,
+          `<span class="text-indigo-400">•</span><span><strong>組長 Y：</strong>結合巨大弧度確認為「<strong>大型重型球體/橢圓體</strong>」。</span>`,
+          `<span class="text-indigo-400">•</span><span><strong>經理 Z：</strong>排除光滑純紅果皮與月牙型香蕉零件。</span>`
+        ],
+        bars: `
+          <div>
+            <div class="flex justify-between text-slate-300 mb-0.5">
+              <span>🍉 西瓜 (Watermelon)</span>
+              <span class="font-bold text-emerald-400">96.8%</span>
+            </div>
+            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 96.8%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-slate-300 mb-0.5">
+              <span>🍎 蘋果 (Apple)</span>
+              <span class="text-rose-400">2.1%</span>
+            </div>
+            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div class="bg-rose-500 h-full rounded-full transition-all duration-500" style="width: 2.1%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-slate-300 mb-0.5">
+              <span>🍌 香蕉 (Banana)</span>
+              <span class="text-amber-400">1.1%</span>
+            </div>
+            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div class="bg-amber-400 h-full rounded-full transition-all duration-500" style="width: 1.1%"></div>
+            </div>
+          </div>
+        `
+      }
+    };
+
+    function switchFruit(fruitKey) {
+      const data = fruitHQData[fruitKey];
+      if(!data) return;
+
+      // Update Buttons Style
+      ['apple', 'banana', 'watermelon'].forEach(k => {
+        const btn = document.getElementById(`btn-fruit-${k}`);
+        if(btn) {
+          if(k === fruitKey) {
+            if(k === 'apple') btn.className = "fruit-btn px-3 py-1.5 rounded-lg bg-rose-500/20 border border-rose-500/60 text-rose-300 text-xs font-bold transition flex items-center gap-1.5";
+            if(k === 'banana') btn.className = "fruit-btn px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/60 text-amber-300 text-xs font-bold transition flex items-center gap-1.5";
+            if(k === 'watermelon') btn.className = "fruit-btn px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/60 text-emerald-300 text-xs font-bold transition flex items-center gap-1.5";
+          } else {
+            btn.className = "fruit-btn px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 text-xs font-semibold hover:text-white transition flex items-center gap-1.5";
+          }
+        }
+      });
+
+      // Update Text Notes & Probability Bars
+      document.getElementById('fruit-stage1-notes').innerHTML = data.stage1.map(li => `<li class="flex items-start gap-1.5">${li}</li>`).join('');
+      document.getElementById('fruit-stage2-notes').innerHTML = data.stage2.map(li => `<li class="flex items-start gap-1.5">${li}</li>`).join('');
+      document.getElementById('fruit-decision-badge').innerText = data.badgeText;
+      document.getElementById('fruit-probability-bars').innerHTML = data.bars;
+
+      // Sync Real-Time Fruit HQ SVG Elements
+      const svgPreview = document.getElementById('svgFruitPreview');
+      const svgTitle = document.getElementById('svgFruitTitle');
+      const svgClue1 = document.getElementById('svgClueLine1');
+      const svgClue2 = document.getElementById('svgClueLine2');
+      const svgAssembly = document.getElementById('svgPartAssembly');
+      const svgPart1 = document.getElementById('svgPartLine1');
+      const svgPart2 = document.getElementById('svgPartLine2');
+      const svgDecision = document.getElementById('svgDecisionScore');
+      const svgGridFeature = document.getElementById('svgGridFeature');
+
+      if(svgPreview) svgPreview.innerHTML = data.svgFruitSvg;
+      if(svgTitle) svgTitle.textContent = data.svgTitle;
+      if(svgClue1) svgClue1.textContent = data.svgClue1;
+      if(svgClue2) svgClue2.textContent = data.svgClue2;
+      if(svgAssembly) svgAssembly.innerHTML = data.svgPartShape;
+      if(svgPart1) svgPart1.textContent = data.svgPart1;
+      if(svgPart2) svgPart2.textContent = data.svgPart2;
+      if(svgDecision) svgDecision.textContent = data.svgScore;
+      if(svgGridFeature) svgGridFeature.setAttribute('fill', data.gridFeatureColor);
+    }
+
+    // --- 09. Math Slider Logic ---
+    const channelSlider = document.getElementById('paramChannelRange');
+    const channelDisplay = document.getElementById('channelDisplay');
+    const params7x7Display = document.getElementById('params7x7');
+    const params3x3Display = document.getElementById('params3x3');
+
+    function updateParamCalculation() {
+      const C = parseInt(channelSlider.value);
+      channelDisplay.innerText = `C = ${C} 通道`;
+      const p7 = 1 * (7 * 7 * C * C);
+      const p3 = 3 * (3 * 3 * C * C);
+      params7x7Display.innerText = p7.toLocaleString();
+      params3x3Display.innerText = p3.toLocaleString();
+    }
+    channelSlider.addEventListener('input', updateParamCalculation);
+
+    // --- 10. Block Data & Selection Logic ---
+    const blockData = [
+      {
+        title: "Block 1: 淺層紋理與邊緣擷取 (Low-level Features)",
+        layers: "Conv3-64 -> Conv3-64 -> MaxPool(2x2)",
+        outDim: "112 × 112 × 64",
+        receptiveField: "5 × 5",
+        weights: "38,720 (極小)",
+        desc: "提取輸入影像中最基礎的高頻訊號，例如垂直/水平邊緣（Sobel-like）、色彩梯度斑塊與微小角點。解析度高，保留豐富的空間幾何位置資訊。"
+      },
+      {
+        title: "Block 2: 局部圖形與複合基元 (Primitive Shapes)",
+        layers: "Conv3-128 -> Conv3-128 -> MaxPool(2x2)",
+        outDim: "56 × 56 × 128",
+        receptiveField: "14 × 14",
+        weights: "221,440",
+        desc: "將淺層線條組合為網格、弧線、條紋以及簡單圓形紋理，具備初步的平移不變性（Translation Invariance）。"
+      },
+      {
+        title: "Block 3: 中階物體結構 (Mid-level Patterns)",
+        layers: "Conv3-256 -> Conv3-256 -> Conv3-256 -> MaxPool(2x2)",
+        outDim: "28 × 28 × 256",
+        receptiveField: "40 × 40",
+        weights: "1,475,328",
+        desc: "特徵開始具備具體語意，例如輪子、眼睛、蜂窩狀紋理、動物皮毛圖樣，感受野擴大至能觀察到局部器官。"
+      },
+      {
+        title: "Block 4: 高階物體部位 (Object Parts)",
+        layers: "Conv3-512 -> Conv3-512 -> Conv3-512 -> MaxPool(2x2)",
+        outDim: "14 × 14 × 512",
+        receptiveField: "92 × 92",
+        weights: "5,899,776",
+        desc: "開始組合為完整部件，例如狗的頭部、汽車車門、花朵輪廓。此處特徵圖被廣泛用於風格轉換（Neural Style Transfer）的 Content Loss 計算。"
+      },
+      {
+        title: "Block 5: 全域語意概念 (High-level Semantics)",
+        layers: "Conv3-512 -> Conv3-512 -> Conv3-512 -> MaxPool(2x2)",
+        outDim: "7 × 7 × 512",
+        receptiveField: "196 × 196 (覆蓋全圖絕大部分)",
+        weights: "7,079,424",
+        desc: "空間維度已大幅壓縮至 7×7，此時每個特徵向量皆具備全圖層次的物件類別判別力，對光影與微小形變極不敏感。"
+      },
+      {
+        title: "Classifier Head: 全連接分類器 (FC Layers)",
+        layers: "Linear(25088->4096) -> Linear(4096->4096) -> Linear(4096->1000)",
+        outDim: "1 × 1000 (Softmax 類別機率)",
+        receptiveField: "224 × 224 (全圖全感受野)",
+        weights: "123,642,880 (> 89% 全網參數)",
+        desc: "FC1 輸入為 512×7×7 = 25,088 維，直接投射至 4096，產生高達 102,764,544 個參數，此處是 VGG 龐大體積與記憶體瓶頸的主因。"
+      }
+    ];
+
+    function selectBlock(idx) {
+      document.querySelectorAll('.block-tab').forEach((b, i) => {
+        if(i === idx) {
+          b.className = "block-tab px-3 py-3 rounded-xl border border-cyan-500 bg-cyan-950/40 text-left transition";
+        } else {
+          b.className = "block-tab px-3 py-3 rounded-xl border border-slate-800 bg-slate-950/50 hover:bg-slate-800 text-left transition";
+        }
+      });
+
+      const d = blockData[idx];
+      const panel = document.getElementById('blockDetailPanel');
+      panel.innerHTML = `
+        <div class="md:col-span-2 space-y-3">
+          <h4 class="text-base font-bold text-white flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span> ${d.title}
+          </h4>
+          <p class="text-xs text-slate-300 leading-relaxed">${d.desc}</p>
+          <div class="grid grid-cols-2 gap-2 text-xs pt-2">
+            <div class="bg-slate-900 p-2.5 rounded border border-slate-800">
+              <span class="text-slate-400 text-[10px] block">運算層組成</span>
+              <span class="font-mono text-cyan-300 text-xs">${d.layers}</span>
+            </div>
+            <div class="bg-slate-900 p-2.5 rounded border border-slate-800">
+              <span class="text-slate-400 text-[10px] block">累計理論感受野</span>
+              <span class="font-mono text-emerald-300 text-xs">${d.receptiveField}</span>
+            </div>
+          </div>
+        </div>
+        <div class="p-4 bg-slate-900 rounded-xl border border-slate-800 space-y-3 text-xs">
+          <div>
+            <span class="text-slate-400 text-[11px] block">輸出特徵圖張量</span>
+            <span class="text-base font-bold font-mono text-amber-300">${d.outDim}</span>
+          </div>
+          <div>
+            <span class="text-slate-400 text-[11px] block">本階段可學習參數額度</span>
+            <span class="text-sm font-bold font-mono text-rose-300">${d.weights}</span>
+          </div>
+        </div>
+      `;
+    }
+    selectBlock(0);
+
+    // --- 12. Simulation State Machine Logic ---
+    const simSteps = [
+      {
+        step: 0,
+        title: "步驟 0: 原始圖像輸入 (Input Image)",
+        desc: "輸入標準 RGB 3 通道影像，尺寸為 224×224。未進行任何卷積變換。",
+        shape: "[1, 3, 224, 224]",
+        mem: "0.58 MB",
+        params: "0",
+        rf: "1 × 1",
+        semantics: "原始像素矩陣 (RGB Luminance)",
+        pipeActive: 0,
+        visualHtml: `<div class="grid grid-cols-8 gap-1 w-32 h-32 p-1 border border-slate-700 bg-slate-900">
+          ${Array(64).fill(0).map((_, i) => `<div class="bg-gradient-to-br from-indigo-500/40 to-cyan-500/60 rounded-[1px]"></div>`).join('')}
+        </div>`
+      },
+      {
+        step: 1,
+        title: "步驟 1: Block 1 邊緣與色斑萃取",
+        desc: "經過 2 個 3×3 卷積（64 通道）+ 1 個 2×2 MaxPool 下採樣。寬高縮半至 112×112，通道數擴展為 64。",
+        shape: "[1, 64, 112, 112]",
+        mem: "3.06 MB",
+        params: "38,720",
+        rf: "5 × 5",
+        semantics: "低階特徵：方向邊緣、水平垂直紋理、色彩斑點",
+        pipeActive: 1,
+        visualHtml: `<div class="grid grid-cols-6 gap-1 w-28 h-28 p-1 border border-cyan-500/50 bg-slate-900">
+          ${Array(36).fill(0).map((_, i) => `<div class="border-t border-cyan-400/80 bg-slate-950 flex items-center justify-center text-[7px] text-cyan-300 font-mono">/</div>`).join('')}
+        </div>`
+      },
+      {
+        step: 2,
+        title: "步驟 2: Block 2 幾何基元與角點建構",
+        desc: "經過 2 個 3×3 卷積（128 通道）+ 1 個 2×2 MaxPool。特徵維度變為 56×56×128。",
+        shape: "[1, 128, 56, 56]",
+        mem: "1.53 MB",
+        params: "260,160",
+        rf: "14 × 14",
+        semantics: "中低階特徵：十字交叉、圓弧、線條轉折角點",
+        pipeActive: 2,
+        visualHtml: `<div class="grid grid-cols-4 gap-1.5 w-24 h-24 p-1.5 border border-sky-500 bg-slate-900">
+          ${Array(16).fill(0).map((_, i) => `<div class="rounded-full border border-sky-400/70 bg-sky-950/40"></div>`).join('')}
+        </div>`
+      },
+      {
+        step: 3,
+        title: "步驟 3: Block 3 結構紋理與輪廓拼裝",
+        desc: "經過 3 個 3×3 卷積（256 通道）+ 1 個 2×2 MaxPool。特徵圖降維至 28×28×256。",
+        shape: "[1, 256, 28, 28]",
+        mem: "0.77 MB",
+        params: "1,735,488",
+        rf: "40 × 40",
+        semantics: "中階特徵：網狀材質、重疊紋理、局部形狀特徵",
+        pipeActive: 3,
+        visualHtml: `<div class="grid grid-cols-3 gap-2 w-20 h-20 p-2 border border-blue-500 bg-slate-900">
+          ${Array(9).fill(0).map((_, i) => `<div class="border border-dashed border-indigo-400 bg-indigo-950/60 rounded"></div>`).join('')}
+        </div>`
+      },
+      {
+        step: 4,
+        title: "步驟 4: Block 4 & 5 物體部件與抽象幾何",
+        desc: "連續經歷 6 個 512 通道卷積及 2 次 MaxPool。最終特徵圖大幅濃縮至 7×7×512。",
+        shape: "[1, 512, 7, 7]",
+        mem: "0.10 MB",
+        params: "14,714,688",
+        rf: "196 × 196",
+        semantics: "高階語意特徵：車輪、眼睛、貓耳朵等整體物件部位",
+        pipeActive: 4,
+        visualHtml: `<div class="grid grid-cols-2 gap-2 w-16 h-16 p-2 border border-purple-500 bg-purple-950/40">
+          <div class="bg-purple-500/80 rounded"></div><div class="bg-indigo-500/80 rounded"></div>
+          <div class="bg-cyan-500/80 rounded"></div><div class="bg-emerald-500/80 rounded"></div>
+        </div>`
+      },
+      {
+        step: 5,
+        title: "步驟 5: Flatten 展平成一維特徵向量",
+        desc: "將 7×7×512 特徵圖向量化為長度 25,088 的密集向量，準備送入全連接網路。",
+        shape: "[1, 25088]",
+        mem: "0.10 MB",
+        params: "14,714,688",
+        rf: "224 × 224 (全域感受野)",
+        semantics: "抽象全域語意向量特徵 (Global Feature Vector)",
+        pipeActive: 5,
+        visualHtml: `<div class="flex items-center gap-1 overflow-hidden w-48 p-2 border border-amber-500 bg-slate-900 rounded">
+          ${Array(24).fill(0).map(() => `<div class="w-1.5 h-8 bg-amber-400 rounded-sm"></div>`).join('')}
+          <span class="text-[9px] text-amber-300 font-mono">...25088</span>
+        </div>`
+      },
+      {
+        step: 6,
+        title: "步驟 6: 全連接層預測輸出 (1000 類別機率)",
+        desc: "歷經 FC(4096) -> FC(4096) -> FC(1000) 及 Softmax，完成類別機率分佈推論！",
+        shape: "[1, 1000]",
+        mem: "0.004 MB",
+        params: "138,357,544 (~138M)",
+        rf: "全圖涵蓋",
+        semantics: "最終輸出：類別機率 (如: 黃金獵犬 92.4%, 拉布拉多 4.1%)",
+        pipeActive: 5,
+        visualHtml: `<div class="p-3 bg-emerald-950/60 border border-emerald-400 rounded-lg text-center">
+          <div class="text-[10px] text-emerald-300 font-mono">Softmax Probabilities</div>
+          <div class="text-xs font-bold text-white mt-1">Class 207 (Golden Retriever): 94.2%</div>
+        </div>`
+      }
+    ];
+
+    let currentStep = 0;
+    let autoSimTimer = null;
+
+    function renderSimulationStep(stepIdx) {
+      const s = simSteps[stepIdx];
+      document.getElementById('currentStepNum').innerText = s.step;
+      document.getElementById('stepTitle').innerText = s.title;
+      document.getElementById('stepDesc').innerText = s.desc;
+      document.getElementById('statShape').innerText = s.shape;
+      document.getElementById('statMem').innerText = s.mem;
+      document.getElementById('statParams').innerText = s.params;
+      document.getElementById('statSemantics').innerText = s.semantics;
+      document.getElementById('receptiveFieldIndicator').innerText = `感受野: ${s.rf}`;
+      document.getElementById('featureVisualBox').innerHTML = s.visualHtml;
+
+      // Update Badge
+      const badge = document.getElementById('layerStatusBadge');
+      if(s.step === 0) {
+        badge.innerText = "準備就緒";
+        badge.className = "px-2.5 py-0.5 rounded-full text-[11px] bg-slate-800 text-slate-300 border border-slate-700";
+      } else if(s.step === 6) {
+        badge.innerText = "推論完成";
+        badge.className = "px-2.5 py-0.5 rounded-full text-[11px] bg-emerald-900/60 text-emerald-300 border border-emerald-600";
+      } else {
+        badge.innerText = "前向傳播中...";
+        badge.className = "px-2.5 py-0.5 rounded-full text-[11px] bg-cyan-900/60 text-cyan-300 border border-cyan-500 animate-pulse";
+      }
+
+      // Update Pipeline highlights
+      for(let i=0; i<=5; i++) {
+        const node = document.getElementById(`pipe-${i}`);
+        if(i === s.pipeActive) {
+          node.className = "pipe-node p-2 rounded-lg bg-cyan-900/50 border-2 border-cyan-400 text-center scale-105 shadow-md shadow-cyan-500/30 transition-all duration-300";
+        } else {
+          node.className = "pipe-node p-2 rounded-lg bg-slate-900 border border-slate-800 text-center transition-all duration-300";
+        }
+      }
+    }
+
+    function stepSimulation() {
+      currentStep = (currentStep + 1) % simSteps.length;
+      renderSimulationStep(currentStep);
+    }
+
+    function resetSimulation() {
+      if(autoSimTimer) toggleAutoSimulation();
+      currentStep = 0;
+      renderSimulationStep(currentStep);
+    }
+
+    function toggleAutoSimulation() {
+      const autoIcon = document.getElementById('autoIcon');
+      const autoText = document.getElementById('autoText');
+
+      if(autoSimTimer) {
+        clearInterval(autoSimTimer);
+        autoSimTimer = null;
+        autoIcon.className = "fa-solid fa-play";
+        autoText.innerText = "一鍵自動模擬";
+      } else {
+        autoIcon.className = "fa-solid fa-pause";
+        autoText.innerText = "暫停自動模擬";
+        autoSimTimer = setInterval(() => {
+          currentStep = (currentStep + 1) % simSteps.length;
+          renderSimulationStep(currentStep);
+          if(currentStep === simSteps.length - 1) {
+            clearInterval(autoSimTimer);
+            autoSimTimer = null;
+            autoIcon.className = "fa-solid fa-play";
+            autoText.innerText = "重新自動模擬";
+          }
+        }, 1500);
+      }
+    }
+
+    renderSimulationStep(0);
+
+    // --- Quiz Answer & Explanation Handling ---
+    const quizExplanations = {
+      1: {
+        correct: 'B',
+        text: "<span class='text-emerald-400 font-bold'>【正確答案: B】</span><br>解析：VGG 的核心理念是證明『網路深度』至關重要，透過堆疊多個微小 3×3 卷積核替代大卷積核（例如 2 個 3×3 替代 5×5），減少參數並增加非線性層數。選項 A 為 Inception (GoogLeNet) 特色；選項 C 為 ResNet 特色；選項 D 中 VGG 包含 3 個龐大的全連接層，並未採用 Global Average Pooling。"
+      },
+      2: {
+        correct: 'A',
+        text: "<span class='text-emerald-400 font-bold'>【正確答案: A】</span><br>解析：VGG16 全網 1.38 億參數中，光是第一個 FC 全連接層（$7 \\times 7 \\times 512 = 25088$ 輸入通道，連接到 4096 個神經元）的參數量就高達 $25088 \\times 4096 \\approx 1.027$ 億個參數，單層便佔據了全網約 74% 的參數總量！"
+      }
+    };
+
+    function checkQuiz(qNum, selectedOption) {
+      const info = quizExplanations[qNum];
+      const isCorrect = selectedOption === info.correct;
+      const expDiv = document.getElementById(`q${qNum}-explanation`);
+
+      ['A', 'B', 'C', 'D'].forEach(opt => {
+        const btn = document.getElementById(`q${qNum}-${opt}`);
+        btn.classList.remove('border-emerald-500', 'bg-emerald-950/40', 'border-rose-500', 'bg-rose-950/40');
+        if(opt === info.correct) {
+          btn.classList.add('border-emerald-500', 'bg-emerald-950/40');
+        } else if(opt === selectedOption && !isCorrect) {
+          btn.classList.add('border-rose-500', 'bg-rose-950/40');
+        }
+      });
+
+      expDiv.classList.remove('hidden');
+      expDiv.innerHTML = info.text;
+    }
+
+    // --- Code Copy Tool ---
+    function copyCode() {
+      const code = document.getElementById('pytorchCode').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const btnText = document.getElementById('copyBtnText');
+        btnText.innerText = "已成功複製！";
+        setTimeout(() => { btnText.innerText = "複製程式碼"; }, 2000);
+      });
+    }
+  </script>
+</body>
+</html>

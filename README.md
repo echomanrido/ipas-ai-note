@@ -46,7 +46,8 @@
 │       └── 0401.RLHF...html     # RLHF 專題知識庫與互動模擬器
 ├── 02.深度學習/
 │   ├── 0201.stable_diffusion(潛在擴散模型).html # Stable Diffusion 核心架構解析與互動模擬
-│   └── 0202.autoencoder(自編碼器).html         # Autoencoder 自編碼器全方位指南與實驗室
+│   ├── 0202.autoencoder(自編碼器).html         # Autoencoder 自編碼器全方位指南與實驗室
+│   └── 0203.VGG16 深度學習互動全解析.html     # VGG16 經典卷積神經網路全方位解析與互動模擬
 ├── 03.生成式AI/                 # 生成式AI單元筆記（持續更新）
 ├── 04.補充教材/                 # 精選專題深入教材 (Cross-Entropy, MSE/MAE, 蒙地卡羅, MCMC, YOLO vs TM分類等)
 ├── 05.讀學時光 Rido(Read) & Learn/  # 讀學時光專題實驗室 (波動力學、AI網頁感知操作)
