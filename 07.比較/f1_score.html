@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>F1-Score 終極互動式教學與視覺化模擬系統</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- MathJax for rendering LaTeX math formulas -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #090d16; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    /* Code Highlighting Palette */
+    .c-kw { color: #f472b6; font-weight: 700; }
+    .c-fn { color: #38bdf8; font-weight: 700; }
+    .c-cls { color: #facc15; font-weight: 700; }
+    .c-num { color: #fb923c; }
+    .c-str { color: #4ade80; }
+    .c-cm { color: #64748b; font-style: italic; }
+    .c-var { color: #e2e8f0; }
+
+    /* SVG Soft Glow / Pulse (Opacity only to prevent SVG transform coordinates collision) */
+    @keyframes pulseOpacity {
+      0%, 100% { opacity: 0.92; }
+      50% { opacity: 1; }
+    }
+    .pulse-anim { animation: pulseOpacity 2.5s ease-in-out infinite; }
+  </style>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen selection:bg-indigo-500 selection:text-white">
+
+  <!-- 頂部導航列 -->
+  <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span class="px-2.5 py-1 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 rounded-lg text-slate-950 font-black tracking-wider text-xs shadow-md">F1 MASTER</span>
+        <h1 class="text-base sm:text-lg font-bold bg-gradient-to-r from-indigo-200 via-sky-200 to-teal-100 bg-clip-text text-transparent">
+          F1-Score 終極全方位解析與動態模擬系統
+        </h1>
+      </div>
+      <div class="flex items-center gap-4">
+        <nav class="hidden xl:flex space-x-4 text-xs font-semibold text-slate-300">
+          <a href="#section-intro" class="hover:text-indigo-400 transition">01-02 核心定位</a>
+          <a href="#section-svg-matrix" class="hover:text-sky-400 transition">指標全景 SVG</a>
+          <a href="#section-life" class="hover:text-amber-400 transition">06 生活實例</a>
+          <a href="#section-ipas" class="hover:text-purple-400 transition">03 IPAS 考題</a>
+          <a href="#section-harmonic-svg" class="hover:text-rose-400 transition">短板懲罰 SVG</a>
+          <a href="#section-fbeta-svg" class="hover:text-emerald-400 transition">天平權衡 SVG</a>
+          <a href="#section-interactive" class="text-indigo-400 hover:underline">10 互動儀表盤</a>
+          <a href="#section-code" class="hover:text-cyan-400 transition">11 程式實作</a>
+          <a href="#section-simulation" class="text-emerald-400 hover:underline font-bold">12 門檻尋優</a>
+        </nav>
+        <div class="flex items-center gap-2">
+          <a href="../index.html" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded-lg transition">
+            <i class="fa-solid fa-arrow-left"></i> 回首頁
+          </a>
+          <a href="../程式心智圖.html" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:text-emerald-200 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-500/40 rounded-lg transition">
+            <i class="fa-solid fa-network-wired"></i> 程式心智圖
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-20">
+
+    <!-- 核心精華與產業實務應用 方框元件 -->
+    <div style="margin: 0 0 2.5rem 0; padding: 1.5rem; background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid #38bdf8; border-radius: 16px; box-shadow: 0 10px 30px -5px rgba(2, 132, 199, 0.25), 0 0 20px rgba(56, 189, 248, 0.15); backdrop-filter: blur(12px); color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif;">
+      <!-- 頂部標題列 -->
+      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(56, 189, 248, 0.25); padding-bottom: 0.85rem; margin-bottom: 1.1rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: linear-gradient(135deg, #0284c7, #38bdf8); border-radius: 8px; color: #ffffff; font-size: 1.05rem; box-shadow: 0 2px 8px rgba(56, 189, 248, 0.4); flex-shrink: 0;">
+            <i class="fa-solid fa-lightbulb"></i>
+          </span>
+          <div>
+            <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #ffffff; letter-spacing: -0.01em;">
+              【F1-Score 終極指標解析】核心精華與產業實務應用
+            </h3>
+            <p style="margin: 0.15rem 0 0 0; font-size: 0.78rem; color: #94a3b8;">Key Takeaways · Mechanism Overview · Industrial Applications</p>
+          </div>
+        </div>
+        <span style="font-size: 0.72rem; padding: 0.25rem 0.65rem; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 9999px; font-weight: 700; white-space: nowrap;">
+          重點精華 · 實務落地
+        </span>
+      </div>
+
+      <!-- 三大區塊 Grid -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.2rem;">
+        
+        <!-- 區塊 1: 重點整理 -->
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem; color: #38bdf8; font-weight: 700; font-size: 0.92rem;">
+            <i class="fa-solid fa-list-check"></i>
+            <span>重點整理 (Key Takeaways)</span>
+          </div>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.84rem; line-height: 1.65; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.45rem;">
+            <li><strong>調和平均短板懲罰效應</strong>：\(F_1 = 2 \cdot \frac{P \cdot R}{P + R} = \frac{2}{\frac{1}{P} + \frac{1}{R}}\)；其本質對極端小值極端敏感，只要 Precision 或 Recall 任一維度塌陷，F1 即刻大幅暴跌，絕不容許單邊膨脹。</li>
+            <li><strong>破解類別不平衡虛假高分</strong>：在異常比率極低（如 0.1%）的場景，Accuracy 會被海量負樣本 \(TN\) 灌水；F1 完全排除 \(TN\) 稀釋，只衡量模型對少數目標的真確辨識力。</li>
+            <li><strong>\(F_\beta\) 權衡天平</strong>：若漏抓代價遠高於誤報（如機台爆炸、惡性腫瘤），選 \(\beta=2\)（\(F_2\) 強化召回率）；若誤報成本極高（如高檔名牌推薦），選 \(\beta=0.5\)（強化精確率）。</li>
+          </ul>
+        </div>
+
+        <!-- 區塊 2: 機制說明 -->
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(129, 140, 248, 0.2); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem; color: #a5b4fc; font-weight: 700; font-size: 0.92rem;">
+            <i class="fa-solid fa-gears"></i>
+            <span>機制說明 (Mechanism & Math)</span>
+          </div>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.84rem; line-height: 1.65; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.45rem;">
+            <li><strong>集合幾何映射 (Dice 係數)</strong>：代數展開後 \(F_1 = \frac{2TP}{2TP + FP + FN}\)，本質是預測正類集合與真實正類集合交集比例的兩倍，為影像分割與重疊度評估的黃金指標。</li>
+            <li><strong>多類別平均策略三式</strong>：
+              <span style="color:#94a3b8; font-size:0.8rem; display:block; margin-top:2px;">
+                · <strong>Macro-F1</strong>：不考慮樣本數各類平權，能嚴格暴露邊緣少數類短板。<br>
+                · <strong>Weighted-F1</strong>：依類別樣本數加權，反應實際整體商業效益。<br>
+                · <strong>Micro-F1</strong>：全局合計總體 \(TP, FP, FN\)，等同於全局 Accuracy。
+              </span>
+            </li>
+            <li><strong>門檻動態最佳化 (Threshold Tuning)</strong>：透過 <code>precision_recall_curve()</code> 動態搜尋使 \(F_1\) 達到全域極大值的最佳分類機率切點 \(\theta^*\)。</li>
+          </ul>
+        </div>
+
+        <!-- 區塊 3: 應用在何處 -->
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(52, 211, 153, 0.2); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem; color: #6ee7b7; font-weight: 700; font-size: 0.92rem;">
+            <i class="fa-solid fa-industry"></i>
+            <span>應用在何處 (Industrial Scenarios)</span>
+          </div>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.84rem; line-height: 1.65; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.45rem;">
+            <li><strong>半導體晶圓自動光學檢查 (AOI)</strong>：先進製程良率高達 99.8%，缺陷顆粒極罕見；以 F1-Score 衡量檢測模型，保證零漏網之魚（高 Recall）且不過度誤殺報廢良品（高 Precision）。</li>
+            <li><strong>金融信用卡盜刷與 AML 反洗錢風控</strong>：在數千萬筆每日刷卡交易中捕捉微量盜刷事件，依 F1-Score 最適化攔截門檻，平衡詐欺損失與尊榮客戶投訴。</li>
+            <li><strong>設備預測性維護 (PdM 振動異常示警)</strong>：關鍵高壓泵浦與發電機軸承故障前兆捕捉，採用高 \(F_2\)-Score 模型進行實時預警，避免千萬停工損害。</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 01 & 02: 一句話簡介、核心原理與金句亮點卡片 -->
+    <section id="section-intro" class="space-y-6">
+      <div class="border-l-4 border-indigo-500 pl-4">
+        <div class="text-xs font-bold uppercase tracking-wider text-indigo-400 font-mono">MODULE 01 & 02</div>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-white">一句話簡介與核心原理</h2>
+        <p class="text-slate-400 text-sm mt-1">兼顧「不抓錯」與「不漏抓」的黃金調和度量</p>
+      </div>
+
+      <!-- 一句話簡介主卡片 -->
+      <div class="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-indigo-950/70 via-slate-900 to-slate-900 border border-indigo-800/40 shadow-2xl space-y-4">
+        <div class="flex items-center space-x-2">
+          <span class="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 font-mono text-xs font-bold border border-indigo-500/30">
+            一句話核心定位
+          </span>
+          <span class="text-xs text-slate-400">日常決策與機器學習的關鍵交集</span>
+        </div>
+        <p class="text-base sm:text-lg text-slate-100 leading-relaxed">
+          在日常生活中，<strong class="text-indigo-300 font-bold">F1-Score（F1 分數）</strong>最常用在<span class="text-amber-300 font-bold underline decoration-amber-500/70 underline-offset-4">「當你想同時兼顧『不抓錯』與『不漏抓』，且這兩者缺一不可」</span>的決策場景。
+        </p>
+        <p class="text-sm sm:text-base text-slate-300 leading-relaxed">
+          在機器學習中，F1-Score 是<strong>精準率（Precision，抓對的比例）</strong>和<strong>召回率（Recall，抓完整的比例）</strong>的<strong class="text-teal-300">調和平均數（Harmonic Mean）</strong>。當其中一個表現很差時，F1-Score 就會被大幅拉低。
+        </p>
+      </div>
+
+      <!-- 核心總結專屬亮點卡片 (指定之引號金句與燈泡) -->
+      <div class="p-6 sm:p-7 rounded-3xl bg-slate-900 border border-amber-500/40 shadow-xl space-y-4 relative overflow-hidden">
+        <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="flex items-center space-x-2 text-lg sm:text-xl font-black text-slate-100">
+          <span class="text-2xl filter drop-shadow">💡</span>
+          <span class="tracking-wide text-amber-300">核心總結</span>
+        </div>
+        <p class="text-sm sm:text-base text-slate-300 font-medium">
+          當我們說一個模型的 <strong class="text-white font-bold tracking-wide">F1-Score 很高</strong>，用生活白話文來說就是：
+        </p>
+        <div class="p-5 sm:p-6 rounded-2xl bg-slate-950 border border-slate-800 shadow-inner">
+          <blockquote class="text-slate-100 text-sm sm:text-base font-semibold leading-relaxed tracking-wide">
+            「這傢伙做事很靠譜，既不會冒冒失失地亂指（不冤枉好人），也不會粗心大意地漏掉（不放過壞人），達到了完美的平衡。」
+          </blockquote>
+        </div>
+      </div>
+    </section>
+
+    <!-- 【SVG 強化 1】：混淆矩陣與指標關係流動 SVG 全景圖 -->
+    <section id="section-svg-matrix" class="space-y-6">
+      <div class="border-l-4 border-sky-500 pl-4">
+        <div class="text-xs font-bold uppercase tracking-wider text-sky-400 font-mono">VECTOR ARCHITECTURE #1</div>
+        <h2 class="text-2xl font-extrabold text-white">混淆矩陣與指標關係流動全景向量圖</h2>
+        <p class="text-slate-400 text-sm">視覺化拆解 Actual vs Predicted、切片聚合至 Precision/Recall 與匯流進入調和平均數</p>
+      </div>
+
+      <div class="p-4 sm:p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden">
+        <div class="w-full overflow-x-auto">
+          <svg viewBox="0 0 1060 460" class="w-full min-w-[850px] h-auto select-none font-sans">
+            <defs>
+              <linearGradient id="g-tp" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#059669" stop-opacity="0.8"/>
+                <stop offset="100%" stop-color="#10b981" stop-opacity="0.2"/>
+              </linearGradient>
+              <linearGradient id="g-fp" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#dc2626" stop-opacity="0.8"/>
+                <stop offset="100%" stop-color="#f87171" stop-opacity="0.2"/>
+              </linearGradient>
+              <linearGradient id="g-fn" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#d97706" stop-opacity="0.8"/>
+                <stop offset="100%" stop-color="#fbbf24" stop-opacity="0.2"/>
+              </linearGradient>
+              <linearGradient id="g-tn" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#475569" stop-opacity="0.8"/>
+                <stop offset="100%" stop-color="#64748b" stop-opacity="0.2"/>
+              </linearGradient>
+              <linearGradient id="g-f1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#4f46e5"/>
+                <stop offset="100%" stop-color="#06b6d4"/>
+              </linearGradient>
+              <marker id="arrow-sky" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                <path d="M 0 0 L 8 4 L 0 8 z" fill="#38bdf8"/>
+              </marker>
+              <marker id="arrow-amber" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                <path d="M 0 0 L 8 4 L 0 8 z" fill="#fbbf24"/>
+              </marker>
+              <marker id="arrow-cyan" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                <path d="M 0 0 L 8 4 L 0 8 z" fill="#06b6d4"/>
+              </marker>
+              <marker id="arrow-indigo" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                <path d="M 0 0 L 8 4 L 0 8 z" fill="#818cf8"/>
+              </marker>
+            </defs>
+
+            <!-- 外圍背景容器 -->
+            <rect x="10" y="10" width="1040" height="440" rx="20" fill="#070b14" stroke="#1e293b" stroke-width="1.5"/>
+
+            <!-- ====== 1. 左側：混淆矩陣結構區域 ====== -->
+            <!-- 預測標頭 -->
+            <text x="210" y="38" fill="#94a3b8" font-size="13" font-weight="bold" text-anchor="middle">預測值 (Predicted Target)</text>
+            <text x="145" y="60" fill="#38bdf8" font-size="12" font-weight="bold" text-anchor="middle">Positive (預測為正)</text>
+            <text x="275" y="60" fill="#94a3b8" font-size="12" font-weight="bold" text-anchor="middle">Negative (預測為負)</text>
+
+            <!-- 真實標頭 (側邊垂直) -->
+            <text x="28" y="195" fill="#94a3b8" font-size="13" font-weight="bold" transform="rotate(-90 28,195)" text-anchor="middle">真實值 (Actual Truth)</text>
+            <text x="56" y="135" fill="#34d399" font-size="12" font-weight="bold" text-anchor="middle">Positive</text>
+            <text x="56" y="255" fill="#94a3b8" font-size="12" font-weight="bold" text-anchor="middle">Negative</text>
+
+            <!-- 2x2 混淆矩陣單元格 -->
+            <!-- TP -->
+            <g class="cursor-pointer transition hover:opacity-90">
+              <rect x="85" y="75" width="120" height="110" rx="12" fill="url(#g-tp)" stroke="#10b981" stroke-width="2"/>
+              <text x="145" y="108" fill="#ecfdf5" font-size="18" font-weight="900" text-anchor="middle">TP</text>
+              <text x="145" y="130" fill="#a7f3d0" font-size="11" font-weight="bold" text-anchor="middle">真正例 (True Positive)</text>
+              <text x="145" y="152" fill="#d1fae5" font-size="10" text-anchor="middle">抓對了！不漏且對</text>
+            </g>
+
+            <!-- FN -->
+            <g class="cursor-pointer transition hover:opacity-90">
+              <rect x="215" y="75" width="120" height="110" rx="12" fill="url(#g-fn)" stroke="#f59e0b" stroke-width="2"/>
+              <text x="275" y="108" fill="#fffbeb" font-size="18" font-weight="900" text-anchor="middle">FN</text>
+              <text x="275" y="130" fill="#fde68a" font-size="11" font-weight="bold" text-anchor="middle">偽負例 (False Negative)</text>
+              <text x="275" y="152" fill="#fef3c7" font-size="10" text-anchor="middle">粗心漏掉 (型二錯誤)</text>
+            </g>
+
+            <!-- FP -->
+            <g class="cursor-pointer transition hover:opacity-90">
+              <rect x="85" y="195" width="120" height="110" rx="12" fill="url(#g-fp)" stroke="#ef4444" stroke-width="2"/>
+              <text x="145" y="228" fill="#fef2f2" font-size="18" font-weight="900" text-anchor="middle">FP</text>
+              <text x="145" y="250" fill="#fca5a5" font-size="11" font-weight="bold" text-anchor="middle">偽正例 (False Positive)</text>
+              <text x="145" y="272" fill="#fee2e2" font-size="10" text-anchor="middle">冒失亂指 (型一錯誤)</text>
+            </g>
+
+            <!-- TN -->
+            <g class="cursor-pointer transition hover:opacity-90">
+              <rect x="215" y="195" width="120" height="110" rx="12" fill="url(#g-tn)" stroke="#64748b" stroke-width="2"/>
+              <text x="275" y="228" fill="#f8fafc" font-size="18" font-weight="900" text-anchor="middle">TN</text>
+              <text x="275" y="250" fill="#cbd5e1" font-size="11" font-weight="bold" text-anchor="middle">真負例 (True Negative)</text>
+              <text x="275" y="272" fill="#94a3b8" font-size="10" text-anchor="middle">正確排除非目標</text>
+            </g>
+
+            <!-- ====== 2. 指標引出路徑 ====== -->
+            <!-- 縱向引向 Precision (精準率) -->
+            <path d="M 145 310 L 145 345" fill="none" stroke="#38bdf8" stroke-width="2.5" marker-end="url(#arrow-sky)" stroke-dasharray="4 3"/>
+            <g transform="translate(60, 355)">
+              <rect width="170" height="75" rx="12" fill="#0c2340" stroke="#0284c7" stroke-width="2"/>
+              <text x="85" y="24" fill="#38bdf8" font-size="13" font-weight="bold" text-anchor="middle">精準率 Precision</text>
+              <text x="85" y="44" fill="#e0f2fe" font-size="11" font-family="monospace" text-anchor="middle">TP / (TP + FP)</text>
+              <text x="85" y="62" fill="#7dd3fc" font-size="10" text-anchor="middle">「指出來的有多少是真的」</text>
+            </g>
+
+            <!-- 橫向引向 Recall (召回率) -->
+            <path d="M 340 130 L 390 130" fill="none" stroke="#fbbf24" stroke-width="2.5" marker-end="url(#arrow-amber)" stroke-dasharray="4 3"/>
+            <g transform="translate(400, 92)">
+              <rect width="170" height="78" rx="12" fill="#451a03" stroke="#d97706" stroke-width="2"/>
+              <text x="85" y="25" fill="#fbbf24" font-size="13" font-weight="bold" text-anchor="middle">召回率 Recall</text>
+              <text x="85" y="45" fill="#fef3c7" font-size="11" font-family="monospace" text-anchor="middle">TP / (TP + FN)</text>
+              <text x="85" y="64" fill="#fde68a" font-size="10" text-anchor="middle">「真正存在的找出了多少」</text>
+            </g>
+
+            <!-- ====== 3. 匯流至中央「調和平均運算核心」====== -->
+            <!-- Precision 流向核心 (向上弧線) -->
+            <path d="M 235 392 C 380 392, 450 330, 565 295" fill="none" stroke="#38bdf8" stroke-width="2.5" marker-end="url(#arrow-cyan)"/>
+            <!-- Recall 流向核心 (向下弧線) -->
+            <path d="M 485 174 C 500 215, 525 245, 565 265" fill="none" stroke="#fbbf24" stroke-width="2.5" marker-end="url(#arrow-cyan)"/>
+
+            <!-- 調和平均運算核心節點 (安全坐標 580, 215，徹底遠離左側矩陣) -->
+            <g transform="translate(580, 215)" class="pulse-anim">
+              <rect width="210" height="116" rx="16" fill="#0f172a" stroke="#6366f1" stroke-width="2.5"/>
+              <text x="105" y="27" fill="#a5b4fc" font-size="12" font-weight="bold" text-anchor="middle">調和平均運算核心</text>
+              <text x="105" y="52" fill="#ffffff" font-size="13" font-family="monospace" font-weight="bold" text-anchor="middle">2 &times; (P &times; R) / (P + R)</text>
+              <line x1="20" y1="67" x2="190" y2="67" stroke="#334155" stroke-width="1"/>
+              <text x="105" y="86" fill="#cbd5e1" font-size="10" text-anchor="middle">倒數之算術平均的倒數</text>
+              <text x="105" y="102" fill="#f43f5e" font-size="9.5" font-weight="bold" text-anchor="middle">嚴厲懲罰任何單邊瘸腿指標</text>
+            </g>
+
+            <!-- ====== 4. 輸出至終端 F1-Score ====== -->
+            <path d="M 795 273 L 835 273" fill="none" stroke="#06b6d4" stroke-width="3.5" marker-end="url(#arrow-cyan)"/>
+
+            <g transform="translate(845, 208)">
+              <rect width="180" height="130" rx="20" fill="url(#g-f1)" stroke="#38bdf8" stroke-width="2.5" filter="drop-shadow(0 10px 15px rgba(6,182,212,0.3))"/>
+              <text x="90" y="38" fill="#ffffff" font-size="18" font-weight="900" text-anchor="middle">F1-SCORE</text>
+              <text x="90" y="63" fill="#f8fafc" font-size="11" font-weight="bold" text-anchor="middle">平衡決策終極指標</text>
+              <rect x="22" y="76" width="136" height="38" rx="8" fill="#090d16" fill-opacity="0.6"/>
+              <text x="90" y="93" fill="#67e8f9" font-size="10" font-family="monospace" text-anchor="middle">2TP / (2TP+FP+FN)</text>
+              <text x="90" y="108" fill="#a5f3fc" font-size="9" text-anchor="middle">不冤枉 ⚡ 不漏抓</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06. 三大生活化例子：向量圖卡與互動切換 -->
+    <section id="section-life" class="space-y-6">
+      <div class="border-l-4 border-amber-500 pl-4">
+        <div class="text-xs font-bold uppercase tracking-wider text-amber-400 font-mono">MODULE 06</div>
+        <h2 class="text-2xl font-extrabold text-white">三大貼近生活的經典實例（向量解說圖 + 帶入模擬）</h2>
+        <p class="text-slate-400 text-sm">直觀領略精準率與召回率在現實中的代價權衡</p>
+      </div>
+
+      <div class="grid lg:grid-cols-3 gap-6">
+        <!-- 案例 1: 垃圾郵件過濾器 -->
+        <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-sky-500/50 transition shadow-xl space-y-4">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-sky-950 text-sky-400 border border-sky-800">生活情境 1</span>
+              <span class="text-xs text-slate-400 font-mono">Email Filter</span>
+            </div>
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+              <span>📧</span> 垃圾郵件過濾器
+            </h3>
+
+            <!-- 專屬向量圖解 1: 郵件漏斗分流 SVG -->
+            <div class="w-full bg-slate-950 rounded-xl p-2 border border-slate-800">
+              <svg viewBox="0 0 300 130" class="w-full h-auto select-none">
+                <rect width="300" height="130" rx="8" fill="#0b1120"/>
+                <!-- 漏斗通道 -->
+                <polygon points="40,20 260,20 180,70 120,70" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+                <text x="150" y="42" fill="#94a3b8" font-size="10" font-weight="bold" text-anchor="middle">所有進來信件（一般信件 + 垃圾廣告）</text>
+                <!-- 分流 1：判定為垃圾桶 -->
+                <path d="M 130 70 L 80 105" stroke="#ef4444" stroke-width="2" marker-end="url(#arrow-sky)"/>
+                <rect x="20" y="95" width="115" height="28" rx="6" fill="#3f1414" stroke="#dc2626"/>
+                <text x="77" y="112" fill="#fca5a5" font-size="9" font-weight="bold" text-anchor="middle">垃圾桶 (Precision低=誤殺要件)</text>
+                <!-- 分流 2：判定為收件匣 -->
+                <path d="M 170 70 L 220 105" stroke="#10b981" stroke-width="2"/>
+                <rect x="165" y="95" width="115" height="28" rx="6" fill="#063223" stroke="#059669"/>
+                <text x="222" y="112" fill="#6ee7b7" font-size="9" font-weight="bold" text-anchor="middle">收件匣 (Recall低=廣告氾濫)</text>
+              </svg>
+            </div>
+
+            <div class="text-xs space-y-2 text-slate-300">
+              <p><strong class="text-slate-100">情境說明：</strong>信箱系統幫你過濾各類未知來信。</p>
+              <p><strong class="text-sky-300">精準率 (Precision)：</strong>系統判定是垃圾信的信件中，有多少真的是垃圾信？<span class="text-slate-400">（精準率低，代表很多重要的工作業務信被誤抓進垃圾桶，害你漏看面試或錄取通知）。</span></p>
+              <p><strong class="text-amber-300">召回率 (Recall)：</strong>所有垃圾信中，系統成功攔截了多少？<span class="text-slate-400">（召回率低，代表收件匣天天被詐騙廣告塞爆）。</span></p>
+              <div class="p-3 bg-slate-950 rounded-xl text-emerald-300 border border-slate-800">
+                <strong>F1-Score 意義：</strong>既不會亂阻擋重要郵件，也不會讓信箱被垃圾信淹沒，完美平衡兩端。
+              </div>
+            </div>
+          </div>
+          <button onclick="setScenario(450, 10, 50, 4490); scrollToLab();" class="w-full py-2 bg-sky-900/40 hover:bg-sky-800/60 border border-sky-700/60 rounded-xl text-xs font-bold text-sky-200 transition">
+            帶入「垃圾郵件過濾」數值至實驗盤 ➔
+          </button>
+        </div>
+
+        <!-- 案例 2: 火災警報器 -->
+        <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-amber-500/50 transition shadow-xl space-y-4">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-950 text-amber-400 border border-amber-800">生活情境 2</span>
+              <span class="text-xs text-slate-400 font-mono">Smoke Detector</span>
+            </div>
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+              <span>🚨</span> 家用火災煙霧警報器
+            </h3>
+
+            <!-- 專屬向量圖解 2: 警報感測器 SVG -->
+            <div class="w-full bg-slate-950 rounded-xl p-2 border border-slate-800">
+              <svg viewBox="0 0 300 130" class="w-full h-auto select-none">
+                <rect width="300" height="130" rx="8" fill="#0b1120"/>
+                <circle cx="150" cy="40" r="24" fill="#334155" stroke="#f59e0b" stroke-width="2"/>
+                <text x="150" y="44" fill="#fbbf24" font-size="11" font-weight="bold" text-anchor="middle">SENSOR</text>
+                <!-- 誤響 -->
+                <path d="M 130 45 C 90 60, 50 75, 45 95" stroke="#f43f5e" stroke-width="2" stroke-dasharray="3 3"/>
+                <rect x="10" y="95" width="130" height="28" rx="6" fill="#371520" stroke="#f43f5e"/>
+                <text x="75" y="112" fill="#fda4af" font-size="9" font-weight="bold" text-anchor="middle">炒菜油煙亂響 (想拔電池)</text>
+                <!-- 漏報 -->
+                <path d="M 170 45 C 210 60, 250 75, 255 95" stroke="#fbbf24" stroke-width="2"/>
+                <rect x="160" y="95" width="130" height="28" rx="6" fill="#392404" stroke="#d97706"/>
+                <text x="225" y="112" fill="#fde68a" font-size="9" font-weight="bold" text-anchor="middle">真起火失靈 (鬧出人命)</text>
+              </svg>
+            </div>
+
+            <div class="text-xs space-y-2 text-slate-300">
+              <p><strong class="text-slate-100">情境說明：</strong>客廳與廚房安裝的煙霧即時監控感應器。</p>
+              <p><strong class="text-sky-300">精準率 (Precision)：</strong>警報器大響時，真正失火的機率？<span class="text-slate-400">（精準率低，代表媽媽煮飯冒煙就狂叫，成了天天叫的「狼來了」，讓人想拔電池）。</span></p>
+              <p><strong class="text-amber-300">召回率 (Recall)：</strong>家裡真著火時，警報成功響起的機率？<span class="text-slate-400">（召回率低，代表真正起火了它卻安靜無聲，會鬧出重大人命）。</span></p>
+              <div class="p-3 bg-slate-950 rounded-xl text-emerald-300 border border-slate-800">
+                <strong>F1-Score 意義：</strong>既不能為了安全天天亂叫逼人拔插頭，也不能危急時刻失靈，達到救命與安靜的均衡。
+              </div>
+            </div>
+          </div>
+          <button onclick="setScenario(98, 20, 2, 880); scrollToLab();" class="w-full py-2 bg-amber-900/40 hover:bg-amber-800/60 border border-amber-700/60 rounded-xl text-xs font-bold text-amber-200 transition">
+            帶入「火災警報器」數值至實驗盤 ➔
+          </button>
+        </div>
+
+        <!-- 案例 3: 網購衣服推薦系統 -->
+        <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-pink-500/50 transition shadow-xl space-y-4">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-pink-950 text-pink-400 border border-pink-800">生活情境 3</span>
+              <span class="text-xs text-slate-400 font-mono">Personalized Recs</span>
+            </div>
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+              <span>👗</span> 網購衣服個性化推薦系統
+            </h3>
+
+            <!-- 專屬向量圖解 3: 推薦命中雷達 SVG -->
+            <div class="w-full bg-slate-950 rounded-xl p-2 border border-slate-800">
+              <svg viewBox="0 0 300 130" class="w-full h-auto select-none">
+                <rect width="300" height="130" rx="8" fill="#0b1120"/>
+                <ellipse cx="100" cy="65" rx="70" ry="45" fill="#1e1b4b" stroke="#6366f1" stroke-width="1.5"/>
+                <text x="65" y="45" fill="#a5b4fc" font-size="9" font-weight="bold">全站符合品味衣服</text>
+                <ellipse cx="170" cy="65" rx="60" ry="40" fill="#3b0764" stroke="#ec4899" stroke-width="1.5" fill-opacity="0.6"/>
+                <text x="195" y="45" fill="#f472b6" font-size="9" font-weight="bold">推薦給你的清單</text>
+                <!-- 交集 -->
+                <circle cx="135" cy="65" r="16" fill="#10b981" fill-opacity="0.8"/>
+                <text x="135" y="69" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">命中</text>
+                <text x="150" y="122" fill="#94a3b8" font-size="9" text-anchor="middle">Precision: 命中的純度 ｜ Recall: 挖出喜好衣服的廣度</text>
+              </svg>
+            </div>
+
+            <div class="text-xs space-y-2 text-slate-300">
+              <p><strong class="text-slate-100">情境說明：</strong>服飾電商主頁推薦「你可能會喜歡的穿搭」。</p>
+              <p><strong class="text-sky-300">精準率 (Precision)：</strong>推給你的 10 件衣服中，你真正點開或買單的有幾件？<span class="text-slate-400">（精準率低，推的都不是你的風格，覺得很難逛而跳出）。</span></p>
+              <p><strong class="text-amber-300">召回率 (Recall)：</strong>全站符合你風格的衣服中，被挖出來推薦給你的比例？<span class="text-slate-400">（召回率低，雖然推的都喜歡，但深層大量命定衣服沒被曝光，錯失營收）。</span></p>
+              <div class="p-3 bg-slate-950 rounded-xl text-emerald-300 border border-slate-800">
+                <strong>F1-Score 意義：</strong>既精準擊中你的偏好，又能把深藏的熱愛好物完整挖出展現眼前。
+              </div>
+            </div>
+          </div>
+          <button onclick="setScenario(80, 20, 20, 880); scrollToLab();" class="w-full py-2 bg-pink-900/40 hover:bg-pink-800/60 border border-pink-700/60 rounded-xl text-xs font-bold text-pink-200 transition">
+            帶入「服飾推薦系統」數值至實驗盤 ➔
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 【SVG 強化 2】：調和平均數 vs 算術平均數「短板懲罰」幾何 SVG 圖解 -->
+    <section id="section-harmonic-svg" class="space-y-6">
+      <div class="border-l-4 border-rose-500 pl-4">
+        <div class="text-xs font-bold uppercase tracking-wider text-rose-400 font-mono">VECTOR ARCHITECTURE #2</div>
+        <h2 class="text-2xl font-extrabold text-white">調和平均數 vs 算術平均數：木桶短板懲罰幾何 SVG 解構</h2>
+        <p class="text-slate-400 text-sm">視覺化呈現為何算術平均會偽裝高分，而調和平均能狠狠懲罰「瘸腿模型」</p>
+      </div>
+
+      <div class="grid lg:grid-cols-12 gap-6 items-center">
+        <!-- SVG 圖形 -->
+        <div class="lg:col-span-7 bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
+          <svg viewBox="0 0 620 320" class="w-full h-auto select-none">
+            <defs>
+              <linearGradient id="g-arith" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#3b82f6"/>
+                <stop offset="100%" stop-color="#93c5fd"/>
+              </linearGradient>
+              <linearGradient id="g-harm" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#f43f5e"/>
+                <stop offset="100%" stop-color="#fb7185"/>
+              </linearGradient>
+            </defs>
+
+            <!-- 背景標尺 -->
+            <rect x="0" y="0" width="620" height="320" fill="#090d16" rx="16"/>
+
+            <!-- 兩根柱子：Precision=0.90, Recall=0.10 -->
+            <text x="90" y="35" fill="#38bdf8" font-size="14" font-weight="bold" text-anchor="middle">Precision = 0.90</text>
+            <rect x="65" y="50" width="50" height="210" rx="8" fill="#0284c7" fill-opacity="0.4" stroke="#38bdf8" stroke-width="2"/>
+
+            <text x="510" y="215" fill="#fbbf24" font-size="14" font-weight="bold" text-anchor="middle">Recall = 0.10</text>
+            <rect x="485" y="235" width="50" height="25" rx="6" fill="#d97706" fill-opacity="0.4" stroke="#fbbf24" stroke-width="2"/>
+
+            <!-- 底線 -->
+            <line x1="40" y1="260" x2="580" y2="260" stroke="#475569" stroke-width="2"/>
+
+            <!-- 算術平均線 (0.50) -->
+            <line x1="65" y1="145" x2="535" y2="145" stroke="#60a5fa" stroke-width="2" stroke-dasharray="6 4"/>
+            <circle cx="300" cy="145" r="7" fill="#3b82f6"/>
+            <rect x="235" y="112" width="130" height="26" rx="6" fill="#1e3a8a" stroke="#3b82f6"/>
+            <text x="300" y="129" fill="#dbeafe" font-size="11" font-weight="bold" text-anchor="middle">算術平均數 = 0.50</text>
+
+            <!-- 幾何交叉線：調和平均高度定位 (經典梯形雙交叉線) -->
+            <line x1="65" y1="50" x2="535" y2="260" stroke="#f43f5e" stroke-width="1.5" stroke-opacity="0.7"/>
+            <line x1="65" y1="260" x2="485" y2="235" stroke="#f43f5e" stroke-width="1.5" stroke-opacity="0.7"/>
+
+            <!-- 調和平均高 = 0.18 -->
+            <line x1="65" y1="218" x2="535" y2="218" stroke="#f43f5e" stroke-width="2.5"/>
+            <circle cx="300" cy="218" r="8" fill="#f43f5e"/>
+            <rect x="220" y="180" width="160" height="28" rx="6" fill="#881337" stroke="#f43f5e"/>
+            <text x="300" y="198" fill="#ffe4e6" font-size="12" font-weight="900" text-anchor="middle">調和平均 F1 = 0.18</text>
+
+            <text x="300" y="295" fill="#cbd5e1" font-size="11" text-anchor="middle">
+              只要其中一端嚴重崩塌（Recall 僅 0.1），調和平均數立刻暴跌至 0.18，嚴厲懲罰！
+            </text>
+          </svg>
+        </div>
+
+        <!-- 說明文字 -->
+        <div class="lg:col-span-5 space-y-4">
+          <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-3">
+            <h3 class="text-lg font-bold text-rose-400">木桶理論（短板效應）的數學體現</h3>
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              在算術平均中，優異的一端（0.90）可以輕易替爛的一端（0.10）掩飾，產生看似尚可及格的「0.50」假象。
+            </p>
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs text-slate-200 font-mono space-y-1">
+              <div>算術平均：$(0.90 + 0.10) / 2 = 0.50$ (虛假安全感)</div>
+              <div class="text-rose-400 font-bold">調和平均：$\frac{2 \times 0.9 \times 0.1}{0.9 + 0.1} = \frac{0.18}{1.0} = 0.18$</div>
+            </div>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              調和平均永遠<strong>偏向較小者</strong>。唯有當兩者同時維持在高水準時，F1 才能取得優質高分。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 【SVG 強化 3】：F-beta 天平與權衡向量圖 -->
+    <section id="section-fbeta-svg" class="space-y-6">
+      <div class="border-l-4 border-teal-500 pl-4">
+        <div class="text-xs font-bold uppercase tracking-wider text-teal-400 font-mono">VECTOR ARCHITECTURE #3</div>
+        <h2 class="text-2xl font-extrabold text-white">$F_\beta$ 天平與權衡向量圖（Trade-off Balance SVG）</h2>
+        <p class="text-slate-400 text-sm">直觀理解 $\beta=0.5$（偏重精準率）、$\beta=1$（平衡）、$\beta=2$（偏重召回率）之天平傾斜法則</p>
+      </div>
+
+      <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-6">
+        <div class="grid md:grid-cols-3 gap-4">
+          <!-- Beta = 0.5 -->
+          <div class="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3 text-center">
+            <span class="text-xs font-bold text-sky-400 px-2.5 py-0.5 rounded-full bg-sky-950/80 border border-sky-800">
+              &beta; = 0.5 (偏重 Precision)
+            </span>
+            <svg viewBox="0 0 200 120" class="w-full h-auto select-none">
+              <!-- 底座 -->
+              <polygon points="100,60 90,110 110,110" fill="#334155"/>
+              <!-- 橫桿（傾斜：左重右輕） -->
+              <line x1="25" y1="80" x2="175" y2="40" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+              <circle cx="100" cy="60" r="5" fill="#ffffff"/>
+              <!-- 盤子 -->
+              <circle cx="25" cy="80" r="16" fill="#0284c7"/>
+              <text x="25" y="84" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">P</text>
+              <circle cx="175" cy="40" r="12" fill="#475569"/>
+              <text x="175" y="44" fill="#cbd5e1" font-size="9" text-anchor="middle">R</text>
+            </svg>
+            <div class="text-xs text-slate-300">
+              <strong class="text-sky-300">寧缺勿濫：</strong>容忍漏放，絕不可冤枉好人。<br>
+              <span class="text-slate-400">例如：垃圾郵件過濾、法院判刑。</span>
+            </div>
+          </div>
+
+          <!-- Beta = 1.0 -->
+          <div class="p-4 bg-slate-950 rounded-2xl border border-indigo-700/60 bg-indigo-950/20 space-y-3 text-center">
+            <span class="text-xs font-bold text-indigo-300 px-2.5 py-0.5 rounded-full bg-indigo-950 border border-indigo-700">
+              &beta; = 1.0 (標準 F1 平衡)
+            </span>
+            <svg viewBox="0 0 200 120" class="w-full h-auto select-none">
+              <!-- 底座 -->
+              <polygon points="100,60 90,110 110,110" fill="#334155"/>
+              <!-- 橫桿（水平完全平衡） -->
+              <line x1="25" y1="60" x2="175" y2="60" stroke="#6366f1" stroke-width="4" stroke-linecap="round"/>
+              <circle cx="100" cy="60" r="5" fill="#ffffff"/>
+              <!-- 盤子 -->
+              <circle cx="25" cy="60" r="14" fill="#4f46e5"/>
+              <text x="25" y="64" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">P</text>
+              <circle cx="175" cy="60" r="14" fill="#4f46e5"/>
+              <text x="175" y="64" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">R</text>
+            </svg>
+            <div class="text-xs text-slate-300">
+              <strong class="text-indigo-300">等重權衡：</strong>P 與 R 同等重要。<br>
+              <span class="text-slate-400">例如：通用分類、問答重疊 Token 評測。</span>
+            </div>
+          </div>
+
+          <!-- Beta = 2.0 -->
+          <div class="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3 text-center">
+            <span class="text-xs font-bold text-amber-400 px-2.5 py-0.5 rounded-full bg-amber-950/80 border border-amber-800">
+              &beta; = 2.0 (偏重 Recall)
+            </span>
+            <svg viewBox="0 0 200 120" class="w-full h-auto select-none">
+              <!-- 底座 -->
+              <polygon points="100,60 90,110 110,110" fill="#334155"/>
+              <!-- 橫桿（傾斜：右重左輕） -->
+              <line x1="25" y1="40" x2="175" y2="80" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"/>
+              <circle cx="100" cy="60" r="5" fill="#ffffff"/>
+              <!-- 盤子 -->
+              <circle cx="25" cy="40" r="12" fill="#475569"/>
+              <text x="25" y="44" fill="#cbd5e1" font-size="9" text-anchor="middle">P</text>
+              <circle cx="175" cy="80" r="16" fill="#d97706"/>
+              <text x="175" y="84" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">R</text>
+            </svg>
+            <div class="text-xs text-slate-300">
+              <strong class="text-amber-300">寧可殺錯不可放過：</strong>漏抓代價極其致命。<br>
+              <span class="text-slate-400">例如：癌症快篩、地震警報、晶圓缺陷檢測。</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-center text-xs text-slate-400">
+          公式定義：$F_\beta = (1 + \beta^2) \frac{P \cdot R}{\beta^2 P + R}$，當 $\beta$ 代表的是 Recall 相較於 Precision 的重要倍數。
+        </div>
+      </div>
+    </section>
+
+    <!-- 03. IPAS AI 考題精析 -->
+    <section id="section-ipas" class="space-y-6">
+      <div class="border-l-4 border-purple-500 pl-4">
+        <div class="text-xs font-bold uppercase tracking-wider text-purple-400 font-mono">MODULE 03</div>
+        <h2 class="text-2xl font-extrabold text-white">經濟部 IPAS AI 應用工程師能力鑑定 — 必考經典題實戰</h2>
+        <p class="text-slate-400 text-sm">經濟部官方能力鑑定「機器學習與深度學習」常考題型與速算解析</p>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-6">
+        <!-- 考題 1 -->
+        <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-4 flex flex-col justify-between">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="px-3 py-0.5 rounded-full text-xs font-bold bg-purple-950 text-purple-300 border border-purple-800">IPAS 試題 #1：指標數值速算</span>
+              <span class="text-xs text-slate-400">難易度：★★☆☆☆</span>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-200 leading-relaxed font-medium">
+              某製造廠以 AI 模型進行半導體晶圓瑕疵篩檢。在 1000 顆晶圓中，實際上僅有 50 顆為瑕疵品（Positive）。模型預測為瑕疵品的共有 60 顆，其中有 40 顆為真正的瑕疵品。試問此模型的 Precision、Recall 與 F1-score 分別為何？
+            </p>
+          </div>
+          <details class="group bg-slate-950 rounded-2xl p-4 border border-slate-800">
+            <summary class="cursor-pointer text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center justify-between">
+              <span>點擊展開題解步驟與速算密技</span>
+              <span class="group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div class="mt-3 text-xs space-y-2 border-t border-slate-800/80 pt-3 text-slate-300">
+              <p><strong class="text-slate-100">【解題步驟】</strong></p>
+              <p>• 提煉計數：$TP = 40$，$FP = 60 - 40 = 20$，$FN = 50 - 40 = 10$。</p>
+              <p>• $\text{Precision} = \frac{TP}{TP + FP} = \frac{40}{60} \approx 66.67\%$。</p>
+              <p>• $\text{Recall} = \frac{TP}{TP + FN} = \frac{40}{50} = 80.0\%$。</p>
+              <p class="text-emerald-400 font-bold">
+                【IPAS 速算口訣】代入 $F_1 = \frac{2TP}{2TP + FP + FN} = \frac{80}{80 + 20 + 10} = \frac{80}{110} \approx 72.73\%$ 最快！
+              </p>
+            </div>
+          </details>
+        </div>
+
+        <!-- 考題 2 -->
+        <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-4 flex flex-col justify-between">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="px-3 py-0.5 rounded-full text-xs font-bold bg-purple-950 text-purple-300 border border-purple-800">IPAS 試題 #2：情境指標決策</span>
+              <span class="text-xs text-slate-400">難易度：★★★☆☆</span>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-200 leading-relaxed font-medium">
+              在醫院推行「惡性腫瘤早期電腦斷層快篩」專案時，若發生漏診（把癌症誤判為健康），病患將錯失黃金治療期而喪命。工程師欲評估多個深度學習模型，應優先採用何種指標？若使用 $F_\beta$ 應如何設定？
+            </p>
+          </div>
+          <details class="group bg-slate-950 rounded-2xl p-4 border border-slate-800">
+            <summary class="cursor-pointer text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center justify-between">
+              <span>點擊展開題解步驟與分析</span>
+              <span class="group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div class="mt-3 text-xs space-y-2 border-t border-slate-800/80 pt-3 text-slate-300">
+              <p class="text-emerald-400 font-bold">正確決策：應優先關注 Recall（召回率），並採用 $F_2$-score ($\beta=2$)。</p>
+              <p><strong class="text-slate-100">【決策解析】</strong></p>
+              <p>• 漏診對應混淆矩陣中的 <strong>FN（偽負例）</strong>。當 FN 增加時，Recall 顯著下降。</p>
+              <p>• 誤報（FP）僅需醫師人工複檢，但漏報（FN）會致命。故召回率的重要性高於精準率，應挑選 $\beta > 1$ 的 $F_2$-score 作為驗收門檻。</p>
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04, 05, 07: 實務特徵、歷史由來、工業應用 -->
+    <section class="grid lg:grid-cols-3 gap-6">
+      <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-3">
+        <div class="text-xs font-bold uppercase tracking-wider text-teal-400 font-mono">04. 實務特徵</div>
+        <h3 class="text-base font-bold text-white">模型工程師必須警惕的特性</h3>
+        <ul class="text-xs space-y-2 text-slate-300 list-disc list-inside">
+          <li><strong class="text-slate-100">完全忽視 TN：</strong> 公式中不含 TN，對百萬筆正確負例鈍化，絕不受龐大背景干擾。</li>
+          <li><strong class="text-slate-100">PR-AUC vs ROC-AUC：</strong> 極端不平衡（如 99.9% 負例）下，ROC 會盲目樂觀虛高，PR-AUC 與 F1 才能反映真實力。</li>
+          <li><strong class="text-slate-100">門檻敏感：</strong> 0.5 幾乎永遠不是 F1 最佳切分點，實務必須掃描閥值。</li>
+        </ul>
+      </div>
+
+      <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-3">
+        <div class="text-xs font-bold uppercase tracking-wider text-indigo-400 font-mono">05. 歷史由來</div>
+        <h3 class="text-base font-bold text-white">資訊檢索學派之起源</h3>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          1979 年，計算機科學家 <strong class="text-indigo-300">C. J. van Rijsbergen</strong> 在《Information Retrieval》中提出 E-measure 衡量檢索有效性。1992 年 MUC-4 評測正式確立 $F = 1 - E$ 形式。當精準率與召回率權重相同時，即誕生聞名世界的 <strong class="text-teal-300">F1-Score</strong>。
+        </p>
+      </div>
+
+      <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-3">
+        <div class="text-xs font-bold uppercase tracking-wider text-emerald-400 font-mono">07. 工業上應用</div>
+        <h3 class="text-base font-bold text-white">三大產線關鍵任務</h3>
+        <ul class="text-xs space-y-2 text-slate-300">
+          <li>• <strong class="text-slate-100">半導體 AOI 缺陷檢測：</strong> 缺陷率低於 0.1%，必須使用 F1 檢視微小刮痕漏檢與誤判。</li>
+          <li>• <strong class="text-slate-100">醫學影像分割 (Segmentation)：</strong> 評估腫瘤輪廓的 <strong>Dice 相似係數</strong>，數學本質與二元 F1 完全等價！</li>
+          <li>• <strong class="text-slate-100">信用卡即時防盜刷：</strong> 數百萬筆交易中只有數十筆盜刷，以 F1 平衡用戶卡片被鎖的民怨與銀行損失。</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 08 & 09: 理論簡介與互動數學推導 -->
+    <section id="section-derivation" class="space-y-6">
+      <div class="border-l-4 border-indigo-500 pl-4">
+        <div class="text-xs font-bold uppercase tracking-wider text-indigo-400 font-mono">MODULE 08 & 09</div>
+        <h2 class="text-2xl font-extrabold text-white">理論簡介與代數逐步推導</h2>
+        <p class="text-slate-400 text-sm">從調和平均定義出發，一步步通分約分推導至混淆矩陣經典公式</p>
+      </div>
+
+      <div class="p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 space-y-6">
+        <div>
+          <h3 class="text-base font-bold text-white mb-2">1. 多分類聚合：Macro, Micro, Weighted F1</h3>
+          <p class="text-xs text-slate-300 leading-relaxed mb-3">
+            面對多元分類時，常見三種彙總方式：
+          </p>
+          <div class="grid sm:grid-cols-3 gap-3 text-xs">
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <strong class="text-sky-300 block mb-1">Macro-F1 (類別平等)</strong>
+              各自計算每個類別的 F1，再取算術平均。對小樣本稀有類別最嚴格。
+            </div>
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <strong class="text-emerald-300 block mb-1">Micro-F1 (全域樣本平等)</strong>
+              將所有類別的 TP, FP, FN 累加後計算單一 F1，在單標籤下數值等同於 Accuracy。
+            </div>
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <strong class="text-amber-300 block mb-1">Weighted-F1 (加權平均)</strong>
+              依據每個類別的真實樣本數量（Support）進行權重分配。
+            </div>
+          </div>
+        </div>
+
+        <div class="border-t border-slate-800 pt-6">
+          <h3 class="text-base font-bold text-white mb-3">2. 步步推導證明（點擊展開各推導環節）</h3>
+          <div class="space-y-3 font-mono text-xs text-slate-300">
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+              <span class="text-sky-400 font-bold">Step 1: 定義式</span>
+              $$F_1 = \frac{2}{\frac{1}{P} + \frac{1}{R}} = \frac{2 \cdot P \cdot R}{P + R}$$
+            </div>
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+              <span class="text-amber-400 font-bold">Step 2: 代入 $P = \frac{TP}{TP+FP}$ 與 $R = \frac{TP}{TP+FN}$</span>
+              <p class="mt-2">分子項：$2 \cdot P \cdot R = 2 \cdot \frac{TP}{TP+FP} \cdot \frac{TP}{TP+FN} = \frac{2 \cdot TP^2}{(TP+FP)(TP+FN)}$</p>
+              <p class="mt-1">分母項：$P + R = \frac{TP(TP+FN) + TP(TP+FP)}{(TP+FP)(TP+FN)} = \frac{TP(2TP + FP + FN)}{(TP+FP)(TP+FN)}$</p>
+            </div>
+            <div class="p-3 bg-slate-950 rounded-xl border border-emerald-800/80 text-emerald-300">
+              <span class="font-bold">Step 3: 上下約分抵消相同分母 $(TP+FP)(TP+FN)$ 及一個 $TP$：</span>
+              <div class="text-sm font-bold mt-2">
+                $$F_1 = \frac{2 \cdot TP}{2 \cdot TP + FP + FN}$$
+              </div>
+              <div class="text-[11px] text-slate-400 mt-1 font-sans">
+                這就是混淆矩陣中最經典且不含 TN 的 F1-Score 算式！
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. 領域互動應用實驗室 + SVG 動態儀表盤 -->
+    <section id="section-interactive" class="space-y-6">
+      <div class="border-l-4 border-emerald-500 pl-4">
+        <div class="text-xs font-bold uppercase tracking-wider text-emerald-400 font-mono">MODULE 10</div>
+        <h2 class="text-2xl font-extrabold text-white">領域互動應用實驗室 (Live Interactive Laboratory)</h2>
+        <p class="text-slate-400 text-sm">調整混淆矩陣滑桿與數值，即時驅動 SVG 儀表指針與多元評估指標</p>
+      </div>
+
+      <div class="grid lg:grid-cols-12 gap-6">
+        <!-- 數值輸入與控制 -->
+        <div class="lg:col-span-6 p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-5">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-white text-base">混淆矩陣輸入盤</h3>
+            <button id="btn-reset-cm" class="text-xs text-slate-400 hover:text-white underline">重置預設</button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 text-center">
+            <!-- TP -->
+            <div class="bg-emerald-950/40 border border-emerald-700/60 p-3 rounded-2xl">
+              <span class="text-xs font-bold text-emerald-400 block">TP (抓對好正例)</span>
+              <input type="range" id="slider-tp" min="1" max="1000" value="85" class="w-full mt-2 accent-emerald-500">
+              <input type="number" id="input-tp" min="1" max="50000" value="85" class="w-full mt-1 bg-slate-900 border border-emerald-800 rounded px-2 py-1 text-center font-mono font-bold text-white text-sm">
+            </div>
+            <!-- FP -->
+            <div class="bg-rose-950/40 border border-rose-700/60 p-3 rounded-2xl">
+              <span class="text-xs font-bold text-rose-400 block">FP (冒失冤枉好人)</span>
+              <input type="range" id="slider-fp" min="0" max="1000" value="15" class="w-full mt-2 accent-rose-500">
+              <input type="number" id="input-fp" min="0" max="50000" value="15" class="w-full mt-1 bg-slate-900 border border-rose-800 rounded px-2 py-1 text-center font-mono font-bold text-white text-sm">
+            </div>
+            <!-- FN -->
+            <div class="bg-amber-950/40 border border-amber-700/60 p-3 rounded-2xl">
+              <span class="text-xs font-bold text-amber-400 block">FN (粗心放過壞人)</span>
+              <input type="range" id="slider-fn" min="0" max="1000" value="25" class="w-full mt-2 accent-amber-500">
+              <input type="number" id="input-fn" min="0" max="50000" value="25" class="w-full mt-1 bg-slate-900 border border-amber-800 rounded px-2 py-1 text-center font-mono font-bold text-white text-sm">
+            </div>
+            <!-- TN -->
+            <div class="bg-slate-800/40 border border-slate-700/60 p-3 rounded-2xl">
+              <span class="text-xs font-bold text-slate-400 block">TN (正確排除負例)</span>
+              <input type="range" id="slider-tn" min="0" max="5000" value="875" class="w-full mt-2 accent-slate-400">
+              <input type="number" id="input-tn" min="0" max="100000" value="875" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-center font-mono font-bold text-white text-sm">
+            </div>
+          </div>
+
+          <!-- Beta 調整 -->
+          <div class="space-y-1.5 pt-2 border-t border-slate-800">
+            <div class="flex justify-between text-xs">
+              <span class="text-slate-300">F-beta 之 $\beta$ 權重: <strong id="val-beta" class="text-sky-400 font-mono">1.0</strong></span>
+              <span class="text-slate-500">&beta;&lt;1 偏重 P，&beta;&gt;1 偏重 R</span>
+            </div>
+            <input type="range" id="slider-beta" min="0.1" max="3.0" step="0.1" value="1.0" class="w-full accent-sky-500">
+          </div>
+        </div>
+
+        <!-- 讀數與 SVG 指針儀表盤 -->
+        <div class="lg:col-span-6 p-6 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-6">
+          <div class="grid sm:grid-cols-2 gap-4 items-center">
+            <!-- SVG 半圓儀表盤 -->
+            <div class="flex flex-col items-center">
+              <svg viewBox="0 0 200 120" class="w-48 h-auto select-none">
+                <!-- 儀表背景弧線 -->
+                <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#1e293b" stroke-width="14" stroke-linecap="round"/>
+                <!-- 刻度漸層彩色弧線 -->
+                <path id="gauge-arc" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#g-f1)" stroke-width="14" stroke-linecap="round" stroke-dasharray="251" stroke-dashoffset="50"/>
+                <!-- 指針 (半徑 70, 樞紐 (100, 100)) -->
+                <line id="gauge-needle" x1="100" y1="100" x2="100" y2="35" stroke="#ffffff" stroke-width="3" stroke-linecap="round" transform="rotate(0 100 100)" class="transition-transform duration-300"/>
+                <circle cx="100" cy="100" r="7" fill="#6366f1"/>
+                <text x="100" y="118" fill="#a5b4fc" font-size="11" font-weight="bold" text-anchor="middle">F1 指針儀表</text>
+              </svg>
+              <div class="text-center mt-1">
+                <span id="metric-f1-lg" class="text-3xl font-black font-mono text-cyan-400">0.0000</span>
+              </div>
+            </div>
+
+            <!-- 四大指標數值格 -->
+            <div class="grid grid-cols-2 gap-2 text-center text-xs font-mono">
+              <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                <span class="text-slate-400 block text-[10px]">Precision</span>
+                <span id="metric-p" class="text-sky-400 font-bold text-sm">0.00%</span>
+              </div>
+              <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                <span class="text-slate-400 block text-[10px]">Recall</span>
+                <span id="metric-r" class="text-amber-400 font-bold text-sm">0.00%</span>
+              </div>
+              <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                <span class="text-slate-400 block text-[10px]">Accuracy</span>
+                <span id="metric-acc" class="text-slate-300 font-bold text-sm">0.00%</span>
+              </div>
+              <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                <span class="text-slate-400 block text-[10px]">Specificity</span>
+                <span id="metric-spec" class="text-teal-400 font-bold text-sm">0.00%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 進階指標 -->
+          <div class="grid grid-cols-3 gap-2 text-center text-xs font-mono">
+            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+              <span class="text-slate-400 block text-[10px]" id="label-fbeta">F_beta</span>
+              <span id="metric-fbeta" class="text-teal-400 font-bold text-sm">0.0000</span>
+            </div>
+            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">MCC (馬修斯相關)</span>
+              <span id="metric-mcc" class="text-purple-400 font-bold text-sm">0.0000</span>
+            </div>
+            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">Balanced Acc</span>
+              <span id="metric-ba" class="text-indigo-400 font-bold text-sm">0.00%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 【SVG 強化 4】：深度學習 Soft-F1 Loss 可微性架構 SVG 圖 -->
+    <section class="space-y-6">
+      <div class="border-l-4 border-cyan-500 pl-4">
+        <div class="text-xs font-bold uppercase tracking-wider text-cyan-400 font-mono">VECTOR ARCHITECTURE #4</div>
+        <h2 class="text-2xl font-extrabold text-white">深度學習 Soft-F1 Loss：可微性架構向量圖</h2>
+        <p class="text-slate-400 text-sm">為什麼標準 F1 無法直接反向傳播？平滑可微軟性混淆矩陣的數學計算圖</p>
+      </div>
+
+      <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl overflow-hidden">
+        <div class="w-full overflow-x-auto">
+          <svg viewBox="0 0 900 280" class="w-full min-w-[700px] h-auto select-none font-sans">
+            <!-- 不可微階躍 -->
+            <g transform="translate(20, 20)">
+              <rect width="400" height="240" rx="16" fill="#0b1120" stroke="#f43f5e" stroke-width="1.5"/>
+              <text x="200" y="30" fill="#f43f5e" font-size="13" font-weight="bold" text-anchor="middle">❌ 標準 F1：硬性門檻 (階躍不可微)</text>
+              <line x1="50" y1="130" x2="350" y2="130" stroke="#334155" stroke-width="1"/>
+              <!-- 階躍函數圖 -->
+              <path d="M 60 180 L 190 180 L 190 80 L 340 80" fill="none" stroke="#f43f5e" stroke-width="3"/>
+              <circle cx="190" cy="180" r="4" fill="#0b1120" stroke="#f43f5e" stroke-width="2"/>
+              <circle cx="190" cy="80" r="4" fill="#f43f5e"/>
+              <text x="190" y="200" fill="#94a3b8" font-size="10" text-anchor="middle">Threshold = 0.5</text>
+              <rect x="50" y="150" width="130" height="22" rx="4" fill="#881337" fill-opacity="0.5"/>
+              <text x="115" y="165" fill="#fda4af" font-size="10" font-weight="bold" text-anchor="middle">梯度 = 0 (無法反向傳播)</text>
+            </g>
+
+            <!-- 可微 Soft-F1 -->
+            <g transform="translate(460, 20)">
+              <rect width="420" height="240" rx="16" fill="#0b1120" stroke="#10b981" stroke-width="1.5"/>
+              <text x="210" y="30" fill="#34d399" font-size="13" font-weight="bold" text-anchor="middle">✅ Soft-F1 Loss：連續機率點乘 (全域可導)</text>
+              <!-- Sigmoid 平滑曲線 -->
+              <path d="M 60 190 C 130 190, 150 150, 210 135 C 270 120, 290 80, 360 80" fill="none" stroke="#34d399" stroke-width="3"/>
+              <text x="210" y="160" fill="#a7f3d0" font-size="10" text-anchor="middle">連續機率 $\hat{y} = \sigma(z) \in (0,1)$</text>
+
+              <g transform="translate(30, 180)">
+                <rect width="360" height="42" rx="8" fill="#064e3b" fill-opacity="0.6" stroke="#059669"/>
+                <text x="180" y="25" fill="#6ee7b7" font-size="11" font-family="monospace" text-anchor="middle">
+                  Soft_TP = &Sigma;(&hat;y &times; y), &part;Loss/&part;z &ne; 0 梯度通暢！
+                </text>
+              </g>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11. Python / PyTorch 實作 -->
+    <section id="section-code" class="space-y-6">
+      <div class="border-l-4 border-teal-500 pl-4">
+        <div class="text-xs font-bold uppercase tracking-wider text-teal-400 font-mono">MODULE 11</div>
+        <h2 class="text-2xl font-extrabold text-white">Python (Scikit-Learn) & PyTorch 可微 Soft-F1 Loss 實作</h2>
+        <p class="text-slate-400 text-sm">重點函式與關鍵運算子採用色彩標記高亮，可直接複製至專案使用</p>
+      </div>
+
+      <div class="grid lg:grid-cols-2 gap-6">
+        <!-- Scikit-Learn -->
+        <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-sky-400 text-sm">評估階段：Scikit-Learn 二元與多元 F1</h3>
+            <span class="text-xs text-slate-400 font-mono">eval_f1.py</span>
+          </div>
+          <pre class="bg-slate-950 p-4 rounded-2xl text-xs font-mono overflow-x-auto text-slate-200 leading-relaxed border border-slate-800">
+<span class="c-kw">import</span> numpy <span class="c-kw">as</span> np
+<span class="c-kw">from</span> sklearn.metrics <span class="c-kw">import</span> (
+    <span class="c-fn">f1_score</span>, 
+    <span class="c-fn">precision_score</span>, 
+    <span class="c-fn">recall_score</span>
+)
+
+y_true = np.<span class="c-fn">array</span>([<span class="c-num">0</span>, <span class="c-num">1</span>, <span class="c-num">1</span>, <span class="c-num">0</span>, <span class="c-num">1</span>, <span class="c-num">0</span>, <span class="c-num">0</span>, <span class="c-num">1</span>, <span class="c-num">0</span>, <span class="c-num">1</span>])
+y_pred = np.<span class="c-fn">array</span>([<span class="c-num">0</span>, <span class="c-num">1</span>, <span class="c-num">0</span>, <span class="c-num">0</span>, <span class="c-num">1</span>, <span class="c-num">0</span>, <span class="c-num">1</span>, <span class="c-num">1</span>, <span class="c-num">0</span>, <span class="c-num">1</span>])
+
+<span class="c-cm"># 1. 計算標準二元 F1-score</span>
+f1 = <span class="c-fn">f1_score</span>(y_true, y_pred, average=<span class="c-str">'binary'</span>)
+prec = <span class="c-fn">precision_score</span>(y_true, y_pred)
+rec = <span class="c-fn">recall_score</span>(y_true, y_pred)
+
+<span class="c-fn">print</span>(<span class="c-str">f"Precision: {prec:.4f}, Recall: {rec:.4f}, F1: {f1:.4f}"</span>)
+
+<span class="c-cm"># 2. 多分類聚合：Macro vs Micro</span>
+<span class="c-cm"># f1_macro = f1_score(y_true, y_pred, average='macro')</span>
+</pre>
+        </div>
+
+        <!-- PyTorch 可微 Soft-F1 Loss -->
+        <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-emerald-400 text-sm">訓練階段：PyTorch 可微 Soft-F1 損失函式</h3>
+            <span class="text-xs text-slate-400 font-mono">soft_f1_loss.py</span>
+          </div>
+          <pre class="bg-slate-950 p-4 rounded-2xl text-xs font-mono overflow-x-auto text-slate-200 leading-relaxed border border-slate-800">
+<span class="c-kw">import</span> torch
+<span class="c-kw">import</span> torch.nn <span class="c-kw">as</span> nn
+
+<span class="c-kw">class</span> <span class="c-cls">SoftF1Loss</span>(nn.Module):
+    <span class="c-str">"""利用 Sigmoid 連續機率點乘構建平滑混淆矩陣，支援梯度反向傳播"""</span>
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(self, eps=<span class="c-num">1e-7</span>):
+        <span class="c-fn">super</span>().<span class="c-fn">__init__</span>()
+        self.eps = eps
+
+    <span class="c-kw">def</span> <span class="c-fn">forward</span>(self, <span class="c-var">logits</span>, <span class="c-var">targets</span>):
+        <span class="c-cm"># 1. 通過 Sigmoid 轉換為平滑連續機率</span>
+        probs = torch.<span class="c-fn">sigmoid</span>(<span class="c-var">logits</span>)
+        
+        <span class="c-cm"># 2. 計算連續可導的軟性交集 (Soft Counts)</span>
+        tp = torch.<span class="c-fn">sum</span>(probs * <span class="c-var">targets</span>)
+        fp = torch.<span class="c-fn">sum</span>(probs * (<span class="c-num">1.0</span> - <span class="c-var">targets</span>))
+        fn = torch.<span class="c-fn">sum</span>((<span class="c-num">1.0</span> - probs) * <span class="c-var">targets</span>)
+        
+        <span class="c-cm"># 3. Soft-F1 平滑度量</span>
+        soft_f1 = (<span class="c-num">2.0</span> * tp + self.eps) / (<span class="c-num">2.0</span> * tp + fp + fn + self.eps)
+        
+        <span class="c-cm"># 損失函數為 1 - F1 (最小化 Loss 相當於最大化 F1)</span>
+        <span class="c-kw">return</span> <span class="c-num">1.0</span> - soft_f1
+</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- 12. 模擬：Step by step 與 一鍵自動模擬 -->
+    <section id="section-simulation" class="space-y-6">
+      <div class="border-l-4 border-emerald-500 pl-4">
+        <div class="text-xs font-bold uppercase tracking-wider text-emerald-400 font-mono">MODULE 12</div>
+        <h2 class="text-2xl font-extrabold text-white">分類門檻值動態模擬系統 (Step by Step & Auto Optimize)</h2>
+        <p class="text-slate-400 text-sm">內建 200 筆高度不平衡樣本，動態掃描並尋找最佳 F1-score 最佳切分閾值</p>
+      </div>
+
+      <div class="p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 space-y-6 shadow-2xl">
+        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+          系統已生成 <strong class="text-rose-400">200 筆不平衡測試樣本</strong>（含 20 筆正例 [10%]、180 筆負例 [90%]）。拖曳閥值滑桿，或點擊「Step by Step」逐步演進與「一鍵自動尋優」，即時觀察在 PR-Curve 上的打點軌跡！
+        </p>
+
+        <!-- 工具列 -->
+        <div class="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-950 rounded-2xl border border-slate-800">
+          <div class="flex items-center space-x-3">
+            <span class="text-xs font-bold text-slate-300">決策閥值 (Threshold):</span>
+            <input type="range" id="sim-threshold" min="0.05" max="0.95" step="0.01" value="0.50" class="w-44 sm:w-64 accent-teal-400">
+            <span id="sim-threshold-val" class="font-mono text-sm font-bold text-teal-400">0.50</span>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <button id="btn-step-prev" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded-xl text-slate-200 transition">
+              ◀ Step Back
+            </button>
+            <button id="btn-step-next" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded-xl text-slate-200 transition">
+              Step Next ▶
+            </button>
+            <button id="btn-auto-opt" class="px-4 py-1.5 bg-gradient-to-r from-teal-400 to-emerald-500 hover:from-teal-300 hover:to-emerald-400 text-xs font-black rounded-xl text-slate-950 shadow-lg transition">
+              ⚡ 一鍵自動尋找最佳 F1 門檻
+            </button>
+          </div>
+        </div>
+
+        <!-- 畫布與讀數 -->
+        <div class="grid lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-8 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+            <div class="flex flex-wrap justify-between items-center mb-2 text-xs gap-2">
+              <span class="font-bold text-slate-300">動態曲線 (P-R 軌跡與 F1 響應)</span>
+              <div class="flex gap-4 font-mono text-[11px]">
+                <span class="text-sky-400">■ 精準率 P</span>
+                <span class="text-amber-400">■ 召回率 R</span>
+                <span class="text-emerald-400">■ F1-Score</span>
+              </div>
+            </div>
+            <!-- Canvas 曲線畫布 -->
+            <canvas id="curve-canvas" width="600" height="260" class="w-full h-64 bg-slate-900/60 rounded-xl"></canvas>
+          </div>
+
+          <!-- 讀數卡片 -->
+          <div class="lg:col-span-4 flex flex-col justify-between space-y-4">
+            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-teal-400 font-mono">當前閥值計數結果</h4>
+              <div class="grid grid-cols-2 gap-2 text-center text-xs font-mono">
+                <div class="bg-slate-900 p-2 rounded-xl">
+                  <span class="text-slate-400 block text-[10px]">TP (抓對正例)</span>
+                  <span id="sim-tp" class="text-emerald-400 font-bold text-base">0</span>
+                </div>
+                <div class="bg-slate-900 p-2 rounded-xl">
+                  <span class="text-slate-400 block text-[10px]">FP (誤判好人)</span>
+                  <span id="sim-fp" class="text-rose-400 font-bold text-base">0</span>
+                </div>
+                <div class="bg-slate-900 p-2 rounded-xl">
+                  <span class="text-slate-400 block text-[10px]">FN (漏掉壞人)</span>
+                  <span id="sim-fn" class="text-amber-400 font-bold text-base">0</span>
+                </div>
+                <div class="bg-slate-900 p-2 rounded-xl">
+                  <span class="text-slate-400 block text-[10px]">TN (正確排除)</span>
+                  <span id="sim-tn" class="text-slate-300 font-bold text-base">0</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-slate-950 p-4 rounded-2xl border border-emerald-800/60 space-y-2">
+              <div class="flex justify-between items-center">
+                <span class="text-xs text-slate-400">當前 F1 指標：</span>
+                <span id="sim-current-f1" class="text-2xl font-black font-mono text-emerald-400">0.0000</span>
+              </div>
+              <div class="text-[11px] text-slate-400 leading-tight">
+                最佳極值：Threshold = <span id="best-th" class="font-mono text-teal-300 font-bold">--</span>，最高 F1 = <span id="best-f1" class="font-mono text-teal-300 font-bold">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="border-t border-slate-800 py-10 bg-slate-950 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 space-y-2">
+      <p class="font-semibold text-slate-400">F1-Score 終極全方位解析與動態模擬系統</p>
+      <p>涵蓋向量 SVG 架構解析 • IPAS AI 應用工程師評測範疇 • PyTorch 可微梯度計算</p>
+    </div>
+  </footer>
+
+  <!-- 交互系統腳本 -->
+  <script>
+    // --- 10. 互動實驗室 (Confusion Matrix) 邏輯 ---
+    const inTp = document.getElementById('input-tp');
+    const inFp = document.getElementById('input-fp');
+    const inFn = document.getElementById('input-fn');
+    const inTn = document.getElementById('input-tn');
+    const slTp = document.getElementById('slider-tp');
+    const slFp = document.getElementById('slider-fp');
+    const slFn = document.getElementById('slider-fn');
+    const slTn = document.getElementById('slider-tn');
+    const sliderBeta = document.getElementById('slider-beta');
+    const valBeta = document.getElementById('val-beta');
+
+    const mAcc = document.getElementById('metric-acc');
+    const mP = document.getElementById('metric-p');
+    const mR = document.getElementById('metric-r');
+    const mSpec = document.getElementById('metric-spec');
+    const mF1Lg = document.getElementById('metric-f1-lg');
+    const mFbeta = document.getElementById('metric-fbeta');
+    const mMcc = document.getElementById('metric-mcc');
+    const mBa = document.getElementById('metric-ba');
+    const labelFbeta = document.getElementById('label-fbeta');
+    const gaugeNeedle = document.getElementById('gauge-needle');
+
+    function syncInputs(source, target) {
+      target.value = source.value;
+      calculateMetrics();
+    }
+
+    inTp.addEventListener('input', () => syncInputs(inTp, slTp));
+    slTp.addEventListener('input', () => syncInputs(slTp, inTp));
+    inFp.addEventListener('input', () => syncInputs(inFp, slFp));
+    slFp.addEventListener('input', () => syncInputs(slFp, inFp));
+    inFn.addEventListener('input', () => syncInputs(inFn, slFn));
+    slFn.addEventListener('input', () => syncInputs(slFn, inFn));
+    inTn.addEventListener('input', () => syncInputs(inTn, slTn));
+    slTn.addEventListener('input', () => syncInputs(slTn, inTn));
+
+    function calculateMetrics() {
+      const tp = Math.max(0, parseFloat(inTp.value) || 0);
+      const fp = Math.max(0, parseFloat(inFp.value) || 0);
+      const fn = Math.max(0, parseFloat(inFn.value) || 0);
+      const tn = Math.max(0, parseFloat(inTn.value) || 0);
+      const beta = parseFloat(sliderBeta.value) || 1.0;
+
+      valBeta.textContent = beta.toFixed(1);
+      labelFbeta.textContent = `F_${beta.toFixed(1)}`;
+
+      const total = tp + fp + fn + tn;
+      const acc = total > 0 ? (tp + tn) / total : 0;
+      const p = (tp + fp) > 0 ? tp / (tp + fp) : 0;
+      const r = (tp + fn) > 0 ? tp / (tp + fn) : 0;
+      const spec = (tn + fp) > 0 ? tn / (tn + fp) : 0;
+      const f1 = (p + r) > 0 ? (2 * p * r) / (p + r) : 0;
+
+      const betaSq = beta * beta;
+      const fbeta = (betaSq * p + r) > 0 ? (1 + betaSq) * (p * r) / (betaSq * p + r) : 0;
+
+      // MCC
+      const mccNumerator = (tp * tn) - (fp * fn);
+      const mccDenominator = Math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn));
+      const mcc = mccDenominator > 0 ? mccNumerator / mccDenominator : 0;
+
+      const ba = (r + spec) / 2;
+
+      mAcc.textContent = (acc * 100).toFixed(2) + '%';
+      mP.textContent = (p * 100).toFixed(2) + '%';
+      mR.textContent = (r * 100).toFixed(2) + '%';
+      mSpec.textContent = (spec * 100).toFixed(2) + '%';
+      mF1Lg.textContent = f1.toFixed(4);
+      mFbeta.textContent = fbeta.toFixed(4);
+      mMcc.textContent = mcc.toFixed(4);
+      mBa.textContent = (ba * 100).toFixed(2) + '%';
+
+      // SVG 指針旋轉 (-90度到 +90度)
+      const deg = -90 + (f1 * 180);
+      gaugeNeedle.setAttribute('transform', `rotate(${deg} 100 100)`);
+    }
+
+    sliderBeta.addEventListener('input', calculateMetrics);
+
+    document.getElementById('btn-reset-cm').addEventListener('click', () => {
+      setScenario(85, 15, 25, 875);
+      sliderBeta.value = 1.0;
+      calculateMetrics();
+    });
+
+    window.setScenario = function(tp, fp, fn, tn) {
+      inTp.value = tp; slTp.value = Math.min(1000, tp);
+      inFp.value = fp; slFp.value = Math.min(1000, fp);
+      inFn.value = fn; slFn.value = Math.min(1000, fn);
+      inTn.value = tn; slTn.value = Math.min(5000, tn);
+      calculateMetrics();
+    };
+
+    window.scrollToLab = function() {
+      const el = document.getElementById('section-interactive');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    calculateMetrics();
+
+    // --- 12. 動態門檻值模擬器 (Canvas + Synthetic dataset) ---
+    const simulatedData = [];
+    (function generateSyntheticDataset() {
+      // 180 筆負樣本 (偏向低預測分)
+      for (let i = 0; i < 180; i++) {
+        const prob = Math.pow(Math.random(), 2.4) * 0.72;
+        simulatedData.push({ y: 0, prob: Math.min(0.99, Math.max(0.01, prob)) });
+      }
+      // 20 筆正樣本 (偏向高預測分)
+      for (let i = 0; i < 20; i++) {
+        const prob = 1 - Math.pow(Math.random(), 1.9) * 0.65;
+        simulatedData.push({ y: 1, prob: Math.min(0.99, Math.max(0.08, prob)) });
+      }
+    })();
+
+    const simThreshold = document.getElementById('sim-threshold');
+    const simThresholdVal = document.getElementById('sim-threshold-val');
+    const simTp = document.getElementById('sim-tp');
+    const simFp = document.getElementById('sim-fp');
+    const simFn = document.getElementById('sim-fn');
+    const simTn = document.getElementById('sim-tn');
+    const simCurrentF1 = document.getElementById('sim-current-f1');
+    const bestThSpan = document.getElementById('best-th');
+    const bestF1Span = document.getElementById('best-f1');
+    const canvas = document.getElementById('curve-canvas');
+    const ctx = canvas.getContext('2d');
+
+    const curvePoints = [];
+    let globalBest = { th: 0.5, f1: -1 };
+
+    for (let th = 0.05; th <= 0.95; th += 0.01) {
+      let tp = 0, fp = 0, fn = 0, tn = 0;
+      simulatedData.forEach(item => {
+        const pred = item.prob >= th ? 1 : 0;
+        if (pred === 1 && item.y === 1) tp++;
+        else if (pred === 1 && item.y === 0) fp++;
+        else if (pred === 0 && item.y === 1) fn++;
+        else tn++;
+      });
+      const p = (tp + fp) > 0 ? tp / (tp + fp) : 0;
+      const r = (tp + fn) > 0 ? tp / (tp + fn) : 0;
+      const f1 = (p + r) > 0 ? (2 * p * r) / (p + r) : 0;
+
+      if (f1 > globalBest.f1) {
+        globalBest = { th: parseFloat(th.toFixed(2)), f1: parseFloat(f1.toFixed(4)) };
+      }
+      curvePoints.push({ th, p, r, f1 });
+    }
+    bestThSpan.textContent = globalBest.th;
+    bestF1Span.textContent = globalBest.f1;
+
+    function renderSimulation() {
+      const th = parseFloat(simThreshold.value);
+      simThresholdVal.textContent = th.toFixed(2);
+
+      let tp = 0, fp = 0, fn = 0, tn = 0;
+      simulatedData.forEach(item => {
+        const pred = item.prob >= th ? 1 : 0;
+        if (pred === 1 && item.y === 1) tp++;
+        else if (pred === 1 && item.y === 0) fp++;
+        else if (pred === 0 && item.y === 1) fn++;
+        else tn++;
+      });
+
+      simTp.textContent = tp;
+      simFp.textContent = fp;
+      simFn.textContent = fn;
+      simTn.textContent = tn;
+
+      const p = (tp + fp) > 0 ? tp / (tp + fp) : 0;
+      const r = (tp + fn) > 0 ? tp / (tp + fn) : 0;
+      const f1 = (p + r) > 0 ? (2 * p * r) / (p + r) : 0;
+      simCurrentF1.textContent = f1.toFixed(4);
+
+      drawCanvas(th);
+    }
+
+    function drawCanvas(currentTh) {
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const padX = 35;
+      const padY = 25;
+      const plotW = w - padX * 2;
+      const plotH = h - padY * 2;
+
+      // 網格線
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i++) {
+        const y = padY + (plotH / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(padX, y);
+        ctx.lineTo(w - padX, y);
+        ctx.stroke();
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px monospace';
+        ctx.fillText(((4 - i) * 0.25).toFixed(2), 6, y + 3);
+      }
+
+      function toX(th) { return padX + ((th - 0.05) / 0.90) * plotW; }
+      function toY(val) { return padY + (1 - val) * plotH; }
+
+      // 繪製 Precision (Sky)
+      drawSeries('#38bdf8', pt => pt.p);
+      // 繪製 Recall (Amber)
+      drawSeries('#fbbf24', pt => pt.r);
+      // 繪製 F1 (Emerald)
+      drawSeries('#34d399', pt => pt.f1, 2.8);
+
+      function drawSeries(color, accessor, lw = 1.5) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lw;
+        ctx.beginPath();
+        curvePoints.forEach((pt, idx) => {
+          const x = toX(pt.th);
+          const y = toY(accessor(pt));
+          if (idx === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      }
+
+      // 當前門檻垂直線
+      const curX = toX(currentTh);
+      ctx.strokeStyle = '#f43f5e';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(curX, padY);
+      ctx.lineTo(curX, h - padY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#f43f5e';
+      ctx.font = '10px monospace';
+      ctx.fillText(`Th: ${currentTh.toFixed(2)}`, curX - 16, padY - 8);
+    }
+
+    simThreshold.addEventListener('input', renderSimulation);
+
+    document.getElementById('btn-step-prev').addEventListener('click', () => {
+      let val = Math.max(0.05, parseFloat(simThreshold.value) - 0.02);
+      simThreshold.value = val.toFixed(2);
+      renderSimulation();
+    });
+
+    document.getElementById('btn-step-next').addEventListener('click', () => {
+      let val = Math.min(0.95, parseFloat(simThreshold.value) + 0.02);
+      simThreshold.value = val.toFixed(2);
+      renderSimulation();
+    });
+
+    document.getElementById('btn-auto-opt').addEventListener('click', () => {
+      let currentVal = parseFloat(simThreshold.value);
+      const targetVal = globalBest.th;
+      const step = currentVal < targetVal ? 0.01 : -0.01;
+
+      const interval = setInterval(() => {
+        if (Math.abs(currentVal - targetVal) < 0.015) {
+          simThreshold.value = targetVal;
+          renderSimulation();
+          clearInterval(interval);
+        } else {
+          currentVal += step;
+          simThreshold.value = currentVal.toFixed(2);
+          renderSimulation();
+        }
+      }, 25);
+    });
+
+    renderSimulation();
+  </script>
+</body>
+</html>
