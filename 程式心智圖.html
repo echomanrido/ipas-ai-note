@@ -185,6 +185,42 @@
       line-height: 1.55;
     }
   </style>
+  <!-- Prism.js for Python Syntax Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+  <style>
+    /* 客製化 Prism 程式碼高亮顏色 */
+    .token.keyword { color: #c084fc !important; font-weight: 700; } /* 粉紫關鍵字 */
+    .token.function { color: #38bdf8 !important; font-weight: 700; } /* 青天藍函式 */
+    .token.class-name { color: #fde047 !important; font-weight: 800; } /* 金黃類別 */
+    .token.string { color: #86efac !important; } /* 翡翠綠字串 */
+    .token.comment { color: #94a3b8 !important; font-style: italic; } /* 灰藍註解 */
+    .token.number { color: #fb923c !important; } /* 暖橘數字 */
+    .token.operator { color: #e2e8f0 !important; }
+    .token.boolean { color: #f43f5e !important; font-weight: 700; }
+    
+    /* 重點行高亮效果 */
+    .code-line.key-line {
+      background: linear-gradient(90deg, rgba(56, 189, 248, 0.16) 0%, rgba(56, 189, 248, 0.04) 100%) !important;
+      border-left: 3.5px solid #38bdf8 !important;
+      padding-left: 8px !important;
+      margin: 2px 0 !important;
+      border-radius: 0 4px 4px 0 !important;
+      display: block;
+    }
+    .code-line.key-line .key-badge {
+      float: right;
+      font-size: 10px;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.2);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      padding: 0px 5px;
+      border-radius: 4px;
+      font-weight: 800;
+      margin-left: 8px;
+    }
+  </style>
 </head>
 <body>
 
@@ -332,17 +368,24 @@
             </div>
           </div>
 
-          <!-- 標準實作示範程式碼 (可一鍵複製) -->
+          <!-- 標準實作示範程式碼 (含語法色彩與重點標註) -->
           <div class="space-y-2 pt-1">
             <div class="flex items-center justify-between">
-              <span class="text-2xs text-slate-400 font-semibold flex items-center gap-1">
-                <i class="fa-brands fa-python text-emerald-400"></i> 標準可執行 Python 示範代碼：
-              </span>
-              <button onclick="copyCode()" class="text-2xs text-slate-400 hover:text-white flex items-center gap-1 bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded transition border border-slate-700">
+              <div class="flex items-center gap-2">
+                <span class="text-2xs text-slate-300 font-bold flex items-center gap-1">
+                  <i class="fa-brands fa-python text-emerald-400"></i> Python 程式碼 (彩色高亮 · 標明重點)：
+                </span>
+                <span class="text-[10px] px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40 font-semibold">
+                  ★ 藍光標示為核心關鍵步驟
+                </span>
+              </div>
+              <button onclick="copyCode()" class="text-2xs text-slate-300 hover:text-white flex items-center gap-1.5 bg-slate-800 hover:bg-sky-600 px-2.5 py-1 rounded-lg transition border border-slate-700 shadow-sm">
                 <i class="fa-regular fa-copy"></i> <span id="copyBtnText">複製代碼</span>
               </button>
             </div>
-            <pre class="code-box"><code id="drawerCode"></code></pre>
+            
+            <!-- 彩色代碼展示區塊 -->
+            <pre class="code-box" style="background:#090d16; border: 1px solid rgba(56, 189, 248, 0.25); box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);"><code id="drawerCode" class="language-python"></code></pre>
           </div>
         </div>
 
@@ -625,19 +668,39 @@
       document.getElementById('drawerAppCommercial').textContent = node.app_commercial || '暫無商業應用描述';
       document.getElementById('drawerAppIndustrial').textContent = node.app_industrial || '暫無工業半導體應用描述';
 
-      // 二、說明程式：關鍵函式
+            // 二、說明程式：函式調用重點標明
       const fnContainer = document.getElementById('drawerFunctions');
       fnContainer.innerHTML = '';
       if (node.functions && node.functions.length > 0) {
-        node.functions.forEach(f => {
+        node.functions.forEach((f, idx) => {
           const card = document.createElement('div');
-          card.className = 'p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-xs space-y-1';
+          card.className = 'p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-xs space-y-1 hover:border-sky-500/40 transition';
+          
+          // 判定呼叫重要性標籤
+          let roleBadge = '核心調用';
+          let roleColor = 'bg-sky-500/20 text-sky-400 border-sky-500/30';
+          if (f.call.includes('fit') || f.call.includes('backward')) {
+            roleBadge = '★ 參數學習';
+            roleColor = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+          } else if (f.call.includes('predict') || f.call.includes('score')) {
+            roleBadge = '★ 推論驗證';
+            roleColor = 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+          } else if (f.call.includes('import') || f.call.includes('from')) {
+            roleBadge = '模組載入';
+            roleColor = 'bg-slate-700/40 text-slate-300 border-slate-600/30';
+          }
+
           card.innerHTML = `
-            <div class="font-mono font-bold text-sky-400 flex items-center gap-1.5">
-              <i class="fa-solid fa-cube text-slate-500 text-2xs"></i>
-              <code>${f.call}</code>
+            <div class="flex items-center justify-between gap-2">
+              <div class="font-mono font-bold text-sky-300 flex items-center gap-1.5 overflow-x-auto">
+                <i class="fa-solid fa-cube text-sky-500 text-2xs"></i>
+                <code style="color:#38bdf8;">${f.call}</code>
+              </div>
+              <span class="text-[10px] px-1.5 py-0.5 rounded border font-mono font-semibold shrink-0 ${roleColor}">
+                ${roleBadge}
+              </span>
             </div>
-            <div class="text-slate-400 text-2xs">${f.purpose}</div>
+            <div class="text-slate-400 text-2xs leading-relaxed">${f.purpose}</div>
           `;
           fnContainer.appendChild(card);
         });
@@ -645,11 +708,35 @@
         fnContainer.innerHTML = '<div class="text-2xs text-slate-500">標準統計學習函式調用</div>';
       }
 
-      // 二、說明程式：重點與調參
-      document.getElementById('drawerHighlights').innerHTML = node.highlights || '暫無程式重點描述';
+      // 二、說明程式：Python 彩色高亮與重點行標記 (Highlight Key Lines)
+      const rawCode = node.code || '# 暫無示範程式碼';
+      window.currentRawCode = rawCode;
+      let coloredHtml = '';
+      if (window.Prism && Prism.languages.python) {
+        coloredHtml = Prism.highlight(rawCode, Prism.languages.python, 'python');
+      } else {
+        coloredHtml = rawCode;
+      }
 
-      // 二、說明程式：可執行代碼
-      document.getElementById('drawerCode').textContent = node.code || '# 暫無示範程式碼';
+      // 逐行分析並標明重點行
+      const lines = coloredHtml.split('
+');
+      const processedLines = lines.map((line, lineIdx) => {
+        const textOnly = line.replace(/<[^>]+>/g, '');
+        // 核心重點行判定條件
+        const isCoreCall = ['.fit(', '.predict(', '.fit_transform(', '.transform(', '.backward()', 'StandardScaler', 'MinMaxScaler', 'Pipeline', 'SMOTE', 'confusion_matrix', 'classification_report', 'silhouette_score', 'reparameterize', 'alpha=', 'n_clusters=', 'loss.backward()', 'step()', 'zero_grad()', 'Conv2d', 'Linear', 'Sequential', 'accuracy_score', 'roc_auc_score', 'RandomForest', 'XGB', 'LGBM', 'cross_val_score'].some(k => textOnly.includes(k));
+        const isStepComment = textOnly.includes('# 1.') || textOnly.includes('# 2.') || textOnly.includes('# 3.') || textOnly.includes('★') || textOnly.includes('核心');
+
+        if (isCoreCall) {
+          return `<div class="code-line key-line" style="background: rgba(56, 189, 248, 0.15); border-left: 3.5px solid #38bdf8; padding-left: 8px; margin: 2px 0; border-radius: 0 4px 4px 0; line-height: 1.6;">${line} <span class="key-badge">★ 核心函式</span></div>`;
+        } else if (isStepComment) {
+          return `<div class="code-line key-line" style="background: rgba(251, 191, 36, 0.12); border-left: 3.5px solid #fbbf24; padding-left: 8px; margin: 2px 0; border-radius: 0 4px 4px 0; line-height: 1.6;">${line} <span class="key-badge" style="color:#fbbf24; background:rgba(251,191,36,0.2); border-color:rgba(251,191,36,0.4);">★ 關鍵步驟</span></div>`;
+        } else {
+          return `<div class="code-line" style="padding-left: 11px; line-height: 1.6;">${line}</div>`;
+        }
+      });
+
+      document.getElementById('drawerCode').innerHTML = processedLines.join('');
 
       // 專題頁面跳轉連結
       const linkBtn = document.getElementById('drawerLinkBtn');
@@ -671,11 +758,12 @@
 
     // 複製代碼
     function copyCode() {
-      const code = document.getElementById('drawerCode').textContent;
+      const code = window.currentRawCode || document.getElementById('drawerCode').textContent;
       navigator.clipboard.writeText(code).then(() => {
         const btnText = document.getElementById('copyBtnText');
-        btnText.textContent = '已複製！';
-        setTimeout(() => { btnText.textContent = '複製代碼'; }, 2000);
+        const origHtml = btnText.innerHTML;
+        btnText.innerHTML = '<span class="text-emerald-400 font-bold">已複製純代碼！</span>';
+        setTimeout(() => { btnText.innerHTML = origHtml; }, 2000);
       });
     }
 
