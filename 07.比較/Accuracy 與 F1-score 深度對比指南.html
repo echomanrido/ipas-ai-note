@@ -16,6 +16,29 @@
         }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- KaTeX for LaTeX rendering (v0.16.9) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderAllMath()"></script>
+    <script>
+        function renderAllMath(element = document.body) {
+            if (typeof renderMathInElement === 'function') {
+                renderMathInElement(element, {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '$', right: '$', display: false },
+                        { left: '\\[', right: '\\]', display: true },
+                        { left: '\\(', right: '\\)', display: false }
+                    ],
+                    ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+                    throwOnError: false
+                });
+            }
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            renderAllMath();
+        });
+    </script>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased selection:bg-indigo-500 selection:text-white">
 
@@ -93,7 +116,7 @@
               </div>
               <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.84rem; line-height: 1.65; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.45rem;">
                 <li><strong>Accuracy (準確率) 的不平衡陷阱</strong>：當正負樣本比例極端懸殊（如 99% vs 1%），無腦全猜多數類即可獲得 99% Accuracy，但模型對關鍵少數異常類的檢測能力為 0，具嚴重誤導性。</li>
-                <li><strong>F1-score 調和平均特性</strong>：\(F_1 = 2 \cdot rac{	ext{Precision} \cdot 	ext{Recall}}{	ext{Precision} + 	ext{Recall}}\)。調和平均本質對極端低值極為敏感，任一指標崩塌均會拉低 F1，唯有兩者兼優才能拿高分。</li>
+                <li><strong>F1-score 調和平均特性</strong>：\(F_1 = 2 \cdot \frac{\text{Precision} \cdot \text{Recall}}{\text{Precision} + \text{Recall}}\)。調和平均本質對極端低值極為敏感，任一指標崩塌均會拉低 F1，唯有兩者兼優才能拿高分。</li>
                 <li><strong>IPAS 應考黃金法則</strong>：題目只要出現「樣本極不平衡」、「重視少數關鍵事件」、「降低漏報成本」，一律無條件優先考慮 F1-score、Recall 或 PR-AUC，不可採用 Accuracy。</li>
               </ul>
             </div>
@@ -105,7 +128,7 @@
                 <span>機制說明 (Mechanism & Math)</span>
               </div>
               <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.84rem; line-height: 1.65; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.45rem;">
-                <li><strong>混淆矩陣映射</strong>：\(	ext{Accuracy} = rac{TP + TN}{TP + TN + FP + FN}\)，其分母與分子均被巨量 True Negative (\(TN\)) 淹沒；而 \(F_1\) 排除 \(TN\)，聚焦於少數正類的 \(TP, FP, FN\)。</li>
+                <li><strong>混淆矩陣映射</strong>：\(\text{Accuracy} = \frac{TP + TN}{TP + TN + FP + FN}\)，其分母與分子均被巨量 True Negative (\(TN\)) 淹沒；而 \(F_1\) 排除 \(TN\)，聚焦於少數正類的 \(TP, FP, FN\)。</li>
                 <li><strong>門檻值動態調整 (Threshold Tuning)</strong>：分類機率門檻預設為 0.5；調低門檻可提升 Recall（抓更多但也抓錯多），調高門檻可提升 Precision；F1 曲線的頂峰即為兩者最平衡之黃金切點。</li>
                 <li><strong>多類別擴展評估</strong>：多分類場景下支援 Macro-F1（不考慮樣本數，各類別平等）與 Weighted-F1（依各類樣本數加權），極度不平衡時 Macro-F1 最能暴露少數類弱點。</li>
               </ul>
@@ -152,11 +175,23 @@
                     <h2>核心原理與混淆矩陣</h2>
                 </div>
                 <p class="text-sm text-slate-600">透過混淆矩陣（Confusion Matrix）定義：TP, TN, FP, FN。</p>
-                <div class="bg-slate-50 p-4 rounded-xl font-code text-xs space-y-1 text-slate-700">
-                    <p>Accuracy = (TP + TN) / (TP + TN + FP + FN)</p>
-                    <p>Precision = TP / (TP + FP)</p>
-                    <p>Recall = TP / (TP + FN)</p>
-                    <p>F1-score = 2 * (Precision * Recall) / (Precision + Recall)</p>
+                <div class="bg-slate-50/80 p-4 rounded-xl border border-slate-200 text-xs sm:text-sm space-y-2 text-slate-800">
+                    <div class="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                        <span class="font-bold text-indigo-700">準確率 (Accuracy)</span>
+                        <span class="font-mono text-xs">$$\text{Accuracy} = \frac{TP + TN}{TP + TN + FP + FN}$$</span>
+                    </div>
+                    <div class="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                        <span class="font-bold text-emerald-700">精確率 (Precision)</span>
+                        <span class="font-mono text-xs">$$\text{Precision} = \frac{TP}{TP + FP}$$</span>
+                    </div>
+                    <div class="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                        <span class="font-bold text-amber-700">召回率 (Recall)</span>
+                        <span class="font-mono text-xs">$$\text{Recall} = \frac{TP}{TP + FN}$$</span>
+                    </div>
+                    <div class="flex items-center justify-between pt-1">
+                        <span class="font-bold text-purple-700">F1 分數 (F1-score)</span>
+                        <span class="font-mono text-xs">$$F_1 = 2 \cdot \frac{\text{Precision} \cdot \text{Recall}}{\text{Precision} + \text{Recall}} = \frac{2TP}{2TP + FP + FN}$$</span>
+                    </div>
                 </div>
             </div>
         </section>
@@ -329,11 +364,23 @@
                     <h2>數學推導與計算範例</h2>
                 </div>
                 <p class="text-xs text-slate-600">假設混淆矩陣：TP=80, FP=20, FN=10, TN=890（總數 1000）</p>
-                <div class="bg-slate-50 p-3 rounded-xl font-code text-[11px] space-y-1 text-slate-700">
-                    <p>Accuracy = (80 + 890) / 1000 = 97.00%</p>
-                    <p>Precision = 80 / (80 + 20) = 80.00%</p>
-                    <p>Recall = 80 / (80 + 10) = 88.89%</p>
-                    <p>F1-score = 2 * (0.80 * 0.8889) / (0.80 + 0.8889) = 84.21%</p>
+                <div class="bg-slate-50/80 p-4 rounded-xl border border-slate-200 text-xs sm:text-sm space-y-2 text-slate-800">
+                    <div class="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                        <span class="font-semibold text-slate-700">Accuracy 計算：</span>
+                        <span>$$\text{Accuracy} = \frac{80 + 890}{1000} = 97.00\%$$</span>
+                    </div>
+                    <div class="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                        <span class="font-semibold text-slate-700">Precision 計算：</span>
+                        <span>$$\text{Precision} = \frac{80}{80 + 20} = 80.00\%$$</span>
+                    </div>
+                    <div class="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                        <span class="font-semibold text-slate-700">Recall 計算：</span>
+                        <span>$$\text{Recall} = \frac{80}{80 + 10} = 88.89\%$$</span>
+                    </div>
+                    <div class="flex items-center justify-between pt-1">
+                        <span class="font-semibold text-slate-700">F1-score 計算：</span>
+                        <span>$$F_1 = 2 \times \frac{0.80 \times 0.8889}{0.80 + 0.8889} \approx 84.21\%$$</span>
+                    </div>
                 </div>
             </div>
         </section>
