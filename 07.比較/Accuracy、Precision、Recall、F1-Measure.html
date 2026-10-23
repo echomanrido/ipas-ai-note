@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accuracy、Precision、Recall 與 F1-Measure 全方位互動大師班</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .code-font { font-family: 'Fira Code', monospace; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen selection:bg-indigo-500 selection:text-white pb-20">
+
+    <!-- Navbar -->
+    <nav class="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-md border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-chart-pie text-white text-lg"></i>
+                </div>
+                <span class="font-bold text-lg text-white tracking-wide">EvalMetrics Masterclass</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="hidden lg:flex space-x-5 text-sm font-medium text-slate-300">
+                    <a href="#analogy" class="hover:text-indigo-400 transition">06. 生活化比喻</a>
+                    <a href="#simulator" class="hover:text-indigo-400 transition">12. 互動模擬器</a>
+                    <a href="#table-summary" class="hover:text-indigo-400 transition">核心對照表</a>
+                    <a href="#domains" class="hover:text-indigo-400 transition">10. 領域應用</a>
+                    <a href="#code" class="hover:text-indigo-400 transition">11. PyTorch 實作</a>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a href="../index.html" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded-lg transition">
+                        <i class="fa-solid fa-arrow-left"></i> 回首頁
+                    </a>
+                    <a href="../程式心智圖.html" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:text-emerald-200 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-500/40 rounded-lg transition">
+                        <i class="fa-solid fa-network-wired"></i> 程式心智圖
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
+
+        <!-- Header / Intro (01 & 05) -->
+        <header class="text-center max-w-4xl mx-auto space-y-6">
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                <i class="fa-solid fa-compass"></i> 01. 一句話簡介 & 05. 歷史由來
+            </div>
+            <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-tight">
+                Accuracy、Precision、Recall <br class="hidden sm:inline">與 F1-Measure 全解析
+            </h1>
+            <p class="text-lg text-slate-400 leading-relaxed max-w-3xl mx-auto">
+                這四個指標源自資訊檢索與假設檢定，是評估機器學習與分類模型表現的核心羅盤。從整體正確率、查準與查全的動態取捨，帶您全面透視 AI 模型的優劣。
+            </p>
+        </header>
+
+        <!-- 核心精華與產業實務應用 方框元件 -->
+        <div style="margin: 1.5rem 0 2rem 0; padding: 1.5rem; background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid #38bdf8; border-radius: 16px; box-shadow: 0 10px 30px -5px rgba(2, 132, 199, 0.25), 0 0 20px rgba(56, 189, 248, 0.15); backdrop-filter: blur(12px); color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif;">
+          <!-- 頂部標題列 -->
+          <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(56, 189, 248, 0.25); padding-bottom: 0.85rem; margin-bottom: 1.1rem; flex-wrap: wrap; gap: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.65rem;">
+              <span style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: linear-gradient(135deg, #0284c7, #38bdf8); border-radius: 8px; color: #ffffff; font-size: 1.05rem; box-shadow: 0 2px 8px rgba(56, 189, 248, 0.4); flex-shrink: 0;">
+                <i class="fa-solid fa-lightbulb"></i>
+              </span>
+              <div>
+                <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #ffffff; letter-spacing: -0.01em;">
+                  【Accuracy · Precision · Recall · F1-Measure 四大指標】核心精華與產業實務應用
+                </h3>
+                <p style="margin: 0.15rem 0 0 0; font-size: 0.78rem; color: #94a3b8;">Key Takeaways · Mechanism Overview · Industrial Applications</p>
+              </div>
+            </div>
+            <span style="font-size: 0.72rem; padding: 0.25rem 0.65rem; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 9999px; font-weight: 700; white-space: nowrap;">
+              重點精華 · 實務落地
+            </span>
+          </div>
+
+          <!-- 三大區塊 Grid -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.2rem;">
+            
+            <!-- 區塊 1: 重點整理 -->
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem; color: #38bdf8; font-weight: 700; font-size: 0.92rem;">
+                <i class="fa-solid fa-list-check"></i>
+                <span>重點整理 (Key Takeaways)</span>
+              </div>
+              <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.84rem; line-height: 1.65; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.45rem;">
+                <li><strong>四大指標靈魂四問</strong>：
+                  <ul style="margin: 0.2rem 0; padding-left: 1rem; color: #94a3b8;">
+                    <li><strong style="color:#ffffff;">Accuracy</strong>：全體猜對率 \((TP+TN)/	ext{Total}\)（適合類別平衡）</li>
+                    <li><strong style="color:#ffffff;">Precision</strong>：預測陽性中真陽性佔比 \(TP/(TP+FP)\)（抓得準、寧缺毋濫）</li>
+                    <li><strong style="color:#ffffff;">Recall</strong>：真實陽性被抓出比例 \(TP/(TP+FN)\)（抓得全、寧錯殺不放過）</li>
+                    <li><strong style="color:#ffffff;">F1-Measure</strong>：Precision 與 Recall 之調和平均數（兼顧平衡）</li>
+                  </ul>
+                </li>
+                <li><strong>代價矩陣取捨 (Cost Trade-off)</strong>：
+                  若假陽性 (FP) 代價巨大（如重要信件被丟進垃圾桶），應優先追求高 <strong>Precision</strong>；若假陰性 (FN) 代價巨大（如機台爆炸未警報、癌症漏檢），必須死守極高 <strong>Recall</strong>。
+                </li>
+                <li><strong>IPAS 必考關鍵</strong>：當精確率上升時，召回率往往下降（Trade-off）；唯有調整特徵品質或模型容量，才能在提升 Precision 的同時不損害 Recall。</li>
+              </ul>
+            </div>
+
+            <!-- 區塊 2: 機制說明 -->
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(129, 140, 248, 0.2); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem; color: #a5b4fc; font-weight: 700; font-size: 0.92rem;">
+                <i class="fa-solid fa-gears"></i>
+                <span>機制說明 (Mechanism & Math)</span>
+              </div>
+              <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.84rem; line-height: 1.65; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.45rem;">
+                <li><strong>PR 曲線 vs ROC 曲線抉擇</strong>：ROC 曲線以 FPR (\(FP/(FP+TN)\)) 為橫軸，當負樣本 \(TN\) 呈百萬量級時，FPR 會被大幅稀釋而看似很低；PR 曲線完全排除 \(TN\)，在高偏斜 (Skewed) 資料下評估更加客觀嚴格。</li>
+                <li><strong>加權指標 \(F_\beta\) 設計</strong>：\(F_\beta = (1 + \beta^2) \frac{P \times R}{\beta^2 P + R}\)。當 \(\beta = 2\) 時 Recall 權重提高為 2 倍（安全防範任務）；當 \(\beta = 0.5\) 時 Precision 權重更大（精密推薦）。</li>
+                <li><strong>Scikit-Learn 實作架構</strong>：使用 <code>classification_report()</code> 一次生成四維指標矩陣，並利用 <code>precision_recall_curve()</code> 進行門檻值敏感度分析。</li>
+              </ul>
+            </div>
+
+            <!-- 區塊 3: 應用在何處 -->
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(52, 211, 153, 0.2); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem; color: #6ee7b7; font-weight: 700; font-size: 0.92rem;">
+                <i class="fa-solid fa-industry"></i>
+                <span>應用在何處 (Industrial Scenarios)</span>
+              </div>
+              <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.84rem; line-height: 1.65; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.45rem;">
+                <li><strong>工廠設備預知保養 (PdM) —— [高 Recall 優先]</strong>：旋轉機械與渦輪異常震動警報，一旦漏報 (FN) 將造成產線停擺與百萬美元損失，故設定極低警戒閾值保證 99.9% 召回率。</li>
+                <li><strong>高科技自動光學檢驗 (AOI) —— [兩階段 F1 優化]</strong>：第一道由神經網絡全檢（偏高 Recall 排除可疑品），第二道由複檢模型（偏高 Precision 排除假警報 Overkill），雙管齊下達成零漏檢且維持產能。</li>
+                <li><strong>資安網路入侵偵測 (IDS) —— [高 Precision 優先]</strong>：每秒過濾上億條網路封包，若 Precision 稍低便會產生海量 False Positives 導致維運人員「警報疲勞」，需以高 Precision 鎖定真正駭客攻擊。</li>
+              </ul>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Section 06: Life Analogy (Strawberry & Spam Filter) -->
+        <section id="analogy" class="glass-card rounded-3xl p-6 sm:p-10 shadow-2xl space-y-8 relative overflow-hidden">
+            <div class="absolute -right-20 -top-20 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -left-20 -bottom-20 w-72 h-72 bg-pink-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="border-b border-slate-800 pb-6">
+                <div class="text-xs font-semibold text-pink-400 uppercase tracking-wider mb-2">
+                    <i class="fa-solid fa-mug-hot"></i> 06. 生活化例子：主廚挑草莓與垃圾郵件過濾器
+                </div>
+                <h2 class="text-2xl sm:text-3xl font-bold text-white">
+                    想像你是個主廚，桌上有 100 顆草莓
+                </h2>
+                <p class="text-slate-300 mt-2 leading-relaxed text-base sm:text-lg">
+                    其中 <span class="text-emerald-400 font-semibold">70 顆是新鮮的（真正好）</span>，<span class="text-rose-400 font-semibold">30 顆是爛掉的（真正壞）</span>。你挑出了 <span class="text-indigo-400 font-semibold">50 顆</span>準備做蛋糕。由此展開四大核心指標的深度拆解：
+                </p>
+            </div>
+
+            <!-- 4 Cards Breakdown -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 1. Accuracy -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-4 hover:border-indigo-500/50 transition duration-300">
+                    <div class="flex items-center justify-between">
+                        <span class="px-3 py-1 bg-indigo-500/20 text-indigo-400 rounded-lg text-xs font-bold font-mono">01. Accuracy</span>
+                        <span class="text-xs text-slate-400">整體正確率</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-white">準確率</h3>
+                    <ul class="space-y-2 text-sm text-slate-300">
+                        <li><b class="text-indigo-300">一句話解釋：</b> 所有草莓中，你猜對（留好、丟壞）的比例。</li>
+                        <li><b class="text-indigo-300">公式概念：</b> <code class="bg-slate-950 px-2 py-0.5 rounded text-indigo-300">(猜對的新鮮 + 猜對的爛) / 總共 100 顆</code></li>
+                        <li><b class="text-rose-400">生活痛點：</b> 如果今天 100 顆裡面有 99 顆都是新鮮的，你就算閉著眼睛說「全都是新鮮的」，準確率也有 99%。因此在資料極度不平衡時，這個指標會騙人！</li>
+                    </ul>
+                </div>
+
+                <!-- 2. Precision -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-4 hover:border-amber-500/50 transition duration-300">
+                    <div class="flex items-center justify-between">
+                        <span class="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-bold font-mono">02. Precision</span>
+                        <span class="text-xs text-slate-400">查準率 / 精準度</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-white">精準率</h3>
+                    <ul class="space-y-2 text-sm text-slate-300">
+                        <li><b class="text-amber-300">一句話解釋：</b> 在「你挑出來的草莓」中，真正新鮮的比例。</li>
+                        <li><b class="text-amber-300">關注對象：</b> 寧可少挑，絕不挑錯（降低誤報）。</li>
+                        <li><b class="text-amber-300">生活場景（垃圾郵件過濾器）：</b> 郵件過濾器把 10 封信判斷為「垃圾信」，這 10 封裡面絕對不能有「老闆發的急件」。被抓進垃圾桶的，100% 都要是真正的垃圾信。</li>
+                    </ul>
+                </div>
+
+                <!-- 3. Recall -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-4 hover:border-emerald-500/50 transition duration-300">
+                    <div class="flex items-center justify-between">
+                        <span class="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-lg text-xs font-bold font-mono">03. Recall</span>
+                        <span class="text-xs text-slate-400">查全率 / 召回率</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-white">召回率</h3>
+                    <ul class="space-y-2 text-sm text-slate-300">
+                        <li><b class="text-emerald-300">一句話解釋：</b> 在「所有真正新鮮的草莓」中，你成功抓到了多少比例。</li>
+                        <li><b class="text-emerald-300">關注對象：</b> 寧可錯殺一百，絕不放過一個（降低漏報）。</li>
+                        <li><b class="text-emerald-300">生活場景（癌症篩檢 / 保全）：</b> 醫院幫 100 個病人做癌症篩檢，要把罹癌者全部揪出。就算把幾個健康人誤判為陽性也沒關係（後續可複檢），但絕不能漏掉真正的癌症患者！</li>
+                    </ul>
+                </div>
+
+                <!-- 4. F1-Measure -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-4 hover:border-purple-500/50 transition duration-300">
+                    <div class="flex items-center justify-between">
+                        <span class="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-lg text-xs font-bold font-mono">04. F1-Measure</span>
+                        <span class="text-xs text-slate-400">綜合平衡分數</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-white">F1 分數</h3>
+                    <ul class="space-y-2 text-sm text-slate-300">
+                        <li><b class="text-purple-300">一句話解釋：</b> Precision 與 Recall 的「綜合平均值」（調和平均數）。</li>
+                        <li><b class="text-purple-300">關注對象：</b> 兩者兼顧，尋找黃金平衡點。</li>
+                        <li><b class="text-purple-300">生活場景（挑選御用主廚）：</b> 廚師 A 極嚴格但漏掉一堆好草莓（高 P, 低 R）；廚師 B 全撈走但好壞混雜（低 P, 高 R）。廚師 C 掌握完美平衡，就是 F1-Score 最高的首選！</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Core Comparison Table (From User Image) -->
+        <section id="table-summary" class="glass-card rounded-3xl p-6 sm:p-10 shadow-2xl space-y-6">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                    <span class="text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">核心精華對照表</span>
+                    <h2 class="text-2xl font-bold text-white mt-2">指標靈魂提問與應用場景總整理</h2>
+                </div>
+                <span class="text-xs text-slate-400 font-mono">Based on Core Expert Table</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-800 text-xs text-slate-400 uppercase bg-slate-900/50">
+                            <th class="p-4 rounded-l-xl">指標</th>
+                            <th class="p-4">核心提問</th>
+                            <th class="p-4">適合的應用場景</th>
+                            <th class="p-4 rounded-r-xl">追求的目標</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/60 text-sm">
+                        <tr class="hover:bg-slate-900/40 transition">
+                            <td class="p-4 font-bold text-amber-400">Precision</td>
+                            <td class="p-4 font-mono text-xs bg-slate-900/30 rounded">「你說是，就真的是嗎？」</td>
+                            <td class="p-4 text-slate-300">垃圾郵件過濾、法院判刑、股票投資推薦</td>
+                            <td class="p-4 text-slate-300">降低誤判率（不想把好人當壞人）</td>
+                        </tr>
+                        <tr class="hover:bg-slate-900/40 transition">
+                            <td class="p-4 font-bold text-emerald-400">Recall</td>
+                            <td class="p-4 font-mono text-xs bg-slate-900/30 rounded">「你把是的，都找齊了嗎？」</td>
+                            <td class="p-4 text-slate-300">地震警報、傳染病篩檢、保全防盜系統</td>
+                            <td class="p-4 text-slate-300">降低漏報率（不想放過任何壞人）</td>
+                        </tr>
+                        <tr class="hover:bg-slate-900/40 transition">
+                            <td class="p-4 font-bold text-purple-400">F1-Score</td>
+                            <td class="p-4 font-mono text-xs bg-slate-900/30 rounded">「你攻守兼備了嗎？」</td>
+                            <td class="p-4 text-slate-300">搜尋引擎結果排序、大部分日常 AI 評估</td>
+                            <td class="p-4 text-slate-300">追求兩者平衡</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Section 12 & 02 & 09: Interactive Simulator & Step by Step & Formulas -->
+        <section id="simulator" class="glass-card rounded-3xl p-6 sm:p-10 shadow-2xl space-y-8">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+                <div>
+                    <span class="text-xs font-semibold text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">02. 核心原理 & 09. 數學推導 & 12. 互動模擬</span>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-white mt-2">混淆矩陣與互動模擬器</h2>
+                    <p class="text-sm text-slate-400 mt-1">動態拖曳混淆矩陣數值或點擊自動模擬，即時推導數學公式與 Step by Step 計算過程。</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="autoSimulate()" class="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-sm font-medium py-2.5 px-5 rounded-xl transition shadow-lg shadow-indigo-600/30 flex items-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> 一鍵自動模擬
+                    </button>
+                    <button onclick="resetValues()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium py-2.5 px-4 rounded-xl transition">
+                        重置
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <!-- Sliders -->
+                <div class="lg:col-span-6 space-y-6 bg-slate-900/60 p-6 rounded-2xl border border-slate-800">
+                    <h3 class="text-lg font-semibold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-indigo-400"></i> 混淆矩陣 (Confusion Matrix) 調整
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-emerald-400 font-medium">True Positive (TP) - 命中正確</span>
+                                <span id="tp-val" class="font-bold text-white font-mono">80</span>
+                            </div>
+                            <input type="range" id="tp" min="0" max="500" value="80" class="w-full accent-emerald-500 bg-slate-800 rounded-lg h-2 cursor-pointer" oninput="updateMetrics()">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-amber-400 font-medium">False Positive (FP) - 誤報 (型一錯誤)</span>
+                                <span id="fp-val" class="font-bold text-white font-mono">20</span>
+                            </div>
+                            <input type="range" id="fp" min="0" max="500" value="20" class="w-full accent-amber-500 bg-slate-800 rounded-lg h-2 cursor-pointer" oninput="updateMetrics()">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-rose-400 font-medium">False Negative (FN) - 漏報 (型二錯誤)</span>
+                                <span id="fn-val" class="font-bold text-white font-mono">10</span>
+                            </div>
+                            <input type="range" id="fn" min="0" max="500" value="10" class="w-full accent-rose-500 bg-slate-800 rounded-lg h-2 cursor-pointer" oninput="updateMetrics()">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-blue-400 font-medium">True Negative (TN) - 排除正確</span>
+                                <span id="tn-val" class="font-bold text-white font-mono">890</span>
+                            </div>
+                            <input type="range" id="tn" min="0" max="1000" value="890" class="w-full accent-blue-500 bg-slate-800 rounded-lg h-2 cursor-pointer" oninput="updateMetrics()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results & Step by Step -->
+                <div class="lg:col-span-6 flex flex-col justify-between space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl shadow">
+                            <div class="text-xs text-slate-400">Accuracy (準確率)</div>
+                            <div id="res-acc" class="text-2xl font-bold text-indigo-400 mt-1 font-mono">0.00%</div>
+                        </div>
+                        <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl shadow">
+                            <div class="text-xs text-slate-400">Precision (精準率)</div>
+                            <div id="res-prec" class="text-2xl font-bold text-amber-400 mt-1 font-mono">0.00%</div>
+                        </div>
+                        <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl shadow">
+                            <div class="text-xs text-slate-400">Recall (召回率)</div>
+                            <div id="res-rec" class="text-2xl font-bold text-emerald-400 mt-1 font-mono">0.00%</div>
+                        </div>
+                        <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl shadow">
+                            <div class="text-xs text-slate-400">F1-Measure (綜合評分)</div>
+                            <div id="res-f1" class="text-2xl font-bold text-purple-400 mt-1 font-mono">0.00%</div>
+                        </div>
+                    </div>
+
+                    <!-- Step by Step Box -->
+                    <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl space-y-2">
+                        <h4 class="text-xs font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-list-check"></i> 12. 模擬 Step by Step 推導過程
+                        </h4>
+                        <div id="step-by-step" class="code-font text-xs text-slate-300 space-y-1">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 03, 04, 07, 08 Grid Cards -->
+        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- 03 IPAS -->
+            <div class="glass-card rounded-2xl p-6 flex flex-col justify-between">
+                <div>
+                    <span class="text-xs font-semibold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">03. iPAS AI 考題</span>
+                    <h3 class="text-base font-bold text-white mt-3 mb-2">瑕疵檢測實戰題</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        某 AI 瑕疵檢測模型混淆矩陣：TP=80, FP=20, FN=10, TN=890。Precision 與 Recall 分別為何？
+                    </p>
+                </div>
+                <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400 font-mono">
+                    💡 解答：Precision = 80/(80+20) = 80%<br>Recall = 80/(80+10) = 88.89%
+                </div>
+            </div>
+
+            <!-- 04 Practical -->
+            <div class="glass-card rounded-2xl p-6 flex flex-col justify-between">
+                <div>
+                    <span class="text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">04. 實務特徵</span>
+                    <h3 class="text-base font-bold text-white mt-3 mb-2">類別不平衡陷阱</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        當正負樣本比例極度懸殊（如 99:1）時，Accuracy 容易失效，必須仰賴 Precision 與 Recall 檢視模型在少數類別上的表現。
+                    </p>
+                </div>
+                <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400">
+                    ⚡ 權衡商業成本與誤報/漏報代價。
+                </div>
+            </div>
+
+            <!-- 07 Industrial -->
+            <div class="glass-card rounded-2xl p-6 flex flex-col justify-between">
+                <div>
+                    <span class="text-xs font-semibold text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-full border border-rose-500/20">07. 工業上應用</span>
+                    <h3 class="text-base font-bold text-white mt-3 mb-2">半導體與設備預測維護</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        晶圓瑕疵檢測需極高 Recall 以防不良品流出；產線預測性維護則需在設備故障前精準發出警報，降低停機損失。
+                    </p>
+                </div>
+                <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400">
+                    🏭 確保良率與產線穩定運作。
+                </div>
+            </div>
+
+            <!-- 08 Theory -->
+            <div class="glass-card rounded-2xl p-6 flex flex-col justify-between">
+                <div>
+                    <span class="text-xs font-semibold text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-full border border-indigo-500/20">08. 理論簡介</span>
+                    <h3 class="text-base font-bold text-white mt-3 mb-2">閥值與 Trade-off</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        機率閥值的調整會導致 Precision 與 Recall 此消彼長，進而衍生出 PR 曲線與 ROC-AUC 評估體系。
+                    </p>
+                </div>
+                <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400">
+                    📈 尋找最佳操作點的理論基石。
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 10: Multi-Domain Interactive Tabs -->
+        <section id="domains" class="glass-card rounded-3xl p-6 sm:p-10 shadow-2xl space-y-8">
+            <div class="text-center max-w-2xl mx-auto">
+                <span class="text-xs font-semibold text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">10. 領域應用矩陣</span>
+                <h2 class="text-2xl sm:text-3xl font-bold text-white mt-3">橫跨四大 AI 範疇的評估細節</h2>
+                <p class="text-sm text-slate-400 mt-1">點擊下方標籤，探索評估指標在機器學習、深度學習、強化學習與 LLM 中的實際運用。</p>
+            </div>
+
+            <!-- Tabs Navigation -->
+            <div class="flex flex-wrap justify-center gap-2 border-b border-slate-800 pb-4">
+                <button onclick="switchTab('ml')" id="btn-ml" class="tab-btn px-5 py-2.5 rounded-xl text-sm font-medium transition bg-indigo-600 text-white shadow-lg shadow-indigo-600/30">
+                    機器學習應用
+                </button>
+                <button onclick="switchTab('dl')" id="btn-dl" class="tab-btn px-5 py-2.5 rounded-xl text-sm font-medium transition bg-slate-800 text-slate-300 hover:bg-slate-700">
+                    深度學習應用
+                </button>
+                <button onclick="switchTab('rl')" id="btn-rl" class="tab-btn px-5 py-2.5 rounded-xl text-sm font-medium transition bg-slate-800 text-slate-300 hover:bg-slate-700">
+                    強化學習應用
+                </button>
+                <button onclick="switchTab('llm')" id="btn-llm" class="tab-btn px-5 py-2.5 rounded-xl text-sm font-medium transition bg-slate-800 text-slate-300 hover:bg-slate-700">
+                    LLM 應用細節
+                </button>
+            </div>
+
+            <!-- Tab Contents -->
+            <div id="tab-ml" class="tab-content active space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-3">
+                        <h3 class="text-lg font-bold text-indigo-400 flex items-center gap-2"><i class="fa-solid fa-tree"></i> 監督式分類任務</h3>
+                        <p class="text-sm text-slate-300 leading-relaxed">
+                            在羅吉斯迴歸、SVM 與隨機森林等二元或多元分類中，Precision 與 Recall 用於信用卡盜刷偵測、用戶流失預測等不平衡資料集。
+                        </p>
+                    </div>
+                    <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-3">
+                        <h3 class="text-lg font-bold text-indigo-400 flex items-center gap-2"><i class="fa-solid fa-sliders"></i> 互動模擬閥值調整</h3>
+                        <p class="text-sm text-slate-300">模擬決策樹閥值變動對指標的影響：</p>
+                        <div class="space-y-2">
+                            <div class="flex justify-between text-xs text-slate-400">
+                                <span>閥值 (Threshold): <span id="thresh-val" class="text-white font-bold">0.50</span></span>
+                                <span id="thresh-effect" class="text-indigo-400 font-semibold">平衡狀態</span>
+                            </div>
+                            <input type="range" min="0.1" max="0.9" step="0.05" value="0.5" class="w-full accent-indigo-500 bg-slate-800 rounded-lg h-2 cursor-pointer" oninput="updateThreshold(this.value)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-dl" class="tab-content space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-3">
+                        <h3 class="text-lg font-bold text-violet-400 flex items-center gap-2"><i class="fa-solid fa-brain"></i> 物件偵測與影像分割 (YOLO / CNN)</h3>
+                        <p class="text-sm text-slate-300 leading-relaxed">
+                            使用 **mAP (Mean Average Precision)** 結合不同信心閥值下的 Precision 與 Recall 積分，確保模型準確定位且不漏掉目標。
+                        </p>
+                    </div>
+                    <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-3">
+                        <h3 class="text-lg font-bold text-violet-400 flex items-center gap-2"><i class="fa-solid fa-shield-halved"></i> 醫學影像 AI</h3>
+                        <p class="text-sm text-slate-300 leading-relaxed">
+                            Pixel-wise 的 Precision 與 Recall（如 Dice Coefficient / F1-Score）是醫療 AI 影像檢測能否通過法規審查的關鍵。
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-rl" class="tab-content space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-3">
+                        <h3 class="text-lg font-bold text-emerald-400 flex items-center gap-2"><i class="fa-solid fa-gamepad"></i> 策略決策與安全防禦</h3>
+                        <p class="text-sm text-slate-300 leading-relaxed">
+                            自動駕駛安全防禦中，Recall 代表是否漏掉致命威脅，Precision 代表是否頻繁出現誤報急煞。
+                        </p>
+                    </div>
+                    <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-3">
+                        <h3 class="text-lg font-bold text-emerald-400 flex items-center gap-2"><i class="fa-solid fa-robot"></i> 獎勵塑形 (Reward Shaping)</h3>
+                        <p class="text-sm text-slate-300 leading-relaxed">
+                            將 F1-Score 納入獎勵函數中，引導 RL Agent 在探索時兼顧準確性與完整性。
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-llm" class="tab-content space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-3">
+                        <h3 class="text-lg font-bold text-amber-400 flex items-center gap-2"><i class="fa-solid fa-comments"></i> RAG 檢索與生成評估 (ROUGE / BERTScore)</h3>
+                        <p class="text-sm text-slate-300 leading-relaxed">
+                            ROUGE 指標本質上就是 Recall（摘要涵蓋多少關鍵字）與 Precision（內容有多少正確無幻覺）的加權調和平均。
+                        </p>
+                    </div>
+                    <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-3">
+                        <h3 class="text-lg font-bold text-amber-400 flex items-center gap-2"><i class="fa-solid fa-magnifying-glass-chart"></i> 幻覺率分析</h3>
+                        <p class="text-sm text-slate-300 leading-relaxed">
+                            LLM 評估中的 Faithfulness 與 Answer Relevance 高度對應 Precision 與 Recall。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 11: Python / PyTorch Code Implementation -->
+        <section id="code" class="glass-card rounded-3xl p-6 sm:p-10 shadow-2xl space-y-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-slate-800 gap-4">
+                <div>
+                    <span class="text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">11. Python / PyTorch 實作</span>
+                    <h2 class="text-2xl font-bold text-white mt-2">高效計算核心與語法標明程式碼</h2>
+                </div>
+                <button onclick="copyCode()" class="text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-xl transition flex items-center gap-2">
+                    <i class="fa-regular fa-copy"></i> 複製程式碼
+                </button>
+            </div>
+
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+                <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex items-center space-x-2">
+                    <div class="w-3 h-3 rounded-full bg-rose-500/80"></div>
+                    <div class="w-3 h-3 rounded-full bg-amber-500/80"></div>
+                    <div class="w-3 h-3 rounded-full bg-emerald-500/80"></div>
+                    <span class="text-xs text-slate-400 font-mono ml-2">evaluate_metrics.py</span>
+                </div>
+                <pre class="p-6 code-font text-xs sm:text-sm text-slate-200 overflow-x-auto leading-relaxed"><code id="code-block"><span class="text-purple-400">import</span> torch
+<span class="text-purple-400">import</span> numpy <span class="text-purple-400">as</span> np
+<span class="text-purple-400">from</span> sklearn.metrics <span class="text-purple-400">import</span> confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
+
+<span class="text-slate-500"># ==========================================</span>
+<span class="text-slate-500"># 1. 模擬 PyTorch 模型輸出與真實標籤 (0: 正常, 1: 異常)</span>
+<span class="text-slate-500"># ==========================================</span>
+torch.manual_seed(<span class="text-amber-400">42</span>)
+y_true = torch.tensor([<span class="text-amber-400">1</span>, <span class="text-amber-400">0</span>, <span class="text-amber-400">1</span>, <span class="text-amber-400">1</span>, <span class="text-amber-400">0</span>, <span class="text-amber-400">1</span>, <span class="text-amber-400">0</span>, <span class="text-amber-400">0</span>, <span class="text-amber-400">1</span>, <span class="text-amber-400">0</span>])
+y_pred = torch.tensor([<span class="text-amber-400">1</span>, <span class="text-amber-400">0</span>, <span class="text-amber-400">1</span>, <span class="text-amber-400">0</span>, <span class="text-amber-400">0</span>, <span class="text-amber-400">1</span>, <span class="text-amber-400">1</span>, <span class="text-amber-400">0</span>, <span class="text-amber-400">1</span>, <span class="text-amber-400">0</span>])
+
+<span class="text-slate-500"># 轉換為 NumPy 陣列進行計算</span>
+y_true_np = y_true.numpy()
+y_pred_np = y_pred.numpy()
+
+<span class="text-slate-500"># ==========================================</span>
+<span class="text-slate-500"># 2. 計算混淆矩陣與核心指標</span>
+<span class="text-slate-500"># ==========================================</span>
+tn, fp, fn, tp = confusion_matrix(y_true_np, y_pred_np).ravel()
+
+acc = accuracy_score(y_true_np, y_pred_np)
+prec = precision_score(y_true_np, y_pred_np, zero_division=<span class="text-amber-400">0</span>)
+rec = recall_score(y_true_np, y_pred_np, zero_division=<span class="text-amber-400">0</span>)
+f1 = f1_score(y_true_np, y_pred_np, zero_division=<span class="text-amber-400">0</span>)
+
+<span class="text-blue-400">print</span>(<span class="text-emerald-300">f"=== 混淆矩陣分析結果 ==="</span>)
+<span class="text-blue-400">print</span>(<span class="text-emerald-300">f"TP: {tp} | FP: {fp} | FN: {fn} | TN: {tn}"</span>)
+<span class="text-blue-400">print</span>(<span class="text-emerald-300">f"Accuracy:  {acc * 100:.2f}%"</span>)
+<span class="text-blue-400">print</span>(<span class="text-emerald-300">f"Precision: {prec * 100:.2f}%"</span>)
+<span class="text-blue-400">print</span>(<span class="text-emerald-300">f"Recall:    {rec * 100:.2f}%"</span>)
+<span class="text-blue-400">print</span>(<span class="text-emerald-300">f"F1-Score:  {f1 * 100:.2f}%"</span>)</code></pre>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 bg-slate-950 py-8 text-center text-sm text-slate-500">
+        <p>EvalMetrics Masterclass — Accuracy, Precision, Recall & F1-Measure Interactive Learning Environment.</p>
+    </footer>
+
+    <!-- Interactive JavaScript Logic -->
+    <script>
+        function updateMetrics() {
+            const tp = parseInt(document.getElementById('tp').value);
+            const fp = parseInt(document.getElementById('fp').value);
+            const fn = parseInt(document.getElementById('fn').value);
+            const tn = parseInt(document.getElementById('tn').value);
+
+            document.getElementById('tp-val').innerText = tp;
+            document.getElementById('fp-val').innerText = fp;
+            document.getElementById('fn-val').innerText = fn;
+            document.getElementById('tn-val').innerText = tn;
+
+            const total = tp + fp + fn + tn;
+            const accuracy = total > 0 ? (tp + tn) / total : 0;
+            const precision = (tp + fp) > 0 ? tp / (tp + fp) : 0;
+            const recall = (tp + fn) > 0 ? tp / (tp + fn) : 0;
+            const f1 = (precision + recall) > 0 ? 2 * (precision * recall) / (precision + recall) : 0;
+
+            document.getElementById('res-acc').innerText = (accuracy * 100).toFixed(2) + '%';
+            document.getElementById('res-prec').innerText = (precision * 100).toFixed(2) + '%';
+            document.getElementById('res-rec').innerText = (recall * 100).toFixed(2) + '%';
+            document.getElementById('res-f1').innerText = (f1 * 100).toFixed(2) + '%';
+
+            document.getElementById('step-by-step').innerHTML = `
+                <div>[01] Total 樣本數 = ${tp} (TP) + ${fp} (FP) + ${fn} (FN) + ${tn} (TN) = ${total}</div>
+                <div>[02] Accuracy = (${tp} + ${tn}) / ${total} = ${(accuracy * 100).toFixed(2)}%</div>
+                <div>[03] Precision = ${tp} / (${tp} + ${fp}) = ${(precision * 100).toFixed(2)}%</div>
+                <div>[04] Recall = ${tp} / (${tp} + ${fn}) = ${(recall * 100).toFixed(2)}%</div>
+                <div>[05] F1-Score = 2 * (P * R) / (P + R) = ${(f1 * 100).toFixed(2)}%</div>
+            `;
+        }
+
+        function autoSimulate() {
+            document.getElementById('tp').value = Math.floor(Math.random() * 300) + 50;
+            document.getElementById('fp').value = Math.floor(Math.random() * 80) + 10;
+            document.getElementById('fn').value = Math.floor(Math.random() * 80) + 10;
+            document.getElementById('tn').value = Math.floor(Math.random() * 800) + 200;
+            updateMetrics();
+        }
+
+        function resetValues() {
+            document.getElementById('tp').value = 80;
+            document.getElementById('fp').value = 20;
+            document.getElementById('fn').value = 10;
+            document.getElementById('tn').value = 890;
+            updateMetrics();
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('bg-indigo-600', 'text-white', 'shadow-lg', 'shadow-indigo-600/30');
+                el.classList.add('bg-slate-800', 'text-slate-300');
+            });
+
+            document.getElementById('tab-' + tabId).classList.add('active');
+            const activeBtn = document.getElementById('btn-' + tabId);
+            activeBtn.classList.remove('bg-slate-800', 'text-slate-300');
+            activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-lg', 'shadow-indigo-600/30');
+        }
+
+        function updateThreshold(val) {
+            document.getElementById('thresh-val').innerText = parseFloat(val).toFixed(2);
+            const effect = val > 0.6 ? "高 Precision (嚴格把關，降低誤報)" : (val < 0.4 ? "高 Recall (寬鬆篩選，降低漏報)" : "平衡狀態 (F1最佳化)");
+            document.getElementById('thresh-effect').innerText = effect;
+        }
+
+        function copyCode() {
+            const codeText = document.getElementById('code-block').innerText;
+            const textarea = document.createElement('textarea');
+            textarea.value = codeText;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert("程式碼已成功複製到剪貼簿！");
+        }
+
+        window.onload = updateMetrics;
+    </script>
+</body>
+</html>
