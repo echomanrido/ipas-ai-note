@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GAN vs VAE vs Diffusion</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- KaTeX for crisp LaTeX rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+          onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+  <style>
+    .font-mono-code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .highlight-fn { color: #f43f5e; font-weight: bold; background: rgba(244, 63, 94, 0.1); padding: 2px 4px; border-radius: 4px; }
+    .highlight-loss { color: #eab308; font-weight: bold; background: rgba(234, 179, 8, 0.1); padding: 2px 4px; border-radius: 4px; }
+    .highlight-trick { color: #06b6d4; font-weight: bold; background: rgba(6, 182, 212, 0.1); padding: 2px 4px; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col antialiased scroll-smooth">
+
+  <!-- Header & Sticky Jump Navigation (純錨點滾動，非標籤切換) -->
+  <header class="border-b border-slate-800 bg-slate-950/85 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center space-x-3">
+        <span class="flex h-3 w-3 relative">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+        </span>
+        <h1 class="text-lg md:text-xl font-bold bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-400 bg-clip-text text-transparent">
+          生成式深度學習全景指南：GAN vs VAE vs Diffusion
+        </h1>
+      </div>
+      <!-- 快速平滑跳轉導覽 -->
+      <nav class="flex flex-wrap gap-1.5 text-xs bg-slate-800/80 p-1 rounded-xl">
+        <a href="#sec-overview" class="px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">01-08 全景對比</a>
+        <a href="#sec-svg-diagrams" class="px-2.5 py-1.5 rounded-lg text-cyan-400 font-medium hover:bg-slate-700 transition flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>SVG 架構圖解
+        </a>
+        <a href="#sec-ipas" class="px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">03 IPAS 試題</a>
+        <a href="#sec-math" class="px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">09 數學推導</a>
+        <a href="#sec-simulators" class="px-2.5 py-1.5 rounded-lg text-emerald-400 font-medium hover:bg-slate-700 transition flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>10/12 互動模擬器
+        </a>
+        <a href="#sec-code" class="px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">11 PyTorch 實作</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Area: 一頁式長頁面 -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-12">
+
+    <!-- SECTION 1: 01, 02, 05, 06, 08 核心理論卡片 -->
+    <section id="sec-overview" class="space-y-6 scroll-mt-20">
+      <div class="border-b border-slate-800 pb-3">
+        <span class="text-xs font-semibold px-2.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">01. 一句話簡介 | 02. 核心原理 | 05. 由來 | 06. 生活化比喻 | 08. 理論簡介</span>
+        <h2 class="text-2xl font-bold text-white mt-2">三大生成模型核心架構總覽</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- GAN -->
+        <div class="bg-slate-800/60 border border-slate-700/70 rounded-2xl p-5 hover:border-rose-500/50 transition flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-start mb-3">
+              <span class="text-xs font-semibold px-2.5 py-1 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">隱式密度 (Implicit)</span>
+              <span class="text-xs text-slate-400">2014 Goodfellow</span>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-2">GAN (對抗生成網路)</h3>
+            <p class="text-sm text-cyan-300 font-medium mb-3">01. 造假集團與防偽警探的極限博弈，在納許均衡中逼真還原數據分佈。</p>
+
+            <!-- Mini SVG Diagram: GAN 核心機制速覽 -->
+            <div class="bg-slate-950/90 border border-rose-500/20 rounded-xl p-2.5 mb-4 shadow-inner">
+              <div class="text-[10px] text-rose-400 font-semibold mb-1 flex items-center justify-between">
+                <span>⚡ 對抗機制資訊流</span>
+                <span class="text-[9px] text-slate-400 font-mono">Minimax Zero-Sum</span>
+              </div>
+              <svg viewBox="0 0 320 125" class="w-full h-auto text-xs" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <marker id="m-arr-rose" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#f43f5e" />
+                  </marker>
+                  <marker id="m-arr-emerald" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981" />
+                  </marker>
+                  <marker id="m-arr-cyan" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#06b6d4" />
+                  </marker>
+                </defs>
+                <!-- Real Data -->
+                <rect x="10" y="16" width="60" height="26" rx="4" fill="#064e3b" stroke="#10b981" stroke-width="1.2"/>
+                <text x="40" y="32" fill="#a7f3d0" font-weight="bold" text-anchor="middle" font-size="9">真實數據 x</text>
+                
+                <!-- Noise z -->
+                <rect x="10" y="76" width="60" height="26" rx="4" fill="#1e293b" stroke="#64748b" stroke-width="1.2"/>
+                <text x="40" y="92" fill="#93c5fd" font-weight="bold" text-anchor="middle" font-size="9">雜訊 z ~ N(0,I)</text>
+                
+                <!-- Generator -->
+                <path d="M 70 89 L 98 89" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#m-arr-rose)"/>
+                <rect x="100" y="70" width="68" height="38" rx="6" fill="#881337" stroke="#f43f5e" stroke-width="1.5"/>
+                <text x="134" y="87" fill="#ffe4e6" font-weight="bold" text-anchor="middle" font-size="9">生成器 G</text>
+                <text x="134" y="99" fill="#fca5a5" text-anchor="middle" font-size="7.5">偽造樣本</text>
+
+                <!-- Fake Image to D -->
+                <path d="M 168 89 L 208 68" stroke="#f43f5e" stroke-width="1.5" marker-end="url(#m-arr-rose)"/>
+                <!-- Real Image to D -->
+                <path d="M 70 29 L 208 50" stroke="#10b981" stroke-width="1.5" marker-end="url(#m-arr-emerald)"/>
+
+                <!-- Discriminator -->
+                <rect x="210" y="38" width="68" height="42" rx="6" fill="#164e63" stroke="#06b6d4" stroke-width="1.5"/>
+                <text x="244" y="56" fill="#cffafe" font-weight="bold" text-anchor="middle" font-size="9">鑑別器 D</text>
+                <text x="244" y="69" fill="#67e8f9" text-anchor="middle" font-size="7.5">評真假 0~1</text>
+
+                <!-- Decision Out -->
+                <path d="M 278 59 L 306 59" stroke="#06b6d4" stroke-width="1.5" marker-end="url(#m-arr-cyan)"/>
+                <text x="312" y="54" fill="#38bdf8" font-size="7.5" font-weight="bold">真(1)</text>
+                <text x="312" y="68" fill="#fb7185" font-size="7.5" font-weight="bold">假(0)</text>
+
+                <!-- Adversarial Gradient Feedback -->
+                <path d="M 244 80 Q 244 118 134 118 Q 134 112 134 108" fill="none" stroke="#f43f5e" stroke-width="1.2" stroke-dasharray="3,3" marker-end="url(#m-arr-rose)"/>
+                <text x="190" y="114" fill="#fda4af" font-size="7" text-anchor="middle">對抗梯度回傳 (∇_G)</text>
+              </svg>
+            </div>
+
+            <div class="space-y-2.5 text-xs text-slate-300">
+              <div><strong class="text-slate-100">02. 核心原理：</strong>由「生成器 (Generator)」與「鑑別器 (Discriminator)」互相對抗競賽。生成器負責產生命片以假亂真，鑑別器負責辨別真假，兩者在訓練中不斷同步進化。</div>
+              <div><strong class="text-emerald-300 font-semibold">優點：</strong>產出的影像非常銳利、逼真，細節極佳，特別適合用在風格轉換 (CycleGAN) 與特定圖像生成 (StyleGAN)。</div>
+              <div><strong class="text-rose-400 font-semibold">缺點：</strong>訓練過程不穩定、極易發生「模式崩塌 (Mode Collapse，即產出樣式過於單一、喪失多樣性)」。</div>
+              <div><strong class="text-slate-100">05. 由來起源：</strong>Ian Goodfellow 於 2014 年構思，為了解決馬可夫隨機場難以解析配分函數的瓶頸。</div>
+              <div><strong class="text-slate-100">06. 生活化例子：</strong>藝術偽畫師不斷臨摹名畫，鑑定師努力抓漏洞，技術在對抗中雙雙登頂。</div>
+              <div><strong class="text-slate-100">08. 理論範疇：</strong>隱式密度估計 (Implicit Density)，透過對抗目標近似 Jensen-Shannon 散度。</div>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-700/60 text-xs text-rose-400 font-medium">
+            核心特徵：生成極其銳利 | 罩門：模式崩塌 (Mode Collapse) 與梯度不穩
+          </div>
+        </div>
+
+        <!-- VAE -->
+        <div class="bg-slate-800/60 border border-slate-700/70 rounded-2xl p-5 hover:border-amber-500/50 transition flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-start mb-3">
+              <span class="text-xs font-semibold px-2.5 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">顯式近似 (Explicit)</span>
+              <span class="text-xs text-slate-400">2013 Kingma & Welling</span>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-2">VAE (變分自編碼器)</h3>
+            <p class="text-sm text-amber-300 font-medium mb-3">01. 將高維資料壓縮為常態分佈雲，在結構化潛在空間中平滑漫遊與重建。</p>
+
+            <!-- Mini SVG Diagram: VAE 核心機制速覽 -->
+            <div class="bg-slate-950/90 border border-amber-500/20 rounded-xl p-2.5 mb-4 shadow-inner">
+              <div class="text-[10px] text-amber-400 font-semibold mb-1 flex items-center justify-between">
+                <span>🧬 編解碼與潛空間沙漏</span>
+                <span class="text-[9px] text-slate-400 font-mono">Bottleneck + Reparam</span>
+              </div>
+              <svg viewBox="0 0 320 125" class="w-full h-auto text-xs" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <marker id="m-arr-amber" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b" />
+                  </marker>
+                  <marker id="m-arr-purple" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#c084fc" />
+                  </marker>
+                </defs>
+                <!-- Input x -->
+                <rect x="8" y="38" width="42" height="48" rx="4" fill="#1e293b" stroke="#94a3b8" stroke-width="1.2"/>
+                <text x="29" y="60" fill="#f8fafc" font-weight="bold" text-anchor="middle" font-size="9">原圖 x</text>
+                <text x="29" y="73" fill="#64748b" text-anchor="middle" font-size="7">高維度</text>
+
+                <!-- Encoder Trapezoid -->
+                <path d="M 50 62 L 68 62" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#m-arr-amber)"/>
+                <polygon points="70,30 116,44 116,80 70,94" fill="#78350f" stroke="#f59e0b" stroke-width="1.3"/>
+                <text x="91" y="61" fill="#fef3c7" font-weight="bold" text-anchor="middle" font-size="8">Encoder</text>
+                <text x="91" y="71" fill="#fde68a" text-anchor="middle" font-size="6.5">q_φ(z|x)</text>
+
+                <!-- Distribution mu & sigma -->
+                <rect x="122" y="32" width="36" height="18" rx="3" fill="#1e293b" stroke="#f59e0b" stroke-width="1"/>
+                <text x="140" y="44" fill="#fde68a" text-anchor="middle" font-size="7.5">均值 μ</text>
+
+                <rect x="122" y="74" width="36" height="18" rx="3" fill="#1e293b" stroke="#f59e0b" stroke-width="1"/>
+                <text x="140" y="86" fill="#fde68a" text-anchor="middle" font-size="7.5">變異 σ</text>
+
+                <!-- Noise epsilon -->
+                <rect x="156" y="8" width="44" height="16" rx="3" fill="#3b0764" stroke="#c084fc" stroke-width="1"/>
+                <text x="178" y="19" fill="#f3e8ff" text-anchor="middle" font-size="7">ε~N(0,I)</text>
+                <path d="M 178 24 L 178 45" stroke="#c084fc" stroke-width="1.2" stroke-dasharray="2,2" marker-end="url(#m-arr-purple)"/>
+
+                <!-- Latent z node -->
+                <circle cx="178" cy="62" r="14" fill="#451a03" stroke="#f59e0b" stroke-width="1.5"/>
+                <text x="178" y="61" fill="#fef08a" font-weight="bold" text-anchor="middle" font-size="8">潛空間 z</text>
+                <text x="178" y="70" fill="#fcd34d" text-anchor="middle" font-size="6">μ+σ·ε</text>
+
+                <path d="M 148 41 L 166 54" stroke="#f59e0b" stroke-width="1.2"/>
+                <path d="M 148 83 L 166 70" stroke="#f59e0b" stroke-width="1.2"/>
+
+                <!-- Decoder Trapezoid -->
+                <path d="M 192 62 L 208 62" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#m-arr-amber)"/>
+                <polygon points="210,44 256,30 256,94 210,80" fill="#78350f" stroke="#f59e0b" stroke-width="1.3"/>
+                <text x="233" y="61" fill="#fef3c7" font-weight="bold" text-anchor="middle" font-size="8">Decoder</text>
+                <text x="233" y="71" fill="#fde68a" text-anchor="middle" font-size="6.5">p_θ(x|z)</text>
+
+                <!-- Recon x_hat -->
+                <path d="M 256 62 L 273 62" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#m-arr-amber)"/>
+                <rect x="274" y="38" width="38" height="48" rx="4" fill="#1e293b" stroke="#38bdf8" stroke-width="1.2"/>
+                <text x="293" y="60" fill="#7dd3fc" font-weight="bold" text-anchor="middle" font-size="9">重建 x̂</text>
+                <text x="293" y="73" fill="#64748b" text-anchor="middle" font-size="7">微平滑</text>
+
+                <!-- Bottom label -->
+                <text x="160" y="114" fill="#fbbf24" font-size="7" text-anchor="middle">損失: 重建誤差 (MSE/BCE) + 正則化 KL 散度</text>
+              </svg>
+            </div>
+
+            <div class="space-y-2.5 text-xs text-slate-300">
+              <div><strong class="text-slate-100">02. 核心原理：</strong>基於編碼器 (Encoder) 與解碼器 (Decoder) 架構。編碼器將圖片壓縮成低維度的「潛空間 (Latent Space)」並加入隨機性，解碼器再從中還原成圖片。</div>
+              <div><strong class="text-emerald-300 font-semibold">優點：</strong>訓練過程非常穩定（凸優化下界），且潛在空間的插值 (Interpolation) 極為平滑連續。</div>
+              <div><strong class="text-rose-400 font-semibold">缺點：</strong>受 MSE 像素均方差均值化影響，生成的影像通常比較模糊、高頻細節不足。</div>
+              <div><strong class="text-amber-300 font-semibold">實務關鍵應用：</strong>現代擴散模型（如 Stable Diffusion）廣泛結合 VAE，先由 VAE 壓縮影像至潛空間再擴散，大幅降低運算資源。</div>
+              <div><strong class="text-slate-100">06. 生活化例子：</strong>圖書館依分類標籤整理書籍，並留出連續貨架，使相近座標都能組裝出合理新書。</div>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-700/60 text-xs text-amber-400 font-medium">
+            核心特徵：平滑潛空間插值 | 罩門：高頻細節偏模糊 (現多擔任潛空間壓縮器)
+          </div>
+        </div>
+
+        <!-- Diffusion -->
+        <div class="bg-slate-800/60 border border-slate-700/70 rounded-2xl p-5 hover:border-emerald-500/50 transition flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-start mb-3">
+              <span class="text-xs font-semibold px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">非平衡熱力學 (Score-Based)</span>
+              <span class="text-xs text-slate-400">2020 Ho et al. (DDPM)</span>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-2">Diffusion (擴散模型)</h3>
+            <p class="text-sm text-emerald-300 font-medium mb-3">01. 向清水中滴墨水令其徹底混沌，再藉由類神經倒帶雕刻出清晰世界的奇蹟。</p>
+
+            <!-- Mini SVG Diagram: Diffusion 核心機制速覽 -->
+            <div class="bg-slate-950/90 border border-emerald-500/20 rounded-xl p-2.5 mb-4 shadow-inner">
+              <div class="text-[10px] text-emerald-400 font-semibold mb-1 flex items-center justify-between">
+                <span>🔄 兩階段加噪與去噪</span>
+                <span class="text-[9px] text-slate-400 font-mono">Forward & Reverse</span>
+              </div>
+              <svg viewBox="0 0 320 125" class="w-full h-auto text-xs" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <marker id="m-arr-diff-sky" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#38bdf8" />
+                  </marker>
+                  <marker id="m-arr-diff-em" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981" />
+                  </marker>
+                </defs>
+
+                <!-- State x0 (Clear) -->
+                <rect x="8" y="38" width="50" height="48" rx="6" fill="#064e3b" stroke="#10b981" stroke-width="1.5"/>
+                <text x="33" y="60" fill="#a7f3d0" font-weight="bold" text-anchor="middle" font-size="9">清晰 x₀</text>
+                <text x="33" y="72" fill="#6ee7b7" text-anchor="middle" font-size="7">真實影像</text>
+
+                <!-- Forward Curved Arrow (Top) -->
+                <path d="M 60 48 Q 160 12 258 48" fill="none" stroke="#38bdf8" stroke-width="1.5" marker-end="url(#m-arr-diff-sky)"/>
+                <rect x="110" y="10" width="100" height="16" rx="3" fill="#0f172a" stroke="#38bdf8" stroke-width="0.8"/>
+                <text x="160" y="21" fill="#7dd3fc" text-anchor="middle" font-size="7.5" font-weight="bold">前向加噪 q(x_t | x_t-1)</text>
+
+                <!-- State xt (Mid) -->
+                <rect x="135" y="44" width="50" height="36" rx="5" fill="#1e293b" stroke="#eab308" stroke-width="1.2"/>
+                <text x="160" y="62" fill="#fef08a" font-weight="bold" text-anchor="middle" font-size="8.5">過渡態 x_t</text>
+                <text x="160" y="73" fill="#cbd5e1" text-anchor="middle" font-size="6.5">半噪形態</text>
+
+                <!-- State xT (Noise) -->
+                <rect x="262" y="38" width="50" height="48" rx="6" fill="#18181b" stroke="#94a3b8" stroke-width="1.3" stroke-dasharray="2,2"/>
+                <text x="287" y="60" fill="#e2e8f0" font-weight="bold" text-anchor="middle" font-size="9">純噪 x_T</text>
+                <text x="287" y="72" fill="#94a3b8" text-anchor="middle" font-size="7">高斯分佈</text>
+
+                <!-- Reverse Curved Arrow (Bottom) -->
+                <path d="M 260 76 Q 160 114 62 76" fill="none" stroke="#10b981" stroke-width="1.8" marker-end="url(#m-arr-diff-em)"/>
+                <rect x="98" y="96" width="124" height="18" rx="4" fill="#064e3b" stroke="#10b981" stroke-width="1"/>
+                <text x="160" y="108" fill="#d1fae5" text-anchor="middle" font-size="7.5" font-weight="bold">神經網路逐步去噪 (U-Net ε_θ)</text>
+              </svg>
+            </div>
+
+            <div class="space-y-2.5 text-xs text-slate-300">
+              <div><strong class="text-slate-100">02. 核心原理：</strong>模仿熱力學「擴散」現象，分為兩階段：
+                <ul class="list-disc list-inside mt-1 space-y-1 text-slate-300 pl-1">
+                  <li><span class="text-sky-300">前向過程 (Forward Process)：</span>逐步為清晰圖片加上高斯雜訊，直到完全退化為純白雜訊。</li>
+                  <li><span class="text-emerald-300">逆向過程 (Reverse Process)：</span>訓練神經網絡一步步「去雜訊 (Denoising)」，從純雜訊還原出高品質圖像。</li>
+                </ul>
+              </div>
+              <div><strong class="text-emerald-300 font-semibold">優點：</strong>生成品質極高、多樣性完備，且文字條件控制 (Text-conditional Prompt) 極為穩定（如 DALL-E 3、Stable Diffusion、Midjourney）。</div>
+              <div><strong class="text-rose-400 font-semibold">缺點：</strong>反覆多步去雜訊迭代需要花費大量計算時間與硬體資源，推理延遲較高。</div>
+              <div><strong class="text-slate-100">06. 生活化例子：</strong>將雕塑一層層敲成細砂，再訓練一個神工巧匠依每一步的砂礫方向雕刻還原。</div>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-700/60 text-xs text-emerald-400 font-medium">
+            核心特徵：逼真度與可控性 SOTA | 罩門：多步去雜訊推論開銷巨大
+          </div>
+        </div>
+      </div>
+
+      <!-- 現代主流實務：VAE + Diffusion 融合架構提示橫幅 -->
+      <div class="bg-gradient-to-r from-indigo-950/70 via-purple-950/50 to-slate-900 border border-indigo-500/40 rounded-2xl p-5">
+        <div class="flex items-start gap-3">
+          <span class="p-2 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 text-lg">💡</span>
+          <div class="space-y-1.5 text-xs">
+            <h4 class="text-sm font-bold text-white flex items-center gap-2">
+              現代工業界代表作：潛在擴散模型 (Latent Diffusion / Stable Diffusion) 的「VAE + Diffusion」合體奧秘
+            </h4>
+            <p class="text-slate-300 leading-relaxed">
+              若直接在像素空間 ($512 \times 512 \times 3$) 進行數百步擴散去雜訊，硬體計算量與記憶體消耗將呈天文數字。因此現代架構先利用 <strong class="text-amber-300">預訓練 VAE Encoder</strong> 將像素圖片壓縮成低維的潛空間特徵（例如縮小 8 倍至 $64 \times 64 \times 4$），再於該平滑潛空間中執行 <strong class="text-emerald-300">Diffusion 的去雜訊運算</strong>，最後由 <strong class="text-amber-300">VAE Decoder</strong> 一次性解碼還原成超高解析度畫質。這巧妙結合了 VAE 的降維穩定性與 Diffusion 的頂級去噪生成能力！
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 04. 實務特徵 & 07. 工業應用 對比矩陣 -->
+      <div class="bg-slate-800/40 border border-slate-700 rounded-2xl p-6">
+        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <span class="w-2 h-5 bg-cyan-500 rounded"></span>04. 實務特徵橫向對比矩陣 & 07. 工業上主流應用
+        </h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left text-slate-300">
+            <thead class="text-xs uppercase bg-slate-900/60 text-slate-400 border-b border-slate-700">
+              <tr>
+                <th class="py-3 px-4">比較維度</th>
+                <th class="py-3 px-4 text-rose-400">GAN (生成對抗網路)</th>
+                <th class="py-3 px-4 text-amber-400">VAE (變分自編碼器)</th>
+                <th class="py-3 px-4 text-emerald-400">Diffusion (擴散模型)</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-700/60">
+              <tr>
+                <td class="py-3 px-4 font-semibold text-slate-200">生成畫質與銳利度</td>
+                <td class="py-3 px-4 text-emerald-400 font-semibold">極高、細節銳利 (High Fidelity)</td>
+                <td class="py-3 px-4 text-rose-400">較差、邊緣過度平滑模糊 (Blurry)</td>
+                <td class="py-3 px-4 text-emerald-400 font-semibold">最高、逼真細節驚人 (SOTA)</td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4 font-semibold text-slate-200">樣本多樣性</td>
+                <td class="py-3 px-4 text-rose-400">低至中 (極易發生 Mode Collapse 模式崩塌)</td>
+                <td class="py-3 px-4">高 (完整覆蓋標準高斯先驗分佈)</td>
+                <td class="py-3 px-4 text-emerald-400 font-semibold">極高 (精準覆蓋真實資料全部分佈流形)</td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4 font-semibold text-slate-200">訓練穩定性</td>
+                <td class="py-3 px-4 text-rose-400">低 (需極細緻平衡 G 與 D 學習率，易發散)</td>
+                <td class="py-3 px-4 text-emerald-400 font-semibold">極高 (標準凸優化下界，收斂穩定)</td>
+                <td class="py-3 px-4 text-emerald-400 font-semibold">極高 (標準 MSE 回歸雜訊損失)</td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4 font-semibold text-slate-200">採樣推論速度</td>
+                <td class="py-3 px-4 text-emerald-400 font-semibold">極快 (單次前向傳播 1 Forward Pass)</td>
+                <td class="py-3 px-4 text-emerald-400 font-semibold">極快 (單次 Decoder 前向傳播)</td>
+                <td class="py-3 px-4 text-rose-400">慢 (需 20~1000 步循序反覆去雜訊)</td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4 font-semibold text-slate-200">文字條件控制能力</td>
+                <td class="py-3 px-4">有限 (複雜 prompt 容易錯亂或崩壞)</td>
+                <td class="py-3 px-4">較弱 (語意向量糾纏，文字對齊難度高)</td>
+                <td class="py-3 px-4 text-emerald-400 font-semibold">極強 (Cross-Attention 與 Classifier-Free Guidance)</td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4 font-semibold text-slate-200">現代實務角色</td>
+                <td class="py-3 px-4">實時人臉特效(StyleGAN)、超解析度(SRGAN)、虛擬試衣</td>
+                <td class="py-3 px-4 text-amber-300 font-semibold">潛在空間特徵壓縮器 (為 Latent Diffusion 奠定基礎)、瑕疵檢測</td>
+                <td class="py-3 px-4 text-emerald-300 font-semibold">商業級文字生圖主力 (Stable Diffusion / DALL-E 3 / Midjourney)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- NEW SECTION: SVG 架構與運作機制視覺化圖解專區 -->
+    <section id="sec-svg-diagrams" class="space-y-6 scroll-mt-20">
+      <div class="border-b border-slate-800 pb-3">
+        <span class="text-xs font-semibold px-2.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">系統架構視覺化 (SVG Diagrams)</span>
+        <h2 class="text-2xl font-bold text-white mt-1">三大生成模型與融合架構原理圖解</h2>
+        <p class="text-xs text-slate-400 mt-1">清晰呈現資料流動、隨機性注入、反向傳播梯度與神經網路決策邊界。</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- SVG 1: GAN 架構圖 -->
+        <div class="bg-slate-800/40 border border-rose-500/30 rounded-2xl p-5 flex flex-col justify-between">
+          <div class="mb-3 flex items-center justify-between">
+            <h4 class="font-bold text-base text-rose-300 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>1. GAN 對抗對稱架構與反向梯度流向
+            </h4>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30 font-mono">Minimax Flow</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-center">
+            <svg viewBox="0 0 540 240" class="w-full h-auto text-xs" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <marker id="arrow-rose" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#f43f5e" />
+                </marker>
+                <marker id="arrow-emerald" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981" />
+                </marker>
+                <marker id="arrow-cyan" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#06b6d4" />
+                </marker>
+                <marker id="arrow-dashed" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#cbd5e1" />
+                </marker>
+              </defs>
+
+              <!-- Real Data Pipeline -->
+              <rect x="20" y="25" width="85" height="42" rx="6" fill="#1e293b" stroke="#10b981" stroke-width="1.5"/>
+              <text x="62" y="44" fill="#34d399" font-weight="bold" text-anchor="middle" font-size="11">真實圖像 x</text>
+              <text x="62" y="58" fill="#94a3b8" text-anchor="middle" font-size="9">p_data(x)</text>
+
+              <path d="M 105 46 L 315 46" stroke="#10b981" stroke-width="2" marker-end="url(#arrow-emerald)"/>
+
+              <!-- Generator Pipeline -->
+              <rect x="20" y="145" width="85" height="42" rx="6" fill="#1e293b" stroke="#64748b" stroke-width="1.5"/>
+              <text x="62" y="164" fill="#93c5fd" font-weight="bold" text-anchor="middle" font-size="11">隨機雜訊 z</text>
+              <text x="62" y="178" fill="#94a3b8" text-anchor="middle" font-size="9">z ~ N(0, I)</text>
+
+              <path d="M 105 166 L 155 166" stroke="#cbd5e1" stroke-width="2" marker-end="url(#arrow-dashed)"/>
+
+              <!-- Generator Block -->
+              <rect x="155" y="137" width="95" height="58" rx="8" fill="#881337" stroke="#f43f5e" stroke-width="2"/>
+              <text x="202" y="163" fill="#ffe4e6" font-weight="bold" text-anchor="middle" font-size="12">生成器 G(z)</text>
+              <text x="202" y="179" fill="#fda4af" text-anchor="middle" font-size="9">參數 θ_g 偽造影像</text>
+
+              <!-- Fake Image -->
+              <path d="M 250 166 L 290 166" stroke="#f43f5e" stroke-width="2" marker-end="url(#arrow-rose)"/>
+              <rect x="290" y="145" width="80" height="42" rx="6" fill="#1e293b" stroke="#f43f5e" stroke-width="1.5"/>
+              <text x="330" y="164" fill="#fda4af" font-weight="bold" text-anchor="middle" font-size="11">假圖像 G(z)</text>
+              <text x="330" y="178" fill="#94a3b8" text-anchor="middle" font-size="9">p_g(x)</text>
+
+              <!-- Discriminator Block -->
+              <path d="M 370 166 L 415 130" stroke="#f43f5e" stroke-width="2" marker-end="url(#arrow-rose)"/>
+              <path d="M 320 46 L 415 100" stroke="#10b981" stroke-width="2" marker-end="url(#arrow-emerald)"/>
+
+              <rect x="415" y="80" width="105" height="65" rx="8" fill="#164e63" stroke="#06b6d4" stroke-width="2"/>
+              <text x="467" y="108" fill="#cffafe" font-weight="bold" text-anchor="middle" font-size="12">鑑別器 D(x)</text>
+              <text x="467" y="124" fill="#67e8f9" text-anchor="middle" font-size="9">辨真偽 (0~1 標籤)</text>
+
+              <!-- Output & Adversarial Gradient Feedback -->
+              <path d="M 467 80 L 467 35 Q 467 15 440 15 L 202 15 Q 170 15 170 80 L 170 137" fill="none" stroke="#f43f5e" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrow-rose)"/>
+              <rect x="250" y="5" width="150" height="20" rx="4" fill="#0f172a" stroke="#f43f5e" stroke-width="1"/>
+              <text x="325" y="19" fill="#fb7185" text-anchor="middle" font-size="9">對抗梯度 ∇_θ_g log(1-D(G(z)))</text>
+            </svg>
+          </div>
+          <div class="mt-3 text-[11px] text-slate-400">
+            <strong>核心特點：</strong>無須定義真實機率密度，判別器將對抗損失反向傳導回饋給生成器以推動分佈遷移。
+          </div>
+        </div>
+
+        <!-- SVG 2: VAE 架構圖 -->
+        <div class="bg-slate-800/40 border border-amber-500/30 rounded-2xl p-5 flex flex-col justify-between">
+          <div class="mb-3 flex items-center justify-between">
+            <h4 class="font-bold text-base text-amber-300 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>2. VAE 重參數化與潛空間編解碼流程
+            </h4>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 font-mono">ELBO Flow</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-center">
+            <svg viewBox="0 0 540 240" class="w-full h-auto text-xs" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <marker id="arrow-amber" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b" />
+                </marker>
+                <marker id="arrow-purple" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#a855f7" />
+                </marker>
+              </defs>
+
+              <!-- Input Image -->
+              <rect x="15" y="85" width="65" height="55" rx="6" fill="#1e293b" stroke="#94a3b8" stroke-width="1.5"/>
+              <text x="47" y="112" fill="#f1f5f9" font-weight="bold" text-anchor="middle" font-size="11">原圖 x</text>
+              <text x="47" y="126" fill="#64748b" text-anchor="middle" font-size="8">High-dim</text>
+
+              <path d="M 80 112 L 120 112" stroke="#cbd5e1" stroke-width="2" marker-end="url(#arrow-dashed)"/>
+
+              <!-- Encoder (Trapezoid) -->
+              <polygon points="120,65 195,85 195,140 120,160" fill="#78350f" stroke="#f59e0b" stroke-width="1.5"/>
+              <text x="150" y="116" fill="#fef3c7" font-weight="bold" text-anchor="middle" font-size="10">Encoder</text>
+              <text x="150" y="128" fill="#fde68a" text-anchor="middle" font-size="8">q_φ(z|x)</text>
+
+              <!-- Mean and Variance outputs -->
+              <path d="M 195 95 L 235 75" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arrow-amber)"/>
+              <path d="M 195 130 L 235 150" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arrow-amber)"/>
+
+              <rect x="235" y="60" width="75" height="30" rx="4" fill="#1e293b" stroke="#f59e0b" stroke-width="1"/>
+              <text x="272" y="80" fill="#fde68a" text-anchor="middle" font-size="10">均值 μ(x)</text>
+
+              <rect x="235" y="135" width="75" height="30" rx="4" fill="#1e293b" stroke="#f59e0b" stroke-width="1"/>
+              <text x="272" y="155" fill="#fde68a" text-anchor="middle" font-size="10">變異數 σ(x)</text>
+
+              <!-- Reparameterization Trick Node -->
+              <circle cx="345" cy="112" r="22" fill="#451a03" stroke="#f59e0b" stroke-width="2"/>
+              <text x="345" y="108" fill="#fef3c7" font-weight="bold" text-anchor="middle" font-size="9">z = μ+σ·ε</text>
+              <text x="345" y="122" fill="#cbd5e1" text-anchor="middle" font-size="8">重參數化</text>
+
+              <path d="M 310 75 L 330 95" stroke="#f59e0b" stroke-width="1.5"/>
+              <path d="M 310 150 L 330 128" stroke="#f59e0b" stroke-width="1.5"/>
+
+              <!-- Exogenous Noise epsilon -->
+              <rect x="315" y="15" width="60" height="28" rx="4" fill="#3b0764" stroke="#a855f7" stroke-width="1.2"/>
+              <text x="345" y="32" fill="#f3e8ff" text-anchor="middle" font-size="9">ε ~ N(0, I)</text>
+              <path d="M 345 43 L 345 90" stroke="#a855f7" stroke-width="1.5" stroke-dasharray="3,3" marker-end="url(#arrow-purple)"/>
+
+              <!-- Decoder (Expanding Trapezoid) -->
+              <path d="M 367 112 L 400 112" stroke="#f59e0b" stroke-width="2" marker-end="url(#arrow-amber)"/>
+              <polygon points="400,85 475,65 475,160 400,140" fill="#78350f" stroke="#f59e0b" stroke-width="1.5"/>
+              <text x="440" y="116" fill="#fef3c7" font-weight="bold" text-anchor="middle" font-size="10">Decoder</text>
+              <text x="440" y="128" fill="#fde68a" text-anchor="middle" font-size="8">p_θ(x|z)</text>
+
+              <!-- Output Reconstruction -->
+              <path d="M 475 112 L 500 112" stroke="#cbd5e1" stroke-width="2" marker-end="url(#arrow-dashed)"/>
+              <rect x="500" y="85" width="30" height="55" rx="4" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+              <text x="515" y="112" fill="#7dd3fc" font-weight="bold" text-anchor="middle" font-size="11">x̂</text>
+              <text x="515" y="126" fill="#64748b" text-anchor="middle" font-size="8">Recon</text>
+
+              <!-- KL Loss annotation -->
+              <path d="M 272 58 Q 272 205 390 215" fill="none" stroke="#f43f5e" stroke-width="1" stroke-dasharray="3,3"/>
+              <text x="340" y="215" fill="#fda4af" text-anchor="middle" font-size="9">KL 散度懲罰 D_KL(q(z|x) || N(0, I))</text>
+            </svg>
+          </div>
+          <div class="mt-3 text-[11px] text-slate-400">
+            <strong>核心特點：</strong>將噪聲 $\epsilon$ 移為獨立輸入（重參數化），確保採樣過程可解析求導，反向傳遞梯度更新編碼器。
+          </div>
+        </div>
+
+        <!-- SVG 3: Diffusion 前向與逆向過程圖 -->
+        <div class="bg-slate-800/40 border border-emerald-500/30 rounded-2xl p-5 flex flex-col justify-between">
+          <div class="mb-3 flex items-center justify-between">
+            <h4 class="font-bold text-base text-emerald-300 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>3. Diffusion 馬可夫加噪 vs 類神經逆向去噪
+            </h4>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono">DDPM Process</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-center">
+            <svg viewBox="0 0 540 240" class="w-full h-auto text-xs" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <marker id="arrow-sky" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#38bdf8" />
+                </marker>
+              </defs>
+
+              <!-- State 0: x0 -->
+              <rect x="20" y="90" width="70" height="60" rx="8" fill="#064e3b" stroke="#10b981" stroke-width="2"/>
+              <text x="55" y="118" fill="#a7f3d0" font-weight="bold" text-anchor="middle" font-size="12">x₀</text>
+              <text x="55" y="134" fill="#6ee7b7" text-anchor="middle" font-size="9">原始清晰圖片</text>
+
+              <!-- Forward Arrows (Top Path) -->
+              <path d="M 95 105 Q 160 55 225 105" fill="none" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow-sky)"/>
+              <text x="160" y="70" fill="#7dd3fc" text-anchor="middle" font-size="9">加噪 q(x_t|x_t-1)</text>
+
+              <!-- State t: xt -->
+              <rect x="235" y="90" width="70" height="60" rx="8" fill="#1e293b" stroke="#eab308" stroke-width="2"/>
+              <text x="270" y="118" fill="#fef08a" font-weight="bold" text-anchor="middle" font-size="12">x_t</text>
+              <text x="270" y="134" fill="#cbd5e1" text-anchor="middle" font-size="9">中間過渡態</text>
+
+              <!-- Forward Arrows to Pure Noise -->
+              <path d="M 310 105 Q 375 55 440 105" fill="none" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow-sky)"/>
+              <text x="375" y="70" fill="#7dd3fc" text-anchor="middle" font-size="9">加噪 → 純高斯</text>
+
+              <!-- State T: xT -->
+              <rect x="450" y="90" width="70" height="60" rx="8" fill="#18181b" stroke="#94a3b8" stroke-width="2" stroke-dasharray="3,3"/>
+              <text x="485" y="118" fill="#e2e8f0" font-weight="bold" text-anchor="middle" font-size="12">x_T</text>
+              <text x="485" y="134" fill="#94a3b8" text-anchor="middle" font-size="9">純高斯白噪聲</text>
+
+              <!-- Reverse Arrows (Bottom Path) -->
+              <path d="M 445 135 Q 375 190 310 135" fill="none" stroke="#10b981" stroke-width="2" marker-end="url(#arrow-emerald)"/>
+              <path d="M 230 135 Q 160 190 95 135" fill="none" stroke="#10b981" stroke-width="2" marker-end="url(#arrow-emerald)"/>
+
+              <rect x="180" y="195" width="180" height="30" rx="6" fill="#064e3b" stroke="#10b981" stroke-width="1.2"/>
+              <text x="270" y="214" fill="#d1fae5" font-weight="bold" text-anchor="middle" font-size="10">神經網絡去噪預測 p_θ(x_t-1|x_t)</text>
+            </svg>
+          </div>
+          <div class="mt-3 text-[11px] text-slate-400">
+            <strong>核心特點：</strong>前向加噪為確定性的非可學習馬可夫過程；逆向去噪由神經網絡（如 U-Net）逐步估計所加噪聲並予以剔除。
+          </div>
+        </div>
+
+        <!-- SVG 4: Stable Diffusion (Latent Diffusion) 融合架構圖 -->
+        <div class="bg-slate-800/40 border border-indigo-500/30 rounded-2xl p-5 flex flex-col justify-between">
+          <div class="mb-3 flex items-center justify-between">
+            <h4 class="font-bold text-base text-indigo-300 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>4. 現代工業標準：Latent Diffusion (SD) 融合架構
+            </h4>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 font-mono">SD Pipeline</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-center">
+            <svg viewBox="0 0 540 240" class="w-full h-auto text-xs" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <marker id="arrow-indigo" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#818cf8" />
+                </marker>
+              </defs>
+
+              <!-- Pixel Space Box -->
+              <rect x="10" y="15" width="120" height="210" rx="10" fill="rgba(30, 41, 59, 0.4)" stroke="#64748b" stroke-dasharray="4,4"/>
+              <text x="70" y="35" fill="#94a3b8" font-weight="bold" text-anchor="middle" font-size="10">高維像素空間 (512x512)</text>
+
+              <rect x="25" y="55" width="90" height="40" rx="6" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5"/>
+              <text x="70" y="75" fill="#fde68a" font-weight="bold" text-anchor="middle" font-size="10">輸入圖片 x</text>
+              <text x="70" y="88" fill="#94a3b8" text-anchor="middle" font-size="8">3x512x512</text>
+
+              <!-- Latent Space Box -->
+              <rect x="150" y="15" width="240" height="210" rx="10" fill="rgba(15, 23, 42, 0.8)" stroke="#818cf8" stroke-width="1.5"/>
+              <text x="270" y="35" fill="#a5b4fc" font-weight="bold" text-anchor="middle" font-size="10">低維潛在空間 (Latent Space, 64x64)</text>
+
+              <!-- VAE Encoder Compression -->
+              <path d="M 115 75 L 165 75" stroke="#f59e0b" stroke-width="2" marker-end="url(#arrow-amber)"/>
+              <rect x="165" y="55" width="85" height="40" rx="6" fill="#78350f" stroke="#f59e0b" stroke-width="1.5"/>
+              <text x="207" y="75" fill="#fef3c7" font-weight="bold" text-anchor="middle" font-size="10">VAE Encoder</text>
+              <text x="207" y="88" fill="#fde68a" text-anchor="middle" font-size="8">降維 8x 壓縮</text>
+
+              <!-- Latent Feature z -->
+              <path d="M 250 75 L 285 75" stroke="#cbd5e1" stroke-width="1.5"/>
+              <rect x="285" y="55" width="85" height="40" rx="6" fill="#312e81" stroke="#818cf8" stroke-width="1.5"/>
+              <text x="327" y="75" fill="#e0e7ff" font-weight="bold" text-anchor="middle" font-size="10">潛向量 z_0</text>
+              <text x="327" y="88" fill="#c7d2fe" text-anchor="middle" font-size="8">4x64x64</text>
+
+              <!-- Text Condition CLIP -->
+              <rect x="165" y="125" width="85" height="45" rx="6" fill="#1e1b4b" stroke="#a78bfa" stroke-width="1.2"/>
+              <text x="207" y="145" fill="#ede9fe" font-weight="bold" text-anchor="middle" font-size="9">Text Prompt</text>
+              <text x="207" y="160" fill="#c4b5fd" text-anchor="middle" font-size="8">CLIP Text Encoder</text>
+
+              <!-- UNet Diffusion Denoising in Latent -->
+              <path d="M 327 95 L 327 125" stroke="#818cf8" stroke-width="1.5"/>
+              <path d="M 250 148 L 285 148" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow-indigo)"/>
+
+              <rect x="285" y="125" width="95" height="50" rx="8" fill="#064e3b" stroke="#10b981" stroke-width="1.8"/>
+              <text x="332" y="146" fill="#d1fae5" font-weight="bold" text-anchor="middle" font-size="10">DM U-Net 去噪</text>
+              <text x="332" y="162" fill="#6ee7b7" text-anchor="middle" font-size="8">Cross-Attention</text>
+
+              <!-- VAE Decoder Decompression back to Pixel -->
+              <path d="M 380 150 Q 420 150 420 120 L 420 75 L 435 75" stroke="#f59e0b" stroke-width="2" fill="none" marker-end="url(#arrow-amber)"/>
+
+              <!-- Decoder & Output -->
+              <rect x="440" y="55" width="85" height="40" rx="6" fill="#78350f" stroke="#f59e0b" stroke-width="1.5"/>
+              <text x="482" y="75" fill="#fef3c7" font-weight="bold" text-anchor="middle" font-size="10">VAE Decoder</text>
+              <text x="482" y="88" fill="#fde68a" text-anchor="middle" font-size="8">高保真重建輸出</text>
+
+              <rect x="440" y="125" width="85" height="40" rx="6" fill="#1e293b" stroke="#10b981" stroke-width="1.5"/>
+              <text x="482" y="145" fill="#a7f3d0" font-weight="bold" text-anchor="middle" font-size="10">超清晰成圖</text>
+              <text x="482" y="158" fill="#94a3b8" text-anchor="middle" font-size="8">3x512x512</text>
+              <path d="M 482 95 L 482 125" stroke="#10b981" stroke-width="2" marker-end="url(#arrow-emerald)"/>
+            </svg>
+          </div>
+          <div class="mt-3 text-[11px] text-slate-400">
+            <strong>核心特點：</strong>VAE 負責空間降維與升維解碼；Diffusion 專注在低維特徵流形上做條件引導去噪，將運算複雜度降低超過 64 倍！
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: 03 IPAS AI 國家級考題專區 -->
+    <section id="sec-ipas" class="space-y-6 scroll-mt-20">
+      <div class="bg-slate-800/40 border border-slate-700 rounded-2xl p-6">
+        <div class="border-b border-slate-700 pb-3 mb-4 flex flex-wrap justify-between items-center gap-2">
+          <div>
+            <span class="px-2.5 py-1 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-semibold">經濟部 IPAS 考證焦點</span>
+            <h3 class="text-xl font-bold text-white mt-1">03. IPAS AI 應用與演算法工程師精選檢定題</h3>
+          </div>
+          <span class="text-xs text-slate-400">點擊選項立即檢驗並檢視完整考點解析</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- 考題 1 -->
+          <div class="p-4 bg-slate-900/70 rounded-xl border border-slate-700/80 flex flex-col justify-between">
+            <div>
+              <span class="text-xs px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono">Q1 (GAN 訓練異常診斷)</span>
+              <p class="text-xs font-medium text-slate-200 mt-2 leading-relaxed">
+                在訓練標準 GAN 時，判別器損失迅速降至 0，而生成器損失飆高且無法更新權重，生成品質不再改善。請問造成此現象的主因與最佳解法為何？
+              </p>
+              <div class="mt-3 space-y-2 text-xs">
+                <button class="w-full text-left p-2 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition" onclick="checkAnswer('q1', 'A')">(A) 學習率過低；調大生成器學習率 100 倍</button>
+                <button class="w-full text-left p-2 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition" onclick="checkAnswer('q1', 'B')">(B) 判別器過強導致 JS 散度飽和與梯度消失；改用 WGAN 或 GP</button>
+                <button class="w-full text-left p-2 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition" onclick="checkAnswer('q1', 'C')">(C) 發生過擬合；在生成器中加入 Dropout</button>
+              </div>
+            </div>
+            <div id="q1-expl" class="hidden mt-3 p-3 bg-emerald-950/40 border border-emerald-700/50 rounded-lg text-xs text-emerald-200">
+              <strong>正確答案：(B)</strong><br>
+              <strong>詳解：</strong>傳統 GAN 目標等價於 JS 散度。當兩分佈無重疊時，$D_{JS}$ 恆為常數，判別器過強會令梯度趨近於 0。WGAN 透過推土機距離賦予平滑連續梯度，克服梯度飽和。
+            </div>
+          </div>
+
+          <!-- 考題 2 -->
+          <div class="p-4 bg-slate-900/70 rounded-xl border border-slate-700/80 flex flex-col justify-between">
+            <div>
+              <span class="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">Q2 (VAE 重參數化機制)</span>
+              <p class="text-xs font-medium text-slate-200 mt-2 leading-relaxed">
+                在變分自編碼器 (VAE) 中，為何不能直接從編碼器輸出的高斯分佈 $\mathcal{N}(\mu, \sigma^2)$ 進行隨機採樣 $z$，而必須使用重參數化技巧？
+              </p>
+              <div class="mt-3 space-y-2 text-xs">
+                <button class="w-full text-left p-2 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition" onclick="checkAnswer('q2', 'A')">(A) 隨機採樣不具解析導數，阻斷梯度反向傳播至編碼器</button>
+                <button class="w-full text-left p-2 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition" onclick="checkAnswer('q2', 'B')">(B) 直接採樣會使常態分佈變為均勻分佈，使空間失真</button>
+                <button class="w-full text-left p-2 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition" onclick="checkAnswer('q2', 'C')">(C) 為了減少矩陣乘法運算複雜度，提升推理效率</button>
+              </div>
+            </div>
+            <div id="q2-expl" class="hidden mt-3 p-3 bg-emerald-950/40 border border-emerald-700/50 rounded-lg text-xs text-emerald-200">
+              <strong>正確答案：(A)</strong><br>
+              <strong>詳解：</strong>隨機採樣無法計算對網路參數的偏微分。重參數化透過將隨機性剝離為獨立噪聲 $\epsilon \sim \mathcal{N}(0, \mathbf{I})$，使 $z = \mu + \sigma \odot \epsilon$ 成為確定性可微式。
+            </div>
+          </div>
+
+          <!-- 考題 3 -->
+          <div class="p-4 bg-slate-900/70 rounded-xl border border-slate-700/80 flex flex-col justify-between">
+            <div>
+              <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono">Q3 (Diffusion 推理延遲與加速)</span>
+              <p class="text-xs font-medium text-slate-200 mt-2 leading-relaxed">
+                標準擴散模型生成圖片通常需數十至數百步反向去噪迭代，難以直接應用於即時邊緣裝置。當前工業界加速擴散推論的主要策略<strong>不包括</strong>下列何者？
+              </p>
+              <div class="mt-3 space-y-2 text-xs">
+                <button class="w-full text-left p-2 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition" onclick="checkAnswer('q3', 'A')">(A) 採用非馬可夫鏈跳步採樣技術 (如 DDIM)</button>
+                <button class="w-full text-left p-2 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition" onclick="checkAnswer('q3', 'B')">(B) 蒸餾技術 (如 LCM 潛在一致性模型、Flow Matching)</button>
+                <button class="w-full text-left p-2 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition" onclick="checkAnswer('q3', 'C')">(C) 在前向過程直接增加更多加噪時間步 $T \ge 10000$</button>
+              </div>
+            </div>
+            <div id="q3-expl" class="hidden mt-3 p-3 bg-emerald-950/40 border border-emerald-700/50 rounded-lg text-xs text-emerald-200">
+              <strong>正確答案：(C)</strong><br>
+              <strong>詳解：</strong>增加加噪步數只會使整體反向迭代更冗長。工業加速包含 DDIM 跳步取樣 (20~50 步)、ODE 專用求解器 (DPM-Solver) 與一致性蒸餾 (LCM/SDXL-Turbo 可降至 1~4 步)。
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: 09 數學推導並列解析 -->
+    <section id="sec-math" class="space-y-6 scroll-mt-20">
+      <div class="border-b border-slate-800 pb-3">
+        <span class="text-xs font-semibold px-2.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">09. 數學推導核心</span>
+        <h2 class="text-2xl font-bold text-white mt-1">機率圖模型與損失函數嚴謹推導</h2>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- GAN Math Card -->
+        <div class="bg-slate-800/40 border border-rose-500/30 rounded-2xl p-5 space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+            <h4 class="font-bold text-base text-rose-300">GAN：極小極大與 JS 散度</h4>
+          </div>
+          <p class="text-xs text-slate-300">生成器 $G$ 與判別器 $D$ 的 Minimax 零和博弈目標函數：</p>
+          <div class="p-3 bg-slate-950 rounded-lg text-center overflow-x-auto text-xs font-mono">
+            $$\min_G \max_D V(D, G) = \mathbb{E}_{x \sim p_{data}}[\log D(x)] + \mathbb{E}_{z \sim p_z}[\log(1 - D(G(z)))]$$
+          </div>
+          <p class="text-xs text-slate-300">固定 $G$ 求導數為 0，得到全局最優判別器 $D^*(x)$：</p>
+          <div class="p-2 bg-slate-950 rounded-lg text-center overflow-x-auto text-xs text-cyan-300">
+            $$D^*(x) = \frac{p_{data}(x)}{p_{data}(x) + p_g(x)}$$
+          </div>
+          <p class="text-xs text-slate-300">代回目標函數，即轉化為兩分佈之 Jensen-Shannon 散度：</p>
+          <div class="p-2 bg-slate-950 rounded-lg text-center overflow-x-auto text-xs text-rose-300">
+            $$V(D^*, G) = -\log(4) + 2 \cdot D_{JS}(p_{data} \parallel p_g)$$
+          </div>
+        </div>
+
+        <!-- VAE Math Card -->
+        <div class="bg-slate-800/40 border border-amber-500/30 rounded-2xl p-5 space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+            <h4 class="font-bold text-base text-amber-300">VAE：證據下界 (ELBO) 與重參數化</h4>
+          </div>
+          <p class="text-xs text-slate-300">藉由變分近似 $q_\phi(z|x)$ 最大化邊際似然，展開為 ELBO：</p>
+          <div class="p-3 bg-slate-950 rounded-lg text-center overflow-x-auto text-xs font-mono text-amber-300">
+            $$\log p_\theta(x) \ge \mathbb{E}_{q_\phi}[\log p_\theta(x|z)] - D_{KL}(q_\phi(z|x) \parallel p(z))$$
+          </div>
+          <p class="text-xs text-slate-300">第 1 項為重建損失，第 2 項為迫使後驗貼近標準高斯先驗之 KL 懲罰。</p>
+          <p class="text-xs text-slate-300 font-semibold text-white">重參數化技巧 (消除隨機取樣阻斷)：</p>
+          <div class="p-2 bg-slate-950 rounded-lg text-center overflow-x-auto text-xs font-mono text-cyan-300">
+            $$\epsilon \sim \mathcal{N}(0, \mathbf{I}), \quad z = \mu_\phi(x) + \sigma_\phi(x) \odot \epsilon$$
+          </div>
+          <p class="text-[11px] text-slate-400">使得 $\nabla_\phi z$ 可解析求導，反向傳播得以順利穿透至編碼器。</p>
+        </div>
+
+        <!-- Diffusion Math Card -->
+        <div class="bg-slate-800/40 border border-emerald-500/30 rounded-2xl p-5 space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+            <h4 class="font-bold text-base text-emerald-300">Diffusion：前向閉合解與分數匹配</h4>
+          </div>
+          <p class="text-xs text-slate-300">馬可夫前向加噪 $q(x_t|x_{t-1}) = \mathcal{N}(x_t; \sqrt{1-\beta_t}x_{t-1}, \beta_t \mathbf{I})$，任意步閉合解：</p>
+          <div class="p-3 bg-slate-950 rounded-lg text-center overflow-x-auto text-xs font-mono text-emerald-300">
+            $$x_t = \sqrt{\bar{\alpha}_t}x_0 + \sqrt{1 - \bar{\alpha}_t} \cdot \epsilon, \quad \epsilon \sim \mathcal{N}(0, \mathbf{I})$$
+          </div>
+          <p class="text-xs text-slate-300">神經網絡 $\epsilon_\theta(x_t, t)$ 預測所加高斯噪聲，簡化損失函數：</p>
+          <div class="p-2 bg-slate-950 rounded-lg text-center overflow-x-auto text-xs text-cyan-300">
+            $$\mathcal{L}_{simple}(\theta) = \mathbb{E}_{t, x_0, \epsilon}\left[ \| \epsilon - \epsilon_\theta(x_t, t) \|^2 \right]$$
+          </div>
+          <p class="text-[11px] text-slate-400">等價於估計數據分佈之對數梯度分數 $\nabla_{x_t}\log p(x_t)$。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: 10 & 12 互動模擬器專區 (三者並列完整展示) -->
+    <section id="sec-simulators" class="space-y-8 scroll-mt-20">
+      <div class="border-b border-slate-800 pb-3 flex flex-wrap justify-between items-center gap-3">
+        <div>
+          <span class="text-xs font-semibold px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">10. 深度學習動態模擬 | 12. Step by step & 一鍵自動演繹</span>
+          <h2 class="text-2xl font-bold text-white mt-1">三大模型互動實驗儀表板</h2>
+        </div>
+        <!-- 全局模擬控制鈕 -->
+        <div class="flex items-center space-x-2">
+          <button id="sim-btn-step" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1 shadow">
+            <span>🐾 單步推進 (Step All)</span>
+          </button>
+          <button id="sim-btn-auto" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1 shadow">
+            <span id="auto-sim-label">▶ 一鍵自動模擬 (All)</span>
+          </button>
+          <button id="sim-btn-reset" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold">
+            重置
+          </button>
+        </div>
+      </div>
+
+      <!-- SIMULATOR 1: GAN -->
+      <div class="bg-slate-800/40 border border-rose-500/30 p-5 rounded-2xl space-y-4">
+        <div class="flex flex-wrap justify-between items-center gap-2">
+          <h3 class="text-base font-bold text-rose-300 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>1. GAN 零和博弈動態模擬器 (Minimax Distribution Shift)
+          </h3>
+          <div class="flex items-center space-x-3 text-xs">
+            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>真實分佈 $P_{data}$</span>
+            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span>生成假樣本 $P_g$</span>
+            <span class="flex items-center gap-1"><span class="w-4 h-1 bg-cyan-400 inline-block"></span>判別邊界 $D(x)$</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 bg-slate-900 border border-slate-800 p-4 rounded-xl relative shadow-inner">
+            <canvas id="canvas-gan" width="700" height="300" class="w-full h-72 rounded-lg bg-slate-950 border border-slate-800"></canvas>
+            <div id="gan-badge" class="absolute bottom-6 left-6 bg-slate-900/90 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-mono text-cyan-300">
+              Epoch: <span id="gan-epoch">0</span> | G Loss: <span id="gan-gloss">1.42</span> | D Loss: <span id="gan-dloss">0.68</span>
+            </div>
+          </div>
+          <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl space-y-3 text-xs">
+            <div class="font-bold text-slate-200">博弈狀態診斷：</div>
+            <p id="gan-status-text" class="text-slate-300 leading-relaxed">
+              初始階段：生成器分佈雜亂且偏離目標，判別器輕易給出近 1.0 的真偽分數。
+            </p>
+            <div>
+              <label class="block text-slate-400 mb-1">判別器學習速率：</label>
+              <input type="range" id="gan-d-speed" min="1" max="5" value="2" class="w-full accent-cyan-500">
+            </div>
+            <div class="bg-rose-950/30 border border-rose-800/40 p-2.5 rounded-lg">
+              <span class="font-bold text-rose-300">Mode Collapse 現象說明：</span>
+              <p class="text-slate-300 mt-1">若生成器發現特定單一點能穩定騙過 D，生成分佈會崩塌成單一尖峰而喪失多樣性。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SIMULATOR 2: VAE -->
+      <div class="bg-slate-800/40 border border-amber-500/30 p-5 rounded-2xl space-y-4">
+        <div class="flex flex-wrap justify-between items-center gap-2">
+          <h3 class="text-base font-bold text-amber-300 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>2. VAE 連續潛在流形探勘器 (Latent Space Manifold & Real-time Decoder)
+          </h3>
+          <span class="text-xs text-amber-400">滑鼠於座標區拖曳或點擊可即時解碼重建</span>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 bg-slate-900 border border-slate-800 p-4 rounded-xl relative shadow-inner">
+            <canvas id="canvas-vae" width="700" height="300" class="w-full h-72 rounded-lg bg-slate-950 border border-slate-800 cursor-crosshair"></canvas>
+            <div class="text-[11px] text-slate-400 mt-2 flex justify-between">
+              <span>$z_1 \sim \mathcal{N}(0, 1)$ (形態粗細/偏角)</span>
+              <span>$z_2 \sim \mathcal{N}(0, 1)$ (數字/特徵類別變換)</span>
+            </div>
+          </div>
+          <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl space-y-3 text-xs">
+            <div class="flex flex-col items-center justify-center p-3 bg-slate-950 rounded-xl border border-slate-800">
+              <canvas id="canvas-vae-recon" width="110" height="110" class="rounded bg-black border border-amber-500/40 shadow-lg"></canvas>
+              <div class="mt-2 text-center text-slate-300 font-mono text-[11px]">
+                座標 $z = [<span id="vae-z1-val">0.00</span>, <span id="vae-z2-val">0.00</span>]$
+              </div>
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">重參數化隨機噪聲擾動強度 ($\epsilon$)：</label>
+              <input type="range" id="vae-noise-scale" min="0" max="100" value="30" class="w-full accent-amber-500">
+            </div>
+            <div class="bg-amber-950/20 border border-amber-800/40 p-2.5 rounded-lg text-slate-300">
+              <strong class="text-amber-300">連續流形平滑特性：</strong>
+              相鄰兩點進行線性插值 (Lerp)，解碼重建均連續漸變無破裂。
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SIMULATOR 3: DIFFUSION -->
+      <div class="bg-slate-800/40 border border-emerald-500/30 p-5 rounded-2xl space-y-4">
+        <div class="flex flex-wrap justify-between items-center gap-2">
+          <h3 class="text-base font-bold text-emerald-300 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>3. Diffusion 馬可夫加噪與去噪演繹 (Forward Noising & Reverse Denoising)
+          </h3>
+          <span id="diff-step-indicator" class="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+            Step t = 100 (純高斯白噪聲)
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 bg-slate-900 border border-slate-800 p-4 rounded-xl relative shadow-inner">
+            <canvas id="canvas-diff" width="700" height="300" class="w-full h-72 rounded-lg bg-slate-950 border border-slate-800"></canvas>
+            <div class="mt-3">
+              <div class="flex justify-between text-xs text-slate-400 mb-1">
+                <span>$x_0$ (清晰星系結構)</span>
+                <span>$x_{50}$ (過渡半噪態)</span>
+                <span>$x_T$ (純白高斯噪聲)</span>
+              </div>
+              <input type="range" id="diff-slider" min="0" max="100" value="100" class="w-full accent-emerald-500 cursor-pointer">
+            </div>
+          </div>
+          <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl space-y-3 text-xs">
+            <div class="flex gap-2">
+              <button onclick="setDiffDirection('forward')" class="flex-1 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-200 font-medium">前向加噪 ($x_0 \to x_T$)</button>
+              <button onclick="setDiffDirection('reverse')" class="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded text-white font-medium">反向去噪 ($x_T \to x_0$)</button>
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">加噪調度排程 (Noise Schedule):</label>
+              <select id="diff-schedule" class="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-slate-200 text-xs">
+                <option value="linear">線性排程 (Linear $\beta_t$: 0.0001 → 0.02)</option>
+                <option value="cosine">餘弦排程 (Cosine $\bar{\alpha}_t$, 防資訊驟失)</option>
+              </select>
+            </div>
+            <div class="bg-emerald-950/20 border border-emerald-800/40 p-2.5 rounded-lg text-slate-300">
+              <strong class="text-emerald-300">物理與幾何直觀：</strong>
+              神經網路在每步預測噪聲向量，在負分數方向（高密度流形梯度的反向）將混亂粒子一步步推回真實影像流形。
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5: 11 PyTorch 程式碼實作並列展示 -->
+    <section id="sec-code" class="space-y-6 scroll-mt-20">
+      <div class="border-b border-slate-800 pb-3">
+        <span class="text-xs font-semibold px-2.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">11. Python / PyTorch 實作</span>
+        <h2 class="text-2xl font-bold text-white mt-1">三大生成模型最小可行性實作（核心函式色彩高亮）</h2>
+        <p class="text-xs text-slate-400 mt-1">重點標註說明：<span class="highlight-fn">函式宣告</span>、<span class="highlight-loss">核心損失 Loss</span>、<span class="highlight-trick">關鍵技巧 Trick</span>。</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- CODE 1: GAN -->
+        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+              <span class="text-sm font-bold text-rose-400">GAN 對抗訓練步驟</span>
+              <span class="text-[10px] text-slate-500 font-mono">PyTorch</span>
+            </div>
+            <div class="overflow-x-auto text-xs font-mono-code text-slate-300 leading-relaxed">
+<pre><code><span class="text-purple-400">import</span> torch
+<span class="text-purple-400">import</span> torch.nn <span class="text-purple-400">as</span> nn
+
+criterion = nn.BCELoss()
+
+<span class="text-purple-400">def</span> <span class="highlight-fn">train_gan_step</span>(real_imgs, G, D, opt_G, opt_D, z_dim=<span class="text-orange-400">100</span>):
+    bs = real_imgs.size(<span class="text-orange-400">0</span>)
+    real_lbl = torch.ones(bs, <span class="text-orange-400">1</span>)
+    fake_lbl = torch.zeros(bs, <span class="text-orange-400">1</span>)
+
+    <span class="text-slate-500"># 1. 訓練判別器 D</span>
+    opt_D.zero_grad()
+    loss_r = criterion(D(real_imgs), real_lbl)
+    z = torch.randn(bs, z_dim)
+    fake_imgs = G(z)
+    <span class="text-slate-500"># 關鍵: detach 阻斷回傳至 G</span>
+    loss_f = criterion(D(<span class="highlight-trick">fake_imgs.detach()</span>), fake_lbl)
+    <span class="highlight-loss">loss_D = loss_r + loss_f</span>
+    loss_D.backward()
+    opt_D.step()
+
+    <span class="text-slate-500"># 2. 訓練生成器 G</span>
+    opt_G.zero_grad()
+    <span class="highlight-loss">loss_G = criterion(D(fake_imgs), real_lbl)</span>
+    loss_G.backward()
+    opt_G.step()
+    <span class="text-purple-400">return</span> loss_D.item(), loss_G.item()</code></pre>
+            </div>
+          </div>
+          <div class="mt-3 text-[11px] text-slate-400 border-t border-slate-800/80 pt-2">
+            重要細節：`fake_imgs.detach()` 可避免在更新判別器時冗餘反向傳播至生成器。
+          </div>
+        </div>
+
+        <!-- CODE 2: VAE -->
+        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+              <span class="text-sm font-bold text-amber-400">VAE 重參數化與 ELBO</span>
+              <span class="text-[10px] text-slate-500 font-mono">PyTorch</span>
+            </div>
+            <div class="overflow-x-auto text-xs font-mono-code text-slate-300 leading-relaxed">
+<pre><code><span class="text-purple-400">import</span> torch
+<span class="text-purple-400">import</span> torch.nn <span class="text-purple-400">as</span> nn
+<span class="text-purple-400">import</span> torch.nn.functional <span class="text-purple-400">as</span> F
+
+<span class="text-purple-400">class</span> <span class="text-yellow-300">VAE</span>(nn.Module):
+    <span class="text-slate-500"># 重參數化: z = μ + ε * σ</span>
+    <span class="text-purple-400">def</span> <span class="highlight-trick">reparameterize</span>(self, mu, logvar):
+        std = torch.exp(<span class="text-orange-400">0.5</span> * logvar)
+        eps = torch.randn_like(std)
+        <span class="text-purple-400">return</span> mu + eps * std
+
+    <span class="text-purple-400">def</span> <span class="highlight-fn">forward</span>(self, x):
+        mu, logvar = self.encode(x)
+        z = self.<span class="highlight-trick">reparameterize</span>(mu, logvar)
+        <span class="text-purple-400">return</span> self.decode(z), mu, logvar
+
+<span class="text-purple-400">def</span> <span class="highlight-loss">loss_function</span>(recon_x, x, mu, logvar):
+    BCE = F.binary_cross_entropy(recon_x, x, reduction=<span class="text-emerald-300">'sum'</span>)
+    <span class="text-slate-500"># 封閉解析解 KL 散度</span>
+    KLD = -<span class="text-orange-400">0.5</span> * torch.sum(<span class="text-orange-400">1</span> + logvar - mu.pow(<span class="text-orange-400">2</span>) - logvar.exp())
+    <span class="text-purple-400">return</span> BCE + KLD</code></pre>
+            </div>
+          </div>
+          <div class="mt-3 text-[11px] text-slate-400 border-t border-slate-800/80 pt-2">
+            重要細節：利用 `logvar` 取代 `std` 進行回歸可確保數值恆正且數值穩定性更佳。
+          </div>
+        </div>
+
+        <!-- CODE 3: DIFFUSION -->
+        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+              <span class="text-sm font-bold text-emerald-400">Diffusion 前向採樣與損失</span>
+              <span class="text-[10px] text-slate-500 font-mono">PyTorch</span>
+            </div>
+            <div class="overflow-x-auto text-xs font-mono-code text-slate-300 leading-relaxed">
+<pre><code><span class="text-purple-400">import</span> torch
+<span class="text-purple-400">import</span> torch.nn <span class="text-purple-400">as</span> nn
+
+<span class="text-purple-400">class</span> <span class="text-yellow-300">DiffusionEngine</span>:
+    <span class="text-purple-400">def</span> <span class="text-blue-400">__init__</span>(self, alphas_cumprod):
+        self.alphas_cumprod = alphas_cumprod
+
+    <span class="text-slate-500"># 閉合加噪採樣: x_t = √ᾱ*x_0 + √(1-ᾱ)*ε</span>
+    <span class="text-purple-400">def</span> <span class="highlight-trick">q_sample</span>(self, x_0, t, noise):
+        s_alpha = torch.sqrt(self.alphas_cumprod[t])
+        s_one_minus = torch.sqrt(<span class="text-orange-400">1.0</span> - self.alphas_cumprod[t])
+        <span class="text-purple-400">return</span> s_alpha * x_0 + s_one_minus * noise
+
+    <span class="text-purple-400">def</span> <span class="highlight-loss">train_loss</span>(self, unet, x_0):
+        t = torch.randint(<span class="text-orange-400">0</span>, len(self.alphas_cumprod), (x_0.size(<span class="text-orange-400">0</span>),))
+        noise = torch.randn_like(x_0)
+        x_t = self.<span class="highlight-trick">q_sample</span>(x_0, t, noise)
+        pred_noise = unet(x_t, t)
+        <span class="text-purple-400">return</span> nn.functional.mse_loss(noise, pred_noise)</code></pre>
+            </div>
+          </div>
+          <div class="mt-3 text-[11px] text-slate-400 border-t border-slate-800/80 pt-2">
+            重要細節：UNet 輸入包含時間步編碼 (Timestep Positional Embedding)，使其感知當前噪聲能級。
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 py-6 text-center text-xs text-slate-500">
+    生成模型工程級對比架構體系 | 一頁式互動深度學習教學系統
+  </footer>
+
+  <!-- Interactive JavaScript Engine (移除標籤切換邏輯，支援全模擬器並行操作) -->
+  <script>
+    // IPAS Quiz validation
+    function checkAnswer(qId, selectedOption) {
+      const expl = document.getElementById(qId + '-expl');
+      if (expl) expl.classList.remove('hidden');
+    }
+
+    // ==========================================
+    // SIMULATION ENGINES (GAN, VAE, DIFFUSION)
+    // ==========================================
+    let isAutoSimulating = false;
+    let autoSimTimer = null;
+
+    // --- GAN Simulation State ---
+    let ganEpoch = 0;
+    let ganGMean = -2.5;
+    let ganGVar = 1.6;
+    const targetRealMean = 2.0;
+    const targetRealVar = 0.8;
+
+    function drawGAN() {
+      const canvas = document.getElementById('canvas-gan');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width, h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      // Grid
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < w; x += 50) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      }
+      for (let y = 0; y < h; y += 40) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      }
+
+      function gauss(x, mu, s2) {
+        return (1 / Math.sqrt(2 * Math.PI * s2)) * Math.exp(-Math.pow(x - mu, 2) / (2 * s2));
+      }
+
+      // Real Distribution (Green)
+      ctx.beginPath();
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 3;
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+      for (let i = 0; i <= w; i++) {
+        const xVal = (i / w) * 12 - 6;
+        const yVal = gauss(xVal, targetRealMean, targetRealVar);
+        const yPix = h - 25 - yVal * 260;
+        if (i === 0) ctx.moveTo(i, yPix);
+        else ctx.lineTo(i, yPix);
+      }
+      ctx.stroke();
+      ctx.lineTo(w, h - 25); ctx.lineTo(0, h - 25); ctx.closePath();
+      ctx.fill();
+
+      // Generator Distribution (Red)
+      ctx.beginPath();
+      ctx.strokeStyle = '#f43f5e';
+      ctx.lineWidth = 3;
+      ctx.fillStyle = 'rgba(244, 63, 94, 0.2)';
+      for (let i = 0; i <= w; i++) {
+        const xVal = (i / w) * 12 - 6;
+        const yVal = gauss(xVal, ganGMean, ganGVar);
+        const yPix = h - 25 - yVal * 260;
+        if (i === 0) ctx.moveTo(i, yPix);
+        else ctx.lineTo(i, yPix);
+      }
+      ctx.stroke();
+      ctx.lineTo(w, h - 25); ctx.lineTo(0, h - 25); ctx.closePath();
+      ctx.fill();
+
+      // Discriminator Boundary D(x) (Cyan Curve)
+      ctx.beginPath();
+      ctx.strokeStyle = '#06b6d4';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 4]);
+      for (let i = 0; i <= w; i++) {
+        const xVal = (i / w) * 12 - 6;
+        const pReal = gauss(xVal, targetRealMean, targetRealVar);
+        const pFake = gauss(xVal, ganGMean, ganGVar);
+        const dScore = pReal / (pReal + pFake + 1e-5);
+        const yPix = h - 25 - dScore * 160;
+        if (i === 0) ctx.moveTo(i, yPix);
+        else ctx.lineTo(i, yPix);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Baseline
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, h - 25); ctx.lineTo(w, h - 25); ctx.stroke();
+    }
+
+    function stepGAN() {
+      ganEpoch += 1;
+      const speedSlider = document.getElementById('gan-d-speed');
+      const speed = (speedSlider ? parseFloat(speedSlider.value) : 2) * 0.05;
+      ganGMean += (targetRealMean - ganGMean) * speed;
+      ganGVar += (targetRealVar - ganGVar) * (speed * 0.7);
+
+      const gLoss = (Math.abs(ganGMean - targetRealMean) * 0.4 + 0.69).toFixed(3);
+      const dLoss = (0.69 - Math.min(0.3, Math.abs(ganGMean - targetRealMean) * 0.15)).toFixed(3);
+
+      const epEl = document.getElementById('gan-epoch');
+      const glEl = document.getElementById('gan-gloss');
+      const dlEl = document.getElementById('gan-dloss');
+      if (epEl) epEl.innerText = ganEpoch;
+      if (glEl) glEl.innerText = gLoss;
+      if (dlEl) dlEl.innerText = dLoss;
+
+      const statusEl = document.getElementById('gan-status-text');
+      if (statusEl) {
+        if (Math.abs(ganGMean - targetRealMean) < 0.2) {
+          statusEl.innerHTML = `<span class="text-emerald-400 font-bold">已抵達納許均衡 (Nash Equilibrium)！</span><br>生成分佈已高度契合真實資料，判別器於重疊區域輸出近 0.5。`;
+        } else {
+          statusEl.innerHTML = `迭代中：生成器受 D(x) 梯度引導，重心從左側快速向目標分佈 ($\mu = ${targetRealMean}$) 移動中。`;
+        }
+      }
+      drawGAN();
+    }
+
+    // --- VAE Simulation State ---
+    let vaeZ1 = 0.0;
+    let vaeZ2 = 0.0;
+
+    function drawVAE() {
+      const canvas = document.getElementById('canvas-vae');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width, h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      // Axes
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, h);
+      ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2);
+      ctx.stroke();
+
+      // Density Contours
+      const rings = [0.8, 1.5, 2.2];
+      rings.forEach(r => {
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.25)';
+        ctx.setLineDash([4, 4]);
+        ctx.arc(w / 2, h / 2, r * 45, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+
+      // Hypothetical Clusters
+      const clusters = [
+        { name: 'Digit 0', x: -1.2, y: 1.0, color: '#38bdf8' },
+        { name: 'Digit 1', x: 1.5, y: -1.1, color: '#f43f5e' },
+        { name: 'Digit 7', x: 1.2, y: 1.3, color: '#a855f7' },
+        { name: 'Digit 8', x: -1.4, y: -1.2, color: '#34d399' }
+      ];
+
+      clusters.forEach(c => {
+        const cx = w / 2 + c.x * 45;
+        const cy = h / 2 - c.y * 45;
+        ctx.fillStyle = c.color;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '10px sans-serif';
+        ctx.fillText(c.name, cx + 7, cy + 3);
+      });
+
+      // Pointer
+      const px = w / 2 + vaeZ1 * 45;
+      const py = h / 2 - vaeZ2 * 45;
+
+      const noiseSlider = document.getElementById('vae-noise-scale');
+      const noiseR = noiseSlider ? parseFloat(noiseSlider.value) * 0.22 : 7;
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.2)';
+      ctx.arc(px, py, noiseR, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.fillStyle = '#f59e0b';
+      ctx.arc(px, py, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      drawVAEReconstruction();
+    }
+
+    function drawVAEReconstruction() {
+      const reconCanvas = document.getElementById('canvas-vae-recon');
+      if (!reconCanvas) return;
+      const ctx = reconCanvas.getContext('2d');
+      const w = reconCanvas.width, h = reconCanvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const cx = w / 2 + vaeZ1 * 4;
+      const cy = h / 2 - vaeZ2 * 4;
+      const radiusX = Math.max(10, 24 - Math.abs(vaeZ1) * 5);
+      const radiusY = Math.max(12, 28 - Math.abs(vaeZ2) * 4);
+      const angle = (vaeZ1 * 0.35);
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(angle);
+
+      ctx.shadowColor = '#fbbf24';
+      ctx.shadowBlur = 8;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
+
+      ctx.beginPath();
+      if (vaeZ2 < -0.5) {
+        ctx.ellipse(0, -10, radiusX * 0.7, radiusY * 0.6, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(0, 12, radiusX * 0.9, radiusY * 0.7, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (vaeZ1 > 0.8 && vaeZ2 > 0.3) {
+        ctx.moveTo(-15, -20); ctx.lineTo(16, -20); ctx.lineTo(-6, 25);
+        ctx.stroke();
+      } else if (vaeZ1 > 0.8 && vaeZ2 < 0) {
+        ctx.moveTo(0, -25); ctx.lineTo(0, 25);
+        ctx.stroke();
+      } else {
+        ctx.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // Attach VAE Drag
+    const vaeCanvas = document.getElementById('canvas-vae');
+    if (vaeCanvas) {
+      function updateVAEFromMouse(e) {
+        const rect = vaeCanvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const w = vaeCanvas.width, h = vaeCanvas.height;
+        vaeZ1 = Math.min(3.5, Math.max(-3.5, (mouseX - w / 2) / 45));
+        vaeZ2 = Math.min(3.0, Math.max(-3.0, (h / 2 - mouseY) / 45));
+        const z1El = document.getElementById('vae-z1-val');
+        const z2El = document.getElementById('vae-z2-val');
+        if (z1El) z1El.innerText = vaeZ1.toFixed(2);
+        if (z2El) z2El.innerText = vaeZ2.toFixed(2);
+        drawVAE();
+      }
+      let isDragging = false;
+      vaeCanvas.addEventListener('mousedown', (e) => { isDragging = true; updateVAEFromMouse(e); });
+      window.addEventListener('mouseup', () => { isDragging = false; });
+      vaeCanvas.addEventListener('mousemove', (e) => { if (isDragging) updateVAEFromMouse(e); });
+    }
+
+    // --- Diffusion Simulator State ---
+    let diffCurrentStep = 100;
+    let diffDirection = 'reverse';
+
+    function setDiffDirection(dir) {
+      diffDirection = dir;
+      if (dir === 'reverse' && diffCurrentStep === 0) diffCurrentStep = 100;
+      if (dir === 'forward' && diffCurrentStep === 100) diffCurrentStep = 0;
+      drawDiffusion();
+    }
+
+    function drawDiffusion() {
+      const canvas = document.getElementById('canvas-diff');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width, h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const slider = document.getElementById('diff-slider');
+      if (slider) slider.value = diffCurrentStep;
+      const indicator = document.getElementById('diff-step-indicator');
+      if (indicator) {
+        indicator.innerText = `Step t = ${diffCurrentStep} / 100 (${diffCurrentStep === 0 ? '清晰 x0' : diffCurrentStep === 100 ? '純白噪聲 xT' : '去噪中'})`;
+      }
+
+      const noiseRatio = diffCurrentStep / 100.0;
+      const signalRatio = 1.0 - noiseRatio;
+
+      const numParticles = 360;
+      for (let i = 0; i < numParticles; i++) {
+        const angle = i * 0.15;
+        const radius = 6 + i * 0.42;
+        const targetX = w / 2 + Math.cos(angle) * radius;
+        const targetY = h / 2 + Math.sin(angle) * radius;
+
+        const seed1 = Math.sin(i * 997.1) * 10000;
+        const randX = (seed1 - Math.floor(seed1) - 0.5) * w * 0.8;
+        const seed2 = Math.cos(i * 613.3) * 10000;
+        const randY = (seed2 - Math.floor(seed2) - 0.5) * h * 0.8;
+
+        const curX = targetX * signalRatio + (w / 2 + randX) * noiseRatio;
+        const curY = targetY * signalRatio + (h / 2 + randY) * noiseRatio;
+
+        ctx.beginPath();
+        const r = 2.2 + (1 - noiseRatio) * 1.5;
+        ctx.arc(curX, curY, r, 0, Math.PI * 2);
+        const hue = 160 + (i % 60);
+        const sat = (signalRatio * 100).toFixed(0);
+        const light = (40 + signalRatio * 35).toFixed(0);
+        ctx.fillStyle = `hsl(${hue}, ${sat}%, ${light}%)`;
+        ctx.fill();
+      }
+    }
+
+    function stepDiffusion() {
+      if (diffDirection === 'reverse') {
+        if (diffCurrentStep > 0) diffCurrentStep -= 2;
+      } else {
+        if (diffCurrentStep < 100) diffCurrentStep += 2;
+      }
+      drawDiffusion();
+    }
+
+    const diffSlider = document.getElementById('diff-slider');
+    if (diffSlider) {
+      diffSlider.addEventListener('input', (e) => {
+        diffCurrentStep = parseInt(e.target.value);
+        drawDiffusion();
+      });
+    }
+
+    // --- Master Simulation Loop Controls ---
+    document.getElementById('sim-btn-step').addEventListener('click', () => {
+      stepGAN();
+      vaeZ1 = (Math.sin(Date.now() * 0.003) * 2.0);
+      vaeZ2 = (Math.cos(Date.now() * 0.003) * 1.7);
+      document.getElementById('vae-z1-val').innerText = vaeZ1.toFixed(2);
+      document.getElementById('vae-z2-val').innerText = vaeZ2.toFixed(2);
+      drawVAE();
+      stepDiffusion();
+    });
+
+    document.getElementById('sim-btn-auto').addEventListener('click', () => {
+      isAutoSimulating = !isAutoSimulating;
+      const label = document.getElementById('auto-sim-label');
+      if (isAutoSimulating) {
+        label.innerText = '⏸ 暫停自動模擬';
+        document.getElementById('sim-btn-auto').classList.replace('bg-emerald-600', 'bg-amber-600');
+        autoSimTimer = setInterval(() => {
+          // 1. GAN step
+          stepGAN();
+          if (ganEpoch > 80) { ganEpoch = 0; ganGMean = -2.5; }
+
+          // 2. VAE step
+          vaeZ1 = Math.sin(Date.now() * 0.0015) * 2.2;
+          vaeZ2 = Math.cos(Date.now() * 0.0018) * 1.9;
+          document.getElementById('vae-z1-val').innerText = vaeZ1.toFixed(2);
+          document.getElementById('vae-z2-val').innerText = vaeZ2.toFixed(2);
+          drawVAE();
+
+          // 3. Diffusion step
+          stepDiffusion();
+          if (diffCurrentStep <= 0) diffDirection = 'forward';
+          if (diffCurrentStep >= 100) diffDirection = 'reverse';
+        }, 65);
+      } else {
+        label.innerText = '▶ 一鍵自動模擬 (All)';
+        document.getElementById('sim-btn-auto').classList.replace('bg-amber-600', 'bg-emerald-600');
+        clearInterval(autoSimTimer);
+      }
+    });
+
+    document.getElementById('sim-btn-reset').addEventListener('click', () => {
+      ganEpoch = 0; ganGMean = -2.5; ganGVar = 1.6;
+      document.getElementById('gan-epoch').innerText = '0';
+      document.getElementById('gan-gloss').innerText = '1.42';
+      document.getElementById('gan-dloss').innerText = '0.68';
+      drawGAN();
+
+      vaeZ1 = 0.0; vaeZ2 = 0.0;
+      document.getElementById('vae-z1-val').innerText = '0.00';
+      document.getElementById('vae-z2-val').innerText = '0.00';
+      drawVAE();
+
+      diffCurrentStep = 100;
+      diffDirection = 'reverse';
+      drawDiffusion();
+    });
+
+    // Initialize all canvas on load
+    window.addEventListener('DOMContentLoaded', () => {
+      drawGAN();
+      drawVAE();
+      drawDiffusion();
+    });
+  </script>
+</body>
+</html>
