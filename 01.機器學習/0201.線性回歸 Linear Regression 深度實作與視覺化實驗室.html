@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>一條直線解決一切！線性回歸 Linear Regression 深度實作與視覺化實驗室</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- KaTeX for LaTeX rendering (v0.16.9) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderAllMath()"></script>
+  
+  <style>
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    .font-code { font-family: 'Fira Code', monospace; }
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-card-glow {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(16px);
+      border: 1.5px solid rgba(56, 189, 248, 0.3);
+      box-shadow: 0 10px 30px -5px rgba(2, 132, 199, 0.2), 0 0 20px rgba(56, 189, 248, 0.1);
+    }
+  </style>
+
+  <script>
+    function renderAllMath(element = document.body) {
+      if (typeof renderMathInElement === 'function') {
+        renderMathInElement(element, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false },
+            { left: '\\[', right: '\\]', display: true },
+            { left: '\\(', right: '\\)', display: false }
+          ],
+          ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+          throwOnError: false
+        });
+      }
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      renderAllMath();
+    });
+  </script>
+</head>
+
+<body class="bg-slate-950 text-slate-100 min-h-screen selection:bg-sky-500 selection:text-white pb-24 antialiased">
+
+  <!-- Sticky Navbar -->
+  <header class="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur-md sticky top-0 z-50 shadow-xl">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 via-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-sky-500/25">
+          <i class="fa-solid fa-chart-line text-lg"></i>
+        </span>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold bg-gradient-to-r from-sky-300 via-indigo-200 to-purple-200 bg-clip-text text-transparent">
+            線性回歸 (Linear Regression) 全方位實驗室
+          </h1>
+          <p class="text-2xs text-slate-400 hidden sm:block">Enzo 獨自升級 影片全解析 · 數學推導 · 手撕代碼 · 破壞實驗</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <!-- 導覽標籤 -->
+        <nav class="hidden xl:flex space-x-1 text-xs font-semibold text-slate-300">
+          <a href="#sec-intro" class="px-2.5 py-1.5 rounded-lg hover:text-white hover:bg-slate-800 transition">01 概念起源</a>
+          <a href="#sec-model" class="px-2.5 py-1.5 rounded-lg hover:text-white hover:bg-slate-800 transition">02 房仲模型</a>
+          <a href="#sec-loss" class="px-2.5 py-1.5 rounded-lg hover:text-white hover:bg-slate-800 transition">03 碗形Loss</a>
+          <a href="#sec-gradient" class="px-2.5 py-1.5 rounded-lg text-sky-400 hover:bg-slate-800 transition">04 梯度推導</a>
+          <a href="#sec-scaling" class="px-2.5 py-1.5 rounded-lg text-amber-400 hover:bg-slate-800 transition">05 特徵縮放</a>
+          <a href="#sec-normal" class="px-2.5 py-1.5 rounded-lg hover:text-white hover:bg-slate-800 transition">06 正規方程</a>
+          <a href="#sec-break" class="px-2.5 py-1.5 rounded-lg text-rose-400 hover:bg-slate-800 transition font-bold">07 弄壞實驗</a>
+          <a href="#sec-code" class="px-2.5 py-1.5 rounded-lg hover:text-white hover:bg-slate-800 transition">08 程式實作</a>
+          <a href="#sec-simulator" class="px-2.5 py-1.5 rounded-lg text-emerald-400 hover:bg-slate-800 transition font-bold">09 互動模擬</a>
+          <a href="#sec-transcript" class="px-2.5 py-1.5 rounded-lg hover:text-white hover:bg-slate-800 transition">10 逐字稿</a>
+        </nav>
+
+        <!-- 回首頁與心智圖按鈕 -->
+        <div class="flex items-center gap-2">
+          <a href="../index.html" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded-lg transition shadow-sm">
+            <i class="fa-solid fa-arrow-left"></i> 回首頁
+          </a>
+          <a href="../程式心智圖.html" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:text-emerald-200 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-500/40 rounded-lg transition shadow-sm">
+            <i class="fa-solid fa-network-wired"></i> 程式心智圖
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主容器 -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
+
+    <!-- Hero 標題與影片資訊卡 -->
+    <section class="relative rounded-3xl p-6 sm:p-10 glass-card border border-slate-800/80 shadow-2xl overflow-hidden">
+      <div class="absolute -right-16 -top-16 w-80 h-80 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -left-16 -bottom-16 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      
+      <div class="relative z-10 space-y-6">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 font-mono text-xs font-bold border border-sky-500/30 flex items-center gap-1.5">
+            <i class="fa-brands fa-youtube text-red-500"></i> YouTube 影音深度解析
+          </span>
+          <span class="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 font-mono text-xs font-bold border border-indigo-500/30">
+            機器學習系列 第 1 集
+          </span>
+          <span class="text-xs text-slate-400 flex items-center gap-1">
+            <i class="fa-solid fa-clock"></i> 影片時長 17:15
+          </span>
+          <span class="text-xs text-slate-400 flex items-center gap-1">
+            <i class="fa-solid fa-user-graduate"></i> 主講：Enzo 獨自升級
+          </span>
+        </div>
+
+        <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
+          一條直線解決一切！線性回歸 <span class="bg-gradient-to-r from-sky-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">Linear Regression</span>
+        </h1>
+        <p class="text-base sm:text-lg text-slate-300 leading-relaxed max-w-4xl">
+          從 19 世紀高爾頓研究父子身高的「回歸到平庸」，到房仲估價的斜率與截距旋鈕；從碗形凸函數 MSE 最小平方法，到鏈鎖法則手撕偏微分；再到特徵縮放踩坑記、正規方程式與三大實作完全對照。帶您徹底玩壞演算法、洞察背後數學真理！
+        </p>
+
+        <!-- 外部連結按鈕 -->
+        <div class="flex flex-wrap items-center gap-3 pt-2">
+          <a href="https://www.youtube.com/watch?v=tY0cyv_bUYc" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-xs transition shadow-lg shadow-red-600/30">
+            <i class="fa-brands fa-youtube text-sm"></i> 前往 YouTube 原片觀看
+          </a>
+          <a href="https://github.com/Chen-Yu-Chang/ML_Algo_Experiment" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-700 transition">
+            <i class="fa-brands fa-github text-sm"></i> GitHub 專案代碼 (Chen-Yu-Chang)
+          </a>
+          <a href="#sec-simulator" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs transition shadow-lg shadow-sky-600/30">
+            <i class="fa-solid fa-flask text-sm"></i> 直達互動模擬器
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 核心精華與產業實務應用 方框元件 (全站標準規格) -->
+    <div style="margin: 0 0 2.5rem 0; padding: 1.5rem; background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid #38bdf8; border-radius: 16px; box-shadow: 0 10px 30px -5px rgba(2, 132, 199, 0.25), 0 0 20px rgba(56, 189, 248, 0.15); backdrop-filter: blur(12px); color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif;">
+      <!-- 頂部標題列 -->
+      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(56, 189, 248, 0.25); padding-bottom: 0.85rem; margin-bottom: 1.1rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: linear-gradient(135deg, #0284c7, #38bdf8); border-radius: 8px; color: #ffffff; font-size: 1.05rem; box-shadow: 0 2px 8px rgba(56, 189, 248, 0.4); flex-shrink: 0;">
+            <i class="fa-solid fa-lightbulb"></i>
+          </span>
+          <div>
+            <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #ffffff; letter-spacing: -0.01em;">
+              【線性回歸 Linear Regression】核心精華與產業實務應用
+            </h3>
+            <p style="margin: 0.15rem 0 0 0; font-size: 0.78rem; color: #94a3b8;">Key Takeaways · Mechanism Overview · Industrial Applications</p>
+          </div>
+        </div>
+        <span style="font-size: 0.72rem; padding: 0.25rem 0.65rem; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 9999px; font-weight: 700; white-space: nowrap;">
+          重點精華 · 實務落地
+        </span>
+      </div>
+
+      <!-- 三大區塊 Grid -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.2rem;">
+        
+        <!-- 區塊 1: 重點整理 -->
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem; color: #38bdf8; font-weight: 700; font-size: 0.92rem;">
+            <i class="fa-solid fa-list-check"></i>
+            <span>重點整理 (Key Takeaways)</span>
+          </div>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.84rem; line-height: 1.65; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.45rem;">
+            <li><strong>回歸的詞源與本質</strong>：高爾頓研究遺傳身高之「回歸平庸 (Regression to mediocrity)」，本質即是在空間中尋找一條最能表徵輸入特徵與輸出連續標籤的超平面。</li>
+            <li><strong>最小平方法的幾何直覺</strong>：Loss 是以殘差為邊長之「正方形面積總和」，平方消除正負抵消且「大錯重罰」；<strong>重要心法：Loss 是參數 $w, b$ 的函數，資料是固定常數！</strong></li>
+            <li><strong>凸函數 (Convex Bowl) 的唯一碗底</strong>：線性回歸 MSE 曲面為嚴格凸函數，全域僅有唯一最低點，絕無局部極小值陷阱，梯度下降必定收斂至全域最優。</li>
+            <li><strong>特徵縮放 (Feature Scaling) 生死攸關</strong>：未標準化時因 $dw$ 包含特徵乘積使曲面被拉成長橢圓深谷，導致梯度懸殊，步長稍大便直接炸飛。</li>
+          </ul>
+        </div>
+
+        <!-- 區塊 2: 機制說明 -->
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(129, 140, 248, 0.2); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem; color: #a5b4fc; font-weight: 700; font-size: 0.92rem;">
+            <i class="fa-solid fa-gears"></i>
+            <span>機制說明 (Mechanism & Math)</span>
+          </div>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.84rem; line-height: 1.65; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.45rem;">
+            <li><strong>鏈鎖法則偏微分</strong>：
+              $$\frac{\partial L}{\partial w} = \frac{2}{n}\sum e_i x_i,\quad \frac{\partial L}{\partial b} = \frac{2}{n}\sum e_i$$
+              猜太高 ($e>0$) 則梯度為正，參數往小更新；猜太低則往大調整。
+            </li>
+            <li><strong>正規方程式 (Normal Equation) 解析解</strong>：
+              $$\boldsymbol{\theta} = (\mathbf{X}^T \mathbf{X})^{-1} \mathbf{X}^T \mathbf{y}$$
+              一步求逆得最優解，但求逆計算複雜度為 $O(d^3)$，維度大於數萬時崩潰，而梯度下降僅需 $O(nd)$。
+            </li>
+            <li><strong>學習率臨界半徑證明</strong>：標準化後 Hessian 矩陣最大特徵值 $\lambda_{\max}=2$。收斂條件 $|1 - \eta \lambda| < 1 \implies 0 < \eta < 1$。因此當 $\eta=1.05 > 1$ 時，誤差每步放大 $1.1$ 倍必引發指數爆炸！</li>
+          </ul>
+        </div>
+
+        <!-- 區塊 3: 應用在何處 -->
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(52, 211, 153, 0.2); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem; color: #6ee7b7; font-weight: 700; font-size: 0.92rem;">
+            <i class="fa-solid fa-industry"></i>
+            <span>應用在何處 (Industrial Scenarios)</span>
+          </div>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.84rem; line-height: 1.65; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.45rem;">
+            <li><strong>半導體晶圓先進製程控制 (APC)</strong>：在薄膜沉積 (CVD) 與化學機械研磨 (CMP) 中，利用線性回歸實時預測厚度去除率與機台研磨墊損耗，達成奈米級精度回饋補償。</li>
+            <li><strong>智慧製造與電力能源負載預測</strong>：工廠冰水主機與空調系統依據外界氣溫、濕度與稼動率，以極佳可解釋性之線性模型即時調控變頻輸出，節電 15~20%。</li>
+            <li><strong>金融量化資本資產定價模型 (CAPM)</strong>：利用多元線性回歸計算單一股票與大盤之 $\beta$ 敏感度與 $\alpha$ 超額收益，為各大量化基金風險對沖之絕對核心基準。</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 01. 回歸由來與房仲估價模型 -->
+    <section id="sec-model" class="space-y-6">
+      <div class="border-l-4 border-sky-500 pl-4">
+        <div class="text-xs font-bold uppercase tracking-wider text-sky-400 font-mono">MODULE 01 & 02</div>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-white">房仲問題：$y = wx + b$ 與兩個物理旋鈕</h2>
+        <p class="text-slate-400 text-sm mt-1">從無限多條直線中，挑出最有憑有據的那一條</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+        <div class="glass-card rounded-2xl p-6 sm:p-8 space-y-4 flex flex-col justify-between">
+          <div class="space-y-4">
+            <h3 class="text-lg font-bold text-sky-300 flex items-center gap-2">
+              <i class="fa-solid fa-sliders"></i> 收音機雙旋鈕直覺比喻
+            </h3>
+            <p class="text-sm text-slate-300 leading-relaxed">
+              給定 100 筆過往房屋成交資料（坪數 $x$，價格 $y$），當新客戶走進房仲店詢問 30 坪房價時，我們透過方程式 $\hat{y} = wx + b$ 建立模型：
+            </p>
+            <div class="space-y-3 pt-2">
+              <div class="p-3.5 rounded-xl bg-slate-900 border border-slate-800">
+                <span class="text-xs font-bold text-sky-400 block mb-1">旋鈕 1：權重 / 斜率 ($w$)</span>
+                <p class="text-xs text-slate-300">代表「每多買 1 坪，預期加價多少萬元」。控制直線的傾斜仰角。</p>
+              </div>
+              <div class="p-3.5 rounded-xl bg-slate-900 border border-slate-800">
+                <span class="text-xs font-bold text-indigo-400 block mb-1">旋鈕 2：偏置 / 截距 ($b$)</span>
+                <p class="text-xs text-slate-300">代表「0 坪時的基礎地段門牌溢價」。控制直線整體的垂直升降。</p>
+              </div>
+            </div>
+          </div>
+          <div class="p-3 bg-sky-950/40 rounded-xl border border-sky-500/20 text-xs text-sky-200">
+            💡 <strong>多特徵擴展</strong>：當加入屋齡 $x_2$、捷運距離 $x_3$ 時，超平面公式擴展為 $\hat{y} = \mathbf{w}^T \mathbf{x} + b$。
+          </div>
+        </div>
+
+        <!-- 幾何視覺化展示卡 -->
+        <div class="glass-card rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center space-y-4 text-center">
+          <h4 class="text-sm font-bold text-slate-300">平面直線擬合與垂直殘差正方形幾何</h4>
+          <svg class="w-full max-w-md h-64 bg-slate-950 rounded-xl border border-slate-800 p-2" viewBox="0 0 400 240">
+            <!-- 坐標軸 -->
+            <line x1="40" y1="200" x2="380" y2="200" stroke="#475569" stroke-width="2"/>
+            <line x1="40" y1="20" x2="40" y2="200" stroke="#475569" stroke-width="2"/>
+            <text x="350" y="220" fill="#94a3b8" font-size="11">坪數 x</text>
+            <text x="10" y="30" fill="#94a3b8" font-size="11">價格 y</text>
+            
+            <!-- 回歸直線 -->
+            <line x1="60" y1="180" x2="360" y2="60" stroke="#38bdf8" stroke-width="3"/>
+            <text x="280" y="50" fill="#38bdf8" font-size="12" font-weight="bold">y = wx + b</text>
+
+            <!-- 數據點與正方形殘差 -->
+            <!-- 點 1 (猜低) -->
+            <line x1="120" y1="156" x2="120" y2="105" stroke="#f43f5e" stroke-dasharray="3,3"/>
+            <rect x="120" y="105" width="51" height="51" fill="rgba(244,63,94,0.15)" stroke="#f43f5e" stroke-width="1"/>
+            <circle cx="120" cy="105" r="4" fill="#34d399"/>
+            
+            <!-- 點 2 (猜高) -->
+            <line x1="220" y1="116" x2="220" y2="145" stroke="#f43f5e" stroke-dasharray="3,3"/>
+            <rect x="220" y="116" width="29" height="29" fill="rgba(244,63,94,0.15)" stroke="#f43f5e" stroke-width="1"/>
+            <circle cx="220" cy="145" r="4" fill="#34d399"/>
+
+            <!-- 點 3 -->
+            <circle cx="180" cy="132" r="4" fill="#34d399"/>
+            <circle cx="290" cy="85" r="4" fill="#34d399"/>
+            <circle cx="330" cy="74" r="4" fill="#34d399"/>
+            <circle cx="90" cy="170" r="4" fill="#34d399"/>
+          </svg>
+          <p class="text-2xs text-slate-400">
+            紅色方塊代表 $(\hat{y}_i - y_i)^2$ 的面積。所謂「最小平方法」，就是轉動直線讓所有紅色正方形面積之和最小！
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02. 損失函數 MSE 與 碗形凸曲面 -->
+    <section id="sec-loss" class="space-y-6">
+      <div class="border-l-4 border-indigo-500 pl-4">
+        <div class="text-xs font-bold uppercase tracking-wider text-indigo-400 font-mono">MODULE 03</div>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-white">損失函數 MSE 與碗形曲面 (Convex Bowl)</h2>
+        <p class="text-slate-400 text-sm mt-1">為什麼 Loss 是參數的函數？為什麼凸函數絕對不卡住？</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="glass-card rounded-2xl p-6 space-y-3">
+          <div class="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-sm">1</div>
+          <h3 class="font-bold text-white text-base">為什麼誤差要取平方？</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            單純相加誤差會正負相消（猜高 100 萬 + 猜低 100 萬 = 0）；取絕對值在原點不可導；取平方能<strong>保證非負、處處光滑可微</strong>，且具備<strong>大錯重罰</strong>特性。
+          </p>
+        </div>
+
+        <div class="glass-card rounded-2xl p-6 space-y-3 border-indigo-500/40">
+          <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-sm">2</div>
+          <h3 class="font-bold text-white text-base">神級觀念：變數 vs 常數</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            在訓練階段，<strong>資料點 $(x_i, y_i)$ 是固定已知常數！真正改變的是旋鈕 $(w, b)$！</strong>因此 Loss 是以 $w, b$ 為自變數的三維地形曲面。
+          </p>
+        </div>
+
+        <div class="glass-card rounded-2xl p-6 space-y-3">
+          <div class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-sm">3</div>
+          <h3 class="font-bold text-white text-base">碗形曲面：凸函數優勢</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            二次曲面呈現完美「向上開口的碗」。它<strong>只有唯一全域最低點</strong>，沒有局部極小值（Local Minima），從任何位置起步都能滑落碗底！
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03. 鏈鎖法則手撕梯度推導 -->
+    <section id="sec-gradient" class="space-y-6">
+      <div class="border-l-4 border-emerald-500 pl-4">
+        <div class="text-xs font-bold uppercase tracking-wider text-emerald-400 font-mono">MODULE 04</div>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-white">手撕微積分：鏈鎖法則推導梯度公式</h2>
+        <p class="text-slate-400 text-sm mt-1">站在碗壁上，如何精確感知哪裡是下山坡度？</p>
+      </div>
+
+      <div class="glass-card rounded-2xl p-6 sm:p-8 space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- dw 推導 -->
+          <div class="p-5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3">
+            <span class="text-xs font-bold text-sky-400 uppercase tracking-wider block">對斜率 w 偏微分 (dw)</span>
+            <div class="text-xs text-slate-300 space-y-2 font-mono">
+              <p>$$\frac{\partial L}{\partial w} = \frac{1}{n} \sum_{i=1}^n 2(\hat{y}_i - y_i) \cdot \frac{\partial (\hat{y}_i - y_i)}{\partial w}$$</p>
+              <p>因為 $\hat{y}_i = w x_i + b$，內層對 $w$ 微分剩下 $x_i$：</p>
+              <p class="text-sky-300 font-bold bg-sky-950/50 p-2 rounded border border-sky-800/40 text-center">
+                $$\frac{\partial L}{\partial w} = \frac{2}{n} \sum_{i=1}^n (\hat{y}_i - y_i) \cdot x_i$$
+              </p>
+            </div>
+            <p class="text-2xs text-slate-400">💡 猜太高時 $\text{error}>0$，梯度為正，更新時減去學習率乘梯度，讓 $w$ 變小。</p>
+          </div>
+
+          <!-- db 推導 -->
+          <div class="p-5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3">
+            <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider block">對截距 b 偏微分 (db)</span>
+            <div class="text-xs text-slate-300 space-y-2 font-mono">
+              <p>$$\frac{\partial L}{\partial b} = \frac{1}{n} \sum_{i=1}^n 2(\hat{y}_i - y_i) \cdot \frac{\partial (\hat{y}_i - y_i)}{\partial b}$$</p>
+              <p>內層對 $b$ 微分只有 $b$ 變成 $1$，其餘常數為 $0$：</p>
+              <p class="text-indigo-300 font-bold bg-indigo-950/50 p-2 rounded border border-indigo-800/40 text-center">
+                $$\frac{\partial L}{\partial b} = \frac{2}{n} \sum_{i=1}^n (\hat{y}_i - y_i)$$
+              </p>
+            </div>
+            <p class="text-2xs text-slate-400">💡 截距梯度僅為平均誤差乘 2，直觀反映整體猜測高估或低估的中心偏差。</p>
+          </div>
+        </div>
+
+        <div class="p-4 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between flex-wrap gap-4 text-xs font-mono">
+          <div>
+            <span class="text-slate-400">參數更新法則：</span>
+            <span class="text-emerald-400 font-bold ml-2">w = w - lr * dw</span>
+            <span class="text-indigo-400 font-bold ml-4">b = b - lr * db</span>
+          </div>
+          <span class="text-slate-500">（$\text{lr}$ 即學習率 $\eta$，決定邁出步伐大小）</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04. 特徵縮放踩坑記 -->
+    <section id="sec-scaling" class="space-y-6">
+      <div class="border-l-4 border-amber-500 pl-4">
+        <div class="text-xs font-bold uppercase tracking-wider text-amber-400 font-mono">MODULE 05</div>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-white">手算踩坑：為什麼特徵縮放 (Feature Scaling) 生死攸關？</h2>
+        <p class="text-slate-400 text-sm mt-1">從正圓形碗底，到被拉扯成狹長橢圓深谷的災難</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+        <div class="space-y-4 text-sm text-slate-300">
+          <p class="leading-relaxed">
+            對比 $dw$ 與 $db$ 的公式可以發現關鍵魔鬼細節：
+          </p>
+          <div class="p-4 rounded-xl bg-amber-950/30 border border-amber-500/30 text-amber-200 text-xs space-y-2">
+            <p>• $dw$ 包含每個點乘上特徵值：$\frac{2}{n} \sum e_i \cdot \mathbf{x_i}$</p>
+            <p>• $db$ 沒有乘特徵值：$\frac{2}{n} \sum e_i$</p>
+          </div>
+          <p class="leading-relaxed text-xs text-slate-300">
+            在房仲範例中，坪數 $x \in [10, 60]$，這代表 $dw$ 天生就是 $db$ 的 <strong>30 到 50 倍大</strong>！
+          </p>
+          <p class="leading-relaxed text-xs text-slate-300">
+            如果沒有經過標準化，Loss 等高線會變成極度扁長的<strong>「橢圓峽谷」</strong>：
+            在 $w$ 的軸向上山壁陡峭如刀削，在 $b$ 的軸向上平緩如平原。
+            如果學習率稍大，$w$ 就會在兩壁之間瘋狂震盪跳躍甚至爆炸；如果學習率調小遷就 $w$，$b$ 在平原上一萬步也走不到碗底！
+          </p>
+          <div class="p-3 bg-slate-900 rounded-lg border border-slate-800 text-xs font-mono text-emerald-400">
+            解方：Z-score 標準化 $x_{\text{scaled}} = \frac{x - \mu}{\sigma}$，讓曲面復原為正圓對稱碗！
+          </div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-6 flex flex-col items-center space-y-3">
+          <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">曲面等高線對比視覺化 (Contour Map)</h4>
+          <svg class="w-full max-w-sm h-56 bg-slate-950 rounded-xl border border-slate-800 p-2" viewBox="0 0 320 200">
+            <!-- 圓形碗 (有縮放) -->
+            <g transform="translate(80, 100)">
+              <ellipse cx="0" cy="0" rx="60" ry="60" fill="none" stroke="#38bdf8" stroke-width="1" stroke-dasharray="2,2"/>
+              <ellipse cx="0" cy="0" rx="40" ry="40" fill="none" stroke="#38bdf8" stroke-width="1.5"/>
+              <ellipse cx="0" cy="0" rx="20" ry="20" fill="none" stroke="#38bdf8" stroke-width="2"/>
+              <circle cx="0" cy="0" r="3" fill="#38bdf8"/>
+              <path d="M -50 -50 L -25 -25 L -10 -10 L 0 0" fill="none" stroke="#34d399" stroke-width="2" marker-end="url(#arrow)"/>
+              <text x="-65" y="80" fill="#38bdf8" font-size="10" font-weight="bold">有縮放：快速垂直抵達碗底</text>
+            </g>
+
+            <!-- 橢圓峽谷 (無縮放) -->
+            <g transform="translate(240, 100)">
+              <ellipse cx="0" cy="0" rx="65" ry="15" fill="none" stroke="#f59e0b" stroke-width="1" stroke-dasharray="2,2"/>
+              <ellipse cx="0" cy="0" rx="45" ry="10" fill="none" stroke="#f59e0b" stroke-width="1.5"/>
+              <ellipse cx="0" cy="0" rx="25" ry="5" fill="none" stroke="#f59e0b" stroke-width="2"/>
+              <circle cx="0" cy="0" r="3" fill="#f59e0b"/>
+              <!-- 劇烈震盪軌跡 -->
+              <path d="M -50 -25 L -40 25 L -30 -25 L -20 20 L -10 -15" fill="none" stroke="#f43f5e" stroke-width="1.5"/>
+              <text x="-65" y="80" fill="#f59e0b" font-size="10" font-weight="bold">無縮放：在懸崖壁反覆震盪</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05. 正規方程式 vs 梯度下降全方位對照 -->
+    <section id="sec-normal" class="space-y-6">
+      <div class="border-l-4 border-purple-500 pl-4">
+        <div class="text-xs font-bold uppercase tracking-wider text-purple-400 font-mono">MODULE 06</div>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-white">正規方程式 (Normal Equation)：一步登頂的解析解</h2>
+        <p class="text-slate-400 text-sm mt-1">既然有一步算出答案的公式，為什麼現代深度學習非學梯度下降不可？</p>
+      </div>
+
+      <div class="glass-card rounded-2xl p-6 sm:p-8 space-y-6">
+        <div class="p-4 rounded-xl bg-purple-950/30 border border-purple-500/30 text-xs sm:text-sm text-purple-200">
+          令矩陣損失導數等於 0：$\nabla_{\boldsymbol{\theta}} L = 2 \mathbf{X}^T (\mathbf{X} \boldsymbol{\theta} - \mathbf{y}) = 0 \implies \mathbf{X}^T \mathbf{X} \boldsymbol{\theta} = \mathbf{X}^T \mathbf{y}$，直接得閉式解：
+          <div class="text-center font-bold text-base text-white py-2">
+            $$\boldsymbol{\theta} = (\mathbf{X}^T \mathbf{X})^{-1} \mathbf{X}^T \mathbf{y}$$
+          </div>
+          在 Python 裡只需一行：<code>np.linalg.solve(X.T @ X, X.T @ y)</code>。
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left border-collapse border border-slate-800">
+            <thead class="bg-slate-900 text-slate-300 font-bold uppercase tracking-wider">
+              <tr>
+                <th class="p-3 border border-slate-800">比較維度</th>
+                <th class="p-3 border border-slate-800 text-sky-400">梯度下降 (Gradient Descent)</th>
+                <th class="p-3 border border-slate-800 text-purple-400">正規方程式 (Normal Equation)</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800 text-slate-300">
+              <tr class="hover:bg-slate-900/50">
+                <td class="p-3 font-semibold text-white border border-slate-800">運算複雜度</td>
+                <td class="p-3 border border-slate-800 font-mono">$O(n \cdot d \cdot \text{epochs})$</td>
+                <td class="p-3 border border-slate-800 font-mono text-rose-400">$O(d^3)$ 或 $O(d^{2.376})$（矩陣求逆極其昂貴）</td>
+              </tr>
+              <tr class="hover:bg-slate-900/50">
+                <td class="p-3 font-semibold text-white border border-slate-800">特徵數量 d 很大時</td>
+                <td class="p-3 border border-slate-800 text-emerald-400">✅ 仍舊非常快（如 $d=100,000$ 仍能順暢運算）</td>
+                <td class="p-3 border border-slate-800 text-rose-400">❌ 運算量與記憶體爆炸 (OOM)</td>
+              </tr>
+              <tr class="hover:bg-slate-900/50">
+                <td class="p-3 font-semibold text-white border border-slate-800">樣本數 n 巨大時</td>
+                <td class="p-3 border border-slate-800 text-emerald-400">✅ 支援 Mini-batch / SGD 批次讀取串流學習</td>
+                <td class="p-3 border border-slate-800 text-rose-400">❌ 必須一次性全載入 RAM</td>
+              </tr>
+              <tr class="hover:bg-slate-900/50">
+                <td class="p-3 font-semibold text-white border border-slate-800">超參數調校</td>
+                <td class="p-3 border border-slate-800">需要選擇合適學習率 $\eta$ 與迭代次數</td>
+                <td class="p-3 border border-slate-800 text-emerald-400">✅ 零超參數，直接解析得解</td>
+              </tr>
+              <tr class="hover:bg-slate-900/50">
+                <td class="p-3 font-semibold text-white border border-slate-800">非線性模型擴展</td>
+                <td class="p-3 border border-slate-800 text-emerald-400">✅ 深度學習、Transformer、擴散模型通用核心</td>
+                <td class="p-3 border border-slate-800 text-rose-400">❌ 非線性神經網絡無閉式解</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06. 把演算法弄壞的破壞性實驗 -->
+    <section id="sec-break" class="space-y-6">
+      <div class="border-l-4 border-rose-500 pl-4">
+        <div class="text-xs font-bold uppercase tracking-wider text-rose-400 font-mono">MODULE 07</div>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-white">把演算法弄壞 (Break It)：四大極限實驗</h2>
+        <p class="text-slate-400 text-sm mt-1">真正的工程師不只看它跑得好，更要親手弄壞它來洞察物理極限</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="p-5 rounded-2xl bg-rose-950/20 border border-rose-500/30 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-rose-400 font-mono">--lr 1.05</span>
+            <span class="text-2xs px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">指數級爆炸</span>
+          </div>
+          <h4 class="font-bold text-white text-sm">現象：第 73 步 Loss 瞬間破十億</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            學習率過大，球在碗底兩側越彈越高，如同鞦韆每次都被推得更高，最終直接飛出碗緣崩潰！
+          </p>
+        </div>
+
+        <div class="p-5 rounded-2xl bg-rose-950/20 border border-rose-500/30 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-rose-400 font-mono">--no-scale --lr 0.01</span>
+            <span class="text-2xs px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">光速炸飛</span>
+          </div>
+          <h4 class="font-bold text-white text-sm">現象：第 3 步就直接 Overflow</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            未標準化時，坪數直接乘入梯度，使 $dw$ 被放大數十倍，原本收斂的 $0.01$ 步長在峭壁上瞬間失控炸裂！
+          </p>
+        </div>
+
+        <div class="p-5 rounded-2xl bg-amber-950/20 border border-amber-500/30 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-amber-400 font-mono">--no-scale --lr 0.0005</span>
+            <span class="text-2xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">參數跛腳</span>
+          </div>
+          <h4 class="font-bold text-white text-sm">現象：w 迅速就位，b 紋絲不動</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            步長遷就 $w$ 不爆炸，但平緩軸向的 $b$ 步履蹣跚，200 步跑完 $b$ 還在原點，強迫 $w$ 歪斜補償出畸形直線。
+          </p>
+        </div>
+
+        <div class="p-5 rounded-2xl bg-indigo-950/20 border border-indigo-500/30 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-indigo-400 font-mono">--lr 0.01</span>
+            <span class="text-2xs px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">牛步爬行</span>
+          </div>
+          <h4 class="font-bold text-white text-sm">現象：收斂過慢，200 步遠未到底</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            邁出步伐太保守，像蝸牛在碗壁上爬行，需要將 Epoch 提高到 2000 步以上才能勉強抵達碗底。
+          </p>
+        </div>
+      </div>
+
+      <!-- 留言挑戰深入解答卡片 -->
+      <div class="p-6 rounded-2xl bg-gradient-to-r from-sky-950/60 to-indigo-950/60 border border-sky-500/40 space-y-3">
+        <div class="flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-sky-500 text-slate-950 flex items-center justify-center font-bold text-xs">★</span>
+          <h4 class="font-bold text-sky-300 text-sm">留言挑戰題深度解析：為什麼學習率剛好超過 1 就會爆炸？</h4>
+        </div>
+        <p class="text-xs text-slate-200 leading-relaxed">
+          考慮標準化後的單變數損失函數 $L(w) = (w - w^*)^2$。
+          其對 $w$ 的<strong>二階導數（Hessian）為 $H = \frac{d^2 L}{dw^2} = 2$</strong>。
+        </p>
+        <p class="text-xs text-slate-200 leading-relaxed">
+          梯度更新式為：$w_{t+1} = w_t - \eta \cdot 2(w_t - w^*)$。兩邊減去最優解 $w^*$ 得：
+          $$(w_{t+1} - w^*) = (1 - 2\eta)(w_t - w^*)$$
+        </p>
+        <p class="text-xs text-slate-200 leading-relaxed">
+          若要使誤差 $|w_{t+1} - w^*|$ 每步縮小，必須滿足收斂半徑條件：
+          $$|1 - 2\eta| < 1 \iff -1 < 1 - 2\eta < 1 \iff 0 < \eta < 1$$
+          因此，<strong>只要 $\eta > 1$（例如 $1.05$），放大係數 $|1 - 2(1.05)| = |-1.1| = 1.1 > 1$！</strong>每走一步誤差就擴大 $10\%$，呈幾何級數發散爆炸！這就是純粹而美麗的數值分析法則！
+        </p>
+      </div>
+    </section>
+
+    <!-- 07. 三種實作代碼完全對照 -->
+    <section id="sec-code" class="space-y-6">
+      <div class="border-l-4 border-cyan-500 pl-4">
+        <div class="text-xs font-bold uppercase tracking-wider text-cyan-400 font-mono">MODULE 08</div>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-white">代碼實戰：三種方法求出同一碗底</h2>
+        <p class="text-slate-400 text-sm mt-1">手寫梯度下降 vs 正規方程式 vs Scikit-Learn，小數點後兩位完全一致！</p>
+      </div>
+
+      <!-- 結果對照卡片 -->
+      <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono space-y-1 text-slate-300">
+        <div class="grid grid-cols-5 text-slate-400 pb-1 border-b border-slate-800 font-bold">
+          <span>解法 (Method)</span>
+          <span class="text-right">斜率 w</span>
+          <span class="text-right">截距 b</span>
+          <span class="text-right">測試集 MSE</span>
+          <span class="text-right">決定係數 R²</span>
+        </div>
+        <div class="grid grid-cols-5 text-sky-400 py-1">
+          <span>1. 手寫梯度下降</span>
+          <span class="text-right font-bold">51.46</span>
+          <span class="text-right font-bold">323.18</span>
+          <span class="text-right">20167.6</span>
+          <span class="text-right">0.970</span>
+        </div>
+        <div class="grid grid-cols-5 text-purple-400 py-1">
+          <span>2. 正規方程式</span>
+          <span class="text-right font-bold">51.46</span>
+          <span class="text-right font-bold">323.18</span>
+          <span class="text-right">20167.6</span>
+          <span class="text-right">0.970</span>
+        </div>
+        <div class="grid grid-cols-5 text-emerald-400 py-1">
+          <span>3. Scikit-Learn</span>
+          <span class="text-right font-bold">51.46</span>
+          <span class="text-right font-bold">323.18</span>
+          <span class="text-right">20167.6</span>
+          <span class="text-right">0.970</span>
+        </div>
+      </div>
+
+      <!-- 核心代碼展示區塊 -->
+      <div class="glass-card rounded-2xl overflow-hidden border border-slate-800">
+        <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+            <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+            <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+            <span class="text-xs font-mono text-slate-400 ml-2">linear_regression.py</span>
+          </div>
+          <button onclick="copyCode()" class="text-2xs text-slate-300 hover:text-white bg-slate-800 px-3 py-1 rounded border border-slate-700 transition flex items-center gap-1">
+            <i class="fa-regular fa-copy"></i> <span id="copyBtnText">複製完整代碼</span>
+          </button>
+        </div>
+        <pre class="p-6 text-xs font-mono text-slate-200 overflow-x-auto leading-relaxed bg-slate-950"><code id="codeBlock"># -*- coding: utf-8 -*-
+import numpy as np
+from sklearn.linear_model import LinearRegression
+
+# ===============================================================
+# Part 1: 手寫梯度下降 (Gradient Descent from scratch)
+# ===============================================================
+class LinearRegressionGD:
+    def __init__(self, lr=0.1, epochs=200, scale=True):
+        self.lr = lr
+        self.epochs = epochs
+        self.scale = scale
+        self.w, self.b = 0.0, 0.0
+        self.loss_history = []
+        self.diverged = False
+
+    def fit(self, x, y):
+        n = len(x)
+        if self.scale:
+            self.x_mean, self.x_std = x.mean(), x.std()
+            xs = (x - self.x_mean) / self.x_std
+        else:
+            self.x_mean, self.x_std = 0.0, 1.0
+            xs = x
+
+        w, b = 0.0, 0.0
+        for epoch in range(self.epochs):
+            # 1. 前向預測
+            y_hat = w * xs + b
+            
+            # 2. 計算損失
+            error = y_hat - y
+            loss = np.mean(error ** 2)
+            self.loss_history.append(loss)
+            
+            # 早期停止發散防護
+            if not np.isfinite(loss) or loss > 1e6 * (self.loss_history[0] + 1e-5):
+                self.diverged = True
+                break
+
+            # 3. 計算梯度 (鏈鎖法則)
+            dw = (2 / n) * np.sum(error * xs)
+            db = (2 / n) * np.sum(error)
+
+            # 4. 參數更新
+            w -= self.lr * dw
+            b -= self.lr * db
+
+        # 還原標準化參數回真實尺度
+        self.w = w / self.x_std
+        self.b = b - w * self.x_mean / self.x_std
+        return self
+
+    def predict(self, x):
+        return self.w * x + self.b
+
+# ===============================================================
+# Part 2: 正規方程式 (Normal Equation 一行解)
+# ===============================================================
+def fit_normal_equation(x, y):
+    # 設計矩陣：第一欄全為 1 學截距 b，第二欄為 x
+    X = np.column_stack([np.ones_like(x), x])
+    # 使用 np.linalg.solve 數值解避開直接求逆之精度損失
+    theta = np.linalg.solve(X.T @ X, X.T @ y)
+    b, w = theta
+    return w, b
+
+# ===============================================================
+# Part 3: Scikit-Learn (工業級 3 行調用)
+# ===============================================================
+sk_model = LinearRegression()
+sk_model.fit(x_train.reshape(-1, 1), y_train)
+sk_w = sk_model.coef_[0]
+sk_b = sk_model.intercept_
+</code></pre>
+      </div>
+    </section>
+
+    <!-- 08. 即時互動模擬器 -->
+    <section id="sec-simulator" class="space-y-6">
+      <div class="border-l-4 border-emerald-500 pl-4">
+        <div class="text-xs font-bold uppercase tracking-wider text-emerald-400 font-mono">MODULE 09</div>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-white">即時互動實驗室：親手調參與玩壞實驗</h2>
+        <p class="text-slate-400 text-sm mt-1">即時調整學習率、切換特徵縮放，親眼見證直線擬合與 Loss 曲線的收斂或崩潰！</p>
+      </div>
+
+      <div class="glass-card rounded-2xl p-6 sm:p-8 space-y-6">
+        <!-- 控制面板 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 pb-4 border-b border-slate-800 text-xs">
+          <!-- 學習率 -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between font-semibold">
+              <span class="text-slate-300">學習率 (lr):</span>
+              <span id="lrVal" class="text-sky-400 font-mono font-bold">0.100</span>
+            </div>
+            <input type="range" id="lrInput" min="0.001" max="1.15" step="0.005" value="0.1" class="w-full accent-sky-500 cursor-pointer" oninput="runSim()">
+          </div>
+
+          <!-- 迭代步數 -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between font-semibold">
+              <span class="text-slate-300">迭代步數 (Epochs):</span>
+              <span id="epochVal" class="text-sky-400 font-mono font-bold">200</span>
+            </div>
+            <input type="range" id="epochInput" min="10" max="1000" step="10" value="200" class="w-full accent-sky-500 cursor-pointer" oninput="runSim()">
+          </div>
+
+          <!-- 特徵縮放開關 -->
+          <div class="space-y-1.5 flex flex-col justify-end">
+            <label class="flex items-center gap-2 cursor-pointer text-slate-300 font-semibold">
+              <input type="checkbox" id="scaleInput" checked class="w-4 h-4 accent-sky-500 rounded" onchange="runSim()">
+              <span>開啟特徵縮放 (Feature Scaling)</span>
+            </label>
+          </div>
+
+          <!-- 快速預設場景 -->
+          <div class="flex flex-wrap gap-1.5 items-end">
+            <button onclick="setPreset(0.1, 200, true)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-2xs transition">標準良好</button>
+            <button onclick="setPreset(1.05, 200, true)" class="px-2 py-1 rounded bg-rose-950 text-rose-300 hover:bg-rose-900 text-2xs transition">lr=1.05 爆炸</button>
+            <button onclick="setPreset(0.01, 200, false)" class="px-2 py-1 rounded bg-rose-950 text-rose-300 hover:bg-rose-900 text-2xs transition">無縮放炸飛</button>
+            <button onclick="setPreset(0.0005, 200, false)" class="px-2 py-1 rounded bg-amber-950 text-amber-300 hover:bg-amber-900 text-2xs transition">無縮放跛腳</button>
+          </div>
+        </div>
+
+        <!-- 狀態回報卡 -->
+        <div id="simStatus" class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2">
+            <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="statusText" class="text-slate-300 font-medium">模型收斂良好</span>
+          </div>
+          <div class="font-mono space-x-4">
+            <span>w: <strong id="simW" class="text-sky-400">51.46</strong></span>
+            <span>b: <strong id="simB" class="text-indigo-400">323.18</strong></span>
+            <span>Loss: <strong id="simLoss" class="text-emerald-400">20167.6</strong></span>
+          </div>
+        </div>
+
+        <!-- 畫布區：左擬合線，右 Loss 曲線 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="space-y-2">
+            <div class="text-xs font-bold text-slate-400 flex items-center justify-between">
+              <span>數據散佈與擬合直線 (Data & Fitted Line)</span>
+              <span class="text-2xs text-slate-500">真實規則: y = 52x + 300</span>
+            </div>
+            <canvas id="fitCanvas" width="500" height="300" class="w-full bg-slate-950 rounded-xl border border-slate-800"></canvas>
+          </div>
+
+          <div class="space-y-2">
+            <div class="text-xs font-bold text-slate-400 flex items-center justify-between">
+              <span>損失下降曲線 (MSE Loss vs Epochs - Log Scale)</span>
+              <span id="divergeWarn" class="text-2xs text-rose-400 font-bold hidden">⚠️ 損失發散已中斷</span>
+            </div>
+            <canvas id="lossCanvas" width="500" height="300" class="w-full bg-slate-950 rounded-xl border border-slate-800"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 09. 完整 17 分鐘逐字稿折疊面板 -->
+    <section id="sec-transcript" class="space-y-6">
+      <div class="border-l-4 border-slate-600 pl-4 flex items-center justify-between">
+        <div>
+          <div class="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">MODULE 10</div>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white">影片完整 17 分鐘逐字對話記錄 (Full Transcript)</h2>
+          <p class="text-slate-400 text-sm mt-1">完整收錄台詞語意、時間戳與精確論點，支援全文搜尋</p>
+        </div>
+        <button onclick="toggleTranscript()" id="toggleTransBtn" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5">
+          <i class="fa-solid fa-chevron-down" id="transIcon"></i> <span id="transBtnText">展開逐字稿</span>
+        </button>
+      </div>
+
+      <div id="transcriptBox" class="hidden glass-card rounded-2xl p-6 sm:p-8 space-y-6">
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-500 text-xs"></i>
+          <input type="text" id="transcriptSearch" placeholder="搜尋逐字稿關鍵字（如：高爾頓、橢圓、二階導數、Hessian、正規方程）..." class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500 transition" oninput="filterTranscript()">
+        </div>
+
+        <div id="transcriptContent" class="space-y-4 max-h-[600px] overflow-y-auto pr-2 font-mono text-xs leading-relaxed divide-y divide-slate-800/60">
+          <!-- 逐字稿由 JS 動態填入 -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 頁尾 -->
+  <footer class="border-t border-slate-800/80 bg-slate-950 py-8 text-center text-xs text-slate-500">
+    <p>IPAS AI 應用規劃師 · 機器學習系列教學筆記 · 來源：Enzo 獨自升級 YouTube 頻道</p>
+    <p class="mt-1">由 Antigravity 智慧生成與架構對齊 · 整合 KaTeX 出版級數學引擎與 Canvas 物理模擬</p>
+  </footer>
+
+  <!-- 互動模擬器與邏輯腳本 -->
+  <script>
+    // 複製程式碼
+    function copyCode() {
+      const code = document.getElementById('codeBlock').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const btnText = document.getElementById('copyBtnText');
+        btnText.innerText = '已複製純代碼！';
+        setTimeout(() => { btnText.innerText = '複製完整代碼'; }, 2000);
+      });
+    }
+
+    // 預設合成資料 (與影片中設定相同，seed 固定)
+    const TRUE_W = 52.0;
+    const TRUE_B = 300.0;
+    const N = 100;
+    let dataX = [];
+    let dataY = [];
+
+    // 線性同餘生成器固定亂數
+    function seededRandom(seed) {
+      let m = 0x80000000, a = 1103515245, c = 12345;
+      let state = seed ? seed : Math.floor(Math.random() * (m - 1));
+      return function() {
+        state = (a * state + c) % m;
+        return state / (m - 1);
+      };
+    }
+
+    function initData() {
+      const rng = seededRandom(42);
+      dataX = [];
+      dataY = [];
+      for (let i = 0; i < N; i++) {
+        // x in [10, 60]
+        const x = 10 + rng() * 50;
+        // Box-Muller normal noise
+        const u1 = Math.max(1e-6, rng()), u2 = rng();
+        const noise = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2) * 150.0;
+        const y = TRUE_W * x + TRUE_B + noise;
+        dataX.push(x);
+        dataY.push(y);
+      }
+    }
+    initData();
+
+    function setPreset(lr, epochs, scale) {
+      document.getElementById('lrInput').value = lr;
+      document.getElementById('epochInput').value = epochs;
+      document.getElementById('scaleInput').checked = scale;
+      runSim();
+    }
+
+    function runSim() {
+      const lr = parseFloat(document.getElementById('lrInput').value);
+      const epochs = parseInt(document.getElementById('epochInput').value);
+      const scale = document.getElementById('scaleInput').checked;
+
+      document.getElementById('lrVal').innerText = lr.toFixed(3);
+      document.getElementById('epochVal').innerText = epochs;
+
+      // 執行梯度下降
+      const n = dataX.length;
+      let meanX = 0, stdX = 1;
+      let xs = [...dataX];
+
+      if (scale) {
+        meanX = dataX.reduce((a, b) => a + b, 0) / n;
+        const variance = dataX.reduce((a, b) => a + Math.pow(b - meanX, 2), 0) / n;
+        stdX = Math.sqrt(variance);
+        xs = dataX.map(v => (v - meanX) / stdX);
+      }
+
+      let w = 0.0, b = 0.0;
+      let lossHistory = [];
+      let diverged = false;
+
+      for (let ep = 0; ep < epochs; ep++) {
+        let errorSum = 0;
+        let dwSum = 0;
+        let seSum = 0;
+
+        for (let i = 0; i < n; i++) {
+          const yHat = w * xs[i] + b;
+          const err = yHat - dataY[i];
+          errorSum += err;
+          dwSum += err * xs[i];
+          seSum += err * err;
+        }
+
+        const loss = seSum / n;
+        lossHistory.push(loss);
+
+        if (!isFinite(loss) || (ep > 0 && loss > 1e7 * (lossHistory[0] + 1))) {
+          diverged = true;
+          break;
+        }
+
+        const dw = (2 / n) * dwSum;
+        const db = (2 / n) * errorSum;
+
+        w -= lr * dw;
+        b -= lr * db;
+      }
+
+      // 還原參數
+      let finalW = diverged ? NaN : (scale ? w / stdX : w);
+      let finalB = diverged ? NaN : (scale ? b - w * meanX / stdX : b);
+      let finalLoss = diverged ? Infinity : lossHistory[lossHistory.length - 1];
+
+      // 更新狀態卡
+      const statusDot = document.getElementById('statusDot');
+      const statusText = document.getElementById('statusText');
+      const divergeWarn = document.getElementById('divergeWarn');
+
+      if (diverged) {
+        statusDot.className = "w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping";
+        statusText.innerText = "⚠️ 警報：Loss 爆炸發散 (Diverged)！學習率過大或未縮放！";
+        divergeWarn.classList.remove('hidden');
+        document.getElementById('simW').innerText = "NaN (發散)";
+        document.getElementById('simB').innerText = "NaN (發散)";
+        document.getElementById('simLoss').innerText = "無限大 (∞)";
+      } else {
+        statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400";
+        statusText.innerText = "✅ 模型收斂完成";
+        divergeWarn.classList.add('hidden');
+        document.getElementById('simW').innerText = finalW.toFixed(2);
+        document.getElementById('simB').innerText = finalB.toFixed(2);
+        document.getElementById('simLoss').innerText = finalLoss.toFixed(1);
+      }
+
+      // 繪製左圖：散佈與擬合直線
+      drawFitCanvas(finalW, finalB, diverged);
+
+      // 繪製右圖：Loss 曲線
+      drawLossCanvas(lossHistory, diverged);
+    }
+
+    function drawFitCanvas(w, b, diverged) {
+      const cvs = document.getElementById('fitCanvas');
+      const ctx = cvs.getContext('2d');
+      const W = cvs.width, H = cvs.height;
+      ctx.clearRect(0, 0, W, H);
+
+      // 內縮邊距
+      const pad = { left: 45, right: 20, top: 20, bottom: 35 };
+      const pw = W - pad.left - pad.right;
+      const ph = H - pad.top - pad.bottom;
+
+      const minX = 10, maxX = 60;
+      const minY = 500, maxY = 3800;
+
+      function toX(x) { return pad.left + (x - minX) / (maxX - minX) * pw; }
+      function toY(y) { return H - pad.bottom - (y - minY) / (maxY - minY) * ph; }
+
+      // 繪製坐標網格
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      for (let gx = 10; gx <= 60; gx += 10) {
+        ctx.beginPath();
+        ctx.moveTo(toX(gx), toY(minY));
+        ctx.lineTo(toX(gx), toY(maxY));
+        ctx.stroke();
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px monospace';
+        ctx.fillText(gx + '坪', toX(gx) - 10, H - 15);
+      }
+      for (let gy = 1000; gy <= 3500; gy += 1000) {
+        ctx.beginPath();
+        ctx.moveTo(toX(minX), toY(gy));
+        ctx.lineTo(toX(maxX), toY(gy));
+        ctx.stroke();
+        ctx.fillStyle = '#64748b';
+        ctx.fillText((gy/100) + '萬', 5, toY(gy) + 4);
+      }
+
+      // 散佈點
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.6)';
+      for (let i = 0; i < N; i++) {
+        ctx.beginPath();
+        ctx.arc(toX(dataX[i]), toY(dataY[i]), 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 真實真理直線 (虛線)
+      ctx.strokeStyle = '#94a3b8';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(toX(minX), toY(TRUE_W * minX + TRUE_B));
+      ctx.lineTo(toX(maxX), toY(TRUE_W * maxX + TRUE_B));
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 當前模型擬合直線
+      if (!diverged && isFinite(w) && isFinite(b)) {
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(toX(minX), toY(w * minX + b));
+        ctx.lineTo(toX(maxX), toY(w * maxX + b));
+        ctx.stroke();
+      }
+    }
+
+    function drawLossCanvas(history, diverged) {
+      const cvs = document.getElementById('lossCanvas');
+      const ctx = cvs.getContext('2d');
+      const W = cvs.width, H = cvs.height;
+      ctx.clearRect(0, 0, W, H);
+
+      const pad = { left: 55, right: 20, top: 20, bottom: 35 };
+      const pw = W - pad.left - pad.right;
+      const ph = H - pad.top - pad.bottom;
+
+      if (!history || history.length === 0) return;
+
+      // Log scale Y
+      const validLoss = history.filter(v => isFinite(v) && v > 0);
+      if (validLoss.length === 0) return;
+
+      const minL = Math.min(...validLoss);
+      const maxL = Math.max(...validLoss);
+      const logMin = Math.log10(Math.max(1, minL));
+      const logMax = Math.log10(Math.max(10, maxL));
+
+      function toX(idx) { return pad.left + idx / (history.length - 1 || 1) * pw; }
+      function toY(val) {
+        if (!isFinite(val) || val <= 0) return pad.top;
+        const l = Math.log10(val);
+        const norm = (l - logMin) / (logMax - logMin || 1);
+        return H - pad.bottom - norm * ph;
+      }
+
+      // 網格線
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      for (let ep = 0; ep <= history.length; ep += Math.max(20, Math.floor(history.length / 5))) {
+        ctx.beginPath();
+        ctx.moveTo(toX(ep), H - pad.bottom);
+        ctx.lineTo(toX(ep), pad.top);
+        ctx.stroke();
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px monospace';
+        ctx.fillText(ep, toX(ep) - 8, H - 15);
+      }
+
+      // 曲線
+      ctx.strokeStyle = diverged ? '#f43f5e' : '#10b981';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      for (let i = 0; i < history.length; i++) {
+        const x = toX(i);
+        const y = toY(history[i]);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    // 逐字稿資料與展開/收合
+    const transcriptData = [
+      { time: "00:00", speaker: "Enzo", text: "嗨大家好，我是 Enzo！今天我們要聊的是整個機器學習世界裡最基礎、也是最重要的新手村演算法——「線性回歸 (Linear Regression)」。" },
+      { time: "00:18", speaker: "Enzo", text: "你有沒有好奇過，為什麼它要叫做「回歸」？聽起來像是回到哪裡，但明明我們做的事情就是在二維平面上畫出一條直線而已，它到底跟回歸有什麼關係？" },
+      { time: "00:36", speaker: "Enzo", text: "其實這完全是一場歷史的意外。回歸最早是由 19 世紀英國博學家法蘭西斯·高爾頓 (Francis Galton) 研究一千多對父子身高時提出的。他發現極端高大的父親，兒子往往矮一點；極端矮小的父親，兒子往往高一點。" },
+      { time: "00:58", speaker: "Enzo", text: "子代身高有一種向全體平均身高靠攏的趨勢，高爾頓稱之為「回歸到平庸 (Regression to mediocrity)」。統計學沿用了這個名字，本質就是：用最優直線捕捉特徵與目標變數的規律。" },
+      { time: "01:15", speaker: "Enzo", text: "現在看最經典的業務情境——「房仲估價問題」。假設你手上累積了 100 筆過往成交紀錄：坪數 (x) 與成交價 (y)。當新客戶拿著 30 坪權狀來問估價時，你該如何給出有憑有據的價格？" },
+      { time: "02:00", speaker: "Enzo", text: "我們把資料畫在坐標圖上，穿過一群散佈點。但通過平面的直線有無限多條，我們憑什麼定義哪一條是「最好」的？必須用數學語言定義它。" },
+      { time: "02:30", speaker: "Enzo", text: "國中數學告訴我們：y_hat = wx + b。帽子代表預測值。這方程式有兩個物理旋鈕：w 是權重/斜率（每多一坪加價多少），b 是偏置/截距（0 坪時的門牌地段起步底價）。" },
+      { time: "03:45", speaker: "Enzo", text: "如果房價還跟屋齡、捷運距離有關怎麼辦？線性回歸直接擴展為超平面：y_hat = w1*x1 + w2*x2 + ... + b。每個特徵都有專屬權重旋鈕，正面因素為正，負面因素為負。" },
+      { time: "04:50", speaker: "Enzo", text: "轉動旋鈕產生了預測誤差 error = y_hat - y。為什麼不能直接把誤差加總？因為正負會抵消！猜高 100 萬與猜低 100 萬相加等於 0，看似完美實則大錯特錯。" },
+      { time: "05:38", speaker: "Enzo", text: "線性回歸選擇均方誤差 MSE：L = (1/n) * sum((y_hat - y)^2)。想像每個點拉出垂直殘差為邊長的正方形，最小平方法就是要讓坐標圖上所有正方形面積總和最小！平方不僅消除負號，還具備「大錯重罰」特性。" },
+      { time: "06:10", speaker: "Enzo", text: "核心認知：在 L(w, b) 裡面，誰是變數？資料點 (x, y) 已經成交存進硬碟了，是雷打不動的常數！真正改變的是收音機旋鈕 w 和 b！我們是在 (w, b) 的立體空間裡尋求 Loss 最小點。" },
+      { time: "07:20", speaker: "Enzo", text: "以 w, b 為底、Loss 為高度畫出 3D 曲面，它會是一個完美的、向上開口的「碗 (Bowl)」！數學上稱為凸函數 (Convex)。它保證全宇宙只有唯一的全域最低點（碗底），絕對沒有任何局部極值會卡住你！" },
+      { time: "08:35", speaker: "Enzo", text: "鏈鎖法則手撕梯度：外層平方微下來得 2*(y_hat - y)。對 w 微分內層留下 x_i，所以 dw = (2/n)*sum(error * x)；對 b 微分內層留下 1，所以 db = (2/n)*sum(error)。" },
+      { time: "10:05", speaker: "Enzo", text: "白話翻譯：猜太高時 error > 0，dw 為正，更新時 w 減去學習率乘梯度，讓 w 自動變小；猜太低相反。每一步依照錯誤方向修正旋鈕。" },
+      { time: "11:10", speaker: "Enzo", text: "手算踩坑：dw 乘上了特徵 x，而 db 沒有！坪數在 10~60 之間，dw 天生是 db 的數十倍大。曲面被拉扯成狹長橢圓峽谷，陡峭方向稍大就炸，平緩方向走不動。因此特徵縮放 (Feature Scaling) 是生死攸關！" },
+      { time: "12:20", speaker: "Enzo", text: "數學家說：碗形拋物線令導數為 0 就有一步到位的解析解！推導得正規方程式：theta = (X^T * X)^(-1) * X^T * y。一行 np.linalg.solve 就解決，不需要迭代，也不需要學習率。" },
+      { time: "13:30", speaker: "Enzo", text: "既然正規方程這麼爽，為何還要學梯度下降？兩大致命限制：1. 矩陣求逆複雜度是 O(d^3)，當特徵有幾萬維時直接 OOM 崩潰，而梯度下降只要 O(nd)；2. 巨量數據無法全塞進記憶體；3. 深度學習非線性神經網絡無解析解！" },
+      { time: "14:40", speaker: "Enzo", text: "線性回歸優勢：極佳可解釋性、推論極快、神級 Baseline；劣勢：只能畫直線、極怕離群值、怕多重共線性。" },
+      { time: "15:35", speaker: "Enzo", text: "實戰成果：手寫梯度下降、正規方程式、Scikit-Learn 三者在測試集上的 w (51.46)、b (323.18)、MSE (20167.6) 完全一模一樣！代碼印證凸函數唯一的碗底！" },
+      { time: "16:20", speaker: "Enzo", text: "弄壞實驗：--lr 1.05 第 73 步爆炸；--no-scale --lr 0.01 第 3 步炸飛；--no-scale --lr 0.0005 使 b 紋絲不動。" },
+      { time: "17:00", speaker: "Enzo", text: "留言挑戰題：為什麼學習率剛好超過 1 就炸？提示：算標準化後 Loss 對 w 的二階導數 (Hessian)！收斂半徑 |1 - 2*eta| < 1 決定了極限！" }
+    ];
+
+    function toggleTranscript() {
+      const box = document.getElementById('transcriptBox');
+      const icon = document.getElementById('transIcon');
+      const text = document.getElementById('transBtnText');
+      if (box.classList.contains('hidden')) {
+        box.classList.remove('hidden');
+        icon.className = "fa-solid fa-chevron-up";
+        text.innerText = "收合逐字稿";
+        renderTranscript(transcriptData);
+      } else {
+        box.classList.add('hidden');
+        icon.className = "fa-solid fa-chevron-down";
+        text.innerText = "展開逐字稿";
+      }
+    }
+
+    function renderTranscript(items) {
+      const container = document.getElementById('transcriptContent');
+      container.innerHTML = items.map(item => `
+        <div class="py-2.5 flex items-start gap-3">
+          <span class="px-2 py-0.5 rounded bg-sky-950/80 text-sky-400 font-bold shrink-0 border border-sky-800/40 text-[11px]">${item.time}</span>
+          <div>
+            <span class="text-slate-400 font-bold text-2xs mr-1.5">[${item.speaker}]</span>
+            <span class="text-slate-200">${item.text}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filterTranscript() {
+      const kw = document.getElementById('transcriptSearch').value.toLowerCase().trim();
+      const filtered = transcriptData.filter(i => i.text.toLowerCase().includes(kw) || i.time.includes(kw));
+      renderTranscript(filtered);
+    }
+
+    // 初始化模擬器
+    window.addEventListener('DOMContentLoaded', () => {
+      runSim();
+    });
+  </script>
+</body>
+</html>

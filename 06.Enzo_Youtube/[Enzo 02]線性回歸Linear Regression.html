@@ -1,0 +1,1684 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>一條直線解決一切！線性回歸互動教學手冊</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- KaTeX for formula rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <!-- Prism.js for Python Code Syntax Highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#1e1b4b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+        }
+        .code-syntax {
+            font-family: 'Fira Code', 'Courier New', monospace;
+        }
+        /* 自訂 Prism 程式碼背景與行距 */
+        pre[class*="language-"] {
+            background: #090d16 !important;
+            margin: 0 !important;
+            border-radius: 0.75rem;
+            padding: 1.25rem !important;
+        }
+        code[class*="language-"] {
+            font-family: 'Fira Code', 'Consolas', monospace !important;
+            font-size: 0.82rem !important;
+            line-height: 1.65 !important;
+        }
+    </style>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen selection:bg-brand-500 selection:text-white">
+
+    <!-- 導航列 -->
+    <nav class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-brand-600 rounded-lg text-white shadow-lg shadow-brand-500/30">
+                    <i data-lucide="trending-up" class="w-5 h-5"></i>
+                </div>
+                <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">ML Series #1: Linear Regression</span>
+            </div>
+            <div class="hidden md:flex items-center gap-6 text-sm text-slate-300 font-medium">
+                <a href="#origin" class="hover:text-brand-400 transition">歷史起源</a>
+                <a href="#loss-bowl" class="hover:text-brand-400 transition">Loss碗型曲面</a>
+                <a href="#playground" class="hover:text-brand-400 transition">互動實驗室</a>
+                <a href="#scaling-svg" class="hover:text-brand-400 transition">特徵縮放等高線</a>
+                <a href="#outlier-svg" class="hover:text-brand-400 transition">離群值實驗</a>
+                <a href="#math" class="hover:text-brand-400 transition">數學推導</a>
+                <a href="#normal-eq" class="hover:text-brand-400 transition">正規方程式</a>
+                <a href="#pros-cons" class="hover:text-brand-400 transition">優劣勢與陷阱</a>
+                <a href="#code" class="hover:text-brand-400 transition">Python 實作</a>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="#playground" class="bg-brand-600 hover:bg-brand-500 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow-md transition">調參實驗</a>
+                <a href="../index.html" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition shadow-sm">
+                    <i class="fa-solid fa-arrow-left"></i> 回首頁
+                </a>
+                <a href="../程式心智圖.html" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:text-emerald-200 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-500/40 rounded-lg transition shadow-sm">
+                    <i class="fa-solid fa-network-wired"></i> 程式心智圖
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 核心精華與產業實務應用 方框元件 (全站標準規格) -->
+    <div style="margin: 2rem auto; max-width: 80rem; padding: 1.5rem; background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid #38bdf8; border-radius: 16px; box-shadow: 0 10px 30px -5px rgba(2, 132, 199, 0.25), 0 0 20px rgba(56, 189, 248, 0.15); backdrop-filter: blur(12px); color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif;">
+      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(56, 189, 248, 0.25); padding-bottom: 0.85rem; margin-bottom: 1.1rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: linear-gradient(135deg, #0284c7, #38bdf8); border-radius: 8px; color: #ffffff; font-size: 1.05rem; box-shadow: 0 2px 8px rgba(56, 189, 248, 0.4); flex-shrink: 0;">
+            <i class="fa-solid fa-lightbulb"></i>
+          </span>
+          <div>
+            <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #ffffff; letter-spacing: -0.01em;">
+              【線性回歸 Linear Regression】核心精華與產業實務應用
+            </h3>
+            <p style="margin: 0.15rem 0 0 0; font-size: 0.78rem; color: #94a3b8;">Key Takeaways · Mechanism Overview · Industrial Applications</p>
+          </div>
+        </div>
+        <span style="font-size: 0.72rem; padding: 0.25rem 0.65rem; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 9999px; font-weight: 700; white-space: nowrap;">
+          重點精華 · 實務落地
+        </span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.2rem;">
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem; color: #38bdf8; font-weight: 700; font-size: 0.92rem;">
+            <i class="fa-solid fa-list-check"></i>
+            <span>重點整理 (Key Takeaways)</span>
+          </div>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.84rem; line-height: 1.65; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.45rem;">
+            <li><strong>回歸詞源本質</strong>：高爾頓父子身高研究之「回歸平庸」，演算法本質是在特徵空間中擬合最優預測直線或超平面。</li>
+            <li><strong>最小平方法核心</strong>：Loss 為殘差正方形面積之和，正負不抵消且大錯重罰；<strong>重要心法：Loss 是參數 $w, b$ 的函數，資料是固定常數！</strong></li>
+            <li><strong>碗形凸曲面保證</strong>：MSE 曲面為嚴格凸函數，全域僅有唯一碗底，梯度下降保證收斂至全域最優。</li>
+            <li><strong>特徵縮放生死攸關</strong>：未標準化時 $dw$ 包含特徵乘積使曲面被拉成長橢圓深谷，導致梯度極度懸殊，步長稍大便直接炸飛。</li>
+          </ul>
+        </div>
+
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(129, 140, 248, 0.2); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem; color: #a5b4fc; font-weight: 700; font-size: 0.92rem;">
+            <i class="fa-solid fa-gears"></i>
+            <span>機制說明 (Mechanism & Math)</span>
+          </div>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.84rem; line-height: 1.65; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.45rem;">
+            <li><strong>鏈鎖法則偏微分</strong>：$\frac{\partial L}{\partial w} = \frac{2}{n}\sum e_i x_i,\; \frac{\partial L}{\partial b} = \frac{2}{n}\sum e_i$；猜太高逆梯度調小，猜太低調大。</li>
+            <li><strong>正規方程式解析解</strong>：$\boldsymbol{\theta} = (\mathbf{X}^T \mathbf{X})^{-1} \mathbf{X}^T \mathbf{y}$；一步求逆，但矩陣求逆計算複雜度為 $O(d^3)$，維度大於數萬時崩潰，而梯度下降僅需 $O(nd)$。</li>
+            <li><strong>學習率臨界半徑證明</strong>：標準化後 Hessian 最大特徵值為 2，收斂半徑 $|1 - 2\eta| < 1 \implies 0 < \eta < 1$。當 $\eta=1.05$ 時誤差每步放大 $1.1$ 倍必引發指數爆炸！</li>
+          </ul>
+        </div>
+
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(52, 211, 153, 0.2); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem; color: #6ee7b7; font-weight: 700; font-size: 0.92rem;">
+            <i class="fa-solid fa-industry"></i>
+            <span>應用在何處 (Industrial Scenarios)</span>
+          </div>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.84rem; line-height: 1.65; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.45rem;">
+            <li><strong>半導體晶圓先進製程控制 (APC)</strong>：CVD 薄膜厚度與 CMP 研磨去除率預測補償，維持奈米級良率精準度。</li>
+            <li><strong>智慧製造能源負載優化</strong>：工廠大型冰水主機與空調系統負載預測，依環境溫濕度即時調頻節電 15~20%。</li>
+            <li><strong>金融量化資產定價模型 (CAPM)</strong>：利用多元線性回歸拆解股票系統性風險 $\beta$ 係數與超額 Alpha 收益。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hero 標題區 -->
+    <header class="relative overflow-hidden py-16 sm:py-24 border-b border-slate-800 bg-gradient-to-b from-slate-900 via-slate-850 to-slate-900">
+        <div class="max-w-5xl mx-auto px-4 text-center">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-medium mb-6">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> 機器學習系列 · 第 1 集精華課程
+            </div>
+            <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight">
+                一條直線，<span class="bg-gradient-to-r from-brand-400 to-cyan-400 bg-clip-text text-transparent">預測一切可能</span>
+            </h1>
+            <p class="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto mb-8 leading-relaxed">
+                從高爾頓的身高研究、房價預測模型，到均方誤差與梯度下降推導。透過動態視覺化正方形殘差與特徵縮放實驗，一次融會貫通機器學習的基石！
+            </p>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto text-left">
+                <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60">
+                    <div class="text-xs text-slate-400 font-semibold mb-1">模型公式</div>
+                    <div class="text-lg font-bold text-white">\(\hat{y} = wx + b\)</div>
+                </div>
+                <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60">
+                    <div class="text-xs text-slate-400 font-semibold mb-1">損失函數</div>
+                    <div class="text-lg font-bold text-emerald-400">MSE 凸函數</div>
+                </div>
+                <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60">
+                    <div class="text-xs text-slate-400 font-semibold mb-1">尋優策略</div>
+                    <div class="text-lg font-bold text-cyan-400">梯度下降 / 解析解</div>
+                </div>
+                <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60">
+                    <div class="text-xs text-slate-400 font-semibold mb-1">關鍵陷阱</div>
+                    <div class="text-lg font-bold text-rose-400">特徵縮放 & 離群值</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-12 space-y-20">
+
+        <!-- 模組 1: 名詞由來 -->
+        <section id="origin" class="grid md:grid-cols-2 gap-8 items-center bg-slate-800/40 p-8 rounded-2xl border border-slate-700/50">
+            <div>
+                <div class="inline-flex items-center gap-1.5 text-xs text-brand-400 font-bold uppercase tracking-wider mb-2">
+                    <i data-lucide="history" class="w-4 h-4"></i> 背景故事
+                </div>
+                <h2 class="text-2xl sm:text-3xl font-bold text-white mb-4">為什麼預測數值的直線要叫「回歸」？</h2>
+                <p class="text-slate-300 text-sm leading-relaxed mb-4">
+                    19 世紀英國學者 <strong>法蘭西斯·高爾頓（Francis Galton）</strong> 研究父母與子女的身高關聯時發現：極高父母的孩子平均偏向矮一點，極矮父母的孩子平均偏向高一點，雙方後代的身高都持續往整體人類的「平均值」靠攏。
+                </p>
+                <p class="text-slate-300 text-sm leading-relaxed mb-4">
+                    高爾頓將此現象稱為 <span class="text-emerald-400 font-medium">「向平均回歸（Regression toward the mean）」</span>，他拿來分析走勢的直線從此被約定俗成稱為<strong>回歸線</strong>。
+                </p>
+                <div class="p-3.5 bg-slate-900/70 rounded-xl border border-slate-700/80 text-xs text-slate-400 flex items-start gap-2.5">
+                    <i data-lucide="lightbulb" class="w-4 h-4 text-amber-400 shrink-0 mt-0.5"></i>
+                    <span>因此，「回歸」之名純屬科學家命名習慣，演算法本質是在<strong>從無限條可能的直線中，找出誤差最小的那一條</strong>！</span>
+                </div>
+            </div>
+            <!-- 互動式 SVG：高爾頓向平均回歸即時散佈圖（參考演講原版 Matplotlib 投影片重構） -->
+            <div class="relative bg-slate-900/90 p-5 rounded-xl border border-slate-700/70 flex flex-col justify-between shadow-xl">
+                <div class="flex items-center justify-between text-xs mb-3 border-b border-slate-800 pb-2">
+                    <span class="font-bold text-slate-200 flex items-center gap-1.5">
+                        <i data-lucide="scatter-chart" class="w-4 h-4 text-brand-400"></i> 高爾頓遺傳散佈圖與回歸線
+                    </span>
+                    <span class="text-[11px] text-brand-400 font-mono">拖曳下方滑桿即時探測</span>
+                </div>
+
+                <!-- 散佈圖 SVG (1:1 比例忠實還原 Matplotlib 圖表) -->
+                <div class="w-full bg-slate-950 rounded-lg p-2 border border-slate-800">
+                    <svg id="galtonSvg" viewBox="0 0 460 380" class="w-full h-auto overflow-visible select-none font-sans">
+                        <!-- 座標軸網格背景 -->
+                        <rect x="55" y="25" width="340" height="300" fill="#0b1120" stroke="#334155" stroke-width="1.2" />
+
+                        <!-- 格線與刻度 -->
+                        <g stroke="#1e293b" stroke-width="0.8">
+                            <!-- 水平格線 (150 ~ 200) -->
+                            <line x1="55" y1="275" x2="395" y2="275" />
+                            <line x1="55" y1="225" x2="395" y2="225" />
+                            <line x1="55" y1="175" x2="395" y2="175" />
+                            <line x1="55" y1="125" x2="395" y2="125" />
+                            <line x1="55" y1="75" x2="395" y2="75" />
+                            <!-- 垂直格線 (150 ~ 200) -->
+                            <line x1="112" y1="25" x2="112" y2="325" />
+                            <line x1="168" y1="25" x2="168" y2="325" />
+                            <line x1="225" y1="25" x2="225" y2="325" />
+                            <line x1="282" y1="25" x2="282" y2="325" />
+                            <line x1="338" y1="25" x2="338" y2="325" />
+                        </g>
+
+                        <!-- 刻度文字標籤 -->
+                        <g fill="#94a3b8" font-size="10" font-family="'Inter', sans-serif">
+                            <!-- Y 軸 (Child Height) -->
+                            <text x="48" y="278" text-anchor="end">150</text>
+                            <text x="48" y="228" text-anchor="end">160</text>
+                            <text x="48" y="178" text-anchor="end">170</text>
+                            <text x="48" y="128" text-anchor="end">180</text>
+                            <text x="48" y="78" text-anchor="end">190</text>
+                            <text x="48" y="32" text-anchor="end">200</text>
+
+                            <!-- X 軸 (Parent Height) -->
+                            <text x="112" y="342" text-anchor="middle">150</text>
+                            <text x="168" y="342" text-anchor="middle">160</text>
+                            <text x="225" y="342" text-anchor="middle">170</text>
+                            <text x="282" y="342" text-anchor="middle">180</text>
+                            <text x="338" y="342" text-anchor="middle">190</text>
+                            <text x="395" y="342" text-anchor="middle">200</text>
+
+                            <!-- 軸標題 -->
+                            <text x="18" y="175" text-anchor="middle" transform="rotate(-90 18 175)" font-size="11" font-weight="600" fill="#cbd5e1">Child Height (cm)</text>
+                            <text x="225" y="362" text-anchor="middle" font-size="11" font-weight="600" fill="#cbd5e1">Parent Height (cm)</text>
+                        </g>
+
+                        <!-- 散佈資料點容器 (由 JS 生成約 120 筆真實分佈的樣本點) -->
+                        <g id="galtonScatterPoints"></g>
+
+                        <!-- 灰色對角虛線：y = x (perfect inheritance) 完美遺傳線 (45度) -->
+                        <line x1="55" y1="325" x2="395" y2="25" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,4" />
+
+                        <!-- 紅色回歸線：Regression line (slope = 0.58) -->
+                        <line id="galtonRegressionLine" x1="55" y1="262" x2="395" y2="88" stroke="#dc2626" stroke-width="2.5" />
+
+                        <!-- 投影片圖例 (Legend) -->
+                        <g transform="translate(65, 35)">
+                            <rect x="0" y="0" width="185" height="44" fill="rgba(15, 23, 42, 0.88)" rx="4" stroke="#334155" stroke-width="0.8" />
+                            <line x1="10" y1="15" x2="30" y2="15" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3,3" />
+                            <text x="36" y="18" fill="#cbd5e1" font-size="10" font-family="'Inter', sans-serif">y = x (perfect inheritance)</text>
+
+                            <line x1="10" y1="31" x2="30" y2="31" stroke="#dc2626" stroke-width="2.2" />
+                            <text x="36" y="34" fill="#fca5a5" font-size="10" font-weight="bold" font-family="'Inter', sans-serif">Regression line (slope = 0.58)</text>
+                        </g>
+
+                        <!-- 投影片經典註解文字 -->
+                        <text x="385" y="280" text-anchor="end" fill="#f87171" font-size="10" font-style="italic" font-weight="500">
+                            Children of tall parents
+                        </text>
+                        <text x="385" y="295" text-anchor="end" fill="#f87171" font-size="10" font-style="italic" font-weight="500">
+                            are tall, but less extreme
+                        </text>
+
+                        <!-- 動態互動探測線與點標記 -->
+                        <g id="galtonInteractiveGroup">
+                            <!-- 垂直探針線 -->
+                            <line id="probeVLine" x1="310" y1="25" x2="310" y2="325" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.85" />
+                            
+                            <!-- y=x 上的點 (若 100% 遺傳之高度) -->
+                            <circle id="probeInheritCircle" cx="310" cy="100" r="5" fill="#64748b" stroke="#ffffff" stroke-width="1.5" />
+                            
+                            <!-- 回歸線上的點 (實際預測子代高度) -->
+                            <circle id="probeRegCircle" cx="310" cy="120" r="6" fill="#dc2626" stroke="#ffffff" stroke-width="2" />
+                            
+                            <!-- 向平均靠攏之拉力向量箭頭 -->
+                            <line id="probeArrow" x1="310" y1="100" x2="310" y2="116" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#galtonArrowhead)" />
+
+                            <!-- 即時數值標籤浮窗 -->
+                            <g id="probeTooltip" transform="translate(250, 130)">
+                                <rect x="-65" y="-22" width="130" height="22" fill="rgba(15, 23, 42, 0.95)" rx="4" stroke="#f59e0b" stroke-width="1" />
+                                <text id="probeTooltipText" x="0" y="-7" text-anchor="middle" fill="#fbbf24" font-size="10" font-mono font-weight="bold">子女預測: 178.7 cm</text>
+                            </g>
+                        </g>
+
+                        <!-- 箭頭定義 -->
+                        <defs>
+                            <marker id="galtonArrowhead" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto">
+                                <polygon points="0 0, 6 3, 0 6" fill="#f59e0b" />
+                            </marker>
+                        </defs>
+                    </svg>
+                </div>
+
+                <!-- 父母身高調整滑桿與統計反饋 -->
+                <div class="mt-4 pt-3 border-t border-slate-800/80 space-y-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-300 font-medium">拖曳調整父母平均身高：</span>
+                        <div class="space-x-2">
+                            <span class="text-[11px] text-slate-400">父母: <span id="galtonParentNum" class="font-mono text-amber-400 font-bold">185 cm</span></span>
+                            <span class="text-[11px] text-slate-400">→ 預測子女: <span id="galtonChildNum" class="font-mono text-emerald-400 font-bold">178.7 cm</span></span>
+                        </div>
+                    </div>
+                    <input id="sliderGalton" type="range" min="146" max="198" value="185" step="0.5" class="w-full accent-indigo-500 cursor-pointer">
+                    <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                        <span>146 cm (極矮)</span>
+                        <span>170 cm (族群均值：兩線交會點)</span>
+                        <span>198 cm (極高)</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 模組 1.5: 為什麼受歡迎？Loss 是一個碗（凸函數 Convex） -->
+        <section id="loss-bowl" class="bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 p-6 sm:p-8 rounded-2xl border border-emerald-500/30 shadow-2xl space-y-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <div class="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-bold uppercase tracking-wider mb-2">
+                        <i data-lucide="sparkles" class="w-4 h-4"></i> 凸優化之美 (Convex Optimization)
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-white">Loss 是一個完美的「碗」：只有一個最低點！</h2>
+                </div>
+                <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono font-bold">
+                    <span>凸函數 (Convex) · 絕無局部坑洞</span>
+                </div>
+            </div>
+
+            <div class="grid lg:grid-cols-12 gap-8 items-center">
+                <!-- 視覺圖像：精確還原使用者上傳之 3D 碗狀網格曲面圖示 (SVG 3D Mesh) -->
+                <div class="lg:col-span-7 bg-slate-950/90 p-4 sm:p-6 rounded-xl border border-slate-800 flex flex-col items-center justify-center relative shadow-inner overflow-hidden">
+                    <div class="w-full flex items-center justify-between text-xs text-slate-400 mb-2">
+                        <span class="font-mono text-emerald-400 font-bold flex items-center gap-1.5">
+                            <i data-lucide="box" class="w-4 h-4"></i> 3D 損失函數曲面：\(L(w, b)\)
+                        </span>
+                        <span class="text-[11px] text-slate-500">垂直高度 = 均方誤差 (Loss)</span>
+                    </div>
+
+                    <!-- 3D 碗狀圖形繪製 -->
+                    <div class="w-full aspect-[16/10] max-h-[340px] relative flex items-center justify-center">
+                        <svg viewBox="0 0 520 320" class="w-full h-full select-none">
+                            <defs>
+                                <!-- 碗內彩虹漸層：碗底深藍紫色，邊緣向上轉為亮藍、青綠與翠黃 -->
+                                <linearGradient id="bowlGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#10b981" stop-opacity="0.85" />
+                                    <stop offset="30%" stop-color="#06b6d4" stop-opacity="0.8" />
+                                    <stop offset="60%" stop-color="#3b82f6" stop-opacity="0.85" />
+                                    <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.9" />
+                                </linearGradient>
+                                <radialGradient id="bowlDepthGrad" cx="50%" cy="65%" r="55%">
+                                    <stop offset="0%" stop-color="#1e1b4b" stop-opacity="0.95" />
+                                    <stop offset="60%" stop-color="#0f172a" stop-opacity="0.75" />
+                                    <stop offset="100%" stop-color="#0284c7" stop-opacity="0.2" />
+                                </radialGradient>
+                            </defs>
+
+                            <!-- 背景立體 3D 格線 (3D Bounding Box Grid) -->
+                            <!-- 後立面格線 -->
+                            <g stroke="#1e293b" stroke-width="0.8">
+                                <line x1="60" y1="50" x2="240" y2="20" />
+                                <line x1="60" y1="80" x2="240" y2="50" />
+                                <line x1="60" y1="110" x2="240" y2="80" />
+                                <line x1="60" y1="140" x2="240" y2="110" />
+                                <line x1="60" y1="170" x2="240" y2="140" />
+                                <line x1="60" y1="200" x2="240" y2="170" />
+
+                                <line x1="60" y1="50" x2="60" y2="200" />
+                                <line x1="96" y1="44" x2="96" y2="194" />
+                                <line x1="132" y1="38" x2="132" y2="188" />
+                                <line x1="168" y1="32" x2="168" y2="182" />
+                                <line x1="204" y1="26" x2="204" y2="176" />
+                                <line x1="240" y1="20" x2="240" y2="170" />
+
+                                <!-- 底面格線 -->
+                                <line x1="60" y1="200" x2="320" y2="280" />
+                                <line x1="96" y1="194" x2="356" y2="274" />
+                                <line x1="132" y1="188" x2="392" y2="268" />
+                                <line x1="168" y1="182" x2="428" y2="262" />
+                                <line x1="204" y1="176" x2="464" y2="256" />
+                                <line x1="240" y1="170" x2="500" y2="250" />
+
+                                <line x1="60" y1="200" x2="240" y2="170" />
+                                <line x1="125" y1="220" x2="305" y2="190" />
+                                <line x1="190" y1="240" x2="370" y2="210" />
+                                <line x1="255" y1="260" x2="435" y2="230" />
+                                <line x1="320" y1="280" x2="500" y2="250" />
+                            </g>
+
+                            <!-- 軸向文字標記 -->
+                            <text x="25" y="130" fill="#94a3b8" font-size="12" font-family="Inter, sans-serif" font-weight="bold">Loss (高度)</text>
+                            <text x="50" y="275" fill="#94a3b8" font-size="13" font-family="monospace" font-weight="bold">b (偏差)</text>
+                            <text x="440" y="275" fill="#94a3b8" font-size="13" font-family="monospace" font-weight="bold">w (權重)</text>
+
+                            <!-- 碗體主體曲面 (Smooth 3D Paraboloid Mesh) -->
+                            <!-- 底色填滿深邃光影 -->
+                            <path d="M 80 100 Q 180 250 270 235 Q 370 250 470 120 C 440 210 380 270 270 270 C 160 270 100 200 80 100 Z" fill="url(#bowlDepthGrad)" />
+
+                            <!-- 3D 彩色漸層碗面 -->
+                            <path d="M 80 100 C 110 170 160 255 270 255 C 380 255 430 180 470 120 C 390 190 320 205 270 205 C 220 205 150 180 80 100 Z" fill="url(#bowlGradient)" opacity="0.88" />
+
+                            <!-- 碗曲面網格經緯線 (Latitudinal & Longitudinal Wireframes) -->
+                            <g stroke="#38bdf8" stroke-width="1.2" fill="none" opacity="0.65">
+                                <!-- 水平弧線 (等高線圈層) -->
+                                <path d="M 98 120 C 140 180 190 220 270 220 C 350 220 410 180 450 135" />
+                                <path d="M 125 150 C 160 200 200 232 270 232 C 340 232 385 200 422 160" stroke="#34d399" />
+                                <path d="M 160 180 C 190 220 220 242 270 242 C 320 242 355 220 388 190" stroke="#a7f3d0" />
+                                
+                                <!-- 垂直弧線 (下坡流線) -->
+                                <path d="M 80 100 Q 140 210 270 255" stroke="#a855f7" />
+                                <path d="M 140 92 Q 180 205 270 255" />
+                                <path d="M 210 88 Q 230 200 270 255" />
+                                <path d="M 270 85 L 270 255" stroke="#60a5fa" stroke-dasharray="3,3" />
+                                <path d="M 330 88 Q 315 198 270 255" />
+                                <path d="M 400 95 Q 360 205 270 255" />
+                                <path d="M 470 120 Q 390 220 270 255" stroke="#f43f5e" />
+                            </g>
+
+                            <!-- 碗底唯一最優解標記 (Global Minimum) -->
+                            <circle cx="270" cy="255" r="6" fill="#10b981" stroke="#ffffff" stroke-width="2" />
+                            <circle cx="270" cy="255" r="14" fill="none" stroke="#10b981" stroke-width="1.5" stroke-dasharray="2,2" class="animate-pulse" />
+                            
+                            <!-- 指示箭頭與文字 -->
+                            <path d="M 270 288 L 270 268" stroke="#10b981" stroke-width="2" marker-end="url(#arrowhead-green)" />
+                            <text x="270" y="306" fill="#34d399" font-size="12" font-family="Inter, sans-serif" font-weight="bold" text-anchor="middle">
+                                唯一碗底：全域最低點（Loss 最低）
+                            </text>
+
+                            <!-- 箭頭定義 -->
+                            <defs>
+                                <marker id="arrowhead-green" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto">
+                                    <polygon points="0 0, 6 3, 0 6" fill="#10b981" />
+                                </marker>
+                            </defs>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- 文字解釋區塊 -->
+                <div class="lg:col-span-5 space-y-4">
+                    <div class="space-y-2">
+                        <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                            <span>為什麼線性回歸如此受歡迎？</span>
+                        </h3>
+                        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                            在機器學習中，訓練模型就像是<strong>蒙著眼睛下山</strong>。
+                            許多複雜模型（例如深度神經網絡）的山路充滿了坑洞、馬鞍面與半山腰的假凹洞（Local Minima），球往往滾到假坑洞就再也出不來。
+                        </p>
+                    </div>
+
+                    <div class="p-4 bg-slate-900/90 rounded-xl border border-slate-800 space-y-3">
+                        <div class="text-xs text-emerald-400 font-bold flex items-center gap-1.5">
+                            <i data-lucide="check-circle" class="w-4 h-4"></i> 凸函數（Convex）的巨大幸福：
+                        </div>
+                        <ul class="text-xs text-slate-300 space-y-2 leading-relaxed">
+                            <li class="flex items-start gap-2">
+                                <span class="text-emerald-400 font-bold">•</span>
+                                <span><strong>兩個水平軸：</strong>分別是旋鈕 \(w\)（斜率）和 \(b\)（截距）。</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-emerald-400 font-bold">•</span>
+                                <span><strong>垂直高度：</strong>代表當前參數下的均方誤差（MSE Loss）。</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-emerald-400 font-bold">•</span>
+                                <span><strong>只有唯一一個最低點：</strong>無論你從哪個位置隨機初始化下山，順著坡度走<strong>保證一定會抵達同一個全域碗底</strong>！</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="p-3 bg-brand-950/40 rounded-lg border border-brand-800/40 text-[11px] text-brand-300 flex items-center gap-2">
+                        <i data-lucide="info" class="w-4 h-4 shrink-0 text-brand-400"></i>
+                        <span>這也是為什麼後續所有機器學習實驗，一定都會先用線性回歸作為無可取代的黃金基準線（Baseline）！</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 模組 2: 互動實驗室 (Playground) -->
+        <section id="playground" class="bg-slate-800/50 p-6 sm:p-8 rounded-2xl border border-slate-700/70 shadow-2xl">
+            <div class="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
+                <div>
+                    <div class="inline-flex items-center gap-1.5 text-xs text-brand-400 font-bold uppercase tracking-wider mb-2">
+                        <i data-lucide="sliders" class="w-4 h-4"></i> 動手實測
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-white">房價預測互動實驗室</h2>
+                    <p class="text-slate-400 text-xs sm:text-sm mt-1">
+                        轉動旋鈕調整權重 \(w\)（單價）與偏差 \(b\)（起標底價），即時觀察正方形殘差面積與均方誤差（MSE）的變化！
+                    </p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button id="btnAutoFit" class="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow transition">
+                        <i data-lucide="zap" class="w-3.5 h-3.5"></i> 一鍵求解 (正規方程)
+                    </button>
+                    <button id="btnStepGD" class="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-500 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow transition">
+                        <i data-lucide="footprints" class="w-3.5 h-3.5"></i> 走一步梯度下降
+                    </button>
+                    <button id="btnReset" class="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-2 rounded-lg text-xs font-medium transition">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> 重設
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-6">
+                <!-- 畫布區塊 -->
+                <div class="lg:col-span-2 bg-slate-950 p-3 sm:p-4 rounded-xl border border-slate-800 flex flex-col items-center">
+                    <div class="w-full flex items-center justify-between text-xs text-slate-400 mb-2 px-1">
+                        <span class="flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block"></span> 房產樣本（坪數 vs 總價）
+                        </span>
+                        <span class="flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 bg-brand-500 inline-block"></span> 當前回歸線
+                        </span>
+                        <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
+                            <input type="checkbox" id="chkSquares" checked class="rounded border-slate-700 text-brand-600 focus:ring-0">
+                            <span>顯示殘差正方形 (最小平方)</span>
+                        </label>
+                    </div>
+                    <div class="relative w-full aspect-[16/10] bg-slate-900 rounded-lg overflow-hidden border border-slate-800/80">
+                        <canvas id="regressionCanvas" class="w-full h-full block"></canvas>
+                    </div>
+                    <div class="w-full flex justify-between items-center text-[11px] text-slate-500 mt-2 px-1">
+                        <span>X 軸：室內坪數 (10 ~ 60 坪)</span>
+                        <span>Y 軸：實際成交總價 (500 ~ 3800 萬)</span>
+                    </div>
+                </div>
+
+                <!-- 控制儀表板 -->
+                <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-800 flex flex-col justify-between space-y-4">
+                    <div class="space-y-4">
+                        <!-- 當前損失函數 (MSE) 區塊：新增明顯按鈕控制 -->
+                        <div class="p-4 bg-gradient-to-br from-slate-800/90 to-slate-800/40 rounded-xl border-2 border-brand-500/40 shadow-lg relative overflow-hidden">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                                    <i data-lucide="calculator" class="w-4 h-4 text-amber-400"></i>
+                                    <span>當前損失函數 (MSE)</span>
+                                </div>
+                                <label class="inline-flex items-center gap-1 text-[11px] text-slate-400 cursor-pointer">
+                                    <input type="checkbox" id="chkAutoUpdateMse" class="rounded border-slate-700 text-brand-500 focus:ring-0">
+                                    <span>滑動即時更新</span>
+                                </label>
+                            </div>
+
+                            <!-- 顯示數值區塊（支援按鈕切換顯示） -->
+                            <div id="mseValueContainer" class="hidden my-2 flex items-baseline gap-2 bg-slate-950/70 p-3 rounded-lg border border-slate-700/80 transition-all">
+                                <span id="mseDisplay" class="text-3xl font-extrabold text-amber-400 font-mono">0.00</span>
+                                <span class="text-xs text-slate-400 font-mono">萬²</span>
+                                <span id="mseScoreBadge" class="ml-auto text-[11px] px-2 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                    待計算
+                                </span>
+                            </div>
+
+                            <!-- 明顯的主要互動按鈕 -->
+                            <button id="btnRevealMse" class="w-full mt-2 py-2.5 px-4 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-bold text-xs rounded-lg shadow-lg shadow-amber-500/20 active:scale-[0.98] transition flex items-center justify-center gap-2">
+                                <i data-lucide="eye" id="btnRevealIcon" class="w-4 h-4"></i>
+                                <span id="btnRevealText">立即計算並顯示 MSE 損失</span>
+                            </button>
+
+                            <div class="mt-2 text-[11px] text-slate-400 leading-normal">
+                                💡 <strong>教學盲測挑戰：</strong>先試著拉動旋鈕靠肉眼對齊直線，再點擊上方按鈕看看你的 MSE 有多接近全域最低！
+                            </div>
+                        </div>
+
+                        <!-- 旋鈕 1: w 權重/斜率 -->
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="font-semibold text-slate-200">權重 \(w\)（每坪單價）</span>
+                                <span id="wVal" class="font-mono text-brand-400 font-bold text-sm">20.0 萬</span>
+                            </div>
+                            <input id="sliderW" type="range" min="-10" max="90" step="0.5" value="20" class="w-full accent-indigo-500 cursor-pointer">
+                            <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                                <span>-10 萬/坪</span>
+                                <span>40 萬/坪</span>
+                                <span>90 萬/坪</span>
+                            </div>
+                        </div>
+
+                        <!-- 旋鈕 2: b 偏差/截距 -->
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="font-semibold text-slate-200">偏差 \(b\)（基本底價）</span>
+                                <span id="bVal" class="font-mono text-cyan-400 font-bold text-sm">100 萬</span>
+                            </div>
+                            <input id="sliderB" type="range" min="-500" max="1500" step="10" value="100" class="w-full accent-cyan-400 cursor-pointer">
+                            <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                                <span>-500 萬</span>
+                                <span>500 萬</span>
+                                <span>1500 萬</span>
+                            </div>
+                        </div>
+
+                        <!-- 測試預測器 -->
+                        <div class="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50 space-y-1.5">
+                            <div class="text-[11px] text-slate-400 font-medium">即時客戶問答：我有一間 30 坪的房子</div>
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-slate-300">模型估計房價：</span>
+                                <span id="pred30Display" class="font-mono font-bold text-emerald-400 text-sm">-- 萬</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="statusNotice" class="text-xs p-2.5 rounded bg-brand-950/60 border border-brand-850/60 text-brand-300 flex items-center gap-2">
+                        <i data-lucide="info" class="w-4 h-4 shrink-0"></i>
+                        <span>提示：點擊「一鍵求解」可立即得到數學極限最佳解。</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 模組 2.5 (全新): 互動式向量 SVG 實驗室 (特徵縮放山谷 & 離群值破壞) -->
+        <section class="space-y-8">
+            <!-- 互動 SVG 1: 特徵縮放與狹長山谷等高線 -->
+            <div id="scaling-svg" class="bg-slate-800/50 p-6 sm:p-8 rounded-2xl border border-slate-700/70 shadow-xl space-y-6">
+                <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 text-xs text-amber-400 font-bold uppercase tracking-wider mb-2">
+                            <i data-lucide="mountain" class="w-4 h-4"></i> 動態幾何展示
+                        </div>
+                        <h2 class="text-2xl sm:text-3xl font-bold text-white">特徵縮放：狹長山谷 vs 正圓碗底</h2>
+                        <p class="text-slate-400 text-xs sm:text-sm mt-1 max-w-2xl">
+                            當特徵尺度相差懸殊（如 60 坪 vs 1 個底價），Loss 等高線會變成極度壓扁的橢圓。點擊下方切換模式並點「播放下山動畫」，親眼看梯度下降如何震盪！
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="btnToggleUnscaled" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600/30 text-rose-300 border border-rose-500/50 hover:bg-rose-600/50 transition">
+                            未做特徵縮放 (狹長)
+                        </button>
+                        <button id="btnToggleScaled" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white shadow transition">
+                            已標準化 (正圓碗)
+                        </button>
+                        <button id="btnPlayDescent" class="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-500 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition">
+                            <i data-lucide="play" class="w-3.5 h-3.5"></i> 模擬下山
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-3 gap-6 items-center">
+                    <!-- SVG 畫布 -->
+                    <div class="md:col-span-2 bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col items-center">
+                        <div class="w-full flex justify-between text-xs text-slate-400 mb-1">
+                            <span id="contourTitle" class="font-bold text-emerald-400 font-mono">當前狀態：已完成特徵縮放（對稱正圓等高線）</span>
+                            <span class="text-slate-500 text-[11px]">中心點為碗底最優解</span>
+                        </div>
+                        <div class="w-full aspect-[16/9] relative bg-slate-900 rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center">
+                            <svg id="contourSvg" viewBox="0 0 500 280" class="w-full h-full select-none">
+                                <!-- 等高線由 JS 動態生成 -->
+                                <g id="contourRings"></g>
+                                <!-- 碗底最優點 -->
+                                <circle cx="250" cy="140" r="5" fill="#10b981" />
+                                <text x="250" y="160" text-anchor="middle" fill="#34d399" font-size="11" font-family="monospace">碗底 (Loss Min)</text>
+                                <!-- 下山軌跡路線 -->
+                                <polyline id="descentPath" points="" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="3,3" />
+                                <!-- 探索小球 -->
+                                <circle id="descentBall" cx="90" cy="50" r="7" fill="#f43f5e" stroke="#fff" stroke-width="2" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- 說明引導 -->
+                    <div class="bg-slate-900 p-5 rounded-xl border border-slate-800 space-y-3 text-xs text-slate-300 leading-relaxed">
+                        <div class="font-bold text-sm text-white flex items-center gap-1.5">
+                            <i data-lucide="compass" class="w-4 h-4 text-brand-400"></i> 下山行為剖析
+                        </div>
+                        <p id="contourDesc">
+                            在標準化（Z-score）之後，各方向的坡度對稱，梯度垂直於等高線指向碗底，小球能以最快、最平穩的路徑「直線下坡」抵達極小值。
+                        </p>
+                        <div class="p-3 bg-slate-800/60 rounded-lg border border-slate-700/60 text-[11px] text-slate-400 space-y-1">
+                            <div>• <strong>紅色小球：</strong>當前參數 \((w, b)\) 的迭代位置</div>
+                            <div>• <strong>橘黃虛線：</strong>梯度下降行經的實際軌跡</div>
+                            <div>• <strong>同心圓/橢圓：</strong>Loss 的等高線（高度相同之地）</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 互動 SVG 2: 帝寶豪宅離群值 (Outlier) 破壞性實驗 -->
+            <div id="outlier-svg" class="bg-slate-800/50 p-6 sm:p-8 rounded-2xl border border-slate-700/70 shadow-xl space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 text-xs text-rose-400 font-bold uppercase tracking-wider mb-2">
+                            <i data-lucide="alert-triangle" class="w-4 h-4"></i> 破壞性實驗
+                        </div>
+                        <h2 class="text-2xl sm:text-3xl font-bold text-white">離群值陷阱：帝寶豪宅如何毀掉一條線？</h2>
+                        <p class="text-slate-400 text-xs sm:text-sm mt-1 max-w-2xl">
+                            線性回歸以「殘差平方」作為懲罰機制。點擊注入一間 10 坪卻賣 5000 萬的極端豪宅，觀察其超大正方形面積如何把整條線硬生生扯歪！
+                        </p>
+                    </div>
+                    <button id="btnToggleOutlier" class="flex items-center gap-2 bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-lg shadow-rose-600/30">
+                        <i data-lucide="bomb" class="w-4 h-4"></i>
+                        <span id="outlierBtnText">注入「10坪 5000萬」離群點</span>
+                    </button>
+                </div>
+
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col items-center">
+                    <div class="w-full flex items-center justify-between text-xs text-slate-400 mb-2 px-1">
+                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block"></span> 一般正常房產</span>
+                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> 帝寶極端豪宅點</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-emerald-400 inline-block"></span> 理想未受害回歸線</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-rose-400 inline-block"></span> 被拉偏的實際回歸線</span>
+                    </div>
+
+                    <div class="w-full aspect-[2/1] relative bg-slate-900 rounded-lg overflow-hidden border border-slate-800">
+                        <svg id="outlierSvgCanvas" viewBox="0 0 600 300" class="w-full h-full select-none">
+                            <!-- 坐標軸與網格 -->
+                            <line x1="50" y1="260" x2="570" y2="260" stroke="#334155" stroke-width="1.5" />
+                            <line x1="50" y1="260" x2="50" y2="30" stroke="#334155" stroke-width="1.5" />
+                            <text x="560" y="280" fill="#64748b" font-size="11" text-anchor="end">坪數 (10 ~ 60 坪)</text>
+                            <text x="45" y="25" fill="#64748b" font-size="11" text-anchor="start">總價 (萬)</text>
+
+                            <!-- 原本健康的回歸線 (綠色) -->
+                            <line x1="70" y1="220" x2="550" y2="70" stroke="#10b981" stroke-width="2.5" stroke-dasharray="4,4" />
+
+                            <!-- 歪斜後的回歸線 (紅色，受離群值影響) -->
+                            <line id="skewedLine" x1="70" y1="140" x2="550" y2="100" stroke="#f43f5e" stroke-width="3" opacity="0.1" class="transition-all duration-700" />
+
+                            <!-- 巨型紅色殘差平方面積 (離群值) -->
+                            <rect id="outlierSquare" x="90" y="35" width="85" height="85" fill="rgba(244, 63, 94, 0.25)" stroke="#f43f5e" stroke-width="1.5" stroke-dasharray="2,2" class="hidden transition-all" />
+                            <line id="outlierResidualLine" x1="90" y1="35" x2="90" y2="120" stroke="#f43f5e" stroke-width="2" class="hidden" />
+
+                            <!-- 離群點標記 (10坪, 5000萬) -->
+                            <g id="outlierPointGroup" class="hidden">
+                                <circle cx="90" cy="35" r="7" fill="#f43f5e" stroke="#fff" stroke-width="2" />
+                                <text x="105" y="40" fill="#fda4af" font-size="11" font-weight="bold">帝寶豪宅 (10坪, 5000萬)</text>
+                            </g>
+
+                            <!-- 正常點群由 JS 渲染 -->
+                            <g id="normalPointsGroup"></g>
+                        </svg>
+                    </div>
+
+                    <div id="outlierNotice" class="w-full text-xs text-slate-400 mt-2 flex items-center justify-between px-1">
+                        <span>狀態：目前為潔淨正常數據集。回歸線忠實反應每坪單價。</span>
+                        <span class="text-emerald-400 font-mono font-bold">估價模型健康度：100%</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 模組 3: 數學推導與連鎖律 -->
+        <section id="math" class="space-y-6">
+            <div class="text-center max-w-2xl mx-auto">
+                <div class="inline-flex items-center gap-1.5 text-xs text-brand-400 font-bold uppercase tracking-wider mb-2">
+                    <i data-lucide="sigma" class="w-4 h-4"></i> 深入微積分核心
+                </div>
+                <h2 class="text-3xl font-bold text-white">梯度下降怎麼算？連鎖律手把手推導</h2>
+                <p class="text-slate-400 text-sm mt-2">
+                    為了知道往碗底的哪個方向走、走多快，我們計算損失函數對兩個旋鈕的偏微分（斜率）。
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- 第一步 -->
+                <div class="bg-slate-800/40 p-6 rounded-xl border border-slate-700/60 flex flex-col justify-between">
+                    <div>
+                        <div class="w-8 h-8 rounded-full bg-brand-600/20 text-brand-400 font-bold flex items-center justify-center text-sm mb-4 border border-brand-500/30">1</div>
+                        <h3 class="text-lg font-bold text-white mb-2">單一資料點的 Loss</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed mb-4">
+                            假設世界上只有一間房子，真實價格為 \(y\)，預測值為 \(\hat{y} = wx + b\)。
+                        </p>
+                        <div class="p-3 bg-slate-900 rounded-lg font-mono text-center text-sm border border-slate-800 text-brand-300">
+                            \[ L = (wx + b - y)^2 \]
+                        </div>
+                    </div>
+                    <div class="text-[11px] text-slate-400 mt-4 border-t border-slate-700/50 pt-3">
+                        外層是平方，內層是誤差項 \((wx + b - y)\)。
+                    </div>
+                </div>
+
+                <!-- 第二步 -->
+                <div class="bg-slate-800/40 p-6 rounded-xl border border-slate-700/60 flex flex-col justify-between">
+                    <div>
+                        <div class="w-8 h-8 rounded-full bg-cyan-600/20 text-cyan-400 font-bold flex items-center justify-center text-sm mb-4 border border-cyan-500/30">2</div>
+                        <h3 class="text-lg font-bold text-white mb-2">運用連鎖法則 (Chain Rule)</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed mb-4">
+                            轉動 \(w\) 會使預測值改變，進而改變誤差，連鎖相乘即可求出斜率：
+                        </p>
+                        <div class="p-3 bg-slate-900 rounded-lg font-mono text-xs border border-slate-800 space-y-2 text-slate-200">
+                            <div>\[ \frac{\partial L}{\partial w} = 2(wx + b - y) \cdot x \]</div>
+                            <div class="border-t border-slate-800 pt-1 text-cyan-300">\[ \frac{\partial L}{\partial b} = 2(wx + b - y) \cdot 1 \]</div>
+                        </div>
+                    </div>
+                    <div class="text-[11px] text-slate-400 mt-4 border-t border-slate-700/50 pt-3">
+                        為什麼 \(b\) 沒有乘 \(x\)？因為偏差 \(b\) 每增加 1，誤差就固定只增加 1。
+                    </div>
+                </div>
+
+                <!-- 第三步 -->
+                <div class="bg-slate-800/40 p-6 rounded-xl border border-slate-700/60 flex flex-col justify-between">
+                    <div>
+                        <div class="w-8 h-8 rounded-full bg-emerald-600/20 text-emerald-400 font-bold flex items-center justify-center text-sm mb-4 border border-emerald-500/30">3</div>
+                        <h3 class="text-lg font-bold text-white mb-2">翻譯成白話邏輯</h3>
+                        <div class="text-xs text-slate-300 space-y-2.5 leading-relaxed">
+                            <p><strong>• 猜太高時：</strong>誤差為正，梯度為正，反方向更新使 \(w\) 變小。</p>
+                            <p><strong>• 錯越多調越多：</strong>梯度大小與誤差成正比。</p>
+                            <p><strong>• \(x\) 越大的樣本越該負責：</strong>一間 60 坪房子估錯時，每坪單價 \(w\) 需承擔比 10 坪房子大 6 倍的修正責任！</p>
+                        </div>
+                    </div>
+                    <div class="text-[11px] text-slate-400 mt-4 border-t border-slate-700/50 pt-3">
+                        對所有樣本平均後，套入參數更新：\(\theta \leftarrow \theta - \eta \cdot \nabla L\)。
+                    </div>
+                </div>
+            </div>
+
+            <!-- 特徵縮放對比卡片 -->
+            <div class="p-6 bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 rounded-xl border border-amber-500/30 flex flex-col md:flex-row items-center gap-6">
+                <div class="p-4 bg-amber-500/10 rounded-xl text-amber-400 shrink-0">
+                    <i data-lucide="alert-triangle" class="w-8 h-8"></i>
+                </div>
+                <div class="space-y-1">
+                    <h4 class="text-base font-bold text-white">關鍵細節：為什麼必須做「特徵縮放（Feature Scaling）」？</h4>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        在手算示範中，20 坪的房子使 \(w\) 的梯度比 \(b\) 大了 <strong>20 倍</strong>（若為 60 坪則快 60 倍）。這代表損失函數的碗不是圓的，而是一個<strong>被嚴重壓扁的狹長山谷</strong>！此時若學習率設大，\(w\) 會瞬間震盪爆炸；設太小，\(b\) 則宛如牛步完全不走。透過標準化（均值 0、標準差 1），能讓山谷變回對稱的正圓碗！
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 模組 4: 正規方程式 vs 梯度下降 -->
+        <section id="normal-eq" class="bg-slate-800/40 p-8 rounded-2xl border border-slate-700/50 space-y-6">
+            <div class="max-w-3xl">
+                <div class="inline-flex items-center gap-1.5 text-xs text-brand-400 font-bold uppercase tracking-wider mb-2">
+                    <i data-lucide="cpu" class="w-4 h-4"></i> 閉式解法 (Closed-Form Solution)
+                </div>
+                <h2 class="text-2xl sm:text-3xl font-bold text-white">既然能直接解方程式，何必辛苦下山？</h2>
+                <p class="text-slate-300 text-sm mt-2 leading-relaxed">
+                    在碗底最低點，坡度剛好為 0（\(\nabla L = 0\)）。既然是二次多項式，我們能用矩陣代數一步解出最佳權重，這就是著名的 <strong>正規方程式（Normal Equation）</strong>：
+                </p>
+                <div class="my-4 p-4 bg-slate-900 rounded-xl border border-slate-700 font-mono text-center text-lg text-emerald-400">
+                    \[ \theta = (X^T X)^{-1} X^T y \]
+                </div>
+            </div>
+
+            <!-- 對比表格 -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border border-slate-700 rounded-lg overflow-hidden">
+                    <thead class="bg-slate-900/80 text-slate-300 uppercase font-semibold">
+                        <tr>
+                            <th class="p-3 border-b border-slate-700">比較維度</th>
+                            <th class="p-3 border-b border-slate-700 text-brand-400">梯度下降法 (Gradient Descent)</th>
+                            <th class="p-3 border-b border-slate-700 text-emerald-400">正規方程式 (Normal Equation)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700/60 text-slate-300">
+                        <tr>
+                            <td class="p-3 font-semibold text-white">超參數需求</td>
+                            <td class="p-3">需要精心設定學習率 \(\alpha\)，需多次迭代</td>
+                            <td class="p-3 text-emerald-400 font-semibold">完全不需要超參數，一步即成</td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 font-semibold text-white">計算時間複雜度</td>
+                            <td class="p-3">\(O(k \cdot n \cdot d)\)（適合海量特徵維度）</td>
+                            <td class="p-3">反矩陣計算約為 \(O(d^3)\)，特徵數 10 萬時計算量達 1000 兆！</td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 font-semibold text-white">模型通用性</td>
+                            <td class="p-3 text-brand-400 font-semibold">全能通用（邏輯回歸、Transformer、深度神經網路必備）</td>
+                            <td class="p-3">僅限於線性回歸（後續非線性模型皆無法直接求逆矩陣）</td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 font-semibold text-white">產業實務選擇</td>
+                            <td class="p-3">海量數據、線上即時增量更新</td>
+                            <td class="p-3">中小型數據集（scikit-learn 預設使用矩陣分解求解）</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 模組 5: 優劣勢與破壞性實驗 -->
+        <section id="pros-cons" class="space-y-8">
+            <div>
+                <div class="inline-flex items-center gap-1.5 text-xs text-brand-400 font-bold uppercase tracking-wider mb-2">
+                    <i data-lucide="shield-check" class="w-4 h-4"></i> 實務工程指南
+                </div>
+                <h2 class="text-3xl font-bold text-white">線性回歸的優劣勢與常見誤區</h2>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- 優勢 -->
+                <div class="p-6 bg-slate-800/40 rounded-xl border border-emerald-500/30 space-y-4">
+                    <h3 class="text-lg font-bold text-emerald-400 flex items-center gap-2">
+                        <i data-lucide="check-circle-2" class="w-5 h-5"></i> 核心優勢
+                    </h3>
+                    <ul class="space-y-3 text-xs text-slate-300 leading-relaxed">
+                        <li class="flex items-start gap-2">
+                            <span class="text-emerald-400 font-bold">1.</span>
+                            <span><strong>極佳的可解釋性：</strong>可以直接對業務端或審計部門解釋「每增加 1 坪價格增加 51 萬」，在金融與醫療等嚴格監管領域至關重要。</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-emerald-400 font-bold">2.</span>
+                            <span><strong>快速且數值穩定：</strong>損失函數為嚴格凸函數（Convex），永遠只有一個碗底，絕不會卡在局部極小值（Local Minima）。</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-emerald-400 font-bold">3.</span>
+                            <span><strong>不可或缺的 Baseline：</strong>任何高階神經網路開發前，必先跑線性回歸作為基準線；若複雜模型只贏一點點，則不具備上線效益。</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- 劣勢與處置 -->
+                <div class="p-6 bg-slate-800/40 rounded-xl border border-rose-500/30 space-y-4">
+                    <h3 class="text-lg font-bold text-rose-400 flex items-center gap-2">
+                        <i data-lucide="alert-octagon" class="w-5 h-5"></i> 局限與應對策略
+                    </h3>
+                    <ul class="space-y-3 text-xs text-slate-300 leading-relaxed">
+                        <li class="flex items-start gap-2">
+                            <span class="text-rose-400 font-bold">1.</span>
+                            <span><strong>只能畫直線？</strong>非也！例如車速與煞車距離呈平方正比，可新增 \(x_2 = x_1^2\) 特徵輸入，模型依然是針對「權重」線性的線性回歸！</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-rose-400 font-bold">2.</span>
+                            <span><strong>極度害怕離群值（Outliers）：</strong>因為平方懲罰機制，一間 10 坪卻賣 5000 萬的極端豪宅，會形成超大正方形把整條線硬生生扯偏。</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-rose-400 font-bold">3.</span>
+                            <span><strong>多重共線性陷阱：</strong>同時放入「坪數」與「平方公尺」會導致特徵重疊，模型權重會互相抵消亂跳（需透過 Ridge/Lasso 正則化處置）。</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-rose-400 font-bold">4.</span>
+                            <span><strong>切忌任意盲目外推（Extrapolation）：</strong>拿 10~60 坪資料訓練的模型去預測 200 坪豪宅，產生的數字毫無可靠根據。</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- 模組 6: Python 實作程式碼展示 -->
+        <section id="code" class="bg-slate-800/50 p-6 sm:p-8 rounded-2xl border border-slate-700/70 space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                    <div class="inline-flex items-center gap-1.5 text-xs text-brand-400 font-bold uppercase tracking-wider mb-1">
+                        <i data-lucide="code" class="w-4 h-4"></i> Python 程式碼 (語法高亮)
+                    </div>
+                    <h2 class="text-xl sm:text-2xl font-bold text-white">三種解法完整實現 (NumPy & Scikit-Learn)</h2>
+                </div>
+                <button id="btnCopyCode" class="self-start sm:self-auto flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-xs px-3 py-1.5 rounded-lg text-slate-200 transition">
+                    <i data-lucide="copy" class="w-3.5 h-3.5"></i> 複製程式碼
+                </button>
+            </div>
+
+            <div class="relative rounded-xl border border-slate-800 overflow-x-auto shadow-2xl">
+<pre class="language-python"><code id="pythonCodeSnippet" class="language-python">import numpy as np
+from sklearn.linear_model import LinearRegression
+
+# 1. 生成房價合成資料 (真實規律: 每坪 52 萬, 底價 300 萬)
+np.random.seed(42)
+X = np.random.uniform(10, 60, size=(100, 1))           # 坪數 (10~60 坪)
+noise = np.random.normal(0, 50, size=(100, 1))          # 高斯雜訊
+y = 52.0 * X + 300.0 + noise                            # 房價 (萬)
+
+# --- 方法一：手寫梯度下降 (含特徵縮放 Standard Scaling) ---
+X_mean, X_std = np.mean(X), np.std(X)
+X_scaled = (X - X_mean) / X_std                         # 標準化：避免狹長山谷導致震盪
+w_norm, b_norm = 0.0, 0.0
+lr, epochs = 0.05, 500
+
+for _ in range(epochs):
+    y_pred = w_norm * X_scaled + b_norm
+    error = y_pred - y
+    dw = (2 / len(X)) * np.sum(error * X_scaled)
+    db = (2 / len(X)) * np.sum(error)
+    w_norm -= lr * dw
+    b_norm -= lr * db
+
+# 將標準化後的參數還原為真實坪數尺度 (w: 萬/坪, b: 萬)
+w_gd = w_norm / X_std
+b_gd = b_norm - (w_norm * X_mean / X_std)
+
+# --- 方法二：正規方程式 (Normal Equation 閉式矩陣解) ---
+X_b = np.c_[np.ones((100, 1)), X]                       # 加入偏置項截距 1
+theta_best = np.linalg.solve(X_b.T.dot(X_b), X_b.T.dot(y)) # 求解 (X^T X)^-1 X^T y
+b_norm_eq, w_norm_eq = theta_best[0][0], theta_best[1][0]
+
+# --- 方法三：Scikit-Learn 工業級實現 ---
+model = LinearRegression()
+model.fit(X, y)                                         # 輸入需保證為 2D 矩陣
+w_sk, b_sk = model.coef_[0][0], model.intercept_[0]
+
+# --- 結果印出：檢驗三種方法是否收斂至同一個唯一碗底 ---
+print(f"【梯度下降解】 w: {w_gd:.2f} 萬/坪, b: {b_gd:.2f} 萬")
+print(f"【正規方程解】 w: {w_norm_eq:.2f} 萬/坪, b: {b_norm_eq:.2f} 萬")
+print(f"【Sklearn 解】 w: {w_sk:.2f} 萬/坪, b: {b_sk:.2f} 萬")
+# 三者解完全一致，精確驗證了 MSE 凸函數（Convex）只有唯一的碗底！</code></pre>
+            </div>
+            <div id="copyAlert" class="hidden text-xs text-emerald-400 font-medium flex items-center gap-1.5">
+                <i data-lucide="check" class="w-3.5 h-3.5"></i> 已複製至剪貼簿！
+            </div>
+        </section>
+
+        <!-- 模組 7: 隨堂互動測驗 -->
+        <section class="bg-slate-800/40 p-8 rounded-2xl border border-slate-700/50 space-y-6">
+            <div>
+                <div class="inline-flex items-center gap-1.5 text-xs text-brand-400 font-bold uppercase tracking-wider mb-1">
+                    <i data-lucide="help-circle" class="w-4 h-4"></i> 觀念檢定
+                </div>
+                <h2 class="text-2xl font-bold text-white">關鍵觀念隨堂測驗</h2>
+            </div>
+
+            <div class="space-y-4">
+                <div class="p-4 bg-slate-900/80 rounded-xl border border-slate-800 space-y-3">
+                    <div class="text-sm font-semibold text-slate-200">1. 為什麼正規方程式（Normal Equation）在特徵數達到 10 萬維時很少被採用？</div>
+                    <div class="grid sm:grid-cols-2 gap-2 text-xs">
+                        <button onclick="checkQuiz(this, false)" class="quiz-btn text-left p-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition">A. 正規方程式算出來的並非全局最優解</button>
+                        <button onclick="checkQuiz(this, true)" class="quiz-btn text-left p-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition">B. 反矩陣運算複雜度高達 \(O(d^3)\)，計算成本高達千萬億次</button>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-slate-900/80 rounded-xl border border-slate-800 space-y-3">
+                    <div class="text-sm font-semibold text-slate-200">2. 若發現模型預測煞車距離呈二次曲線（與速度平方成正比），該怎麼做？</div>
+                    <div class="grid sm:grid-cols-2 gap-2 text-xs">
+                        <button onclick="checkQuiz(this, true)" class="quiz-btn text-left p-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition">A. 將 \(v^2\) 作為新特徵輸入，仍能保持線性回歸形式求解</button>
+                        <button onclick="checkQuiz(this, false)" class="quiz-btn text-left p-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition">B. 線性回歸完全無法處理，必須立刻換用深度神經網路</button>
+                    </div>
+                </div>
+            </div>
+            <div id="quizFeedback" class="text-xs font-semibold min-h-[1.25rem]"></div>
+        </section>
+
+    </main>
+
+    <!-- 頁尾 -->
+    <footer class="border-t border-slate-800 py-10 text-center text-xs text-slate-500 bg-slate-950">
+        <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>機器學習第 1 集：線性回歸 · 互動教學專題</div>
+            <div class="flex items-center gap-4 text-slate-400">
+                <span>Model: \(\hat{y} = wx+b\)</span>
+                <span>•</span>
+                <span>Loss: MSE</span>
+                <span>•</span>
+                <span>Optimization: GD / Normal Eq</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 邏輯腳本 -->
+    <script>
+        // 1. 初始化圖示與數學排版
+        document.addEventListener("DOMContentLoaded", () => {
+            lucide.createIcons();
+            if (window.Prism) {
+                Prism.highlightAll();
+            }
+            if (window.renderMathInElement) {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '\\[', right: '\\]', display: true},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '$', right: '$', display: false}
+                    ]
+                });
+            }
+        });
+
+        // 2. 模擬房地產資料點 (Ground Truth: w=52, b=300)
+        const sampleData = [
+            { x: 12, y: 950 },
+            { x: 16, y: 1100 },
+            { x: 19, y: 1320 },
+            { x: 22, y: 1420 },
+            { x: 26, y: 1680 },
+            { x: 29, y: 1780 },
+            { x: 33, y: 2050 },
+            { x: 37, y: 2200 },
+            { x: 42, y: 2510 },
+            { x: 46, y: 2720 },
+            { x: 50, y: 2890 },
+            { x: 54, y: 3120 },
+            { x: 58, y: 3300 }
+        ];
+
+        // 畫布與操作狀態
+        const canvas = document.getElementById('regressionCanvas');
+        const ctx = canvas.getContext('2d');
+        const sliderW = document.getElementById('sliderW');
+        const sliderB = document.getElementById('sliderB');
+        const wVal = document.getElementById('wVal');
+        const bVal = document.getElementById('bVal');
+        const mseDisplay = document.getElementById('mseDisplay');
+        const mseValueContainer = document.getElementById('mseValueContainer');
+        const btnRevealMse = document.getElementById('btnRevealMse');
+        const btnRevealText = document.getElementById('btnRevealText');
+        const btnRevealIcon = document.getElementById('btnRevealIcon');
+        const chkAutoUpdateMse = document.getElementById('chkAutoUpdateMse');
+        const mseScoreBadge = document.getElementById('mseScoreBadge');
+        const pred30Display = document.getElementById('pred30Display');
+        const chkSquares = document.getElementById('chkSquares');
+        const statusNotice = document.getElementById('statusNotice');
+
+        let isMseRevealed = false;
+
+        // 資料座標映射配置 (X: 0~65 坪, Y: 0~3800 萬)
+        const xMin = 0, xMax = 65;
+        const yMin = 0, yMax = 3800;
+
+        function toCanvasX(x, width) {
+            return ((x - xMin) / (xMax - xMin)) * (width - 80) + 50;
+        }
+
+        function toCanvasY(y, height) {
+            return height - 40 - ((y - yMin) / (yMax - yMin)) * (height - 70);
+        }
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            renderPlot();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function computeMSE(w, b) {
+            let totalSqErr = 0;
+            sampleData.forEach(p => {
+                const yPred = w * p.x + b;
+                totalSqErr += Math.pow(yPred - p.y, 2);
+            });
+            return totalSqErr / sampleData.length;
+        }
+
+        function updateMSEDisplay(currentW, currentB) {
+            const mse = computeMSE(currentW, currentB);
+            mseDisplay.innerText = mse.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+            
+            // 評分標準（最佳解約在 650 萬² 左右）
+            if (mse < 1200) {
+                mseScoreBadge.className = "ml-auto text-[11px] px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+                mseScoreBadge.innerText = "🏆 完美逼近碗底！";
+            } else if (mse < 5000) {
+                mseScoreBadge.className = "ml-auto text-[11px] px-2 py-0.5 rounded-full font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30";
+                mseScoreBadge.innerText = "👍 相當接近";
+            } else {
+                mseScoreBadge.className = "ml-auto text-[11px] px-2 py-0.5 rounded-full font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30";
+                mseScoreBadge.innerText = "⚠️ 誤差偏大";
+            }
+        }
+
+        function renderPlot() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const width = rect.width;
+            const height = rect.height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // 繪製背景網格與坐標軸
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+
+            // X 軸與 Y 軸
+            const originX = toCanvasX(0, width);
+            const originY = toCanvasY(0, height);
+            ctx.moveTo(originX, 20);
+            ctx.lineTo(originX, originY);
+            ctx.lineTo(width - 20, originY);
+            ctx.stroke();
+
+            // 刻度與標籤
+            ctx.fillStyle = '#64748b';
+            ctx.font = '10px Inter, sans-serif';
+            for (let x = 10; x <= 60; x += 10) {
+                const cx = toCanvasX(x, width);
+                ctx.fillText(x + 'p', cx - 8, originY + 16);
+            }
+            for (let y = 1000; y <= 3000; y += 1000) {
+                const cy = toCanvasY(y, height);
+                ctx.fillText(y + 'w', 12, cy + 3);
+            }
+
+            const currentW = parseFloat(sliderW.value);
+            const currentB = parseFloat(sliderB.value);
+
+            // 是否繪製殘差正方形
+            if (chkSquares.checked) {
+                sampleData.forEach(p => {
+                    const yPred = currentW * p.x + currentB;
+                    const cx = toCanvasX(p.x, width);
+                    const cyReal = toCanvasY(p.y, height);
+                    const cyPred = toCanvasY(yPred, height);
+                    const side = Math.abs(cyReal - cyPred);
+
+                    // 繪製透明殘差正方形 (最小平方法之幾何面積)
+                    ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
+                    ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
+                    ctx.lineWidth = 1;
+                    
+                    const squareX = cx;
+                    const squareY = Math.min(cyReal, cyPred);
+                    ctx.fillRect(squareX, squareY, side, side);
+                    ctx.strokeRect(squareX, squareY, side, side);
+
+                    // 殘差垂直連線
+                    ctx.strokeStyle = '#f87171';
+                    ctx.setLineDash([2, 3]);
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cyReal);
+                    ctx.lineTo(cx, cyPred);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                });
+            }
+
+            // 繪製回歸直線
+            const lineX1 = 5;
+            const lineY1 = currentW * lineX1 + currentB;
+            const lineX2 = 62;
+            const lineY2 = currentW * lineX2 + currentB;
+
+            ctx.strokeStyle = '#6366f1';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(lineX1, width), toCanvasY(lineY1, height));
+            ctx.lineTo(toCanvasX(lineX2, width), toCanvasY(lineY2, height));
+            ctx.stroke();
+
+            // 繪製真實數據點
+            sampleData.forEach(p => {
+                const cx = toCanvasX(p.x, width);
+                const cy = toCanvasY(p.y, height);
+                ctx.fillStyle = '#22d3ee';
+                ctx.beginPath();
+                ctx.arc(cx, cy, 4.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#0891b2';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            });
+
+            // 更新儀表板數據
+            wVal.innerText = currentW.toFixed(1) + ' 萬/坪';
+            bVal.innerText = currentB.toFixed(0) + ' 萬';
+
+            const pred30 = (currentW * 30 + currentB);
+            pred30Display.innerText = Math.round(pred30).toLocaleString() + ' 萬';
+
+            // 若開啟自動更新或已揭曉狀態，同步計算 MSE
+            if (isMseRevealed || chkAutoUpdateMse.checked) {
+                updateMSEDisplay(currentW, currentB);
+            }
+        }
+
+        // MSE 揭曉按鈕事件監聽
+        btnRevealMse.addEventListener('click', () => {
+            const currentW = parseFloat(sliderW.value);
+            const currentB = parseFloat(sliderB.value);
+            isMseRevealed = true;
+            mseValueContainer.classList.remove('hidden');
+            updateMSEDisplay(currentW, currentB);
+            btnRevealText.innerText = "刷新重新計算 MSE 數值";
+            btnRevealIcon.setAttribute('data-lucide', 'rotate-cw');
+            lucide.createIcons();
+        });
+
+        // 自動更新切換
+        chkAutoUpdateMse.addEventListener('change', () => {
+            if (chkAutoUpdateMse.checked) {
+                isMseRevealed = true;
+                mseValueContainer.classList.remove('hidden');
+                updateMSEDisplay(parseFloat(sliderW.value), parseFloat(sliderB.value));
+            }
+        });
+
+        // 滑桿監聽
+        sliderW.addEventListener('input', () => {
+            if (!chkAutoUpdateMse.checked && isMseRevealed) {
+                mseScoreBadge.className = "ml-auto text-[11px] px-2 py-0.5 rounded-full font-bold bg-slate-700 text-slate-300";
+                mseScoreBadge.innerText = "旋鈕已更動 (點擊刷新)";
+            }
+            renderPlot();
+        });
+
+        sliderB.addEventListener('input', () => {
+            if (!chkAutoUpdateMse.checked && isMseRevealed) {
+                mseScoreBadge.className = "ml-auto text-[11px] px-2 py-0.5 rounded-full font-bold bg-slate-700 text-slate-300";
+                mseScoreBadge.innerText = "旋鈕已更動 (點擊刷新)";
+            }
+            renderPlot();
+        });
+
+        chkSquares.addEventListener('change', renderPlot);
+
+        // 一鍵最優求解 (正規方程精確解)
+        document.getElementById('btnAutoFit').addEventListener('click', () => {
+            const n = sampleData.length;
+            let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+            sampleData.forEach(p => {
+                sumX += p.x;
+                sumY += p.y;
+                sumXY += p.x * p.y;
+                sumXX += p.x * p.x;
+            });
+            const bestW = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+            const bestB = (sumY - bestW * sumX) / n;
+
+            sliderW.value = bestW.toFixed(1);
+            sliderB.value = bestB.toFixed(0);
+            renderPlot();
+
+            // 若使用者求解，主動揭曉展現最佳分數
+            isMseRevealed = true;
+            mseValueContainer.classList.remove('hidden');
+            updateMSEDisplay(bestW, bestB);
+
+            statusNotice.innerHTML = `<i data-lucide="check" class="w-4 h-4 text-emerald-400"></i><span class="text-emerald-300">已直接計算正規方程最佳解！此時碗底斜率 = 0。</span>`;
+            lucide.createIcons();
+        });
+
+        // 梯度下降單步迭代模擬 (已內建簡易標準化縮放)
+        document.getElementById('btnStepGD').addEventListener('click', () => {
+            let currentW = parseFloat(sliderW.value);
+            let currentB = parseFloat(sliderB.value);
+            
+            // 計算梯度
+            let dw = 0, db = 0;
+            sampleData.forEach(p => {
+                const err = (currentW * p.x + currentB) - p.y;
+                dw += (2 / sampleData.length) * err * p.x;
+                db += (2 / sampleData.length) * err;
+            });
+
+            // 梯度下降更新步長
+            const lrW = 0.0004;
+            const lrB = 0.3;
+            currentW -= lrW * dw;
+            currentB -= lrB * db;
+
+            sliderW.value = currentW;
+            sliderB.value = currentB;
+            renderPlot();
+
+            if (isMseRevealed) {
+                updateMSEDisplay(currentW, currentB);
+            }
+
+            statusNotice.innerHTML = `<i data-lucide="footprints" class="w-4 h-4 text-brand-400"></i><span>梯度下降更新：\(&Delta;w = ${(-lrW * dw).toFixed(2)}\)，\(&Delta;b = ${(-lrB * db).toFixed(1)}\)</span>`;
+            lucide.createIcons();
+        });
+
+        // 重設
+        document.getElementById('btnReset').addEventListener('click', () => {
+            sliderW.value = 20;
+            sliderB.value = 100;
+            renderPlot();
+            if (isMseRevealed) {
+                updateMSEDisplay(20, 100);
+            }
+            statusNotice.innerHTML = `<i data-lucide="info" class="w-4 h-4"></i><span>已重設回起始旋鈕位置。</span>`;
+            lucide.createIcons();
+        });
+
+        // 3. 互動 SVG 邏輯 - 高爾頓遺傳向平均回歸
+        const sliderGalton = document.getElementById('sliderGalton');
+        const galtonParentNum = document.getElementById('galtonParentNum');
+        const galtonChildNum = document.getElementById('galtonChildNum');
+        const probeVLine = document.getElementById('probeVLine');
+        const probeInheritCircle = document.getElementById('probeInheritCircle');
+        const probeRegCircle = document.getElementById('probeRegCircle');
+        const probeArrow = document.getElementById('probeArrow');
+        const probeTooltip = document.getElementById('probeTooltip');
+        const probeTooltipText = document.getElementById('probeTooltipText');
+
+        // 生成類似高爾頓真實資料集散佈點 (Bivariate Normal Distribution, N=110, Corr=0.58)
+        function initGaltonScatter() {
+            const container = document.getElementById('galtonScatterPoints');
+            if (!container) return;
+            container.innerHTML = '';
+
+            // 固定隨機亂數種子產生逼真分佈
+            const pointsData = [
+                [146.5, 150.2], [151.0, 164.8], [153.2, 166.8], [155.0, 158.0], [156.4, 161.5],
+                [157.2, 178.5], [158.0, 165.2], [159.0, 170.4], [160.2, 166.0], [160.5, 154.2],
+                [161.5, 168.0], [162.0, 171.8], [162.8, 160.5], [163.5, 167.0], [164.0, 169.5],
+                [164.5, 173.8], [165.0, 163.0], [165.4, 176.5], [165.8, 155.5], [166.0, 182.5],
+                [166.2, 171.0], [166.8, 164.5], [167.0, 169.0], [167.4, 182.0], [167.8, 168.4],
+                [168.0, 174.5], [168.2, 161.0], [168.5, 171.5], [168.8, 183.8], [169.0, 174.0],
+                [169.2, 163.5], [169.5, 169.8], [169.8, 172.0], [170.0, 167.5], [170.2, 177.0],
+                [170.5, 173.5], [170.8, 166.0], [171.0, 180.2], [171.2, 169.5], [171.5, 175.0],
+                [171.8, 168.5], [172.0, 181.5], [172.2, 165.0], [172.5, 172.5], [172.8, 179.0],
+                [173.0, 182.8], [173.4, 169.8], [173.8, 176.2], [174.0, 170.5], [174.2, 181.0],
+                [174.5, 175.5], [175.0, 171.5], [175.5, 162.5], [176.0, 184.8], [176.5, 173.2],
+                [177.0, 178.5], [177.5, 170.8], [178.0, 180.5], [178.5, 176.0], [179.0, 183.2],
+                [179.5, 174.5], [180.0, 178.0], [180.5, 181.5], [181.0, 168.5], [181.5, 184.6],
+                [182.0, 177.8], [183.0, 179.5], [183.5, 188.5], [184.0, 168.0], [184.5, 181.2],
+                [185.0, 175.5], [187.0, 173.5], [187.5, 174.2], [189.5, 186.2], [190.5, 175.0]
+            ];
+
+            pointsData.forEach(([px, cy]) => {
+                const cxSvg = 55 + ((px - 140) / 60) * 340;
+                const cySvg = 325 - ((cy - 140) / 60) * 300;
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', cxSvg.toFixed(1));
+                circle.setAttribute('cy', cySvg.toFixed(1));
+                circle.setAttribute('r', '3.5');
+                circle.setAttribute('fill', '#38bdf8');
+                circle.setAttribute('fill-opacity', '0.55');
+                circle.setAttribute('stroke', '#0284c7');
+                circle.setAttribute('stroke-width', '0.8');
+                container.appendChild(circle);
+            });
+        }
+
+        function updateGaltonSvg() {
+            const parentH = parseFloat(sliderGalton.value);
+            galtonParentNum.innerText = parentH.toFixed(1) + " cm";
+
+            // 回歸線方程：y = 0.58 * x + 71.4 (兩線在 x=170 交會)
+            const childH = 0.58 * parentH + 71.4;
+            galtonChildNum.innerText = childH.toFixed(1) + " cm";
+
+            // 映射到 SVG 坐標系 (X, Y 範圍皆為 140 ~ 200)
+            const probeX = 55 + ((parentH - 140) / 60) * 340;
+            const inheritY = 325 - ((parentH - 140) / 60) * 300; // y = x 點
+            const regY = 325 - ((childH - 140) / 60) * 300;       // 回歸線上的點
+
+            // 更新探針與幾何元素
+            probeVLine.setAttribute('x1', probeX);
+            probeVLine.setAttribute('x2', probeX);
+
+            probeInheritCircle.setAttribute('cx', probeX);
+            probeInheritCircle.setAttribute('cy', inheritY);
+
+            probeRegCircle.setAttribute('cx', probeX);
+            probeRegCircle.setAttribute('cy', regY);
+
+            // 拉力箭頭：從 y=x 點指向回歸線點
+            const diff = childH - parentH;
+            const arrowStartY = diff < 0 ? inheritY + 6 : inheritY - 6;
+            const arrowEndY = diff < 0 ? regY - 6 : regY + 6;
+            probeArrow.setAttribute('x1', probeX);
+            probeArrow.setAttribute('y1', arrowStartY);
+            probeArrow.setAttribute('x2', probeX);
+            probeArrow.setAttribute('y2', arrowEndY);
+
+            // 浮窗定位與內容
+            let tooltipX = probeX + 68;
+            if (probeX > 330) tooltipX = probeX - 68;
+            probeTooltip.setAttribute('transform', `translate(${tooltipX}, ${regY})`);
+            
+            const gap = Math.abs(parentH - childH).toFixed(1);
+            if (parentH > 170) {
+                probeTooltipText.textContent = `子女預測: ${childH.toFixed(1)} cm (向平均矮 ${gap} cm)`;
+            } else if (parentH < 170) {
+                probeTooltipText.textContent = `子女預測: ${childH.toFixed(1)} cm (向平均高 ${gap} cm)`;
+            } else {
+                probeTooltipText.textContent = `均值交點: ${childH.toFixed(1)} cm (無回歸差)`;
+            }
+        }
+        sliderGalton.addEventListener('input', updateGaltonSvg);
+
+        // 4. 互動 SVG 邏輯 - 特徵縮放等高線山谷模擬
+        const contourRings = document.getElementById('contourRings');
+        const contourTitle = document.getElementById('contourTitle');
+        const contourDesc = document.getElementById('contourDesc');
+        const descentPath = document.getElementById('descentPath');
+        const descentBall = document.getElementById('descentBall');
+        const btnToggleUnscaled = document.getElementById('btnToggleUnscaled');
+        const btnToggleScaled = document.getElementById('btnToggleScaled');
+        const btnPlayDescent = document.getElementById('btnPlayDescent');
+
+        let isScaledMode = true;
+        let animationTimer = null;
+
+        function drawContourRings() {
+            contourRings.innerHTML = '';
+            const cx = 250, cy = 140;
+            const radii = [25, 55, 90, 130, 175];
+
+            radii.forEach((r, idx) => {
+                const rx = isScaledMode ? r : r * 1.6;
+                const ry = isScaledMode ? r : r * 0.35;
+                const ellipse = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+                ellipse.setAttribute('cx', cx);
+                ellipse.setAttribute('cy', cy);
+                ellipse.setAttribute('rx', rx);
+                ellipse.setAttribute('ry', ry);
+                ellipse.setAttribute('fill', 'none');
+                ellipse.setAttribute('stroke', isScaledMode ? '#3b82f6' : '#e11d48');
+                ellipse.setAttribute('stroke-opacity', 0.2 + idx * 0.15);
+                ellipse.setAttribute('stroke-width', '1.5');
+                contourRings.appendChild(ellipse);
+            });
+        }
+
+        function setScalingMode(scaled) {
+            isScaledMode = scaled;
+            if (animationTimer) clearInterval(animationTimer);
+
+            if (isScaledMode) {
+                btnToggleScaled.className = "px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white shadow transition";
+                btnToggleUnscaled.className = "px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600/30 text-rose-300 border border-rose-500/50 hover:bg-rose-600/50 transition";
+                contourTitle.innerText = "當前狀態：已完成特徵縮放（對稱正圓等高線）";
+                contourTitle.className = "font-bold text-emerald-400 font-mono";
+                contourDesc.innerText = "在標準化（Z-score）之後，各方向的坡度對稱，梯度垂直於等高線指向碗底，小球能以最快、最平穩的路徑「直線下坡」抵達極小值。";
+                descentBall.setAttribute('cx', '120');
+                descentBall.setAttribute('cy', '60');
+            } else {
+                btnToggleUnscaled.className = "px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 text-white shadow transition";
+                btnToggleScaled.className = "px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600/30 text-emerald-300 border border-emerald-500/50 hover:bg-emerald-600/50 transition";
+                contourTitle.innerText = "當前狀態：未做特徵縮放（極度壓扁的狹長山谷）";
+                contourTitle.className = "font-bold text-rose-400 font-mono";
+                contourDesc.innerText = "未標準化時，橫向每走一步的坡度與直向差了數十倍！梯度下降會像彈珠一樣在陡峭山壁間劇烈橫跳震盪，步長稍微調大就會直接發散炸裂！";
+                descentBall.setAttribute('cx', '70');
+                descentBall.setAttribute('cy', '95');
+            }
+            descentPath.setAttribute('points', '');
+            drawContourRings();
+        }
+
+        btnToggleScaled.addEventListener('click', () => setScalingMode(true));
+        btnToggleUnscaled.addEventListener('click', () => setScalingMode(false));
+
+        btnPlayDescent.addEventListener('click', () => {
+            if (animationTimer) clearInterval(animationTimer);
+            let step = 0;
+            let points = [];
+
+            if (isScaledMode) {
+                // 平穩直線下山軌跡
+                points = [
+                    { x: 120, y: 60 },
+                    { x: 155, y: 82 },
+                    { x: 190, y: 104 },
+                    { x: 220, y: 123 },
+                    { x: 240, y: 134 },
+                    { x: 250, y: 140 }
+                ];
+            } else {
+                // 狹長山谷左右激烈彈跳軌跡
+                points = [
+                    { x: 70, y: 95 },
+                    { x: 110, y: 175 },
+                    { x: 140, y: 105 },
+                    { x: 175, y: 165 },
+                    { x: 205, y: 120 },
+                    { x: 230, y: 150 },
+                    { x: 245, y: 135 },
+                    { x: 250, y: 140 }
+                ];
+            }
+
+            let pathStr = "";
+            descentBall.setAttribute('cx', points[0].x);
+            descentBall.setAttribute('cy', points[0].y);
+
+            animationTimer = setInterval(() => {
+                if (step < points.length) {
+                    const p = points[step];
+                    descentBall.setAttribute('cx', p.x);
+                    descentBall.setAttribute('cy', p.y);
+                    pathStr += (step === 0 ? "" : " ") + `${p.x},${p.y}`;
+                    descentPath.setAttribute('points', pathStr);
+                    step++;
+                } else {
+                    clearInterval(animationTimer);
+                }
+            }, 250);
+        });
+
+        // 5. 互動 SVG 邏輯 - 帝寶豪宅離群值實驗
+        const btnToggleOutlier = document.getElementById('btnToggleOutlier');
+        const outlierBtnText = document.getElementById('outlierBtnText');
+        const skewedLine = document.getElementById('skewedLine');
+        const outlierSquare = document.getElementById('outlierSquare');
+        const outlierResidualLine = document.getElementById('outlierResidualLine');
+        const outlierPointGroup = document.getElementById('outlierPointGroup');
+        const normalPointsGroup = document.getElementById('normalPointsGroup');
+        const outlierNotice = document.getElementById('outlierNotice');
+
+        let isOutlierActive = false;
+
+        // 渲染一般正常點至 SVG
+        function renderOutlierSvgPoints() {
+            normalPointsGroup.innerHTML = '';
+            sampleData.forEach(p => {
+                const cx = 50 + ((p.x - 10) / 50) * 500;
+                const cy = 260 - ((p.y - 800) / 3000) * 220;
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', cx);
+                circle.setAttribute('cy', cy);
+                circle.setAttribute('r', '4');
+                circle.setAttribute('fill', '#22d3ee');
+                normalPointsGroup.appendChild(circle);
+            });
+        }
+
+        btnToggleOutlier.addEventListener('click', () => {
+            isOutlierActive = !isOutlierActive;
+            if (isOutlierActive) {
+                outlierBtnText.innerText = "移除離群點（恢復原貌）";
+                btnToggleOutlier.className = "flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition";
+                skewedLine.setAttribute('opacity', '1');
+                outlierSquare.classList.remove('hidden');
+                outlierResidualLine.classList.remove('hidden');
+                outlierPointGroup.classList.remove('hidden');
+                outlierNotice.innerHTML = `
+                    <span class="text-rose-400 font-semibold">⚠️ 警報：離群點產生的超大殘差正方形，把整條回歸線硬生生往下與左拉偏！</span>
+                    <span class="text-rose-400 font-mono font-bold">估價偏差失真率：+48%</span>
+                `;
+            } else {
+                outlierBtnText.innerText = "注入「10坪 5000萬」離群點";
+                btnToggleOutlier.className = "flex items-center gap-2 bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-lg shadow-rose-600/30";
+                skewedLine.setAttribute('opacity', '0.1');
+                outlierSquare.classList.add('hidden');
+                outlierResidualLine.classList.add('hidden');
+                outlierPointGroup.classList.add('hidden');
+                outlierNotice.innerHTML = `
+                    <span>狀態：目前為潔淨正常數據集。回歸線忠實反應每坪單價。</span>
+                    <span class="text-emerald-400 font-mono font-bold">估價模型健康度：100%</span>
+                `;
+            }
+        });
+
+        // 複製代碼
+        document.getElementById('btnCopyCode').addEventListener('click', () => {
+            const codeText = document.getElementById('pythonCodeSnippet').innerText;
+            const tempInput = document.createElement('textarea');
+            tempInput.value = codeText;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            const alertBox = document.getElementById('copyAlert');
+            alertBox.classList.remove('hidden');
+            setTimeout(() => alertBox.classList.add('hidden'), 2500);
+        });
+
+        // 隨堂測驗評分
+        function checkQuiz(button, isCorrect) {
+            const container = button.closest('.p-4');
+            const buttons = container.querySelectorAll('.quiz-btn');
+            const feedback = document.getElementById('quizFeedback');
+
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.remove('bg-slate-800', 'border-slate-700');
+            });
+
+            if (isCorrect) {
+                button.classList.add('bg-emerald-900/60', 'border-emerald-500', 'text-emerald-200');
+                feedback.className = "text-xs font-semibold text-emerald-400";
+                feedback.innerText = "✓ 恭喜答對！觀念完全正確！";
+            } else {
+                button.classList.add('bg-rose-900/60', 'border-rose-500', 'text-rose-200');
+                feedback.className = "text-xs font-semibold text-rose-400";
+                feedback.innerText = "✗ 再想一下喔！可以回顧上方相關章節說明。";
+            }
+        }
+
+        // 初始化繪製
+        window.onload = () => {
+            resizeCanvas();
+            initGaltonScatter();
+            updateGaltonSvg();
+            setScalingMode(true);
+            renderOutlierSvgPoints();
+        };
+    </script>
+</body>
+</html>
