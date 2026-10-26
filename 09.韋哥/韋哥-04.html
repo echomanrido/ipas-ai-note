@@ -1,0 +1,2203 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>韋哥-04-【iPAS AI應用規劃師_中級科目三 系列 EP02(下)】數值優化｜帶你看懂損失函數、梯度下降和優化器。</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- KaTeX for formula rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+          onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    code, pre {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* 自訂滾動條 */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+    .contour-canvas {
+      image-rendering: pixelated;
+    }
+  </style>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- 頂部導航列 -->
+  <header class="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white font-black text-lg">
+          ∇
+        </div>
+        <div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-indigo-400">iPAS AI 應用規劃師 · 中級科目三</span>
+          <h1 class="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
+            韋哥-04-【iPAS AI應用規劃師_中級科目三 系列 EP02(下)】數值優化｜帶你看懂損失函數、梯度下降和優化器。
+            <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">核心高頻考點</span>
+          </h1>
+        </div>
+      </div>
+      <div class="hidden md:flex items-center space-x-1 text-sm font-medium">
+        <a href="#overview" class="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">直觀概念</a>
+        <a href="#lab-loss" class="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">損失函數</a>
+        <a href="#lab-gd" class="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">梯度下降三兄弟</a>
+        <a href="#lab-race" class="px-3 py-1.5 rounded-lg text-indigo-400 hover:text-indigo-300 hover:bg-indigo-950/40 transition font-semibold">🏁 優化器大賽跑</a>
+        <a href="#exam-summary" class="px-3 py-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-950/30 transition">考前速記</a>
+        <a href="#timeline-transcript" class="px-3 py-1.5 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/30 transition flex items-center gap-1 font-semibold">
+          <i data-lucide="clock" class="w-3.5 h-3.5"></i> 逐字稿時間軸
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- 核心重點彩色圖例條 -->
+  <div class="bg-slate-900 border-b border-slate-800/80 px-4 py-2">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between text-xs gap-2">
+      <span class="text-slate-400 flex items-center gap-1 font-semibold">
+        <i data-lucide="tag" class="w-3.5 h-3.5"></i> 考點標籤指南：
+      </span>
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-950/50 text-emerald-300 border border-emerald-700/60 font-medium">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span> 綠色：高頻必考題
+        </span>
+        <span class="flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-950/50 text-blue-300 border border-blue-700/60 font-medium">
+          <span class="w-2 h-2 rounded-full bg-blue-400"></span> 藍色：核心公式與定義
+        </span>
+        <span class="flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-950/50 text-amber-300 border border-amber-700/60 font-medium">
+          <span class="w-2 h-2 rounded-full bg-amber-400"></span> 橘黃色：常考陷阱與辨析
+        </span>
+        <span class="flex items-center gap-1 px-2.5 py-1 rounded-md bg-purple-950/50 text-purple-300 border border-purple-700/60 font-medium">
+          <span class="w-2 h-2 rounded-full bg-purple-400"></span> 紫色：考前關鍵口訣卡
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+    <!-- 00 & 01: 一句話簡介與直觀比喻 -->
+    <section id="overview" class="space-y-6">
+      <!-- 一句話摘要 Banner -->
+      <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-900/60 via-purple-900/40 to-slate-900 border border-indigo-500/30 p-6 sm:p-8 shadow-2xl">
+        <div class="absolute -right-8 -top-8 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="relative z-10 max-w-3xl">
+          <span class="text-xs uppercase tracking-widest text-indigo-400 font-bold">一句話核心宗旨</span>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1 leading-snug">
+            機器學習的實質就是「解最佳化問題」—— 透過計算梯度並調整步伐，讓模型損失降到最低。
+          </h2>
+          <p class="text-slate-300 mt-3 text-sm sm:text-base leading-relaxed">
+            訓練神經網路好比<span class="text-amber-300 font-semibold">「蒙眼下山」</span>：山的高度代表當前的<span class="text-rose-400 font-semibold">損失 (Loss)</span>、腳底探測出的陡峭傾斜是<span class="text-sky-400 font-semibold">梯度 (Gradient)</span>、每次跨出的步幅大小為<span class="text-emerald-400 font-semibold">學習率 (Learning Rate, $\eta$)</span>。沿著坡度最陡的反方向前進，抵達平地無坡處即為<span class="text-purple-300 font-semibold">收斂 (Convergence)</span>。
+          </p>
+        </div>
+      </div>
+
+      <!-- 凸函數 vs 非凸函數 SVG 圖解 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 凸函數卡片 -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between hover:border-emerald-500/40 transition">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-lg font-bold text-emerald-400 flex items-center gap-2">
+                <i data-lucide="check-circle" class="w-5 h-5"></i> 凸函數 (Convex Function)
+              </h3>
+              <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">保證全域最優</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">形狀如圓碗，任意兩點連線必在函數圖形上方。無局部極小陷阱，只要學習率適中，從任意起點皆能收斂至唯一最低點。</p>
+            <div class="bg-slate-950 rounded-xl p-3 border border-slate-800/80 flex justify-center">
+              <svg viewBox="0 0 320 160" class="w-full max-w-xs h-36">
+                <!-- 網格與軸 -->
+                <line x1="20" y1="140" x2="300" y2="140" stroke="#334155" stroke-width="1.5" />
+                <line x1="160" y1="20" x2="160" y2="140" stroke="#334155" stroke-dasharray="3 3" />
+                <!-- 凸碗曲線 -->
+                <path d="M 40 30 Q 160 180 280 30" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round"/>
+                <!-- 全域最優點 -->
+                <circle cx="160" cy="105" r="5" fill="#34d399" />
+                <text x="160" y="125" fill="#34d399" font-size="11" text-anchor="middle" font-weight="bold">全域極小值 (Global Min)</text>
+                <!-- 下滑箭頭 -->
+                <path d="M 70 50 C 90 85 120 100 145 105" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+                <circle cx="70" cy="50" r="4" fill="#f59e0b" />
+                <text x="75" y="45" fill="#f59e0b" font-size="10">起點 (隨機初始化)</text>
+              </svg>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-xs text-slate-400">
+            <span class="text-emerald-400 font-semibold">代表模型：</span> 線性回歸 (Linear Regression)、邏輯回歸 (Logistic Regression)。
+          </div>
+        </div>
+
+        <!-- 非凸函數卡片 -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between hover:border-amber-500/40 transition">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-lg font-bold text-amber-400 flex items-center gap-2">
+                <i data-lucide="alert-triangle" class="w-5 h-5"></i> 非凸函數 (Non-Convex Function)
+              </h3>
+              <span class="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">深度學習常態</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">存在多個「局部極小值 (Local Minima)」與「鞍點 (Saddle Point)」，傳統純梯度下降極易卡在次佳解或平緩區域。</p>
+            <div class="bg-slate-950 rounded-xl p-3 border border-slate-800/80 flex justify-center">
+              <svg viewBox="0 0 320 160" class="w-full max-w-xs h-36">
+                <line x1="20" y1="140" x2="300" y2="140" stroke="#334155" stroke-width="1.5" />
+                <!-- 雙坑起伏曲線 -->
+                <path d="M 30 50 C 70 120 100 130 130 110 C 160 90 190 90 220 135 C 250 170 270 90 290 40" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/>
+                <!-- 局部極小值 -->
+                <circle cx="112" cy="115" r="4.5" fill="#fbbf24" />
+                <text x="112" y="135" fill="#fbbf24" font-size="10" text-anchor="middle">局部極小</text>
+                <!-- 鞍點 / 平緩脊 -->
+                <circle cx="175" cy="90" r="4.5" fill="#38bdf8" />
+                <text x="175" y="78" fill="#38bdf8" font-size="10" text-anchor="middle">鞍點 (梯度=0)</text>
+                <!-- 全域極小值 -->
+                <circle cx="230" cy="132" r="5" fill="#10b981" />
+                <text x="240" y="150" fill="#34d399" font-size="10" text-anchor="middle" font-weight="bold">全域極小</text>
+              </svg>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-xs text-slate-400">
+            <span class="text-amber-400 font-semibold">代表模型：</span> 深度神經網路 (DNN, CNN, Transformer)。需依賴動量與自適應學習率。
+          </div>
+        </div>
+      </div>
+
+      <!-- 橘黃色考點陷阱卡 -->
+      <div class="rounded-xl bg-amber-950/30 border-l-4 border-amber-500 p-4 shadow-md">
+        <div class="flex items-start gap-3">
+          <i data-lucide="help-circle" class="w-5 h-5 text-amber-400 shrink-0 mt-0.5"></i>
+          <div>
+            <h4 class="text-sm font-bold text-amber-300">iPAS 歷屆考點陷阱辨析：目標函數非凸 vs 梯度消失</h4>
+            <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+              在深度學習訓練非線性神經網路時，最容易面臨的根本困難是<strong>「容易陷入局部最佳解 (Local Minima) 或鞍點」</strong>，其主因是神經網路的目標函數為<strong>非凸函數 (Non-convex)</strong>。<br>
+              <span class="text-amber-400 font-semibold">觀念辨析：</span>「梯度消失 (Vanishing Gradient)」是因深度網路反向傳播連乘 Sigmoid/Tanh 的導數所致，屬於架構與反向傳播鏈鎖律問題，<strong>並非</strong>凸性本身定義。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02 & 03: 生活化比喻與工業應用實例 -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- 生活化比喻 -->
+      <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 space-y-4">
+        <h3 class="text-lg font-bold text-indigo-400 flex items-center gap-2">
+          <i data-lucide="coffee" class="w-5 h-5"></i> 生活化生動比喻：直覺理解優化機制
+        </h3>
+        <div class="space-y-3 text-sm">
+          <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+            <span class="text-rose-400 font-bold">1. 考卷扣分制 (損失函數)：</span>
+            <p class="text-slate-300 text-xs mt-1">
+              • <strong class="text-slate-100">MSE：</strong> 算錯一題扣平方分！錯1題扣1分、錯10題直接扣100分，極度重罰離群的大錯。<br>
+              • <strong class="text-slate-100">MAE：</strong> 實問實答，錯幾題就線性扣幾分，不容易被單一極端考卷拖垮。<br>
+              • <strong class="text-slate-100">交叉熵：</strong> 「自信滿滿卻錯得離譜」扣最重！如果你 99% 確信答案是 A 結果是 B，懲罰直接飆向無限大。
+            </p>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+            <span class="text-amber-400 font-bold">2. 滾雪球慣性 (Momentum)：</span>
+            <p class="text-slate-300 text-xs mt-1">
+              當雪球從山頂滾下，速度會累積。即使經過一小塊稍微上凸的窪地或鞍點，靠著過去積累的<strong>慣性動量</strong>，也能一口氣衝過去，不會原地停滯。
+            </p>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+            <span class="text-emerald-400 font-bold">3. 個科複習進度條 (Adam 自適應步長)：</span>
+            <p class="text-slate-300 text-xs mt-1">
+              國文天天複習（頻繁特徵），步調就要放細；數學微積分很少碰（稀疏特徵），一旦遇到就要給它大步前進補強。Adam 依每個參數的歷史梯度各自微調步長。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 工業實例 -->
+      <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 space-y-4">
+        <h3 class="text-lg font-bold text-sky-400 flex items-center gap-2">
+          <i data-lucide="factory" class="w-5 h-5"></i> 台灣半導體與高科技製造業落地實例
+        </h3>
+        <div class="space-y-3 text-sm">
+          <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+            <div class="flex items-center justify-between">
+              <span class="text-sky-300 font-semibold">晶圓 AOI 光學瑕疵檢測 (類別極端不平衡)</span>
+              <span class="text-xs px-2 py-0.5 rounded bg-sky-950 text-sky-400 border border-sky-800">Focal Loss</span>
+            </div>
+            <p class="text-slate-400 text-xs mt-1">
+              晶圓良率常達 99.8% 以上，正常樣本極多而瑕疵極少。使用 Focal Loss 抑制大量容易背景的梯度貢獻，專注挖掘致命的刮傷與微塵瑕疵。
+            </p>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+            <div class="flex items-center justify-between">
+              <span class="text-emerald-300 font-semibold">邊緣設備 PLC 預測性維護 (即時串流學習)</span>
+              <span class="text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">Online SGD</span>
+            </div>
+            <p class="text-slate-400 text-xs mt-1">
+              感測器每毫秒傳送震動與溫度數據，邊緣微控制器記憶體有限，無法累積大批資料，利用每筆數據即時以 SGD 微幅微調異常預警閥值。
+            </p>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+            <div class="flex items-center justify-between">
+              <span class="text-violet-300 font-semibold">LLM 大語言模型 A100/H100 叢集分散式訓練</span>
+              <span class="text-xs px-2 py-0.5 rounded bg-violet-950 text-violet-400 border border-violet-800">Mini-batch + AdamW</span>
+            </div>
+            <p class="text-slate-400 text-xs mt-1">
+              以 Mini-batch (批次大小 512~2048) 榨乾 GPU Tensor Core 矩陣平行算力，配合梯度裁剪防止 Attention 計算梯度爆炸 NaN。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04: 理論簡介與最佳化四要素 + 時間複雜度 -->
+    <section class="space-y-6">
+      <div class="border-b border-slate-800 pb-3 flex items-center justify-between">
+        <div>
+          <h3 class="text-xl font-bold text-white flex items-center gap-2">
+            <i data-lucide="layers" class="w-6 h-6 text-indigo-400"></i>
+            最佳化四要素與時間複雜度
+          </h3>
+          <p class="text-xs text-slate-400 mt-1">iPAS 規劃師必須掌握的數學建構基礎</p>
+        </div>
+      </div>
+
+      <!-- 四要素卡片網格 -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 transition">
+          <div class="w-8 h-8 rounded-lg bg-indigo-950 text-indigo-400 flex items-center justify-center font-bold text-sm mb-3">1</div>
+          <h4 class="font-bold text-slate-100 text-sm">目標函數 (Objective)</h4>
+          <p class="text-xs text-slate-400 mt-1">欲最小化（Loss）或最大化（Reward）的數學式。例如最小化預測與真實標籤的距離。</p>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 transition">
+          <div class="w-8 h-8 rounded-lg bg-sky-950 text-sky-400 flex items-center justify-center font-bold text-sm mb-3">2</div>
+          <h4 class="font-bold text-slate-100 text-sm">決策變數 (Variables)</h4>
+          <p class="text-xs text-slate-400 mt-1">模型中可被調整與優化的參數集合，即神經網路中的權重矩陣 $W$ 與偏差項 $b$。</p>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 transition">
+          <div class="w-8 h-8 rounded-lg bg-emerald-950 text-emerald-400 flex items-center justify-center font-bold text-sm mb-3">3</div>
+          <h4 class="font-bold text-slate-100 text-sm">可行域 (Feasible Region)</h4>
+          <p class="text-xs text-slate-400 mt-1">決策變數允許取值的約束邊界。例如權重非負約束、機率加總為 1 或半正定約束。</p>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 transition">
+          <div class="w-8 h-8 rounded-lg bg-amber-950 text-amber-400 flex items-center justify-center font-bold text-sm mb-3">4</div>
+          <h4 class="font-bold text-slate-100 text-sm">函數性質 (Properties)</h4>
+          <p class="text-xs text-slate-400 mt-1">連續性、可微性 (Smoothness) 與凸性 (Convexity)。若不可微則需借助次梯度或啟發式演算法。</p>
+        </div>
+      </div>
+
+      <!-- 複雜度對照表 -->
+      <div class="bg-slate-900/80 rounded-2xl border border-slate-800 p-5 overflow-x-auto">
+        <h4 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2">
+          <i data-lucide="clock" class="w-4 h-4 text-slate-400"></i>
+          常用演算法時間複雜度速查（資料規模 $N$）
+        </h4>
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+          <div class="p-3 bg-slate-950 rounded-lg border border-slate-800/80">
+            <span class="font-mono text-emerald-400 font-bold text-base">$O(1)$</span>
+            <span class="block font-semibold text-slate-200 mt-1">常數時間</span>
+            <p class="text-slate-400 mt-0.5">直接用索引取陣列值、雜湊表查詢、單次前向加法。</p>
+          </div>
+          <div class="p-3 bg-slate-950 rounded-lg border border-slate-800/80">
+            <span class="font-mono text-sky-400 font-bold text-base">$O(\log N)$</span>
+            <span class="block font-semibold text-slate-200 mt-1">對數時間</span>
+            <p class="text-slate-400 mt-0.5">二元搜尋樹搜尋、有序陣列二分逼近根。</p>
+          </div>
+          <div class="p-3 bg-slate-950 rounded-lg border border-slate-800/80">
+            <span class="font-mono text-amber-400 font-bold text-base">$O(N)$</span>
+            <span class="block font-semibold text-slate-200 mt-1">線性時間</span>
+            <p class="text-slate-400 mt-0.5">全資料集掃描一輪計算均值、單維度搜尋極值。</p>
+          </div>
+          <div class="p-3 bg-slate-950 rounded-lg border border-slate-800/80">
+            <span class="font-mono text-rose-400 font-bold text-base">$O(N^2)$</span>
+            <span class="block font-semibold text-slate-200 mt-1">平方時間</span>
+            <p class="text-slate-400 mt-0.5">兩兩樣本計算距離矩陣、未優化的 Self-Attention 注意力圖。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05: 數學推導與公式解析 + 數值試算小工具 -->
+    <section class="space-y-6">
+      <div class="border-b border-slate-800 pb-3 flex items-center justify-between">
+        <div>
+          <h3 class="text-xl font-bold text-white flex items-center gap-2">
+            <i data-lucide="calculator" class="w-6 h-6 text-indigo-400"></i>
+            核心數學公式與即時試算器
+          </h3>
+          <p class="text-xs text-slate-400 mt-1">iPAS 基礎題型必考之單步參數計算</p>
+        </div>
+      </div>
+
+      <!-- 藍色核心公式框與動態小工具 -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- 公式解說 -->
+        <div class="lg:col-span-7 rounded-2xl bg-blue-950/20 border border-blue-500/40 p-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <h4 class="text-base font-bold text-blue-300 flex items-center gap-2">
+              <i data-lucide="sigma" class="w-5 h-5"></i> 核心更新公式：沿反梯度方向更新
+            </h4>
+            <span class="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono">必考基礎</span>
+          </div>
+
+          <div class="text-center py-3 bg-slate-950/80 rounded-xl border border-blue-500/30 text-lg sm:text-xl font-mono text-blue-200 shadow-inner">
+            $$W_{\text{new}} = W_{\text{old}} - \eta \cdot \nabla_W L$$
+          </div>
+
+          <ul class="text-xs sm:text-sm text-slate-300 space-y-1.5 leading-relaxed">
+            <li>• <strong class="text-blue-300">$W_{\text{old}}$:</strong> 目前模型的參數數值。</li>
+            <li>• <strong class="text-amber-300">$\eta$ (eta):</strong> 學習率 (Learning Rate)，控制每一步跨出的大小。</li>
+            <li>• <strong class="text-sky-300">$\nabla_W L$:</strong> 損失函數 $L$ 對參數 $W$ 的梯度（偏微分導數）。</li>
+            <li>• <strong class="text-rose-400">負號 ($-$) 的含義：</strong> 梯度指向函數上升最快的方向，我們希望損失下降，故需取負方向。</li>
+          </ul>
+
+          <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-400">
+            <span class="text-emerald-400 font-semibold">歷屆真題原型：</span>
+            若目前權重 $W = 2.0$，損失對其梯度 $\nabla = 4.0$，學習率 $\eta = 0.1$，則更新後的權重為多少？<br>
+            <span class="text-slate-200 font-mono font-semibold">答：$2.0 - (0.1 \times 4.0) = 2.0 - 0.4 = 1.6$</span>。
+          </div>
+        </div>
+
+        <!-- 互動試算小工具 -->
+        <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+          <div>
+            <h4 class="text-sm font-bold text-slate-200 flex items-center gap-2 mb-4">
+              <i data-lucide="sliders" class="w-4 h-4 text-emerald-400"></i> 單步參數更新試算器
+            </h4>
+            <div class="space-y-3 text-xs">
+              <div>
+                <div class="flex justify-between text-slate-400 mb-1">
+                  <span>舊權重 $W_{\text{old}}$</span>
+                  <span id="val-w-old" class="font-mono text-indigo-400 font-bold">2.0</span>
+                </div>
+                <input type="range" id="input-w-old" min="-5" max="5" step="0.1" value="2.0" class="w-full accent-indigo-500">
+              </div>
+
+              <div>
+                <div class="flex justify-between text-slate-400 mb-1">
+                  <span>梯度 $\nabla_W L$</span>
+                  <span id="val-grad" class="font-mono text-sky-400 font-bold">4.0</span>
+                </div>
+                <input type="range" id="input-grad" min="-10" max="10" step="0.5" value="4.0" class="w-full accent-sky-500">
+              </div>
+
+              <div>
+                <div class="flex justify-between text-slate-400 mb-1">
+                  <span>學習率 $\eta$</span>
+                  <span id="val-lr" class="font-mono text-emerald-400 font-bold">0.10</span>
+                </div>
+                <input type="range" id="input-lr" min="0.01" max="1.0" step="0.01" value="0.1" class="w-full accent-emerald-500">
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 p-4 rounded-xl bg-slate-950 border border-slate-800 text-center">
+            <span class="text-xs text-slate-400 block">更新後的新權重 $W_{\text{new}}$</span>
+            <div id="result-w-new" class="text-2xl font-black font-mono text-emerald-400 mt-1">1.600</div>
+            <span id="formula-detail" class="text-[11px] font-mono text-slate-500 block mt-1">2.0 - (0.10 × 4.0) = 1.60</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 六大常用損失函數矩陣 -->
+      <div class="space-y-4">
+        <h4 class="text-base font-bold text-slate-200">六大常用損失函數詳解</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+          <!-- MSE -->
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-rose-400 text-sm">MSE (均方誤差)</span>
+              <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300">連續回歸</span>
+            </div>
+            <div class="font-mono text-slate-300 bg-slate-950 p-2 rounded border border-slate-800">
+              $$L = \frac{1}{n} \sum_{i=1}^n (y_i - \hat{y}_i)^2$$
+            </div>
+            <p class="text-slate-400">誤差取平方，對大誤差懲罰極大，<strong>對極端異常值極度敏感</strong>。處處可微好計算。</p>
+          </div>
+
+          <!-- MAE -->
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-amber-400 text-sm">MAE (平均絕對誤差)</span>
+              <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300">連續回歸</span>
+            </div>
+            <div class="font-mono text-slate-300 bg-slate-950 p-2 rounded border border-slate-800">
+              $$L = \frac{1}{n} \sum_{i=1}^n |y_i - \hat{y}_i|$$
+            </div>
+            <p class="text-slate-400">誤差取絕對值，梯度恆為 $\pm 1$，對異常值具備強<strong>魯棒性 (Robustness)</strong>，但在原點不可導。</p>
+          </div>
+
+          <!-- Huber -->
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-sky-400 text-sm">Huber Loss (平滑過渡)</span>
+              <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300">魯棒回歸</span>
+            </div>
+            <div class="font-mono text-slate-300 bg-slate-950 p-2 rounded border border-slate-800 text-[10px]">
+              $$L_\delta = \begin{cases} \frac{1}{2}e^2, & |e| \le \delta \\ \delta|e| - \frac{1}{2}\delta^2, & \text{否則} \end{cases}$$
+            </div>
+            <p class="text-slate-400">誤差小時如 MSE 平滑可微，誤差大時轉為線性 MAE 防止異常點爆炸，兼具兩者優點。</p>
+          </div>
+
+          <!-- BCE -->
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-indigo-400 text-sm">BCE (二元交叉熵)</span>
+              <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300">二分類必備</span>
+            </div>
+            <div class="font-mono text-slate-300 bg-slate-950 p-2 rounded border border-slate-800">
+              $$L = -[y\ln \hat{y} + (1-y)\ln(1-\hat{y})]$$
+            </div>
+            <p class="text-slate-400">與 Sigmoid 配搭可自然消去分母飽和項，避免梯度過小；預測越偏離真實標籤，損失呈對數飆升。</p>
+          </div>
+
+          <!-- Focal Loss -->
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-purple-400 text-sm">Focal Loss</span>
+              <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300">類別不平衡</span>
+            </div>
+            <div class="font-mono text-slate-300 bg-slate-950 p-2 rounded border border-slate-800">
+              $$L_{\text{focal}} = -\alpha_t (1-p_t)^\gamma \log(p_t)$$
+            </div>
+            <p class="text-slate-400">引入調製係數 $(1-p_t)^\gamma$，自動大幅降低高信心簡易樣本的權重，聚焦少數稀有缺陷。</p>
+          </div>
+
+          <!-- Hinge Loss -->
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-emerald-400 text-sm">Hinge Loss</span>
+              <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300">SVM 分類器</span>
+            </div>
+            <div class="font-mono text-slate-300 bg-slate-950 p-2 rounded border border-slate-800">
+              $$L = \max(0, 1 - y \cdot \hat{y})$$
+            </div>
+            <p class="text-slate-400">要求預測間隔 (Margin) 至少大於 1，只有在跨界或進入邊界內才受罰，專門尋求最大間隔超平面。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06-互動 A: 損失函數動態圖與誤差探針 -->
+    <section id="lab-loss" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-4">
+        <div>
+          <span class="text-xs uppercase tracking-wider text-rose-400 font-bold">互動實驗室 A</span>
+          <h3 class="text-xl font-bold text-white flex items-center gap-2">
+            <i data-lucide="line-chart" class="w-5 h-5 text-rose-400"></i>
+            回歸損失函數動態對比探針 (MSE vs MAE vs Huber)
+          </h3>
+          <p class="text-xs text-slate-400 mt-1">拖曳滑桿改變誤差值 $e = (y - \hat{y})$，即時觀察各函數的懲罰成長幅度與梯度大小</p>
+        </div>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500"></span> MSE ($e^2$)</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-400"></span> MAE ($|e|$)</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-sky-400"></span> Huber ($\delta=1.0$)</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <!-- SVG 動態圖表 -->
+        <div class="lg:col-span-8 bg-slate-950 p-4 rounded-xl border border-slate-800 relative">
+          <svg id="loss-chart-svg" viewBox="0 0 500 280" class="w-full h-64 sm:h-72">
+            <!-- 坐標網格 -->
+            <defs>
+              <pattern id="grid" width="25" height="25" patternUnits="userSpaceOnUse">
+                <path d="M 25 0 L 0 0 0 25" fill="none" stroke="#1e293b" stroke-width="0.8"/>
+              </pattern>
+            </defs>
+            <rect width="500" height="280" fill="url(#grid)" />
+            <!-- 軸線 -->
+            <line x1="250" y1="20" x2="250" y2="260" stroke="#475569" stroke-width="1.5" />
+            <line x1="20" y1="240" x2="480" y2="240" stroke="#475569" stroke-width="1.5" />
+            <text x="475" y="255" fill="#64748b" font-size="10" text-anchor="end">誤差 e</text>
+            <text x="260" y="30" fill="#64748b" font-size="10">損失 Loss</text>
+
+            <!-- 靜態曲線路徑：MSE (紅), MAE (黃), Huber (藍) -->
+            <!-- 範圍 x from -4 to 4, 尺度: 250 + x * 50; y = 240 - L * 20 -->
+            <!-- MSE 路徑: y = 240 - (x^2)*14 -->
+            <path id="path-mse" d="" fill="none" stroke="#f43f5e" stroke-width="2.5" />
+            <!-- MAE 路徑: y = 240 - |x|*35 -->
+            <path id="path-mae" d="" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4 2" />
+            <!-- Huber 路徑 -->
+            <path id="path-huber" d="" fill="none" stroke="#38bdf8" stroke-width="2.5" />
+
+            <!-- 當前誤差垂直標線與亮點 -->
+            <line id="probe-line" x1="300" y1="20" x2="300" y2="240" stroke="#ffffff" stroke-width="1.2" stroke-dasharray="3 3" opacity="0.6"/>
+            <circle id="dot-mse" cx="300" cy="180" r="5" fill="#f43f5e" stroke="#ffffff" stroke-width="1.5"/>
+            <circle id="dot-mae" cx="300" cy="180" r="5" fill="#fbbf24" stroke="#ffffff" stroke-width="1.5"/>
+            <circle id="dot-huber" cx="300" cy="180" r="5" fill="#38bdf8" stroke="#ffffff" stroke-width="1.5"/>
+          </svg>
+        </div>
+
+        <!-- 即時儀表數值 -->
+        <div class="lg:col-span-4 space-y-4">
+          <div class="space-y-1.5">
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-slate-300 font-semibold">測試誤差值 $e$:</span>
+              <span id="slider-error-val" class="text-base font-mono font-bold text-white">1.80</span>
+            </div>
+            <input type="range" id="slider-error" min="-3.2" max="3.2" step="0.1" value="1.8" class="w-full accent-rose-500 cursor-pointer">
+            <div class="flex justify-between text-[10px] text-slate-500">
+              <span>-3.2 (負向大錯)</span>
+              <span>0 (預測完全準確)</span>
+              <span>+3.2 (正向大錯)</span>
+            </div>
+          </div>
+
+          <div class="space-y-2.5 text-xs">
+            <div class="p-3 rounded-xl bg-slate-950 border-l-4 border-rose-500">
+              <div class="flex justify-between">
+                <span class="text-rose-400 font-bold">MSE 損失值:</span>
+                <span id="stat-mse-loss" class="font-mono text-white font-bold">3.24</span>
+              </div>
+              <div class="text-[11px] text-slate-400 mt-0.5">梯度大小：<span id="stat-mse-grad" class="font-mono text-rose-300">3.60</span> (隨誤差倍數擴大)</div>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-950 border-l-4 border-amber-400">
+              <div class="flex justify-between">
+                <span class="text-amber-400 font-bold">MAE 損失值:</span>
+                <span id="stat-mae-loss" class="font-mono text-white font-bold">1.80</span>
+              </div>
+              <div class="text-[11px] text-slate-400 mt-0.5">梯度大小：<span id="stat-mae-grad" class="font-mono text-amber-300">1.00</span> (固定恆常步調)</div>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-950 border-l-4 border-sky-400">
+              <div class="flex justify-between">
+                <span class="text-sky-400 font-bold">Huber 損失值:</span>
+                <span id="stat-huber-loss" class="font-mono text-white font-bold">1.30</span>
+              </div>
+              <div class="text-[11px] text-slate-400 mt-0.5">梯度大小：<span id="stat-huber-grad" class="font-mono text-sky-300">1.00</span> (大誤差時平滑限幅)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06-互動 B: 梯度下降三兄弟視覺化與優缺點雷達 -->
+    <section id="lab-gd" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+      <div class="border-b border-slate-800 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <span class="text-xs uppercase tracking-wider text-emerald-400 font-bold">互動實驗室 B</span>
+          <h3 class="text-xl font-bold text-white flex items-center gap-2">
+            <i data-lucide="git-commit" class="w-5 h-5 text-emerald-400"></i>
+            梯度下降三兄弟 (Batch GD vs SGD vs Mini-batch)
+          </h3>
+          <p class="text-xs text-slate-400 mt-1">點擊下方按鈕觀察三種方式在等高線地形中的更新路徑差異與抖動特性</p>
+        </div>
+        <div class="flex gap-2">
+          <button id="btn-show-batch" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-500 transition">
+            全批次 Batch GD
+          </button>
+          <button id="btn-show-sgd" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+            隨機 SGD
+          </button>
+          <button id="btn-show-mini" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+            小批次 Mini-batch
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <!-- SVG 等高線軌跡展示 -->
+        <div class="lg:col-span-7 bg-slate-950 p-4 rounded-xl border border-slate-800 flex justify-center">
+          <svg viewBox="0 0 380 260" class="w-full max-w-md h-64">
+            <!-- 橢圓等高線地形 -->
+            <ellipse cx="280" cy="130" rx="90" ry="120" fill="none" stroke="#1e293b" stroke-width="1.5"/>
+            <ellipse cx="280" cy="130" rx="65" ry="85" fill="none" stroke="#334155" stroke-width="1.5"/>
+            <ellipse cx="280" cy="130" rx="40" ry="50" fill="none" stroke="#475569" stroke-width="1.5"/>
+            <ellipse cx="280" cy="130" rx="18" ry="22" fill="none" stroke="#64748b" stroke-width="1.5"/>
+            <circle cx="280" cy="130" r="4" fill="#34d399" />
+            <text x="280" y="145" fill="#34d399" font-size="9" text-anchor="middle" font-weight="bold">最低谷 (Optimum)</text>
+
+            <!-- Batch GD 軌跡 (平滑直奔) -->
+            <g id="traj-batch" class="transition-opacity duration-300">
+              <path d="M 50 40 Q 150 90 280 130" fill="none" stroke="#818cf8" stroke-width="2.5" marker-end="url(#arrow-batch)"/>
+              <circle cx="50" cy="40" r="4" fill="#818cf8" />
+              <text x="50" y="30" fill="#818cf8" font-size="10">起點</text>
+            </g>
+
+            <!-- SGD 軌跡 (極度鋸齒震盪) -->
+            <g id="traj-sgd" class="opacity-0 transition-opacity duration-300">
+              <path d="M 50 40 L 70 80 L 60 120 L 110 90 L 100 160 L 160 110 L 170 170 L 210 130 L 230 150 L 280 130"
+                    fill="none" stroke="#fb7185" stroke-width="2" stroke-dasharray="3 2"/>
+              <circle cx="50" cy="40" r="4" fill="#fb7185" />
+              <text x="50" y="30" fill="#fb7185" font-size="10">起點 (劇烈抖動)</text>
+            </g>
+
+            <!-- Mini-batch 軌跡 (適度微震快速前進) -->
+            <g id="traj-mini" class="opacity-0 transition-opacity duration-300">
+              <path d="M 50 40 Q 90 60 110 80 T 170 100 T 230 115 T 280 130"
+                    fill="none" stroke="#34d399" stroke-width="2.5"/>
+              <circle cx="50" cy="40" r="4" fill="#34d399" />
+              <text x="50" y="30" fill="#34d399" font-size="10">起點 (最佳折衷平衡)</text>
+            </g>
+          </svg>
+        </div>
+
+        <!-- 綜合評估表格 -->
+        <div class="lg:col-span-5 space-y-3">
+          <div id="gd-info-box" class="p-4 rounded-xl bg-slate-950 border border-indigo-500/30 text-xs">
+            <h4 id="gd-info-title" class="text-sm font-bold text-indigo-400 mb-1">全批次梯度下降 (Batch GD)</h4>
+            <p id="gd-info-desc" class="text-slate-300 leading-relaxed">
+              每次更新動用<strong>全部資料集</strong>計算梯度。方向最為精準平滑，但當資料龐大（如百萬筆）時，計算一步需耗費大量時間與 GPU 顯存，無法進行線上即時更新。
+            </p>
+          </div>
+
+          <!-- 對比表格 -->
+          <div class="overflow-hidden rounded-xl border border-slate-800 text-[11px]">
+            <table class="w-full text-left">
+              <thead class="bg-slate-800/60 text-slate-300 font-semibold">
+                <tr>
+                  <th class="p-2">類型</th>
+                  <th class="p-2">每步取樣數</th>
+                  <th class="p-2">梯度方向</th>
+                  <th class="p-2">GPU 利用率</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800/70 text-slate-400">
+                <tr class="hover:bg-slate-800/30">
+                  <td class="p-2 font-bold text-indigo-400">Batch GD</td>
+                  <td class="p-2">全量 $N$</td>
+                  <td class="p-2 text-emerald-400">極度穩定</td>
+                  <td class="p-2">顯存易爆</td>
+                </tr>
+                <tr class="hover:bg-slate-800/30">
+                  <td class="p-2 font-bold text-rose-400">SGD</td>
+                  <td class="p-2">僅 1 筆</td>
+                  <td class="p-2 text-rose-400">隨機劇烈震盪</td>
+                  <td class="p-2">極低 (無平行)</td>
+                </tr>
+                <tr class="hover:bg-slate-800/30 bg-emerald-950/20">
+                  <td class="p-2 font-bold text-emerald-400">Mini-batch</td>
+                  <td class="p-2">常規 32~512</td>
+                  <td class="p-2 text-emerald-300">適度平滑可衝出鞍點</td>
+                  <td class="p-2 text-emerald-400 font-bold">完美矩陣平行</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06-互動 C: 2D 損失地形「優化器大賽跑」動態模擬 Canvas -->
+    <section id="lab-race" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs uppercase tracking-wider text-amber-400 font-bold">重磅實驗室 C</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">即時 Canvas 模擬</span>
+          </div>
+          <h3 class="text-xl font-bold text-white flex items-center gap-2 mt-0.5">
+            🏁 2D 損失地形：四大優化器大賽跑 (SGD vs Momentum vs RMSprop vs Adam)
+          </h3>
+          <p class="text-xs text-slate-400 mt-1">在鞍點與狹長山谷地形中，親眼見證為什麼 Adam 與 Momentum 能順利脫困，而普通 SGD 會寸步難行！</p>
+        </div>
+        
+        <!-- 地形選擇 -->
+        <div class="flex items-center gap-2 text-xs">
+          <span class="text-slate-400">測試地形:</span>
+          <select id="select-landscape" class="bg-slate-950 border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1.5 font-medium outline-none focus:border-indigo-500">
+            <option value="saddle">鞍點與平緩平原 (Saddle Point)</option>
+            <option value="ravine">狹長山谷/香蕉谷 (Rosenbrock Ravine)</option>
+            <option value="minima">局部極小陷阱 (Local Minima)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 控制面板與說明 -->
+      <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btn-race-toggle" class="px-4 py-2 rounded-lg text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-500 flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition">
+            <i data-lucide="play" class="w-4 h-4"></i> 開始賽跑
+          </button>
+          <button id="btn-race-step" class="px-3 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-200 hover:bg-slate-700 flex items-center gap-1.5 transition">
+            <i data-lucide="step-forward" class="w-4 h-4"></i> 單步演進
+          </button>
+          <button id="btn-race-reset" class="px-3 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 flex items-center gap-1.5 transition">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i> 重設起點
+          </button>
+        </div>
+
+        <!-- 參賽選手圖例 -->
+        <div class="flex flex-wrap items-center gap-3 text-xs">
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50"></span>
+            <span class="font-medium text-slate-300">SGD</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-amber-400 shadow-sm shadow-amber-400/50"></span>
+            <span class="font-medium text-slate-300">Momentum</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-sky-400 shadow-sm shadow-sky-400/50"></span>
+            <span class="font-medium text-slate-300">RMSprop</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50 ring-2 ring-emerald-400/30"></span>
+            <span class="font-bold text-emerald-300">Adam (冠軍熱門)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Canvas 畫布區塊 -->
+      <div class="relative w-full rounded-xl overflow-hidden border border-slate-800 bg-slate-950 flex justify-center items-center">
+        <canvas id="raceCanvas" width="700" height="380" class="w-full max-w-3xl h-[320px] sm:h-[380px] block"></canvas>
+        <div class="absolute bottom-3 left-3 bg-slate-950/80 backdrop-blur border border-slate-800 px-3 py-1.5 rounded-lg text-[11px] text-slate-400 flex items-center gap-3">
+          <span>迭代步數: <strong id="race-step-count" class="text-white font-mono">0</strong></span>
+          <span>最低地形損失點：<span class="text-emerald-400 font-bold">★ 綠色星標</span></span>
+        </div>
+      </div>
+
+      <!-- 四大優化器原理速查卡片 (綠色必考) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+        <div class="p-3.5 rounded-xl bg-slate-950 border-l-4 border-rose-500">
+          <span class="font-bold text-rose-400 text-sm">1. SGD (無記憶)</span>
+          <p class="text-slate-400 mt-1">僅依賴當前步的即時梯度。遇到平坦鞍點時因坡度趨近於 0 而停滯，山谷中則左右來回擺盪浪費步數。</p>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-950 border-l-4 border-amber-400">
+          <span class="font-bold text-amber-400 text-sm">2. Momentum (滾雪球)</span>
+          <p class="text-slate-400 mt-1">模擬物理慣性，累加歷史速度 $v_t = \gamma v_{t-1} + \eta \nabla$。在震盪維度互相抵消，在同向維度加速前進，可衝破鞍點。</p>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-950 border-l-4 border-sky-400">
+          <span class="font-bold text-sky-400 text-sm">3. RMSprop (指數平滑)</span>
+          <p class="text-slate-400 mt-1">針對每個參數累計近期的梯度平方和，除以 $\sqrt{s_t + \epsilon}$。大幅壓制陡峭維度的狂跳，放大平緩維度的微小步伐。</p>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-950 border-l-4 border-emerald-400">
+          <span class="font-bold text-emerald-300 text-sm">4. Adam (集大成者)</span>
+          <p class="text-slate-400 mt-1">一階動量 (Momentum) + 二階自適應步長 (RMSprop)，並加入偏差修正。兼具「慣性衝刺」與「各方向自適應步幅」，現代首選！</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07: Python & PyTorch 工業級訓練實作 -->
+    <section class="space-y-6">
+      <div class="border-b border-slate-800 pb-3 flex items-center justify-between">
+        <div>
+          <h3 class="text-xl font-bold text-white flex items-center gap-2">
+            <i data-lucide="code-2" class="w-6 h-6 text-indigo-400"></i>
+            PyTorch 工業級最佳化與訓練穩定實作
+          </h3>
+          <p class="text-xs text-slate-400 mt-1">涵蓋 Optimizer、梯度裁剪 (Gradient Clipping)、學習率排程與早停法</p>
+        </div>
+        <button id="btn-copy-code" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-200 hover:bg-slate-700 flex items-center gap-1.5 transition">
+          <i data-lucide="copy" class="w-3.5 h-3.5"></i> 複製程式碼
+        </button>
+      </div>
+
+      <div class="relative rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-2xl">
+        <div class="bg-slate-900/80 px-4 py-2 border-b border-slate-800 flex items-center justify-between text-xs text-slate-400">
+          <span class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+            <span class="ml-2 font-mono text-slate-300">train_optimization.py</span>
+          </span>
+          <span class="text-indigo-400 font-mono">PyTorch 2.x Standard</span>
+        </div>
+        <pre class="p-4 sm:p-6 overflow-x-auto text-xs sm:text-sm text-slate-300 leading-relaxed"><code id="code-block">import torch
+import torch.nn as nn
+import torch.optim as optim
+
+# 1. 建立簡單分類模型
+model = nn.Sequential(
+    nn.Linear(20, 64),
+    nn.BatchNorm1d(64),  # 批次正規化 (穩定內部協變數偏移)
+    nn.ReLU(),
+    nn.Linear(64, 2)
+)
+
+# 2. 定義損失函數 (二元交叉熵標籤)
+criterion = nn.CrossEntropyLoss()
+
+# 3. 定義 Adam 優化器 (為每個參數自適應調整學習率)
+optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
+
+# 4. 學習率排程器：當驗證損失連續 3 輪不下降時，將 lr 乘以 0.5
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3)
+
+# 5. 早停機制 (Early Stopping) 狀態追蹤
+best_val_loss = float('inf')
+patience_counter = 0
+EARLY_STOP_PATIENCE = 7
+
+for epoch in range(100):
+    model.train()
+    for batch_x, batch_y in train_loader:
+        optimizer.zero_grad()            # 步驟A: 清空舊梯度
+        outputs = model(batch_x)         # 步驟B: 前向傳播
+        loss = criterion(outputs, batch_y)
+        loss.backward()                  # 步驟C: 反向傳播計算梯度
+        
+        # 關鍵安全閥: 梯度裁剪 (防止 RNN/Transformer 梯度爆炸 NaN)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        
+        optimizer.step()                 # 步驟D: 更新參數 W = W - lr * grad
+
+    # 驗證階段與早停判斷
+    val_loss = evaluate(model, val_loader)
+    scheduler.step(val_loss)             # 依驗證表現動態調整 lr
+
+    if val_loss < best_val_loss:
+        best_val_loss = val_loss
+        torch.save(model.state_dict(), "best_model.pth")
+        patience_counter = 0             # 重設耐心計數
+    else:
+        patience_counter += 1
+        if patience_counter >= EARLY_STOP_PATIENCE:
+            print(f"[收斂提示] 觸發 Early Stopping，於 Epoch {epoch} 提前終止訓練！")
+            break</code></pre>
+      </div>
+    </section>
+
+    <!-- 08: iPAS 核心考點速查與色彩醒目標記庫 -->
+    <section id="exam-summary" class="space-y-6">
+      <div class="border-b border-slate-800 pb-3">
+        <h3 class="text-xl font-bold text-white flex items-center gap-2">
+          <i data-lucide="award" class="w-6 h-6 text-amber-400"></i>
+          iPAS AI 應用規劃師 · 核心考點速查與避坑指南
+        </h3>
+        <p class="text-xs text-slate-400 mt-1">考試倒數衝刺重點，請特別注意不同色框的記憶維度</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 綠色框：高頻必考題 -->
+        <div class="rounded-2xl bg-emerald-950/20 border-2 border-emerald-500/60 p-5 space-y-3">
+          <div class="flex items-center gap-2 text-emerald-400 font-bold text-base">
+            <i data-lucide="check-square" class="w-5 h-5"></i>
+            高頻必考精要 (綠色安全牌)
+          </div>
+          <ul class="text-xs sm:text-sm text-slate-300 space-y-2 leading-relaxed">
+            <li>• <strong class="text-emerald-300">Mini-batch GD 是深度學習標準：</strong> 兼顧計算效率（利用 GPU 矩陣加速）與梯度穩定度，隨機性還能幫助脫離平緩鞍點。</li>
+            <li>• <strong class="text-emerald-300">Adam 的組成：</strong> 結合一階動量 (Momentum) 與二階自適應步長 (RMSprop)，能為<strong>每個參數分別動態計算學習率</strong>。</li>
+            <li>• <strong class="text-emerald-300">梯度下降的方向：</strong> 參數更新方向永遠是沿著<strong>梯度的反方向（負梯度方向 $-\nabla$）</strong>前進。</li>
+          </ul>
+        </div>
+
+        <!-- 橘黃色框：常考陷阱題 -->
+        <div class="rounded-2xl bg-amber-950/20 border-2 border-amber-500/60 p-5 space-y-3">
+          <div class="flex items-center gap-2 text-amber-400 font-bold text-base">
+            <i data-lucide="alert-octagon" class="w-5 h-5"></i>
+            常見考試陷阱與迷思 (橘黃色雷區)
+          </div>
+          <ul class="text-xs sm:text-sm text-slate-300 space-y-2 leading-relaxed">
+            <li>• <strong class="text-amber-300">陷阱 1：</strong>「Adam 是讓所有參數共用一個統一的學習率？」$\rightarrow$ <strong>錯誤！</strong> Adam 最大特點就是「各參數自適應步長 (Adaptive Step Size)」。</li>
+            <li>• <strong class="text-amber-300">陷阱 2：</strong>「非線性神經網路訓練容易停滯是因凸函數有全域解？」$\rightarrow$ <strong>錯誤！</strong> 神經網路是非凸 (Non-convex)，是卡在<strong>局部極小值或鞍點</strong>。</li>
+            <li>• <strong class="text-amber-300">陷阱 3：</strong>「二元分類輸出層 Sigmoid 適合用 MSE 當損失？」$\rightarrow$ <strong>錯誤！</strong> Sigmoid 兩端飽和會導致梯度消失，分類必須搭配交叉熵 (Cross-Entropy)。</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 紫色框：考前三句口訣卡 (終極速記) -->
+      <div class="rounded-2xl bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-purple-950/40 border-2 border-purple-500/70 p-6 shadow-xl">
+        <div class="flex items-center gap-2 text-purple-300 font-extrabold text-base mb-3">
+          <i data-lucide="zap" class="w-5 h-5 text-purple-400"></i>
+          考前三秒記誦：核心口訣卡 (紫色必背)
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
+          <div class="bg-slate-950/80 p-4 rounded-xl border border-purple-500/30">
+            <span class="text-purple-400 font-bold block text-sm mb-1">口訣 1：選 Loss 看輸出</span>
+            <p class="text-slate-300 leading-snug">回歸連線用 MSE，怕極端點換 MAE/Huber；機率分類一律用交叉熵。</p>
+          </div>
+          <div class="bg-slate-950/80 p-4 rounded-xl border border-purple-500/30">
+            <span class="text-purple-400 font-bold block text-sm mb-1">口訣 2：練模型選小批</span>
+            <p class="text-slate-300 leading-snug">不用全量防顯存爆，不用單筆防狂跳；小批 Mini-batch 跑 GPU 剛剛好。</p>
+          </div>
+          <div class="bg-slate-950/80 p-4 rounded-xl border border-purple-500/30">
+            <span class="text-purple-400 font-bold block text-sm mb-1">口訣 3：優化器拜 Adam</span>
+            <p class="text-slate-300 leading-snug">動量衝刺過鞍點，二階自適變步長；遇到停滯調小 lr，梯度爆炸先裁剪。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 新增：時間軸逐字稿學習系統 (Interactive Timeline Transcript) -->
+    <section id="timeline-transcript" class="space-y-8 pt-4">
+      <!-- 標題與簡介區 -->
+      <div class="border-b border-slate-800 pb-5 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs uppercase tracking-widest text-emerald-400 font-bold bg-emerald-950/60 border border-emerald-700/50 px-2.5 py-0.5 rounded-full">
+              Full Video Transcript & Milestones
+            </span>
+            <span class="text-xs text-slate-400">片長共 14 分 03 秒</span>
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-2 flex items-center gap-3">
+            <i data-lucide="play-circle" class="w-8 h-8 text-indigo-400"></i>
+            影片章節時間軸逐字稿學習系統
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">
+            點選上方橫向 SVG 刻度軌道或章節卡片時間戳，指針將動態同步跳轉並高亮卡片；支援模擬播放、即時關鍵字過濾與考點測驗。
+          </p>
+        </div>
+
+        <!-- 關鍵字即時搜尋框 -->
+        <div class="relative w-full md:w-72">
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+          <input type="text" id="transcript-search" placeholder="搜尋考點 (如: Adam, MSE, 鞍點)..." 
+                 class="w-full pl-9 pr-8 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition shadow-inner">
+          <button id="btn-clear-search" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200">
+            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- 互動控制器與 SVG 動態時間軸面板 -->
+      <div class="bg-slate-900/90 backdrop-blur border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
+        <!-- 控制列 -->
+        <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
+          <!-- 播放器核心操作 -->
+          <div class="flex items-center gap-2">
+            <button id="btn-timeline-play" class="px-4 py-2 rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-500 flex items-center gap-2 shadow-lg shadow-indigo-600/25 transition">
+              <i data-lucide="play" class="w-4 h-4"></i> <span>播放模擬</span>
+            </button>
+            <button id="btn-prev-chapter" class="p-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 transition" title="上一章節">
+              <i data-lucide="skip-back" class="w-4 h-4"></i>
+            </button>
+            <button id="btn-next-chapter" class="p-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 transition" title="下一章節">
+              <i data-lucide="skip-forward" class="w-4 h-4"></i>
+            </button>
+            <div class="font-mono text-sm font-semibold bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800 text-slate-200">
+              <span id="current-time-display" class="text-indigo-400">00:00</span> <span class="text-slate-600">/</span> 14:03
+            </div>
+          </div>
+
+          <!-- 速度與章節快選 -->
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-slate-400">倍速:</span>
+            <div class="inline-flex rounded-lg border border-slate-800 bg-slate-950 p-0.5">
+              <button class="speed-btn px-2.5 py-1 rounded text-[11px] font-semibold text-indigo-400 bg-slate-800" data-speed="1">1x</button>
+              <button class="speed-btn px-2.5 py-1 rounded text-[11px] font-semibold text-slate-400 hover:text-white" data-speed="2">2x</button>
+              <button class="speed-btn px-2.5 py-1 rounded text-[11px] font-semibold text-slate-400 hover:text-white" data-speed="5">5x快進</button>
+            </div>
+
+            <select id="select-chapter-jump" class="bg-slate-950 border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium outline-none focus:border-indigo-500">
+              <option value="0">00:00 開場思考與問題導入</option>
+              <option value="31">00:31 最佳化四要素與凸性</option>
+              <option value="193">03:13 損失函數精解 (MSE/MAE/交叉熵)</option>
+              <option value="373">06:13 梯度下降三兄弟</option>
+              <option value="459">07:39 四大進階優化器剖析</option>
+              <option value="621">10:21 收斂判斷與訓練穩定</option>
+              <option value="729">12:09 時間複雜度 O(1)~O(n²)</option>
+              <option value="791">13:11 總結與考前速記卡</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 橫向 SVG 互動時間軌道 -->
+        <div class="relative w-full bg-slate-950 rounded-xl p-3 border border-slate-800 select-none overflow-x-auto">
+          <svg id="timeline-svg" viewBox="0 0 843 85" class="w-full min-w-[720px] h-20 cursor-pointer">
+            <!-- 漸層定義 -->
+            <defs>
+              <linearGradient id="time-progress-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#6366f1" />
+                <stop offset="100%" stop-color="#a855f7" />
+              </linearGradient>
+            </defs>
+
+            <!-- 主底軌道 (總長 843 秒) -->
+            <rect x="0" y="38" width="843" height="10" rx="5" fill="#1e293b" />
+            <!-- 已播放進度條 -->
+            <rect id="timeline-progress-bar" x="0" y="38" width="0" height="10" rx="5" fill="url(#time-progress-gradient)" />
+
+            <!-- 時間刻度 (每 2 分鐘 = 120 秒) -->
+            <g id="timeline-ticks" opacity="0.6">
+              <line x1="0" y1="48" x2="0" y2="56" stroke="#475569" stroke-width="1.5"/>
+              <text x="2" y="68" fill="#64748b" font-size="9" font-family="JetBrains Mono">00:00</text>
+
+              <line x1="120" y1="48" x2="120" y2="56" stroke="#475569" stroke-width="1"/>
+              <text x="120" y="68" fill="#64748b" font-size="9" text-anchor="middle" font-family="JetBrains Mono">02:00</text>
+
+              <line x1="240" y1="48" x2="240" y2="56" stroke="#475569" stroke-width="1"/>
+              <text x="240" y="68" fill="#64748b" font-size="9" text-anchor="middle" font-family="JetBrains Mono">04:00</text>
+
+              <line x1="360" y1="48" x2="360" y2="56" stroke="#475569" stroke-width="1"/>
+              <text x="360" y="68" fill="#64748b" font-size="9" text-anchor="middle" font-family="JetBrains Mono">06:00</text>
+
+              <line x1="480" y1="48" x2="480" y2="56" stroke="#475569" stroke-width="1"/>
+              <text x="480" y="68" fill="#64748b" font-size="9" text-anchor="middle" font-family="JetBrains Mono">08:00</text>
+
+              <line x1="600" y1="48" x2="600" y2="56" stroke="#475569" stroke-width="1"/>
+              <text x="600" y="68" fill="#64748b" font-size="9" text-anchor="middle" font-family="JetBrains Mono">10:00</text>
+
+              <line x1="720" y1="48" x2="720" y2="56" stroke="#475569" stroke-width="1"/>
+              <text x="720" y="68" fill="#64748b" font-size="9" text-anchor="middle" font-family="JetBrains Mono">12:00</text>
+
+              <line x1="843" y1="48" x2="843" y2="56" stroke="#475569" stroke-width="1.5"/>
+              <text x="840" y="68" fill="#64748b" font-size="9" text-anchor="end" font-family="JetBrains Mono">14:03</text>
+            </g>
+
+            <!-- 8 個章節標記點 (Nodes) -->
+            <g id="timeline-nodes">
+              <!-- 00:00 -->
+              <g class="timeline-node-group cursor-pointer" data-sec="0">
+                <circle cx="0" cy="43" r="6" fill="#6366f1" stroke="#0f172a" stroke-width="2"/>
+                <text x="0" y="24" fill="#a5b4fc" font-size="8.5" font-weight="bold" text-anchor="start">導入</text>
+              </g>
+              <!-- 00:31 -->
+              <g class="timeline-node-group cursor-pointer" data-sec="31">
+                <circle cx="31" cy="43" r="6" fill="#10b981" stroke="#0f172a" stroke-width="2"/>
+                <text x="31" y="24" fill="#6ee7b7" font-size="8.5" font-weight="bold" text-anchor="middle">凸性四要素</text>
+              </g>
+              <!-- 03:13 = 193s -->
+              <g class="timeline-node-group cursor-pointer" data-sec="193">
+                <circle cx="193" cy="43" r="6" fill="#f43f5e" stroke="#0f172a" stroke-width="2"/>
+                <text x="193" y="24" fill="#fda4af" font-size="8.5" font-weight="bold" text-anchor="middle">損失函數</text>
+              </g>
+              <!-- 06:13 = 373s -->
+              <g class="timeline-node-group cursor-pointer" data-sec="373">
+                <circle cx="373" cy="43" r="6" fill="#38bdf8" stroke="#0f172a" stroke-width="2"/>
+                <text x="373" y="24" fill="#7dd3fc" font-size="8.5" font-weight="bold" text-anchor="middle">GD三兄弟</text>
+              </g>
+              <!-- 07:39 = 459s -->
+              <g class="timeline-node-group cursor-pointer" data-sec="459">
+                <circle cx="459" cy="43" r="6" fill="#f59e0b" stroke="#0f172a" stroke-width="2"/>
+                <text x="459" y="24" fill="#fcd34d" font-size="8.5" font-weight="bold" text-anchor="middle">四大優化器</text>
+              </g>
+              <!-- 10:21 = 621s -->
+              <g class="timeline-node-group cursor-pointer" data-sec="621">
+                <circle cx="621" cy="43" r="6" fill="#ec4899" stroke="#0f172a" stroke-width="2"/>
+                <text x="621" y="24" fill="#f472b6" font-size="8.5" font-weight="bold" text-anchor="middle">收斂與早停</text>
+              </g>
+              <!-- 12:09 = 729s -->
+              <g class="timeline-node-group cursor-pointer" data-sec="729">
+                <circle cx="729" cy="43" r="6" fill="#a855f7" stroke="#0f172a" stroke-width="2"/>
+                <text x="729" y="24" fill="#d8b4fe" font-size="8.5" font-weight="bold" text-anchor="middle">複雜度</text>
+              </g>
+              <!-- 13:11 = 791s -->
+              <g class="timeline-node-group cursor-pointer" data-sec="791">
+                <circle cx="791" cy="43" r="6" fill="#34d399" stroke="#0f172a" stroke-width="2"/>
+                <text x="791" y="24" fill="#6ee7b7" font-size="8.5" font-weight="bold" text-anchor="middle">速記總結</text>
+              </g>
+            </g>
+
+            <!-- 動態播放指針 Needle -->
+            <g id="timeline-needle" transform="translate(0, 0)">
+              <line x1="0" y1="12" x2="0" y2="52" stroke="#ffffff" stroke-width="2.5" />
+              <polygon points="-5,12 5,12 0,20" fill="#ffffff" />
+              <circle cx="0" cy="43" r="4.5" fill="#ffffff" />
+            </g>
+          </svg>
+        </div>
+
+        <!-- 當前章節摘要橫條 -->
+        <div class="flex items-center justify-between text-xs bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-slate-400">目前章節：</span>
+            <strong id="active-chapter-title" class="text-white font-semibold">開場思考與問題導入</strong>
+          </div>
+          <span id="search-filter-count" class="text-slate-500 font-mono text-[11px]">顯示全部 8 個章節</span>
+        </div>
+      </div>
+
+      <!-- 逐字稿卡片流 (依時間軸依序展開) -->
+      <div id="transcript-cards-container" class="space-y-6">
+
+        <!-- 卡片 0: 00:00:00 開場思考與問題導入 -->
+        <article class="transcript-card rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-4 transition-all duration-300" 
+                 data-start="0" data-end="30" data-tags="開場 動量 優化器 慣性 思考">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2.5">
+              <button class="ts-jump-btn font-mono text-xs px-2.5 py-1 rounded-lg bg-indigo-950 text-indigo-300 border border-indigo-700/60 hover:bg-indigo-900 transition flex items-center gap-1 font-bold">
+                <i data-lucide="play" class="w-3 h-3"></i> 00:00:00
+              </button>
+              <h3 class="text-base sm:text-lg font-bold text-white">開場思考與核心問題導入</h3>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400">時長 00:31</span>
+          </div>
+
+          <div class="space-y-2 text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <p>
+              在深度學習訓練中，普通梯度下降（SGD）往往像無頭蒼蠅，在狹長山谷中左右劇烈擺盪、在平緩鞍點寸步難行。為什麼工程師會想到引入<strong>「物理動量 (Momentum)」</strong>？如果為每個權重分別配備獨立的適應性學習步長，又會帶來什麼革命性變革？
+            </p>
+          </div>
+
+          <!-- 互動思考按鈕 -->
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <span class="text-indigo-300 font-semibold flex items-center gap-1.5">
+              <i data-lucide="help-circle" class="w-4 h-4 text-indigo-400"></i> 開場思考題：為什麼不能只把學習率調大來加快訓練？
+            </span>
+            <button class="btn-toggle-thought px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 transition shrink-0 font-medium">
+              查看解答思維
+            </button>
+          </div>
+          <div class="thought-content hidden p-3 bg-indigo-950/20 border border-indigo-800/50 rounded-xl text-xs text-indigo-200 leading-relaxed">
+            若單純把整體學習率調大，在陡峭維度會引起數值劇烈發散（甚至損失變成 NaN），在平緩維度依然走不動。真正有效的策略是引入<strong>方向慣性（動量）</strong>以及<strong>各方向自適應步長（如 Adam）</strong>。
+          </div>
+        </article>
+
+        <!-- 卡片 1: 00:00:31 重點一：最佳化的四要素與凸性 -->
+        <article class="transcript-card rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-5 transition-all duration-300"
+                 data-start="31" data-end="192" data-tags="凸函數 非凸 鞍點 局部最佳解 梯度 學習率 四要素 凸性">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2.5">
+              <button class="ts-jump-btn font-mono text-xs px-2.5 py-1 rounded-lg bg-indigo-950 text-indigo-300 border border-indigo-700/60 hover:bg-indigo-900 transition flex items-center gap-1 font-bold">
+                <i data-lucide="play" class="w-3 h-3"></i> 00:00:31
+              </button>
+              <h3 class="text-base sm:text-lg font-bold text-white">重點一：最佳化的四要素與凸性 (Convexity)</h3>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold">歷屆真題高頻區</span>
+          </div>
+
+          <!-- 逐字稿重點精華 -->
+          <div class="space-y-3 text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <p>
+              【逐字核心】訓練模型本質上就是<strong>「蒙眼下山」</strong>：海拔高度代表<strong>損失函數 (Loss)</strong>，雙腳感受到的斜坡方向與陡峭度代表<strong>梯度 (Gradient)</strong>，每步跨距代表<strong>學習率 ($\eta$)</strong>。只要沿著負梯度方向不斷邁進，直到地勢平坦無坡度（$\nabla \approx 0$），即代表模型達到<strong>收斂 (Convergence)</strong>。
+            </p>
+          </div>
+
+          <!-- 四色重點框分層解析 -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- 藍色框：四要素核心定義 -->
+            <div class="rounded-xl bg-blue-950/30 border border-blue-500/50 p-4 space-y-2">
+              <span class="text-xs font-bold text-blue-400 uppercase tracking-wide flex items-center gap-1.5">
+                <i data-lucide="book-open" class="w-4 h-4"></i> 最佳化四大核心要素
+              </span>
+              <ul class="text-xs text-slate-300 space-y-1.5">
+                <li>• <strong>目標函數：</strong> 最小化之損失 (MSE, BCE) 或最大化獎勵。</li>
+                <li>• <strong>決策變數：</strong> 網路可學習參數（權重 $W$、偏置 $b$）。</li>
+                <li>• <strong>可行域：</strong> 參數取值範圍限制（如機率總和為 1）。</li>
+                <li>• <strong>函數性質：</strong> 連續性、可微性與是否具備凸性。</li>
+              </ul>
+            </div>
+
+            <!-- 綠色框：單步參數計算真題 -->
+            <div class="rounded-xl bg-emerald-950/30 border border-emerald-500/50 p-4 space-y-2">
+              <span class="text-xs font-bold text-emerald-400 uppercase tracking-wide flex items-center gap-1.5">
+                <i data-lucide="check-circle-2" class="w-4 h-4"></i> 單步更新真題演練 [00:02:17]
+              </span>
+              <p class="text-xs text-slate-300">
+                已知參數 $W = 2.0$，損失對其偏導梯度 $\nabla_W L = 4.0$，學習率 $\eta = 0.1$。求更新後數值？
+              </p>
+              <div class="p-2 rounded bg-slate-950 font-mono text-emerald-300 text-xs text-center border border-emerald-800/40">
+                $W_{\text{new}} = 2.0 - (0.1 \times 4.0) = 1.6$
+              </div>
+            </div>
+          </div>
+
+          <!-- 橘黃色框：鞍點與陷阱 -->
+          <div class="rounded-xl bg-amber-950/30 border-l-4 border-amber-500 p-4">
+            <h4 class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+              <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400"></i> 常考陷阱解析：鞍點 (Saddle Point) vs 梯度消失 [00:02:46]
+            </h4>
+            <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+              在非線性神經網路中，梯度為 0 的點往往不是全域最低點，而是<strong>「鞍點」</strong>（某個方向上坡、另一個方向下坡，宛如馬鞍）。此時一階梯度等於零導致更新停頓。考試切勿將其與深度神經網路反向傳播連乘 Sigmoid 導致的「梯度消失」混為一談！
+            </p>
+          </div>
+        </article>
+
+        <!-- 卡片 2: 03:13 損失函數精解 -->
+        <article class="transcript-card rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-5 transition-all duration-300"
+                 data-start="193" data-end="372" data-tags="損失函數 MSE MAE Huber 交叉熵 Focal Hinge 分類 回歸">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2.5">
+              <button class="ts-jump-btn font-mono text-xs px-2.5 py-1 rounded-lg bg-indigo-950 text-indigo-300 border border-indigo-700/60 hover:bg-indigo-900 transition flex items-center gap-1 font-bold">
+                <i data-lucide="play" class="w-3 h-3"></i> 00:03:13
+              </button>
+              <h3 class="text-base sm:text-lg font-bold text-white">重點二：損失函數精解 (回歸 vs 分類完整矩陣)</h3>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 font-semibold">核心概念篇</span>
+          </div>
+
+          <div class="space-y-3 text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <p>
+              【逐字核心】損失函數衡量的是「模型預測與真實世界的差距」。回歸問題預測連續數值，分類問題預測離散機率分佈。選錯損失函數，模型將徹底走偏。
+            </p>
+          </div>
+
+          <!-- 損失函數兩兩對決微圖解 -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <!-- 回歸對決 -->
+            <div class="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+              <span class="text-rose-400 font-bold block text-sm">連續回歸三劍客 (MSE vs MAE vs Huber)</span>
+              <p class="text-slate-300">
+                • <strong>MSE (均方誤差)：</strong> 對離群值施加平方級懲罰。例如房價預測中，一間天價豪宅的預測偏差會產生極大梯度將模型強行拉偏。<br>
+                • <strong>MAE (平均絕對誤差)：</strong> 對離群值具魯棒性 (Robust)，但因在原點處導函數不平滑，優化收斂難。<br>
+                • <strong>Huber Loss：</strong> 小誤差採 MSE 平滑、大誤差採 MAE 線性，是工業界抗雜訊回歸的黃金折衷。
+              </p>
+            </div>
+
+            <!-- 分類對決 -->
+            <div class="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+              <span class="text-indigo-400 font-bold block text-sm">分類任務首選 (Cross-Entropy & Focal)</span>
+              <p class="text-slate-300">
+                • <strong>交叉熵 (Cross-Entropy)：</strong> 搭配 Softmax/Sigmoid 可以抵消導函數飽和，在信心滿滿卻答錯時施加極重處罰。<br>
+                • <strong>Focal Loss：</strong> 專為晶圓瑕疵、信用卡盜刷等「極端類別不平衡」打造，壓制大量容易背景的損失貢獻。<br>
+                • <strong>Hinge Loss：</strong> SVM 的核心，要求類別間維持安全間距 (Margin $\ge 1$)。
+              </p>
+            </div>
+          </div>
+
+          <!-- 橘黃色框：真題對應原則 -->
+          <div class="rounded-xl bg-amber-950/30 border border-amber-500/50 p-4 text-xs space-y-2">
+            <span class="text-amber-400 font-bold flex items-center gap-1.5">
+              <i data-lucide="zap" class="w-4 h-4"></i> 考試快速選型對應原則 [00:04:49]
+            </span>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-slate-300">
+              <div class="p-2 bg-slate-950/80 rounded border border-slate-800">
+                <span class="text-white font-semibold block">情境 1：</span>
+                預測用戶使用時長、房價，對極端偏離高價極度敏感 $\rightarrow$ <strong class="text-rose-400">MSE</strong>
+              </div>
+              <div class="p-2 bg-slate-950/80 rounded border border-slate-800">
+                <span class="text-white font-semibold block">情境 2：</span>
+                感測器存在突發異常雜訊數據 $\rightarrow$ <strong class="text-amber-300">MAE / Huber</strong>
+              </div>
+              <div class="p-2 bg-slate-950/80 rounded border border-slate-800">
+                <span class="text-white font-semibold block">情境 3：</span>
+                電信客戶是否流失預測 (二元分類) $\rightarrow$ <strong class="text-indigo-300">Binary Cross-Entropy</strong>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- 卡片 3: 06:13 梯度下降三兄弟 -->
+        <article class="transcript-card rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-5 transition-all duration-300"
+                 data-start="373" data-end="458" data-tags="Batch GD SGD Mini-batch 牛頓法 二階 海森矩陣 GPU">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2.5">
+              <button class="ts-jump-btn font-mono text-xs px-2.5 py-1 rounded-lg bg-indigo-950 text-indigo-300 border border-indigo-700/60 hover:bg-indigo-900 transition flex items-center gap-1 font-bold">
+                <i data-lucide="play" class="w-3 h-3"></i> 00:06:13
+              </button>
+              <h3 class="text-base sm:text-lg font-bold text-white">重點三：梯度下降三兄弟與牛頓法瓶頸</h3>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold">考題必出考點</span>
+          </div>
+
+          <div class="space-y-3 text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <p>
+              【逐字核心】決定梯度方向時，究竟一次要讀取多少資料？全批次 (Batch GD) 太慢且記憶體吃不消；隨機 SGD 每次抽 1 筆雖然快，但方向宛如醉漢劇烈跳動；<strong>小批次 (Mini-batch GD)</strong> 才是現代深度學習兼顧平行運算與梯度的最佳解。
+            </p>
+          </div>
+
+          <!-- 牛頓法 vs 一階梯度圖解 -->
+          <div class="rounded-xl bg-slate-950 p-4 border border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+            <div class="text-xs space-y-2">
+              <span class="text-sky-400 font-bold block text-sm">考題熱點：為什麼深度學習不用牛頓法？</span>
+              <p class="text-slate-300 leading-relaxed">
+                牛頓法是一階加二階導數（泰勒展開式二次項逼近），理論上幾步就能直奔極小值。但它需要計算並求逆<strong>海森矩陣 (Hessian Matrix, $N \times N$)</strong>。<br>
+                現代大語言模型參數 $N \approx 70\text{B}$，光是儲存海森矩陣就需要天文數字級記憶體，計算反矩陣更是 $O(N^3)$ 噩夢！因此<strong>只能採用小批次一階梯度</strong>。
+              </p>
+            </div>
+            <div class="p-3 bg-slate-900 rounded-lg border border-slate-800 text-[11px] font-mono text-slate-400 space-y-1">
+              <div class="text-emerald-400 font-bold">一階梯度下降 (Mini-batch GD):</div>
+              <div>時間: $O(N)$，空間: $O(N)$ $\rightarrow$ ✅ 可擴展至千億參數</div>
+              <div class="text-rose-400 font-bold mt-2">二階牛頓法 (Newton's Method):</div>
+              <div>海森矩陣大小: $N \times N$，反矩陣: $O(N^3)$ $\rightarrow$ ❌ 大模型算力崩潰</div>
+            </div>
+          </div>
+
+          <!-- 綠色框：iPAS 真題原型 -->
+          <div class="rounded-xl bg-emerald-950/30 border border-emerald-500/50 p-4 text-xs text-slate-300">
+            <strong class="text-emerald-400 block mb-1">iPAS 認證真題回顧 [00:07:18]：</strong>
+            「在訓練大規模深度神經網路時，若希望有效利用 GPU 平行計算能力，並在隨機性與收斂穩定性間取得平衡，應優先選用何種優化策略？」<br>
+            <span class="text-slate-100 font-bold">答案：小批次梯度下降 (Mini-batch Gradient Descent)。</span>
+          </div>
+        </article>
+
+        <!-- 卡片 4: 07:39 四大進階優化器剖析 -->
+        <article class="transcript-card rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-5 transition-all duration-300"
+                 data-start="459" data-end="620" data-tags="Momentum AdaGrad RMSprop Adam 優化器 自適應 步長 一階動量 二階動量">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2.5">
+              <button class="ts-jump-btn font-mono text-xs px-2.5 py-1 rounded-lg bg-indigo-950 text-indigo-300 border border-indigo-700/60 hover:bg-indigo-900 transition flex items-center gap-1 font-bold">
+                <i data-lucide="play" class="w-3 h-3"></i> 00:07:39
+              </button>
+              <h3 class="text-base sm:text-lg font-bold text-white">重點四：四大進階優化器原理深度剖析</h3>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-semibold">演化脈絡精解</span>
+          </div>
+
+          <div class="space-y-3 text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <p>
+              【逐字核心】從最基礎的 SGD，到具備物理滾雪球慣性的 Momentum，再到為不同特徵自適應分配步幅的 AdaGrad 與 RMSprop，最終催生出兼具兩者之長的 <strong>Adam (Adaptive Moment Estimation)</strong>。
+            </p>
+          </div>
+
+          <!-- 四大優化器演化圖卡 -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            <div class="p-3 bg-slate-950 rounded-xl border border-amber-500/40 space-y-1">
+              <span class="font-bold text-amber-400">1. Momentum (動量)</span>
+              <p class="text-slate-400 text-[11px]">引入一階動量（過去梯度指數滑動平均），累積同向速度，抵消高頻震盪，順利跨越平坦鞍點。</p>
+            </div>
+            <div class="p-3 bg-slate-950 rounded-xl border border-sky-500/40 space-y-1">
+              <span class="font-bold text-sky-400">2. AdaGrad (稀疏特徵)</span>
+              <p class="text-slate-400 text-[11px]">累積所有歷史梯度的平方和。更新頻繁者縮小步長，稀疏特徵給予大步長；缺點是後期步長過早歸零。</p>
+            </div>
+            <div class="p-3 bg-slate-950 rounded-xl border border-indigo-500/40 space-y-1">
+              <span class="font-bold text-indigo-400">3. RMSprop (滑動窗口)</span>
+              <p class="text-slate-400 text-[11px]">改採指數加權移動平均，只記憶近期的梯度平方和，徹底解決 AdaGrad 提前死掉的致命缺陷。</p>
+            </div>
+            <div class="p-3 bg-slate-950 rounded-xl border border-emerald-500/40 space-y-1">
+              <span class="font-bold text-emerald-400">4. Adam (雙動量王牌)</span>
+              <p class="text-slate-400 text-[11px]">結合 Momentum 的一階動量與 RMSprop 的二階動量，並加入初始無偏估計修正，是現代 CV 與 NLP 首選。</p>
+            </div>
+          </div>
+
+          <!-- 橘黃色框：常考混淆概念 -->
+          <div class="rounded-xl bg-amber-950/30 border-l-4 border-amber-500 p-4 text-xs space-y-1.5">
+            <h4 class="font-bold text-amber-300">iPAS 常考大陷阱：Adam 是統一學習率還是獨立學習率？ [00:09:44]</h4>
+            <p class="text-slate-300 leading-relaxed">
+              題目若敘述「Adam 優化器透過動態調整，使神經網路中所有層的權重共用同一個最佳化學習率」$\rightarrow$ <strong class="text-rose-400">絕對錯誤！</strong><br>
+              Adam 的本質核心就是<strong>為每一個參數 ($w_i$) 獨立維持其各自的學習步長</strong>；更新頻率低的權重步長較大，更新劇烈者步長自動縮小。
+            </p>
+          </div>
+        </article>
+
+        <!-- 卡片 5: 10:21 收斂判斷與訓練穩定 -->
+        <article class="transcript-card rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-5 transition-all duration-300"
+                 data-start="621" data-end="728" data-tags="收斂 早停 Early Stopping ReduceLROnPlateau 梯度爆炸 梯度裁剪 批次正規化">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2.5">
+              <button class="ts-jump-btn font-mono text-xs px-2.5 py-1 rounded-lg bg-indigo-950 text-indigo-300 border border-indigo-700/60 hover:bg-indigo-900 transition flex items-center gap-1 font-bold">
+                <i data-lucide="play" class="w-3 h-3"></i> 00:10:21
+              </button>
+              <h3 class="text-base sm:text-lg font-bold text-white">重點五：收斂判斷標準與訓練穩定調優技巧</h3>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold">實務調參必備</span>
+          </div>
+
+          <div class="space-y-3 text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <p>
+              【逐字核心】訓練什麼時候該停止？遇到損失卡在高原期、或者數值突然爆出 NaN 該怎麼辦？掌握四大收斂指標與工程防護四大法寶，才能穩健訓練模型。
+            </p>
+          </div>
+
+          <!-- 四大工程穩定防護盾 -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+              <span class="text-sky-400 font-bold block mb-1">1. 早停法 (Early Stopping)</span>
+              <p class="text-slate-400">當驗證集損失連續數個 Epoch 不再下降甚至反彈時，立即中斷訓練並回滾至最佳權重，有效防止模型過擬合 (Overfitting)。</p>
+            </div>
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+              <span class="text-indigo-400 font-bold block mb-1">2. 學習率高原調降 (ReduceLROnPlateau)</span>
+              <p class="text-slate-400">當損失進入平緩平台時，自動將學習率折半 ($\times 0.5$)，以更精細的微步尋找局部凹槽底部。</p>
+            </div>
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+              <span class="text-rose-400 font-bold block mb-1">3. 梯度裁剪 (Gradient Clipping)</span>
+              <p class="text-slate-400">當梯度範數超過閾值 (如 1.0) 時強制等比例縮放，是防止循環神經網路 (RNN) 與 Transformer 出現 NaN 梯度爆炸的核心利器。</p>
+            </div>
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+              <span class="text-emerald-400 font-bold block mb-1">4. 批次正規化 (Batch Normalization)</span>
+              <p class="text-slate-400">將隱藏層輸入強制拉回均值 0、方差 1 的標準常態分佈，有效緩和層與層之間的內部協變數偏移 (Internal Covariate Shift)。</p>
+            </div>
+          </div>
+        </article>
+
+        <!-- 卡片 6: 12:09 時間複雜度 -->
+        <article class="transcript-card rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-5 transition-all duration-300"
+                 data-start="729" data-end="790" data-tags="時間複雜度 O(1) O(log n) O(n) O(n^2) 演算法 兩兩比對">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2.5">
+              <button class="ts-jump-btn font-mono text-xs px-2.5 py-1 rounded-lg bg-indigo-950 text-indigo-300 border border-indigo-700/60 hover:bg-indigo-900 transition flex items-center gap-1 font-bold">
+                <i data-lucide="play" class="w-3 h-3"></i> 00:12:09
+              </button>
+              <h3 class="text-base sm:text-lg font-bold text-white">重點六：演算法時間複雜度速查</h3>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 font-semibold">演算法大題必考</span>
+          </div>
+
+          <div class="space-y-3 text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <p>
+              【逐字核心】AI 規劃師必須精準評估資料擴增時運算耗時的增長曲線。從常數時間 $O(1)$ 到平方時間 $O(n^2)$，設計高吞吐架構絕不可忽視。
+            </p>
+          </div>
+
+          <!-- 複雜度對比圖示 -->
+          <div class="p-4 bg-slate-950 rounded-xl border border-slate-800 text-xs space-y-2">
+            <span class="text-purple-400 font-bold block">典型考題實例剖析 [00:12:33]</span>
+            <p class="text-slate-300">
+              若系統需要對資料庫中的 $N$ 位客戶進行<strong>「兩兩逐一比對購物相似度」</strong>，所需的運算次數約為 $\frac{N(N-1)}{2}$，時間複雜度為 <strong class="text-rose-400 font-mono font-bold">$O(N^2)$</strong>。當客戶數由 1,000 萬人倍增至 2,000 萬人時，比對耗時將直接暴增為原先的 <strong>4 倍</strong>！
+            </p>
+          </div>
+        </article>
+
+        <!-- 卡片 7: 13:11 總結與考前速記卡 -->
+        <article class="transcript-card rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-5 transition-all duration-300"
+                 data-start="791" data-end="843" data-tags="總結 口訣 速記 考前 核心">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2.5">
+              <button class="ts-jump-btn font-mono text-xs px-2.5 py-1 rounded-lg bg-indigo-950 text-indigo-300 border border-indigo-700/60 hover:bg-indigo-900 transition flex items-center gap-1 font-bold">
+                <i data-lucide="play" class="w-3 h-3"></i> 00:13:11
+              </button>
+              <h3 class="text-base sm:text-lg font-bold text-white">總結：全片重點複習與高分通過金鑰</h3>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-semibold">滿分收尾</span>
+          </div>
+
+          <div class="space-y-3 text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <p>
+              恭喜研讀完畢！回顧本科目三數值優化單元，只要把「損失函數選型」、「Mini-batch GD 批次原理」與「Adam 雙動量自適應機制」這三大核心骨幹融會貫通，搭配適時使用早停法與梯度裁剪，面對 iPAS 認證考題必能迎刃而解！
+            </p>
+          </div>
+
+          <!-- 紫色口訣框 -->
+          <div class="p-4 rounded-xl bg-purple-950/40 border border-purple-500/60 text-xs text-purple-200">
+            <span class="font-bold text-purple-300 block mb-1">🌟 考前 10 秒深呼吸速記：</span>
+            回歸平方敏感選 MSE；分類對稱配交叉熵；神經網路首推 Mini-batch；遇到複雜非凸請找 Adam 自適應！
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 頁尾 -->
+  <footer class="bg-slate-900 border-t border-slate-800 py-6 text-center text-xs text-slate-500">
+    <p>iPAS AI 應用規劃師 中級科目三 認證教學互動系統 · 具備即時數值運算與物理軌跡模擬</p>
+  </footer>
+
+  <!-- 浮動通知 Toast -->
+  <div id="toast" class="fixed bottom-5 right-5 bg-indigo-600 text-white text-xs px-4 py-2.5 rounded-xl shadow-2xl transition-all duration-300 transform translate-y-20 opacity-0 flex items-center gap-2 pointer-events-none z-50">
+    <i data-lucide="check" class="w-4 h-4"></i>
+    <span id="toast-msg">已成功複製到剪貼簿！</span>
+  </div>
+
+  <!-- JavaScript 邏輯程式碼 -->
+  <script>
+    // 初始化 Lucide 圖標
+    lucide.createIcons();
+
+    function showToast(text) {
+      const toast = document.getElementById('toast');
+      const msg = document.getElementById('toast-msg');
+      msg.textContent = text;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 2200);
+    }
+
+    // 複製程式碼
+    document.getElementById('btn-copy-code').addEventListener('click', function() {
+      const codeText = document.getElementById('code-block').innerText;
+      const tempTextArea = document.createElement('textarea');
+      tempTextArea.value = codeText;
+      document.body.appendChild(tempTextArea);
+      tempTextArea.select();
+      try {
+        document.execCommand('copy');
+        showToast('已複製完整的 PyTorch 訓練程式碼！');
+      } catch (err) {
+        showToast('複製失敗，請手動選取複製');
+      }
+      document.body.removeChild(tempTextArea);
+    });
+
+    // 05: 參數試算小工具
+    const inWOld = document.getElementById('input-w-old');
+    const inGrad = document.getElementById('input-grad');
+    const inLr = document.getElementById('input-lr');
+    const dispWOld = document.getElementById('val-w-old');
+    const dispGrad = document.getElementById('val-grad');
+    const dispLr = document.getElementById('val-lr');
+    const dispWNew = document.getElementById('result-w-new');
+    const dispDetail = document.getElementById('formula-detail');
+
+    function updateParamCalculator() {
+      const w = parseFloat(inWOld.value);
+      const g = parseFloat(inGrad.value);
+      const lr = parseFloat(inLr.value);
+      const wNew = w - (lr * g);
+
+      dispWOld.textContent = w.toFixed(2);
+      dispGrad.textContent = g.toFixed(2);
+      dispLr.textContent = lr.toFixed(2);
+      dispWNew.textContent = wNew.toFixed(3);
+      dispDetail.textContent = `${w.toFixed(2)} - (${lr.toFixed(2)} × ${g.toFixed(2)}) = ${wNew.toFixed(2)}`;
+    }
+
+    [inWOld, inGrad, inLr].forEach(el => el.addEventListener('input', updateParamCalculator));
+    updateParamCalculator();
+
+    // 06-互動 A: 損失函數圖表動態渲染
+    const sliderError = document.getElementById('slider-error');
+    const sliderErrorVal = document.getElementById('slider-error-val');
+    const pathMse = document.getElementById('path-mse');
+    const pathMae = document.getElementById('path-mae');
+    const pathHuber = document.getElementById('path-huber');
+    const probeLine = document.getElementById('probe-line');
+    const dotMse = document.getElementById('dot-mse');
+    const dotMae = document.getElementById('dot-mae');
+    const dotHuber = document.getElementById('dot-huber');
+
+    const statMseLoss = document.getElementById('stat-mse-loss');
+    const statMseGrad = document.getElementById('stat-mse-grad');
+    const statMaeLoss = document.getElementById('stat-mae-loss');
+    const statMaeGrad = document.getElementById('stat-mae-grad');
+    const statHuberLoss = document.getElementById('stat-huber-loss');
+    const statHuberGrad = document.getElementById('stat-huber-grad');
+
+    // 繪製背景靜態路徑 (x: -3.5 到 3.5)
+    function buildStaticPaths() {
+      let dMse = "";
+      let dMae = "";
+      let dHuber = "";
+      const delta = 1.0;
+      const xOrigin = 250;
+      const yZero = 240;
+      const scaleX = 65;
+      const scaleY = 16;
+
+      for (let x = -3.5; x <= 3.51; x += 0.1) {
+        const svgX = xOrigin + x * scaleX;
+        // MSE = x^2
+        const lMse = x * x;
+        const svgYMse = Math.max(15, yZero - lMse * scaleY);
+
+        // MAE = |x|
+        const lMae = Math.abs(x);
+        const svgYMae = Math.max(15, yZero - lMae * scaleY * 2.2);
+
+        // Huber
+        let lHuber = 0;
+        if (Math.abs(x) <= delta) {
+          lHuber = 0.5 * x * x;
+        } else {
+          lHuber = delta * Math.abs(x) - 0.5 * delta * delta;
+        }
+        const svgYHuber = Math.max(15, yZero - lHuber * scaleY * 2.2);
+
+        if (x === -3.5) {
+          dMse += `M ${svgX} ${svgYMse}`;
+          dMae += `M ${svgX} ${svgYMae}`;
+          dHuber += `M ${svgX} ${svgYHuber}`;
+        } else {
+          dMse += ` L ${svgX} ${svgYMse}`;
+          dMae += ` L ${svgX} ${svgYMae}`;
+          dHuber += ` L ${svgX} ${svgYHuber}`;
+        }
+      }
+      pathMse.setAttribute('d', dMse);
+      pathMae.setAttribute('d', dMae);
+      pathHuber.setAttribute('d', dHuber);
+    }
+    buildStaticPaths();
+
+    function updateLossProbe() {
+      const e = parseFloat(sliderError.value);
+      sliderErrorVal.textContent = e >= 0 ? `+${e.toFixed(2)}` : e.toFixed(2);
+
+      const xOrigin = 250;
+      const yZero = 240;
+      const scaleX = 65;
+      const scaleY = 16;
+      const delta = 1.0;
+
+      const currentSvgX = xOrigin + e * scaleX;
+      probeLine.setAttribute('x1', currentSvgX);
+      probeLine.setAttribute('x2', currentSvgX);
+
+      // MSE
+      const lMse = e * e;
+      const gradMse = 2 * e;
+      const yMse = Math.max(15, yZero - lMse * scaleY);
+      dotMse.setAttribute('cx', currentSvgX);
+      dotMse.setAttribute('cy', yMse);
+      statMseLoss.textContent = lMse.toFixed(2);
+      statMseGrad.textContent = gradMse.toFixed(2);
+
+      // MAE
+      const lMae = Math.abs(e);
+      const gradMae = e === 0 ? 0 : (e > 0 ? 1 : -1);
+      const yMae = Math.max(15, yZero - lMae * scaleY * 2.2);
+      dotMae.setAttribute('cx', currentSvgX);
+      dotMae.setAttribute('cy', yMae);
+      statMaeLoss.textContent = lMae.toFixed(2);
+      statMaeGrad.textContent = gradMae.toFixed(2);
+
+      // Huber
+      let lHuber = 0;
+      let gradHuber = 0;
+      if (Math.abs(e) <= delta) {
+        lHuber = 0.5 * e * e;
+        gradHuber = e;
+      } else {
+        lHuber = delta * Math.abs(e) - 0.5 * delta * delta;
+        gradHuber = e > 0 ? delta : -delta;
+      }
+      const yHuber = Math.max(15, yZero - lHuber * scaleY * 2.2);
+      dotHuber.setAttribute('cx', currentSvgX);
+      dotHuber.setAttribute('cy', yHuber);
+      statHuberLoss.textContent = lHuber.toFixed(2);
+      statHuberGrad.textContent = gradHuber.toFixed(2);
+    }
+
+    sliderError.addEventListener('input', updateLossProbe);
+    updateLossProbe();
+
+    // 06-互動 B: 梯度下降三兄弟切換
+    const btnBatch = document.getElementById('btn-show-batch');
+    const btnSgd = document.getElementById('btn-show-sgd');
+    const btnMini = document.getElementById('btn-show-mini');
+
+    const trajBatch = document.getElementById('traj-batch');
+    const trajSgd = document.getElementById('traj-sgd');
+    const trajMini = document.getElementById('traj-mini');
+
+    const gdTitle = document.getElementById('gd-info-title');
+    const gdDesc = document.getElementById('gd-info-desc');
+
+    function setActiveGd(type) {
+      [btnBatch, btnSgd, btnMini].forEach(b => {
+        b.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition";
+      });
+      [trajBatch, trajSgd, trajMini].forEach(t => t.classList.add('opacity-0'));
+
+      if (type === 'batch') {
+        btnBatch.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition";
+        trajBatch.classList.remove('opacity-0');
+        gdTitle.textContent = "全批次梯度下降 (Batch GD)";
+        gdTitle.className = "text-sm font-bold text-indigo-400 mb-1";
+        gdDesc.innerHTML = "每次使用<strong>所有訓練樣本</strong>計算梯度。軌跡平滑且方向絕對正確，但每跑一步耗時極長，遇到超大資料集直接爆顯存。";
+      } else if (type === 'sgd') {
+        btnSgd.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 text-white transition";
+        trajSgd.classList.remove('opacity-0');
+        gdTitle.textContent = "隨機梯度下降 (SGD)";
+        gdTitle.className = "text-sm font-bold text-rose-400 mb-1";
+        gdDesc.innerHTML = "每次只隨機抽<strong>單一筆樣本</strong>更新。計算極快且能支援串流線上學習，但方向劇烈震盪跳躍，收斂後期極難穩定停在最低點。";
+      } else {
+        btnMini.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white transition";
+        trajMini.classList.remove('opacity-0');
+        gdTitle.textContent = "小批次梯度下降 (Mini-batch GD)";
+        gdTitle.className = "text-sm font-bold text-emerald-400 mb-1";
+        gdDesc.innerHTML = "業界與深度學習唯一首選（通常採 32~512 筆）。<strong>既能完美吃滿 GPU 矩陣運算核心，又保有微小隨機性</strong>，能自然震出鞍點！";
+      }
+    }
+
+    btnBatch.addEventListener('click', () => setActiveGd('batch'));
+    btnSgd.addEventListener('click', () => setActiveGd('sgd'));
+    btnMini.addEventListener('click', () => setActiveGd('mini'));
+
+    // 06-互動 C: 2D 損失地形「優化器大賽跑」Canvas 物理模擬
+    const canvas = document.getElementById('raceCanvas');
+    const ctx = canvas.getContext('2d');
+    const selectLandscape = document.getElementById('select-landscape');
+    const btnToggle = document.getElementById('btn-race-toggle');
+    const btnStep = document.getElementById('btn-race-step');
+    const btnReset = document.getElementById('btn-race-reset');
+    const stepCountDisplay = document.getElementById('race-step-count');
+
+    let landscapeType = 'saddle'; // saddle, ravine, minima
+    let isRunning = false;
+    let stepCount = 0;
+    let animationFrameId = null;
+
+    // 地形數學函數與偏微分導數
+    function getLandscape(x, y) {
+      if (landscapeType === 'saddle') {
+        // 鞍點：沿 x 軸是坑，沿 y 軸是脊；中央 (0,0) 為鞍點
+        // f(x, y) = 0.5 * x^2 - 0.4 * y^2 + 0.1 * y^4
+        const gradX = x;
+        const gradY = -0.8 * y + 0.4 * Math.pow(y, 3);
+        return { z: 0.5 * x*x - 0.4 * y*y + 0.1 * Math.pow(y, 4), gradX, gradY };
+      } else if (landscapeType === 'ravine') {
+        // 狹長山谷 (Rosenbrock 變形)：x 方向極陡，y 方向平緩
+        const gradX = 20 * x;
+        const gradY = 0.8 * (y - 2);
+        return { z: 10 * x*x + 0.4 * Math.pow(y - 2, 2), gradX, gradY };
+      } else {
+        // 局部極小值：中央有阻礙，右方為全域最優
+        const gradX = 2 * (x + 1.2) + 2.5 * Math.sin(2.5 * x);
+        const gradY = 2 * y;
+        return { z: Math.pow(x + 1.2, 2) - Math.cos(2.5 * x) + y*y, gradX, gradY };
+      }
+    }
+
+    // 四大優化器 Agent 實體狀態
+    const agents = {
+      sgd: {
+        name: 'SGD',
+        color: '#f43f5e',
+        x: -2.2, y: 1.8,
+        history: [],
+        step(lr = 0.05) {
+          const { gradX, gradY } = getLandscape(this.x, this.y);
+          this.x -= lr * gradX;
+          this.y -= lr * gradY;
+          this.history.push({ x: this.x, y: this.y });
+        }
+      },
+      momentum: {
+        name: 'Momentum',
+        color: '#fbbf24',
+        x: -2.2, y: 1.8,
+        vx: 0, vy: 0,
+        beta: 0.88,
+        history: [],
+        step(lr = 0.04) {
+          const { gradX, gradY } = getLandscape(this.x, this.y);
+          this.vx = this.beta * this.vx + lr * gradX;
+          this.vy = this.beta * this.vy + lr * gradY;
+          this.x -= this.vx;
+          this.y -= this.vy;
+          this.history.push({ x: this.x, y: this.y });
+        }
+      },
+      rmsprop: {
+        name: 'RMSprop',
+        color: '#38bdf8',
+        x: -2.2, y: 1.8,
+        sx: 0, sy: 0,
+        beta: 0.9,
+        eps: 1e-6,
+        history: [],
+        step(lr = 0.07) {
+          const { gradX, gradY } = getLandscape(this.x, this.y);
+          this.sx = this.beta * this.sx + (1 - this.beta) * gradX * gradX;
+          this.sy = this.beta * this.sy + (1 - this.beta) * gradY * gradY;
+          this.x -= (lr / Math.sqrt(this.sx + this.eps)) * gradX;
+          this.y -= (lr / Math.sqrt(this.sy + this.eps)) * gradY;
+          this.history.push({ x: this.x, y: this.y });
+        }
+      },
+      adam: {
+        name: 'Adam',
+        color: '#34d399',
+        x: -2.2, y: 1.8,
+        m_x: 0, m_y: 0,
+        v_x: 0, v_y: 0,
+        beta1: 0.9,
+        beta2: 0.999,
+        eps: 1e-7,
+        t: 0,
+        history: [],
+        step(lr = 0.08) {
+          this.t += 1;
+          const { gradX, gradY } = getLandscape(this.x, this.y);
+          // 一階動量
+          this.m_x = this.beta1 * this.m_x + (1 - this.beta1) * gradX;
+          this.m_y = this.beta1 * this.m_y + (1 - this.beta1) * gradY;
+          // 二階動量
+          this.v_x = this.beta2 * this.v_x + (1 - this.beta2) * gradX * gradX;
+          this.v_y = this.beta2 * this.v_y + (1 - this.beta2) * gradY * gradY;
+          // 偏差修正
+          const m_x_hat = this.m_x / (1 - Math.pow(this.beta1, this.t));
+          const m_y_hat = this.m_y / (1 - Math.pow(this.beta1, this.t));
+          const v_x_hat = this.v_x / (1 - Math.pow(this.beta2, this.t));
+          const v_y_hat = this.v_y / (1 - Math.pow(this.beta2, this.t));
+
+          this.x -= (lr / (Math.sqrt(v_x_hat) + this.eps)) * m_x_hat;
+          this.y -= (lr / (Math.sqrt(v_y_hat) + this.eps)) * m_y_hat;
+          this.history.push({ x: this.x, y: this.y });
+        }
+      }
+    };
+
+    // 坐標映射到 Canvas
+    function toCanvasCoords(x, y) {
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const scale = 80;
+      return {
+        px: cx + x * scale,
+        py: cy - y * scale
+      };
+    }
+
+    // 重設賽跑起點
+    function resetRace() {
+      let startX = -2.3;
+      let startY = 1.9;
+      if (landscapeType === 'ravine') {
+        startX = -2.2;
+        startY = -1.5;
+      } else if (landscapeType === 'minima') {
+        startX = -2.4;
+        startY = 0.1;
+      }
+
+      Object.keys(agents).forEach(k => {
+        const ag = agents[k];
+        ag.x = startX;
+        ag.y = startY;
+        ag.history = [{ x: startX, y: startY }];
+        if (ag.vx !== undefined) { ag.vx = 0; ag.vy = 0; }
+        if (ag.sx !== undefined) { ag.sx = 0; ag.sy = 0; }
+        if (ag.m_x !== undefined) { ag.m_x = 0; ag.m_y = 0; ag.v_x = 0; ag.v_y = 0; ag.t = 0; }
+      });
+      stepCount = 0;
+      stepCountDisplay.textContent = stepCount;
+      drawCanvas();
+    }
+
+    // 繪製背景等高線與網格
+    function drawCanvas() {
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 繪製微弱地形等高線
+      ctx.lineWidth = 1;
+      const stepGrid = 28;
+      for (let px = 0; px < canvas.width; px += stepGrid) {
+        for (let py = 0; py < canvas.height; py += stepGrid) {
+          const mathX = (px - canvas.width / 2) / 80;
+          const mathY = -(py - canvas.height / 2) / 80;
+          const { z } = getLandscape(mathX, mathY);
+
+          // 根據地形強度染上冷色階
+          const intensity = Math.min(255, Math.max(10, Math.floor((z + 2) * 22)));
+          ctx.strokeStyle = `rgba(30, 41, 59, 0.45)`;
+          ctx.strokeRect(px, py, stepGrid, stepGrid);
+        }
+      }
+
+      // 標註全域最優點
+      let targetX = 0, targetY = 1.6;
+      if (landscapeType === 'ravine') { targetX = 0; targetY = 2; }
+      if (landscapeType === 'minima') { targetX = 1.4; targetY = 0; }
+      const targetPos = toCanvasCoords(targetX, targetY);
+
+      ctx.fillStyle = '#10b981';
+      ctx.shadowColor = '#10b981';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(targetPos.px, targetPos.py, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#34d399';
+      ctx.font = '10px Inter';
+      ctx.fillText('最優目標 ★', targetPos.px + 10, targetPos.py + 4);
+
+      // 繪製每位 Agent 的運動軌跡
+      Object.keys(agents).forEach(k => {
+        const ag = agents[k];
+        if (ag.history.length > 1) {
+          ctx.beginPath();
+          ctx.strokeStyle = ag.color;
+          ctx.lineWidth = 2.2;
+          ctx.lineJoin = 'round';
+          const pStart = toCanvasCoords(ag.history[0].x, ag.history[0].y);
+          ctx.moveTo(pStart.px, pStart.py);
+          for (let i = 1; i < ag.history.length; i++) {
+            const p = toCanvasCoords(ag.history[i].x, ag.history[i].y);
+            ctx.lineTo(p.px, p.py);
+          }
+          ctx.stroke();
+        }
+
+        // 當前頭部圓點
+        const curPos = toCanvasCoords(ag.x, ag.y);
+        ctx.fillStyle = ag.color;
+        ctx.shadowColor = ag.color;
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(curPos.px, curPos.py, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      });
+    }
+
+    function runSimulationStep() {
+      if (stepCount >= 220) {
+        toggleRace(false);
+        return;
+      }
+      Object.keys(agents).forEach(k => agents[k].step());
+      stepCount++;
+      stepCountDisplay.textContent = stepCount;
+      drawCanvas();
+    }
+
+    function raceLoop() {
+      if (!isRunning) return;
+      runSimulationStep();
+      animationFrameId = requestAnimationFrame(raceLoop);
+    }
+
+    function toggleRace(forceState) {
+      isRunning = forceState !== undefined ? forceState : !isRunning;
+      if (isRunning) {
+        btnToggle.innerHTML = `<i data-lucide="pause" class="w-4 h-4"></i> 暫停賽跑`;
+        btnToggle.classList.replace('bg-indigo-600', 'bg-rose-600');
+        btnToggle.classList.replace('hover:bg-indigo-500', 'hover:bg-rose-500');
+        lucide.createIcons();
+        raceLoop();
+      } else {
+        btnToggle.innerHTML = `<i data-lucide="play" class="w-4 h-4"></i> 開始賽跑`;
+        btnToggle.classList.replace('bg-rose-600', 'bg-indigo-600');
+        btnToggle.classList.replace('hover:bg-rose-500', 'hover:bg-indigo-500');
+        lucide.createIcons();
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      }
+    }
+
+    btnToggle.addEventListener('click', () => toggleRace());
+    btnStep.addEventListener('click', () => {
+      toggleRace(false);
+      runSimulationStep();
+    });
+    btnReset.addEventListener('click', () => {
+      toggleRace(false);
+      resetRace();
+    });
+    selectLandscape.addEventListener('change', (e) => {
+      landscapeType = e.target.value;
+      toggleRace(false);
+      resetRace();
+    });
+
+    // 畫布初始化
+    window.addEventListener('load', () => {
+      resetRace();
+    });
+
+    // ==========================================
+    // 新增：時間軸逐字稿系統核心互動邏輯
+    // ==========================================
+    const TOTAL_VIDEO_SECONDS = 843; // 14分03秒 = 843秒
+    let currentVideoSec = 0;
+    let isTranscriptPlaying = false;
+    let transcriptPlayTimer = null;
+    let playSpeed = 1;
+
+    // DOM 節點
+    const btnTimelinePlay = document.getElementById('btn-timeline-play');
+    const btnPrevChapter = document.getElementById('btn-prev-chapter');
+    const btnNextChapter = document.getElementById('btn-next-chapter');
+    const currentTimeDisplay = document.getElementById('current-time-display');
+    const selectChapterJump = document.getElementById('select-chapter-jump');
+    const timelineSvg = document.getElementById('timeline-svg');
+    const timelineProgressBar = document.getElementById('timeline-progress-bar');
+    const timelineNeedle = document.getElementById('timeline-needle');
+    const activeChapterTitle = document.getElementById('active-chapter-title');
+    const searchFilterCount = document.getElementById('search-filter-count');
+    const transcriptSearch = document.getElementById('transcript-search');
+    const btnClearSearch = document.getElementById('btn-clear-search');
+    const transcriptCards = Array.from(document.querySelectorAll('.transcript-card'));
+
+    const chapterMilestones = [
+      { sec: 0, title: "開場思考與問題導入" },
+      { sec: 31, title: "重點一：最佳化的四要素與凸性" },
+      { sec: 193, title: "重點二：損失函數精解 (MSE/MAE/交叉熵)" },
+      { sec: 373, title: "重點三：梯度下降三兄弟" },
+      { sec: 459, title: "重點四：四大進階優化器剖析" },
+      { sec: 621, title: "重點五：收斂判斷與訓練穩定" },
+      { sec: 729, title: "重點六：時間複雜度 O(1)~O(n²)" },
+      { sec: 791, title: "總結與考前速記卡" }
+    ];
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    // 更新時間軸介面
+    function updateTimelineUI(seekSec, shouldScroll = false) {
+      currentVideoSec = Math.max(0, Math.min(TOTAL_VIDEO_SECONDS, seekSec));
+      currentTimeDisplay.textContent = formatTime(currentVideoSec);
+
+      // SVG 軌道寬度為 843 單位，每秒剛好 1 單位
+      const clampedX = Math.min(843, currentVideoSec);
+      timelineProgressBar.setAttribute('width', clampedX);
+      timelineNeedle.setAttribute('transform', `translate(${clampedX}, 0)`);
+
+      // 判定當前章節
+      let activeIdx = 0;
+      for (let i = chapterMilestones.length - 1; i >= 0; i--) {
+        if (currentVideoSec >= chapterMilestones[i].sec) {
+          activeIdx = i;
+          break;
+        }
+      }
+
+      activeChapterTitle.textContent = chapterMilestones[activeIdx].title;
+      selectChapterJump.value = String(chapterMilestones[activeIdx].sec);
+
+      // 高亮當前卡片
+      transcriptCards.forEach((card, idx) => {
+        const start = parseInt(card.getAttribute('data-start'));
+        const end = parseInt(card.getAttribute('data-end'));
+        if (currentVideoSec >= start && currentVideoSec <= end) {
+          card.classList.add('border-indigo-500', 'ring-2', 'ring-indigo-500/40', 'bg-slate-900/95');
+          card.classList.remove('border-slate-800', 'bg-slate-900');
+          if (shouldScroll) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        } else {
+          card.classList.remove('border-indigo-500', 'ring-2', 'ring-indigo-500/40', 'bg-slate-900/95');
+          card.classList.add('border-slate-800', 'bg-slate-900');
+        }
+      });
+    }
+
+    // 播放/暫停模擬
+    function toggleTranscriptPlay(force) {
+      isTranscriptPlaying = force !== undefined ? force : !isTranscriptPlaying;
+      if (isTranscriptPlaying) {
+        btnTimelinePlay.innerHTML = `<i data-lucide="pause" class="w-4 h-4"></i> <span>暫停模擬</span>`;
+        btnTimelinePlay.classList.replace('bg-indigo-600', 'bg-rose-600');
+        btnTimelinePlay.classList.replace('hover:bg-indigo-500', 'hover:bg-rose-500');
+        lucide.createIcons();
+
+        if (transcriptPlayTimer) clearInterval(transcriptPlayTimer);
+        transcriptPlayTimer = setInterval(() => {
+          if (currentVideoSec >= TOTAL_VIDEO_SECONDS) {
+            toggleTranscriptPlay(false);
+            return;
+          }
+          updateTimelineUI(currentVideoSec + 1, false);
+        }, 1000 / playSpeed);
+      } else {
+        btnTimelinePlay.innerHTML = `<i data-lucide="play" class="w-4 h-4"></i> <span>播放模擬</span>`;
+        btnTimelinePlay.classList.replace('bg-rose-600', 'bg-indigo-600');
+        btnTimelinePlay.classList.replace('hover:bg-rose-500', 'hover:bg-indigo-500');
+        lucide.createIcons();
+        if (transcriptPlayTimer) clearInterval(transcriptPlayTimer);
+      }
+    }
+
+    btnTimelinePlay.addEventListener('click', () => toggleTranscriptPlay());
+
+    // 倍速按鈕
+    document.querySelectorAll('.speed-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.speed-btn').forEach(b => {
+          b.className = "speed-btn px-2.5 py-1 rounded text-[11px] font-semibold text-slate-400 hover:text-white";
+        });
+        this.className = "speed-btn px-2.5 py-1 rounded text-[11px] font-semibold text-indigo-400 bg-slate-800";
+        playSpeed = parseFloat(this.getAttribute('data-speed'));
+        if (isTranscriptPlaying) {
+          toggleTranscriptPlay(false);
+          toggleTranscriptPlay(true);
+        }
+      });
+    });
+
+    // 跳轉上一章/下一章
+    btnPrevChapter.addEventListener('click', () => {
+      for (let i = chapterMilestones.length - 1; i >= 0; i--) {
+        if (chapterMilestones[i].sec < currentVideoSec - 2) {
+          updateTimelineUI(chapterMilestones[i].sec, true);
+          return;
+        }
+      }
+      updateTimelineUI(0, true);
+    });
+
+    btnNextChapter.addEventListener('click', () => {
+      for (let i = 0; i < chapterMilestones.length; i++) {
+        if (chapterMilestones[i].sec > currentVideoSec + 2) {
+          updateTimelineUI(chapterMilestones[i].sec, true);
+          return;
+        }
+      }
+    });
+
+    // 下拉選單跳轉
+    selectChapterJump.addEventListener('change', (e) => {
+      const sec = parseInt(e.target.value);
+      updateTimelineUI(sec, true);
+    });
+
+    // 點擊 SVG 軌道任意處跳轉
+    timelineSvg.addEventListener('click', function(e) {
+      const rect = timelineSvg.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const ratio = clickX / rect.width;
+      const targetSec = Math.round(ratio * TOTAL_VIDEO_SECONDS);
+      updateTimelineUI(targetSec, true);
+    });
+
+    // 點擊卡片時間戳跳轉
+    document.querySelectorAll('.ts-jump-btn').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const card = this.closest('.transcript-card');
+        const startSec = parseInt(card.getAttribute('data-start'));
+        updateTimelineUI(startSec, true);
+      });
+    });
+
+    // 思考卡片摺疊展示
+    document.querySelectorAll('.btn-toggle-thought').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const thoughtContent = this.closest('.transcript-card').querySelector('.thought-content');
+        if (thoughtContent) {
+          thoughtContent.classList.toggle('hidden');
+          this.textContent = thoughtContent.classList.contains('hidden') ? '查看解答思維' : '收合思維';
+        }
+      });
+    });
+
+    // 搜尋與過濾功能
+    transcriptSearch.addEventListener('input', function() {
+      const query = this.value.trim().toLowerCase();
+      if (query.length > 0) {
+        btnClearSearch.classList.remove('hidden');
+      } else {
+        btnClearSearch.classList.add('hidden');
+      }
+
+      let matchedCount = 0;
+      transcriptCards.forEach(card => {
+        const text = card.innerText.toLowerCase();
+        const tags = (card.getAttribute('data-tags') || '').toLowerCase();
+        if (text.includes(query) || tags.includes(query)) {
+          card.classList.remove('hidden');
+          matchedCount++;
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+      searchFilterCount.textContent = `顯示 ${matchedCount} / ${transcriptCards.length} 個章節`;
+    });
+
+    btnClearSearch.addEventListener('click', function() {
+      transcriptSearch.value = '';
+      btnClearSearch.classList.add('hidden');
+      transcriptCards.forEach(card => card.classList.remove('hidden'));
+      searchFilterCount.textContent = `顯示全部 ${transcriptCards.length} 個章節`;
+    });
+
+    // 初始狀態啟動
+    updateTimelineUI(0, false);
+  </script>
+</body>
+</html>

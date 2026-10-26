@@ -1,0 +1,1692 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>06 - iPAS AI 應用規劃師 Python 特訓｜IQR 異常值偵測與 describe 報表解讀</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              900: '#1e3a8a',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            mono: ['Fira Code', 'Courier New', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* 滑桿美化 */
+    input[type=range]::-webkit-slider-thumb {
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #2563eb;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(37, 99, 235, 0.6);
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #2563eb;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(37, 99, 235, 0.6);
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(51, 65, 85, 0.7);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen selection:bg-blue-600 selection:text-white">
+
+  <!-- 頂部固定導覽列 -->
+  <header class="sticky top-0 z-50 glass-panel border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      
+      <!-- 標題與 LOGO -->
+      <div class="flex items-center space-x-3 overflow-hidden">
+        <span class="px-2.5 py-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-black text-xs shrink-0 tracking-wider shadow">
+          iPAS AI #06
+        </span>
+        <h1 class="font-bold text-sm sm:text-base text-slate-100 truncate tracking-tight" title="06 - iPAS AI 應用規劃師 Python 特訓｜IQR 異常值偵測與 describe 報表解讀">
+          06 - iPAS AI 應用規劃師 Python 特訓｜IQR 異常值偵測與 describe 報表解讀
+        </h1>
+      </div>
+
+      <!-- 右側快速跳轉選單 & 下載按鈕 -->
+      <div class="flex items-center space-x-2 sm:space-x-4 text-xs shrink-0">
+        <nav class="hidden xl:flex items-center space-x-3 text-slate-400">
+          <a href="#section-01" class="hover:text-blue-400 transition">01 由來</a>
+          <a href="#section-02" class="hover:text-blue-400 transition">02 例子</a>
+          <a href="#section-03" class="hover:text-blue-400 transition">03 工業</a>
+          <a href="#section-04" class="hover:text-blue-400 transition">04 指標</a>
+          <a href="#section-05" class="hover:text-blue-400 transition">05 箱形圖</a>
+          <a href="#section-06" class="hover:text-blue-400 transition">06 實作工具</a>
+          <a href="#section-07" class="hover:text-blue-400 transition">07 程式碼</a>
+          <a href="#section-08" class="hover:text-blue-400 transition">08 測驗</a>
+          <a href="#section-09" class="hover:text-blue-400 transition">09 逐字稿</a>
+        </nav>
+
+        <!-- 匯出/下載本頁面按鈕 -->
+        <button id="btnExportPage" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition shadow-md shadow-emerald-700/20 active:scale-95">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+          <span class="hidden sm:inline">下載本教學網頁</span>
+          <span class="sm:hidden">下載</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+    <!-- 00. 一句話簡介與 Hero 視覺區 -->
+    <section id="section-00" class="text-center py-6 sm:py-10 space-y-5">
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        經濟部 iPAS「AI 應用規劃師」專業證照核心必考系列
+      </div>
+
+      <h1 class="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
+        06 - iPAS AI 應用規劃師 Python 特訓<br>
+        <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-teal-300 to-emerald-400">IQR 異常值偵測與 describe 報表解讀</span>
+      </h1>
+
+      <p class="max-w-3xl mx-auto text-slate-300 text-sm sm:text-base leading-relaxed">
+        <strong class="text-blue-400 font-bold">【一句話核心摘要】</strong>：
+        <span class="text-slate-200">Pandas 的 <code>describe()</code> 是數據進廠訓練前的全身健檢報告，而 <code>1.5 倍 IQR (四分位距)</code> 是快速揪出雜訊突波、界定極端異常值（Outlier）最穩健的科學尺規！</span>
+      </p>
+
+      <!-- 四色分類框圖例說明 -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-4xl mx-auto pt-2 text-xs font-medium">
+        <div class="p-2.5 rounded-lg border border-blue-500/40 bg-blue-500/10 text-blue-300 flex items-center justify-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-blue-400 shadow"></span> 藍色框：核心概念與定義
+        </div>
+        <div class="p-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-300 flex items-center justify-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow"></span> 琥珀黃：易錯考點與陷阱
+        </div>
+        <div class="p-2.5 rounded-lg border border-rose-500/40 bg-rose-500/10 text-rose-300 flex items-center justify-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-rose-400 shadow"></span> 珊瑚紅：警報閥值與淘汰
+        </div>
+        <div class="p-2.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 flex items-center justify-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow"></span> 翠綠框：秒殺通關速記口訣
+        </div>
+      </div>
+    </section>
+
+    <!-- 01 & 02: 背景由來與生活化故事 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- 01. 由來與統計背景 -->
+      <section id="section-01" class="glass-panel rounded-2xl p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">章節 01</span>
+            <h2 class="text-lg sm:text-xl font-bold text-white">由來與統計學大師 John Tukey</h2>
+          </div>
+          <p class="text-slate-300 text-xs sm:text-sm leading-relaxed mb-4">
+            在傳統高斯統計中，常以平均數 $\mu$ 與標準差 $\sigma$ 的 $3\sigma$ 原則篩選極端值。然而統計巨擘<strong>約翰·圖基（John Tukey）</strong>在 1977 年創立探索性資料分析（EDA）時指出：<span class="text-amber-300">「離群值本身就會嚴重扭曲平均數與標準差！」</span>因此他發明了無需假設常態分佈的<strong>箱形圖（Box Plot）</strong>與<strong>四分位距（IQR）</strong>。
+          </p>
+
+          <div class="p-4 rounded-xl border border-blue-500/40 bg-blue-950/30 text-blue-200 text-xs sm:text-sm mb-3 space-y-1.5">
+            <div class="font-bold text-blue-300 flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              為什麼圖基選定 1.5 倍？
+            </div>
+            <p class="leading-relaxed">
+              在標準常態分佈下，$1 \text{ IQR} \approx 1.349 \sigma$。因此 $1.5 \times \text{IQR} \approx 2.698 \sigma$。
+              箱形圖的上下界線正好涵蓋了約 <strong>99.3%</strong> 的常態分佈資料，既能精準捕捉異常雜訊，又不會過度過濾正常邊際數據。
+            </p>
+          </div>
+        </div>
+        <div class="p-3 rounded-lg border border-emerald-500/40 bg-emerald-950/20 text-emerald-300 text-xs">
+          <strong>💡 穩健統計量（Robust Statistic）：</strong>中位數與 IQR 不受極值拉扯，是資料前處理最可靠的基石。
+        </div>
+      </section>
+
+      <!-- 02. 生活化例子：比爾蓋茲酒吧效應與平均數陷阱 -->
+      <section id="section-02" class="glass-panel rounded-2xl p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">章節 02</span>
+            <h2 class="text-lg sm:text-xl font-bold text-white">生活化例子：比爾蓋茲酒吧效應與平均數陷阱</h2>
+          </div>
+          <p class="text-slate-300 text-xs sm:text-sm leading-relaxed mb-3">
+            小酒館中有 9 位顧客，每人月收入約為 5 萬元：<br>
+            此時：<strong>平均月薪 = 5 萬，中位數 = 5 萬</strong>。<br>
+            突然，微軟創辦人比爾·蓋茲推門走進酒吧（月薪數億元）：
+          </p>
+          <div class="grid grid-cols-2 gap-3 my-3">
+            <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-700/80">
+              <span class="text-xs text-slate-400 block mb-1">平均數 (Mean)</span>
+              <p class="text-base sm:text-lg font-bold text-rose-400">飆升破數千萬元！</p>
+              <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">極端脆弱，完全被單一富豪拉偏，無法反映一般顧客經濟狀況。</p>
+            </div>
+            <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-700/80">
+              <span class="text-xs text-slate-400 block mb-1">中位數 (Median / 50%)</span>
+              <p class="text-base sm:text-lg font-bold text-emerald-400">依然穩坐 5 萬元！</p>
+              <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">不受千倍極端值影響，真實反映中堅受薪階層集中趨勢。</p>
+            </div>
+          </div>
+        </div>
+        <div class="p-3.5 rounded-lg border border-amber-500/40 bg-amber-950/30 text-amber-200 text-xs">
+          <strong>⚠️ 易錯考點：</strong>只要樣本存在單一極端大值，<strong>平均數必定大於中位數（Mean > Median）</strong>。在房價、薪資等分析中，首選指標為「中位數」！
+        </div>
+      </section>
+
+    </div>
+
+    <!-- 03. 工業/實務應用場景 -->
+    <section id="section-03" class="glass-panel rounded-2xl p-6 space-y-4">
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">章節 03</span>
+        <h2 class="text-lg sm:text-xl font-bold text-white">工業實務應用：CNC 工具機震動與感測器異常檢測</h2>
+      </div>
+      <p class="text-xs sm:text-sm text-slate-400">
+        在智慧製造與工業物聯網（IIoT）情境中，高頻感測器常因雜訊干擾回傳突波，IQR 扮演著第一線特徵過濾守門員：
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 hover:border-blue-500/50 transition">
+          <div class="text-blue-400 mb-2">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+          </div>
+          <h3 class="font-bold text-sm text-slate-200 mb-1">熱電偶溫度感測器突波</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            產線熱處理感測器偶發短路回傳 9999°C。若直接輸入神經網路會導致損失函數梯度爆炸，需經由 IQR 上限自適應濾除。
+          </p>
+        </div>
+
+        <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 hover:border-emerald-500/50 transition">
+          <div class="text-emerald-400 mb-2">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+          </div>
+          <h3 class="font-bold text-sm text-slate-200 mb-1">CNC 主軸切削震動特徵</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            工件上下料碰撞產生短暫衝擊脈衝，透過箱形圖下鬚與上鬚門檻界定，能保留穩態切削振動基線，精準預測刀具磨耗。
+          </p>
+        </div>
+
+        <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 hover:border-rose-500/50 transition">
+          <div class="text-rose-400 mb-2">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+          </div>
+          <h3 class="font-bold text-sm text-slate-200 mb-1">AOI 晶圓光學瑕疵面積辨識</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            無塵室晶圓鏡片反光產生超大異常光斑。利用 IQR 能自動標記反光噪聲，防止機器視覺分類模型將反光誤判為破片。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04. 理論簡介：Pandas describe 8大指標拆解與偏態比較 -->
+    <section id="section-04" class="glass-panel rounded-2xl p-6 space-y-6">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="text-xs font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">章節 04</span>
+        <h2 class="text-lg sm:text-xl font-bold text-white">理論簡介：Pandas describe() 8 大指標拆解與偏態比較 (Mean vs Median)</h2>
+      </div>
+
+      <div class="overflow-x-auto rounded-xl border border-slate-700">
+        <table class="w-full text-left text-xs sm:text-sm text-slate-300">
+          <thead class="bg-slate-900/95 text-slate-400 uppercase font-mono border-b border-slate-700">
+            <tr>
+              <th class="py-3 px-4">指標 (Metric)</th>
+              <th class="py-3 px-4">門市銷額 (sales)</th>
+              <th class="py-3 px-4">會員年齡 (age)</th>
+              <th class="py-3 px-4">iPAS 認證考題核心解讀重點</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800 font-mono">
+            <tr class="hover:bg-slate-800/40">
+              <td class="py-3 px-4 font-bold text-slate-100">count</td>
+              <td class="py-3 px-4">1,000.0</td>
+              <td class="py-3 px-4">980.0</td>
+              <td class="py-3 px-4 font-sans text-slate-400">有效非空值數量。若小於總筆數代表有缺失值（如 age 缺 20 筆資料）。</td>
+            </tr>
+            <tr class="hover:bg-slate-800/40">
+              <td class="py-3 px-4 font-bold text-cyan-300">mean</td>
+              <td class="py-3 px-4 text-cyan-300 font-bold">505.2</td>
+              <td class="py-3 px-4 text-cyan-300">32.4</td>
+              <td class="py-3 px-4 font-sans text-slate-400">算術平均數。對極端值極端敏感，與 50% 相互比較可用來判定資料偏態。</td>
+            </tr>
+            <tr class="hover:bg-slate-800/40">
+              <td class="py-3 px-4 font-bold text-slate-100">std</td>
+              <td class="py-3 px-4">145.8</td>
+              <td class="py-3 px-4">8.5</td>
+              <td class="py-3 px-4 font-sans text-slate-400">標準差（Standard Deviation），反映數值偏離平均數的離散程度與波動性。</td>
+            </tr>
+            <tr class="hover:bg-slate-800/40">
+              <td class="py-3 px-4 font-bold text-slate-100">min</td>
+              <td class="py-3 px-4">120.0</td>
+              <td class="py-3 px-4">18.0</td>
+              <td class="py-3 px-4 font-sans text-slate-400">樣本最小值。可用於檢查負數、零值等物理不合常理數值。</td>
+            </tr>
+            <tr class="hover:bg-slate-800/40 bg-blue-900/10">
+              <td class="py-3 px-4 font-bold text-blue-300">25% (Q1)</td>
+              <td class="py-3 px-4 text-blue-300 font-bold">380.0</td>
+              <td class="py-3 px-4 text-blue-300 font-bold">26.0</td>
+              <td class="py-3 px-4 font-sans text-blue-200"><strong>第一四分位數 (Q1)</strong>：排序後位於前 25% 處的切點數值。</td>
+            </tr>
+            <tr class="hover:bg-slate-800/40 bg-indigo-900/25">
+              <td class="py-3 px-4 font-bold text-amber-300">50% (Median)</td>
+              <td class="py-3 px-4 text-amber-300 font-extrabold">480.0 🎯</td>
+              <td class="py-3 px-4 text-amber-300 font-extrabold">33.0 🎯</td>
+              <td class="py-3 px-4 font-sans text-amber-200"><strong>中位數 (Median)</strong>：報表中永遠是「50%」，切勿找名為 median 的欄位！</td>
+            </tr>
+            <tr class="hover:bg-slate-800/40 bg-blue-900/10">
+              <td class="py-3 px-4 font-bold text-blue-300">75% (Q3)</td>
+              <td class="py-3 px-4 text-blue-300 font-bold">650.0</td>
+              <td class="py-3 px-4 text-blue-300 font-bold">38.0</td>
+              <td class="py-3 px-4 font-sans text-blue-200"><strong>第三四分位數 (Q3)</strong>：代表 75% 的數值皆小於或等於此數。</td>
+            </tr>
+            <tr class="hover:bg-slate-800/40 bg-rose-950/25">
+              <td class="py-3 px-4 font-bold text-rose-300">max</td>
+              <td class="py-3 px-4 text-rose-300 font-extrabold">999.0 ⚠️</td>
+              <td class="py-3 px-4 text-rose-300 font-bold">58.0</td>
+              <td class="py-3 px-4 font-sans text-rose-200"><strong>異常警訊：</strong>75% 才 650，max 卻暴衝至 999，高機率是人為鍵入錯誤或溢位碼。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 偏態對照雙卡片 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="p-4 rounded-xl border border-amber-500/40 bg-amber-950/20 space-y-1.5">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-xs font-bold">右偏 / 正偏態 (Right-Skewed)</span>
+          </div>
+          <p class="text-white text-base font-bold">$\text{Mean} > \text{Median}$（平均數 > 中位數）</p>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            如 sales 欄位：$\text{Mean}(505.2) > \text{Median}(480)$。<br>
+            資料向右拖著長長尾巴，代表右邊有少數極端大值把平均數往右拉偏。
+          </p>
+        </div>
+
+        <div class="p-4 rounded-xl border border-blue-500/40 bg-blue-950/20 space-y-1.5">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 text-xs font-bold">左偏 / 負偏態 (Left-Skewed)</span>
+          </div>
+          <p class="text-white text-base font-bold">$\text{Mean} < \text{Median}$（平均數 < 中位數）</p>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            如 age 欄位：$\text{Mean}(32.4) < \text{Median}(33.0)$。<br>
+            資料向左拖著長尾，代表左側存在極端小數值把算術平均往左牽引。
+          </p>
+        </div>
+      </div>
+
+      <!-- 翠綠速記框 -->
+      <div class="p-4 rounded-xl border border-emerald-500/40 bg-emerald-950/30 text-emerald-300 text-xs sm:text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div>
+          <strong class="font-bold text-white block mb-0.5">🌟 iPAS 考前解題口訣：</strong>
+          <span>「<strong>直方圖看山峰</strong>（分佈幾何形態），<strong>箱形圖看邊界</strong>（四分位數與異常離群值）」</span>
+        </div>
+        <span class="px-3 py-1 rounded bg-emerald-500/20 text-xs font-mono font-bold text-emerald-200 whitespace-nowrap">必背核心心法</span>
+      </div>
+    </section>
+
+    <!-- 05. 數學推導與動態互動式 SVG 箱形圖 (Box Plot) -->
+    <section id="section-05" class="glass-panel rounded-2xl p-6 space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">章節 05</span>
+            <h2 class="text-lg sm:text-xl font-bold text-white">數學推導與動態互動式 SVG 箱形圖 (Box Plot)</h2>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">
+            拖曳滑桿即時計算 $IQR$、上限與下限，觀察箱體、鬍鬚與離群紅點的幾何連動演算。
+          </p>
+        </div>
+        <button id="btnResetBox" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition border border-slate-700 self-start md:self-auto">
+          重設標準值 (Q1=200, Q3=600)
+        </button>
+      </div>
+
+      <!-- 滑桿控制列 -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800">
+          <div class="flex justify-between text-xs mb-1.5">
+            <span class="text-blue-300 font-semibold">Q1 (25%分位)</span>
+            <span id="labelQ1" class="font-mono text-white font-bold">200</span>
+          </div>
+          <input type="range" id="sliderQ1" min="50" max="450" step="10" value="200" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+        </div>
+
+        <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800">
+          <div class="flex justify-between text-xs mb-1.5">
+            <span class="text-amber-300 font-semibold">Median (50%)</span>
+            <span id="labelMed" class="font-mono text-white font-bold">400</span>
+          </div>
+          <input type="range" id="sliderMed" min="100" max="700" step="10" value="400" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+        </div>
+
+        <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800">
+          <div class="flex justify-between text-xs mb-1.5">
+            <span class="text-blue-300 font-semibold">Q3 (75%分位)</span>
+            <span id="labelQ3" class="font-mono text-white font-bold">600</span>
+          </div>
+          <input type="range" id="sliderQ3" min="500" max="950" step="10" value="600" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+        </div>
+
+        <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800">
+          <div class="flex justify-between text-xs mb-1.5">
+            <span class="text-rose-300 font-semibold">離群倍數 k</span>
+            <span id="labelK" class="font-mono text-white font-bold">1.5 ×</span>
+          </div>
+          <input type="range" id="sliderK" min="1.0" max="3.0" step="0.1" value="1.5" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+        </div>
+      </div>
+
+      <!-- 即時數學推導指標 -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="p-3 bg-blue-900/20 border border-blue-500/30 rounded-xl">
+          <span class="text-[11px] text-blue-300 block">四分位距 (IQR = Q3 - Q1)</span>
+          <span id="calcIQR" class="text-xl font-bold font-mono text-blue-400">400</span>
+        </div>
+        <div class="p-3 bg-rose-900/20 border border-rose-500/30 rounded-xl">
+          <span class="text-[11px] text-rose-300 block">正常上限值 (Q3 + k × IQR)</span>
+          <span id="calcUpper" class="text-xl font-bold font-mono text-rose-400">1200</span>
+        </div>
+        <div class="p-3 bg-rose-900/20 border border-rose-500/30 rounded-xl">
+          <span class="text-[11px] text-rose-300 block">正常下限值 (Q1 - k × IQR)</span>
+          <span id="calcLower" class="text-xl font-bold font-mono text-rose-400">0</span>
+        </div>
+        <div class="p-3 bg-emerald-900/20 border border-emerald-500/30 rounded-xl">
+          <span class="text-[11px] text-emerald-300 block">超出邊界離群點數量</span>
+          <span id="calcOutlierCount" class="text-xl font-bold font-mono text-emerald-400">2 筆</span>
+        </div>
+      </div>
+
+      <!-- SVG 畫布區域 -->
+      <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 relative overflow-hidden shadow-inner">
+        <div id="svgTooltip" class="absolute hidden bg-slate-800 text-xs px-2.5 py-1.5 rounded-lg border border-slate-700 shadow-2xl pointer-events-none z-10 font-mono text-slate-200">
+          數值提示
+        </div>
+        <svg id="boxPlotSvg" viewBox="0 0 1000 280" class="w-full h-auto select-none font-sans">
+          <g id="gridLayer"></g>
+          
+          <!-- 異常危險紅色警戒區塊 -->
+          <rect id="bgLowerZone" x="50" y="20" width="100" height="200" fill="#f43f5e" fill-opacity="0.08"/>
+          <rect id="bgUpperZone" x="750" y="20" width="200" height="200" fill="#f43f5e" fill-opacity="0.08"/>
+          
+          <!-- 左鬍鬚 & 右鬍鬚 -->
+          <line id="whiskerLineLeft" stroke="#64748b" stroke-width="2" stroke-dasharray="4 4"/>
+          <line id="whiskerLineRight" stroke="#64748b" stroke-width="2" stroke-dasharray="4 4"/>
+          <!-- 下限末端擋條 & 上限末端擋條 -->
+          <line id="whiskerCapLeft" stroke="#f43f5e" stroke-width="3"/>
+          <line id="whiskerCapRight" stroke="#f43f5e" stroke-width="3"/>
+
+          <!-- 箱體本體 -->
+          <rect id="boxBody" y="60" height="120" rx="8" fill="#1e3a8a" fill-opacity="0.5" stroke="#3b82f6" stroke-width="2.5" class="transition-all hover:fill-opacity-70"/>
+          
+          <!-- 中位數 (50%) 線 -->
+          <line id="medianLine" y1="60" y2="180" stroke="#fbbf24" stroke-width="4" stroke-linecap="round"/>
+          
+          <!-- 文字標籤 -->
+          <g id="labelGroup" class="text-xs font-mono">
+            <text id="txtLower" fill="#f43f5e" y="200" text-anchor="middle" font-size="12">Lower</text>
+            <text id="txtQ1" fill="#60a5fa" y="50" text-anchor="middle" font-size="12">Q1</text>
+            <text id="txtMed" fill="#fbbf24" y="200" text-anchor="middle" font-size="13" font-weight="bold">Median (50%)</text>
+            <text id="txtQ3" fill="#60a5fa" y="50" text-anchor="middle" font-size="12">Q3</text>
+            <text id="txtUpper" fill="#f43f5e" y="200" text-anchor="middle" font-size="12">Upper</text>
+          </g>
+
+          <!-- 資料散點圖層 -->
+          <g id="pointsLayer"></g>
+        </svg>
+
+        <div class="mt-2 flex flex-wrap items-center justify-between text-[11px] text-slate-400 px-2 gap-2">
+          <div class="flex items-center gap-4 flex-wrap">
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-blue-500/50 border border-blue-400"></span> IQR 箱身 (核心 50%)</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-amber-400"></span> 中位數線 (50%)</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> 異常離群點 (超越邊界)</span>
+          </div>
+          <span class="text-slate-500 italic">點擊或游標滑至點位可檢視數值與判定狀態</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06. 機器學習/資料預處理互動實作：Describe 報表分析器 -->
+    <section id="section-06" class="glass-panel rounded-2xl p-6 space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">章節 06</span>
+          <h2 class="text-lg sm:text-xl font-bold text-white">資料前處理互動實作：Describe 報表分析器</h2>
+        </div>
+        <button id="btnGenRandomData" class="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 self-start sm:self-auto">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+          隨機生成新數列
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-400">輸入任意以逗號分隔的數列，或在後方加入極端突波（例如逗號 9999），立即演算 Pandas 統計量、偏態形態與 IQR 警報：</p>
+      
+      <div class="flex flex-col sm:flex-row gap-2">
+        <input type="text" id="inputDataSeries" value="120, 200, 380, 420, 480, 510, 610, 650, 1300" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-blue-500 shadow-inner">
+        <button id="btnAnalyze" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-xs font-bold rounded-xl text-white whitespace-nowrap transition shadow-md shadow-blue-600/30">
+          即時運算分析
+        </button>
+      </div>
+
+      <!-- 分析結果卡片 -->
+      <div id="analysisResultBlock" class="space-y-3 pt-2">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center font-mono">
+          <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+            <span class="text-[11px] text-slate-400 block mb-1">Mean (平均數)</span>
+            <span id="resMean" class="text-sm sm:text-base text-cyan-300 font-bold">-</span>
+          </div>
+          <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+            <span class="text-[11px] text-slate-400 block mb-1">Median (50%)</span>
+            <span id="resMedian" class="text-sm sm:text-base text-amber-300 font-bold">-</span>
+          </div>
+          <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+            <span class="text-[11px] text-slate-400 block mb-1">IQR 四分位距</span>
+            <span id="resIQR" class="text-sm sm:text-base text-blue-300 font-bold">-</span>
+          </div>
+          <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+            <span class="text-[11px] text-slate-400 block mb-1">偏態自動判定</span>
+            <span id="resSkew" class="text-sm sm:text-base text-emerald-300 font-bold">-</span>
+          </div>
+        </div>
+
+        <div id="resOutlierAlert" class="p-3.5 rounded-xl border text-xs leading-relaxed">
+          <!-- JS 動態插入 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 07. Python / Pandas 實作程式碼區 -->
+    <section id="section-07" class="glass-panel rounded-2xl p-6 space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">章節 07</span>
+          <h2 class="text-lg sm:text-xl font-bold text-white">Python / Pandas 實作程式碼</h2>
+        </div>
+        <button id="btnCopyCode" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:bg-blue-600 text-slate-200 text-xs rounded-lg transition border border-slate-700">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+          <span id="copyBtnText">一鍵複製程式碼</span>
+        </button>
+      </div>
+
+      <div class="relative bg-slate-950 rounded-xl p-4 font-mono text-xs sm:text-sm text-slate-200 overflow-x-auto border border-slate-800 leading-relaxed shadow-inner">
+<pre><code id="pythonCodeSnippet"><span class="text-slate-500"># 載入 Pandas 與 NumPy 函式庫</span>
+<span class="text-purple-400">import</span> pandas <span class="text-purple-400">as</span> pd
+<span class="text-purple-400">import</span> numpy <span class="text-purple-400">as</span> np
+
+<span class="text-slate-500"># 1. 建立門市銷售額範例資料</span>
+data = {<span class="text-emerald-300">'sales'</span>: [<span class="text-amber-300">120</span>, <span class="text-amber-300">200</span>, <span class="text-amber-300">380</span>, <span class="text-amber-300">450</span>, <span class="text-amber-300">480</span>, <span class="text-amber-300">510</span>, <span class="text-amber-300">620</span>, <span class="text-amber-300">650</span>, <span class="text-amber-300">999</span>]}
+df = pd.DataFrame(data)
+
+<span class="text-slate-500"># 2. 產出 8 大摘要指標報表</span>
+summary = df[<span class="text-emerald-300">'sales'</span>].describe()
+print(<span class="text-emerald-300">"=== Pandas describe() 報表 ==="</span>)
+print(summary)
+
+<span class="text-slate-500"># 3. 提取 Q1, Q3 與計算 IQR</span>
+q1 = df[<span class="text-emerald-300">'sales'</span>].quantile(<span class="text-amber-300">0.25</span>)   <span class="text-slate-500"># 亦可由 summary['25%'] 取得</span>
+q3 = df[<span class="text-emerald-300">'sales'</span>].quantile(<span class="text-amber-300">0.75</span>)   <span class="text-slate-500"># 亦可由 summary['75%'] 取得</span>
+iqr = q3 - q1
+
+<span class="text-slate-500"># 4. 依據 Tukey 1.5 倍法則建立安全閥邊界</span>
+lower_bound = q1 - <span class="text-amber-300">1.5</span> * iqr
+upper_bound = q3 + <span class="text-amber-300">1.5</span> * iqr
+
+<span class="text-slate-500"># 5. 篩檢出極端離群值 (Outliers)</span>
+outliers = df[(df[<span class="text-emerald-300">'sales'</span>] &lt; lower_bound) | (df[<span class="text-emerald-300">'sales'</span>] &gt; upper_bound)]
+print(f<span class="text-emerald-300">"\nIQR: {iqr}, 正常安全閥區間: [{lower_bound}, {upper_bound}]"</span>)
+print(<span class="text-emerald-300">"抓出的離群異常值清單:\n"</span>, outliers)</code></pre>
+      </div>
+    </section>
+
+    <!-- 08. iPAS 實戰模擬試題 -->
+    <section id="section-08" class="glass-panel rounded-2xl p-6 space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">章節 08</span>
+          <h2 class="text-lg sm:text-xl font-bold text-white">iPAS 實戰模擬試題（即時互動測驗）</h2>
+        </div>
+        <span class="text-xs text-slate-400 font-mono" id="quizProgressText">第 1 題 / 共 3 題</span>
+      </div>
+
+      <div id="quizContainer" class="space-y-4">
+        <div class="p-4 bg-slate-900/90 rounded-xl border border-slate-700/80">
+          <span id="quizBadge" class="text-[11px] px-2 py-0.5 rounded font-mono bg-blue-500/20 text-blue-300 border border-blue-500/30">情境計算題</span>
+          <p id="quizQuestion" class="text-sm font-semibold text-slate-100 mt-2 leading-relaxed">
+            題庫載入中...
+          </p>
+        </div>
+
+        <div id="quizOptions" class="space-y-2.5">
+          <!-- JS 動態生成選項 -->
+        </div>
+
+        <div id="quizFeedback" class="hidden p-4 rounded-xl text-xs leading-relaxed transition-all">
+          <!-- JS 動態插入反饋 -->
+        </div>
+      </div>
+
+      <div class="pt-3 flex justify-between items-center border-t border-slate-800 mt-4">
+        <button id="btnPrevQuiz" class="px-3.5 py-1.5 rounded-lg bg-slate-800 text-xs text-slate-300 hover:bg-slate-700 disabled:opacity-40 transition" disabled>上一題</button>
+        <button id="btnNextQuiz" class="px-4 py-1.5 rounded-lg bg-blue-600 text-xs font-medium text-white hover:bg-blue-500 transition shadow">下一題</button>
+      </div>
+    </section>
+
+    <!-- 09. 底部時間軸互動逐字稿 (Interactive Timestamped Transcript & Lecture Stream) -->
+    <section id="section-09" class="glass-panel rounded-2xl p-4 sm:p-6 space-y-6">
+      
+      <!-- 區塊標題與連結 -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-teal-400 bg-teal-500/10 px-2.5 py-0.5 rounded border border-teal-500/20">章節 09</span>
+            <h2 class="text-lg sm:text-2xl font-extrabold text-white flex items-center gap-2">
+              時間軸互動逐字稿與同步講義串流
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/30">YouTube 精確同步</span>
+            </h2>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">
+            點擊任一時間戳記，畫面即時同步跳轉；右側動態 SVG 互動視窗將同步展示該主題核心幾何幾何圖示。
+          </p>
+        </div>
+        <a href="https://www.youtube.com/watch?v=WyGqEGIvzDc" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/30 text-xs font-semibold transition self-start md:self-auto shadow">
+          <svg class="w-4 h-4 text-red-400" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+          開啟 YouTube 原版影片
+        </a>
+      </div>
+
+      <!-- 虛擬播放控制器 -->
+      <div class="bg-slate-900/90 rounded-2xl p-4 border border-slate-700/80 shadow-xl space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <button id="btnPlayPause" class="w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-500 flex items-center justify-center text-white transition shadow-md shadow-blue-600/30 active:scale-95">
+              <svg id="playIcon" class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              <svg id="pauseIcon" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            </button>
+            <div class="font-mono text-sm">
+              <span id="currentTimeDisplay" class="font-bold text-blue-400">00:00</span>
+              <span class="text-slate-500"> / </span>
+              <span class="text-slate-400">07:30</span>
+            </div>
+            <span id="activeTopicBadge" class="hidden sm:inline-block text-[11px] px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 truncate max-w-xs">
+              00:00 單元引言
+            </span>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <div class="flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700 text-xs font-mono">
+              <button data-speed="1" class="speed-btn px-2 py-1 rounded-lg bg-blue-600 text-white font-bold transition">1.0x</button>
+              <button data-speed="1.25" class="speed-btn px-2 py-1 rounded-lg text-slate-400 hover:text-white transition">1.25x</button>
+              <button data-speed="1.5" class="speed-btn px-2 py-1 rounded-lg text-slate-400 hover:text-white transition">1.5x</button>
+            </div>
+            <label class="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-300">
+              <input type="checkbox" id="checkAutoScroll" checked class="w-3.5 h-3.5 rounded bg-slate-800 text-blue-600 border-slate-700 focus:ring-0">
+              跟隨滾動
+            </label>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <input type="range" id="timelineScrubber" min="0" max="450" step="1" value="0" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+        </div>
+      </div>
+
+      <!-- 關鍵字搜尋與過濾標籤列 -->
+      <div class="space-y-3">
+        <div class="relative">
+          <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <input type="text" id="transcriptSearch" placeholder="搜尋逐字稿關鍵字（例如：中位數、IQR、偏態、比爾蓋茲、箱形圖、異常值、999...）" class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500">
+        </div>
+
+        <!-- 七大標籤按鈕 -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs font-medium">
+          <button data-filter="all" class="filter-pill px-3 py-1.5 rounded-lg bg-blue-600 text-white font-semibold whitespace-nowrap transition">全部 (18段)</button>
+          <button data-filter="median" class="filter-pill px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 whitespace-nowrap transition">中位數</button>
+          <button data-filter="iqr" class="filter-pill px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 whitespace-nowrap transition">IQR</button>
+          <button data-filter="skew" class="filter-pill px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 whitespace-nowrap transition">偏態</button>
+          <button data-filter="gates" class="filter-pill px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 whitespace-nowrap transition">比爾蓋茲</button>
+          <button data-filter="boxplot" class="filter-pill px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 whitespace-nowrap transition">箱形圖</button>
+          <button data-filter="outlier" class="filter-pill px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 whitespace-nowrap transition">異常值</button>
+        </div>
+      </div>
+
+      <!-- 逐字稿主體：雙欄 (左卡片 7 欄，右動態 SVG 視窗 5 欄) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- 左欄：18 節點時間軸卡片清單 -->
+        <div id="transcriptStreamContainer" class="lg:col-span-7 space-y-4 max-h-[720px] overflow-y-auto pr-1 sm:pr-2 scroll-smooth">
+          <!-- JS 動態注入 18 個段落 -->
+        </div>
+
+        <!-- 右欄：動態視覺化同步視窗 (Sticky 固定) -->
+        <div class="lg:col-span-5 lg:sticky lg:top-20 space-y-4">
+          <div class="bg-slate-900/95 rounded-2xl p-4 border border-slate-700 shadow-2xl space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span>
+                即時幾何視覺化看板
+              </span>
+              <span id="visualizerTitle" class="text-[11px] font-mono text-cyan-400">[00:00] 單元引言</span>
+            </div>
+
+            <!-- 動態繪圖區 (SVG) -->
+            <div class="w-full bg-slate-950 rounded-xl p-3 border border-slate-800 flex items-center justify-center min-h-[220px]">
+              <svg id="transcriptVisualizerSvg" viewBox="0 0 400 200" class="w-full h-auto select-none font-sans">
+                <!-- 動態注入 -->
+              </svg>
+            </div>
+
+            <!-- 即時解析說明框 -->
+            <div id="visualizerExplanation" class="text-xs text-slate-300 bg-slate-800/60 p-3 rounded-xl border border-slate-700/60 leading-relaxed">
+              點擊左側任一時間軸段落，將同步更新此處幾何推導與核心重點。
+            </div>
+          </div>
+
+          <!-- 色框考點速記卡 -->
+          <div class="bg-slate-900/60 rounded-xl p-3.5 border border-slate-800 space-y-1.5 text-xs">
+            <div class="font-bold text-slate-200 mb-1">🎯 逐字稿考點速查：</div>
+            <div class="flex items-center gap-2 text-blue-300"><span class="w-2.5 h-2.5 rounded bg-blue-500"></span> 藍色框：50%=中位數、IQR 核心公式</div>
+            <div class="flex items-center gap-2 text-amber-300"><span class="w-2.5 h-2.5 rounded bg-amber-500"></span> 琥珀黃：比爾蓋茲效應、偏態偏右陷阱</div>
+            <div class="flex items-center gap-2 text-rose-300"><span class="w-2.5 h-2.5 rounded bg-rose-500"></span> 珊瑚紅：max 999 警訊、1.5×IQR 邊界</div>
+            <div class="flex items-center gap-2 text-emerald-300"><span class="w-2.5 h-2.5 rounded bg-emerald-500"></span> 翠綠框：直方看山峰、箱形看邊界口訣</div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- 頁尾 -->
+  <footer class="border-t border-slate-800 mt-12 py-8 bg-slate-950 text-center text-xs text-slate-500 space-y-2">
+    <p class="font-semibold text-slate-400">06 - iPAS AI 應用規劃師 Python 特訓｜IQR 異常值偵測與 describe 報表解讀</p>
+    <p>純前端單一檔案架構・無外部後端依賴・支援離線匯出與互動學習</p>
+  </footer>
+
+  <!-- 核心邏輯 JavaScript -->
+  <script>
+    // --- 08 題庫資料 ---
+    const quizData = [
+      {
+        badge: "iPAS 經典計算題",
+        question: "某感測器回傳資料之統計報表中，Q1 (25%) = 200，Q3 (75%) = 600。依據 Tukey 1.5 倍四分位距準則，若某一筆讀數為 1250，該數值是否屬於異常值？又正常上限值為何？",
+        options: [
+          { text: "正常上限 1000；1250 為異常值", correct: false },
+          { text: "正常上限 1200；1250 為異常值", correct: true },
+          { text: "正常上限 1400；1250 為正常值", correct: false },
+          { text: "正常上限 1500；1250 為正常值", correct: false }
+        ],
+        explanation: "【詳解】：<br>1. 先算 IQR = Q3 - Q1 = 600 - 200 = 400。<br>2. 計算 1.5 倍 IQR = 1.5 × 400 = 600。<br>3. 上限界限 = Q3 + 1.5×IQR = 600 + 600 = 1200。<br>因 1250 > 1200，故判定為『異常值』。"
+      },
+      {
+        badge: "報表與偏態研判題",
+        question: "檢視 Pandas 的 df.describe() 報表時，發現員工薪資資料中 mean = 68,000，而 50% = 42,000。下列對該資料分佈特性的敘述何者最正確？",
+        options: [
+          { text: "資料呈現左偏（負偏態），高薪族群特別多", correct: false },
+          { text: "資料呈現對稱常態分佈，平均數能完全代表大眾", correct: false },
+          { text: "資料呈現右偏（正偏態），受少數極端高薪拉高平均", correct: true },
+          { text: "報表無法判斷偏態，必須尋找 median 指標", correct: false }
+        ],
+        explanation: "【詳解】：<br>1. 報表中的『50%』即為中位數 (Median = 42,000)。<br>2. 當 Mean (68,000) > Median (42,000) 時，屬於典型『右偏（正偏態）』。<br>3. 平均數被極端富裕值拉高，評估常態大眾薪資應採信中位數。"
+      },
+      {
+        badge: "視覺化圖表選擇題",
+        question: "在 AI 專案數據前處理階段，若欲快速比較 5 個不同機台感測器的極端離群值數量與分位數分佈，下列何種圖表為最合適的選擇？",
+        options: [
+          { text: "折線圖 (Line Chart)", correct: false },
+          { text: "箱形圖 (Box Plot)", correct: true },
+          { text: "圓餅圖 (Pie Chart)", correct: false },
+          { text: "散佈矩陣圖 (Scatter Matrix)", correct: false }
+        ],
+        explanation: "【詳解】：<br>解題口訣：『直方圖看山峰，箱形圖看邊界』。箱形圖能並排多個類別，一目了然地呈現各自的中位數、IQR 箱體與超出上/下鬚的離群點 (Outliers)。"
+      }
+    ];
+
+    let currentQuizIndex = 0;
+
+    // --- 05 SVG 箱形圖 DOM 與連動 ---
+    const sliderQ1 = document.getElementById('sliderQ1');
+    const sliderMed = document.getElementById('sliderMed');
+    const sliderQ3 = document.getElementById('sliderQ3');
+    const sliderK = document.getElementById('sliderK');
+    const labelQ1 = document.getElementById('labelQ1');
+    const labelMed = document.getElementById('labelMed');
+    const labelQ3 = document.getElementById('labelQ3');
+    const labelK = document.getElementById('labelK');
+    const calcIQR = document.getElementById('calcIQR');
+    const calcUpper = document.getElementById('calcUpper');
+    const calcLower = document.getElementById('calcLower');
+    const calcOutlierCount = document.getElementById('calcOutlierCount');
+    const btnResetBox = document.getElementById('btnResetBox');
+    const svgTooltip = document.getElementById('svgTooltip');
+
+    const fixedSamplePoints = [80, 150, 190, 240, 310, 390, 420, 470, 520, 580, 610, 690, 1150, 1280, 1340];
+
+    function updateBoxPlot() {
+      let q1 = parseFloat(sliderQ1.value);
+      let med = parseFloat(sliderMed.value);
+      let q3 = parseFloat(sliderQ3.value);
+      let k = parseFloat(sliderK.value);
+
+      if (med < q1) { med = q1; sliderMed.value = med; }
+      if (q3 < med) { q3 = med; sliderQ3.value = q3; }
+
+      labelQ1.innerText = q1;
+      labelMed.innerText = med;
+      labelQ3.innerText = q3;
+      labelK.innerText = k.toFixed(1) + ' ×';
+
+      const iqr = q3 - q1;
+      const lowerBound = q1 - k * iqr;
+      const upperBound = q3 + k * iqr;
+
+      calcIQR.innerText = iqr.toFixed(0);
+      calcUpper.innerText = upperBound.toFixed(0);
+      calcLower.innerText = lowerBound.toFixed(0);
+
+      const domainMin = 0;
+      const domainMax = 1500;
+      const svgMinX = 70;
+      const svgMaxX = 930;
+
+      function mapX(val) {
+        const clamped = Math.max(domainMin, Math.min(domainMax, val));
+        return svgMinX + ((clamped - domainMin) / (domainMax - domainMin)) * (svgMaxX - svgMinX);
+      }
+
+      const gridLayer = document.getElementById('gridLayer');
+      gridLayer.innerHTML = '';
+      for (let v = 0; v <= 1500; v += 250) {
+        const gx = mapX(v);
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', gx);
+        line.setAttribute('y1', 20);
+        line.setAttribute('x2', gx);
+        line.setAttribute('y2', 230);
+        line.setAttribute('stroke', '#334155');
+        line.setAttribute('stroke-width', '1');
+        line.setAttribute('stroke-dasharray', '2 3');
+        gridLayer.appendChild(line);
+
+        const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        txt.setAttribute('x', gx);
+        txt.setAttribute('y', 248);
+        txt.setAttribute('fill', '#64748b');
+        txt.setAttribute('font-size', '10');
+        txt.setAttribute('text-anchor', 'middle');
+        txt.textContent = v;
+        gridLayer.appendChild(txt);
+      }
+
+      const xLower = mapX(lowerBound);
+      const xUpper = mapX(upperBound);
+
+      const bgLowerZone = document.getElementById('bgLowerZone');
+      bgLowerZone.setAttribute('x', svgMinX);
+      bgLowerZone.setAttribute('width', Math.max(0, xLower - svgMinX));
+
+      const bgUpperZone = document.getElementById('bgUpperZone');
+      bgUpperZone.setAttribute('x', xUpper);
+      bgUpperZone.setAttribute('width', Math.max(0, svgMaxX - xUpper));
+
+      const xQ1 = mapX(q1);
+      const xQ3 = mapX(q3);
+      const xMed = mapX(med);
+
+      const boxBody = document.getElementById('boxBody');
+      boxBody.setAttribute('x', xQ1);
+      boxBody.setAttribute('width', Math.max(4, xQ3 - xQ1));
+
+      const medianLine = document.getElementById('medianLine');
+      medianLine.setAttribute('x1', xMed);
+      medianLine.setAttribute('x2', xMed);
+
+      const whiskerLineLeft = document.getElementById('whiskerLineLeft');
+      whiskerLineLeft.setAttribute('x1', xLower);
+      whiskerLineLeft.setAttribute('x2', xQ1);
+      whiskerLineLeft.setAttribute('y1', 120);
+      whiskerLineLeft.setAttribute('y2', 120);
+
+      const whiskerLineRight = document.getElementById('whiskerLineRight');
+      whiskerLineRight.setAttribute('x1', xQ3);
+      whiskerLineRight.setAttribute('x2', xUpper);
+      whiskerLineRight.setAttribute('y1', 120);
+      whiskerLineRight.setAttribute('y2', 120);
+
+      const whiskerCapLeft = document.getElementById('whiskerCapLeft');
+      whiskerCapLeft.setAttribute('x1', xLower);
+      whiskerCapLeft.setAttribute('x2', xLower);
+      whiskerCapLeft.setAttribute('y1', 95);
+      whiskerCapLeft.setAttribute('y2', 145);
+
+      const whiskerCapRight = document.getElementById('whiskerCapRight');
+      whiskerCapRight.setAttribute('x1', xUpper);
+      whiskerCapRight.setAttribute('x2', xUpper);
+      whiskerCapRight.setAttribute('y1', 95);
+      whiskerCapRight.setAttribute('y2', 145);
+
+      document.getElementById('txtLower').setAttribute('x', xLower);
+      document.getElementById('txtLower').textContent = `下限: ${lowerBound.toFixed(0)}`;
+
+      document.getElementById('txtUpper').setAttribute('x', xUpper);
+      document.getElementById('txtUpper').textContent = `上限: ${upperBound.toFixed(0)}`;
+
+      document.getElementById('txtQ1').setAttribute('x', xQ1);
+      document.getElementById('txtQ1').textContent = `Q1: ${q1}`;
+
+      document.getElementById('txtQ3').setAttribute('x', xQ3);
+      document.getElementById('txtQ3').textContent = `Q3: ${q3}`;
+
+      document.getElementById('txtMed').setAttribute('x', xMed);
+      document.getElementById('txtMed').textContent = `50%(中位): ${med}`;
+
+      const pointsLayer = document.getElementById('pointsLayer');
+      pointsLayer.innerHTML = '';
+      let outlierCount = 0;
+
+      fixedSamplePoints.forEach((val) => {
+        const isOutlier = val < lowerBound || val > upperBound;
+        if (isOutlier) outlierCount++;
+
+        const cx = mapX(val);
+        const cy = 120 + (Math.sin(val) * 22);
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', cx);
+        circle.setAttribute('cy', cy);
+        circle.setAttribute('r', isOutlier ? '6' : '4');
+        circle.setAttribute('fill', isOutlier ? '#f43f5e' : '#38bdf8');
+        circle.setAttribute('fill-opacity', isOutlier ? '0.9' : '0.6');
+        circle.setAttribute('stroke', isOutlier ? '#ffe4e6' : '#0284c7');
+        circle.setAttribute('stroke-width', isOutlier ? '2' : '1');
+        circle.classList.add('cursor-pointer');
+
+        circle.addEventListener('mouseenter', (e) => {
+          svgTooltip.style.display = 'block';
+          svgTooltip.innerHTML = `<strong>數值: ${val}</strong><br>${isOutlier ? '<span class="text-rose-400">⚠️ 異常離群值 (Outlier)</span>' : '<span class="text-emerald-400">✓ 正常容許值</span>'}`;
+          const bbox = e.target.getBoundingClientRect();
+          const parentBbox = document.getElementById('boxPlotSvg').getBoundingClientRect();
+          svgTooltip.style.left = (bbox.left - parentBbox.left) + 'px';
+          svgTooltip.style.top = (bbox.top - parentBbox.top - 40) + 'px';
+        });
+
+        circle.addEventListener('mouseleave', () => {
+          svgTooltip.style.display = 'none';
+        });
+
+        pointsLayer.appendChild(circle);
+      });
+
+      calcOutlierCount.innerText = `${outlierCount} 筆`;
+    }
+
+    [sliderQ1, sliderMed, sliderQ3, sliderK].forEach(el => {
+      el.addEventListener('input', updateBoxPlot);
+    });
+
+    btnResetBox.addEventListener('click', () => {
+      sliderQ1.value = 200;
+      sliderMed.value = 400;
+      sliderQ3.value = 600;
+      sliderK.value = 1.5;
+      updateBoxPlot();
+    });
+
+    // --- 07 複製程式碼 ---
+    const btnCopyCode = document.getElementById('btnCopyCode');
+    const copyBtnText = document.getElementById('copyBtnText');
+    const pythonCodeSnippet = document.getElementById('pythonCodeSnippet');
+
+    btnCopyCode.addEventListener('click', () => {
+      const codeText = pythonCodeSnippet.innerText;
+      const tempTextArea = document.createElement('textarea');
+      tempTextArea.value = codeText;
+      document.body.appendChild(tempTextArea);
+      tempTextArea.select();
+      try {
+        document.execCommand('copy');
+        copyBtnText.innerText = '已成功複製！';
+        setTimeout(() => { copyBtnText.innerText = '一鍵複製程式碼'; }, 2000);
+      } catch (err) {
+        copyBtnText.innerText = '複製失敗';
+      }
+      document.body.removeChild(tempTextArea);
+    });
+
+    // --- 08 測驗互動 ---
+    const quizBadge = document.getElementById('quizBadge');
+    const quizQuestion = document.getElementById('quizQuestion');
+    const quizOptions = document.getElementById('quizOptions');
+    const quizFeedback = document.getElementById('quizFeedback');
+    const quizProgressText = document.getElementById('quizProgressText');
+    const btnPrevQuiz = document.getElementById('btnPrevQuiz');
+    const btnNextQuiz = document.getElementById('btnNextQuiz');
+
+    function loadQuiz(index) {
+      const q = quizData[index];
+      quizProgressText.innerText = `第 ${index + 1} 題 / 共 ${quizData.length} 題`;
+      quizBadge.innerText = q.badge;
+      quizQuestion.innerText = q.question;
+      quizFeedback.classList.add('hidden');
+      quizOptions.innerHTML = '';
+
+      q.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3.5 rounded-xl border border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-xs text-slate-200 transition flex items-center justify-between";
+        btn.innerHTML = `<span><strong>(${String.fromCharCode(65 + idx)})</strong> ${opt.text}</span>`;
+        btn.addEventListener('click', () => handleOptionClick(btn, opt.correct, q.explanation));
+        quizOptions.appendChild(btn);
+      });
+
+      btnPrevQuiz.disabled = (index === 0);
+      btnNextQuiz.innerText = (index === quizData.length - 1) ? "重新練習" : "下一題";
+    }
+
+    function handleOptionClick(selectedBtn, isCorrect, explanation) {
+      const allButtons = quizOptions.querySelectorAll('button');
+      allButtons.forEach(b => b.disabled = true);
+
+      quizFeedback.classList.remove('hidden');
+      if (isCorrect) {
+        selectedBtn.classList.remove('bg-slate-900/80', 'border-slate-700');
+        selectedBtn.classList.add('bg-emerald-950/60', 'border-emerald-500', 'text-emerald-300');
+        quizFeedback.className = "p-4 rounded-xl text-xs leading-relaxed transition-all border border-emerald-500/40 bg-emerald-950/40 text-emerald-300";
+        quizFeedback.innerHTML = `<strong>🎉 恭喜答對！</strong><br>${explanation}`;
+      } else {
+        selectedBtn.classList.remove('bg-slate-900/80', 'border-slate-700');
+        selectedBtn.classList.add('bg-rose-950/60', 'border-rose-500', 'text-rose-300');
+        quizFeedback.className = "p-4 rounded-xl text-xs leading-relaxed transition-all border border-rose-500/40 bg-rose-950/40 text-rose-300";
+        quizFeedback.innerHTML = `<strong>❌ 答案不正確！</strong><br>${explanation}`;
+      }
+    }
+
+    btnPrevQuiz.addEventListener('click', () => {
+      if (currentQuizIndex > 0) {
+        currentQuizIndex--;
+        loadQuiz(currentQuizIndex);
+      }
+    });
+
+    btnNextQuiz.addEventListener('click', () => {
+      if (currentQuizIndex < quizData.length - 1) {
+        currentQuizIndex++;
+      } else {
+        currentQuizIndex = 0;
+      }
+      loadQuiz(currentQuizIndex);
+    });
+
+    // --- 06 報表分析器小工具 ---
+    const inputDataSeries = document.getElementById('inputDataSeries');
+    const btnAnalyze = document.getElementById('btnAnalyze');
+    const btnGenRandomData = document.getElementById('btnGenRandomData');
+    const resMean = document.getElementById('resMean');
+    const resMedian = document.getElementById('resMedian');
+    const resIQR = document.getElementById('resIQR');
+    const resSkew = document.getElementById('resSkew');
+    const resOutlierAlert = document.getElementById('resOutlierAlert');
+
+    function calculatePercentile(arr, p) {
+      if (arr.length === 0) return 0;
+      const index = (arr.length - 1) * p;
+      const lower = Math.floor(index);
+      const upper = Math.ceil(index);
+      const weight = index - lower;
+      return arr[lower] * (1 - weight) + arr[upper] * weight;
+    }
+
+    function runAnalysis() {
+      const rawText = inputDataSeries.value;
+      const numbers = rawText.split(',')
+        .map(n => parseFloat(n.trim()))
+        .filter(n => !isNaN(n))
+        .sort((a, b) => a - b);
+
+      if (numbers.length < 4) {
+        resOutlierAlert.className = "p-3.5 rounded-xl border border-amber-500/40 bg-amber-950/30 text-amber-300 text-xs";
+        resOutlierAlert.innerText = "請至少輸入 4 個以逗號分隔的數值以便計算四分位數。";
+        return;
+      }
+
+      const count = numbers.length;
+      const sum = numbers.reduce((a, b) => a + b, 0);
+      const mean = sum / count;
+      const q1 = calculatePercentile(numbers, 0.25);
+      const median = calculatePercentile(numbers, 0.5);
+      const q3 = calculatePercentile(numbers, 0.75);
+      const iqr = q3 - q1;
+      const lowerBound = q1 - 1.5 * iqr;
+      const upperBound = q3 + 1.5 * iqr;
+
+      const outliers = numbers.filter(n => n < lowerBound || n > upperBound);
+
+      resMean.innerText = mean.toFixed(1);
+      resMedian.innerText = median.toFixed(1);
+      resIQR.innerText = iqr.toFixed(1);
+
+      if (Math.abs(mean - median) < 0.05 * iqr) {
+        resSkew.innerText = "對稱常態近似";
+        resSkew.className = "text-sm sm:text-base text-blue-300 font-bold";
+      } else if (mean > median) {
+        resSkew.innerText = "右偏 (正偏態)";
+        resSkew.className = "text-sm sm:text-base text-amber-400 font-bold";
+      } else {
+        resSkew.innerText = "左偏 (負偏態)";
+        resSkew.className = "text-sm sm:text-base text-cyan-400 font-bold";
+      }
+
+      if (outliers.length > 0) {
+        resOutlierAlert.className = "p-3.5 rounded-xl border border-rose-500/40 bg-rose-950/30 text-rose-300 text-xs";
+        resOutlierAlert.innerHTML = `<strong>⚠️ 偵測到 ${outliers.length} 筆離群異常值：</strong> [${outliers.join(', ')}]<br><span class="text-slate-400 text-[11px]">容許正常邊界範圍為：[${lowerBound.toFixed(1)}, ${upperBound.toFixed(1)}]</span>`;
+      } else {
+        resOutlierAlert.className = "p-3.5 rounded-xl border border-emerald-500/40 bg-emerald-950/30 text-emerald-300 text-xs";
+        resOutlierAlert.innerHTML = `<strong>✓ 資料品質健康良好：</strong>未檢測到超出 1.5 倍 IQR 邊界的離群值。<br><span class="text-slate-400 text-[11px]">容許正常邊界範圍為：[${lowerBound.toFixed(1)}, ${upperBound.toFixed(1)}]</span>`;
+      }
+    }
+
+    btnAnalyze.addEventListener('click', runAnalysis);
+    btnGenRandomData.addEventListener('click', () => {
+      const base = [];
+      for (let i = 0; i < 9; i++) {
+        base.push(Math.round(400 + (Math.random() * 300)));
+      }
+      if (Math.random() > 0.3) {
+        base.push(Math.round(1150 + Math.random() * 350));
+      }
+      inputDataSeries.value = base.join(', ');
+      runAnalysis();
+    });
+
+    // --- 09 影音時間軸逐字稿資料集 (18 個節點) ---
+    const transcriptData = [
+      {
+        id: "t0",
+        seconds: 0,
+        timeStr: "00:00",
+        title: "單元引言：數據健檢與探索性數據分析 (EDA)",
+        category: ["median", "iqr"],
+        visualType: "intro",
+        speech: "在實際 AI 專案或產業現場中，我們經常面對數千甚至上萬筆資料，絕不可能一筆一筆用肉眼抓出問題，此時最關鍵的第一步就是進行『數據健檢』。",
+        notes: "在數據進入模型訓練前，必須透過統計量確認其分佈、中位數、極值與離散度，這是探索性資料分析（EDA）的基石。",
+        calloutType: "blue",
+        calloutText: "<strong>📘 統計學核心原則：</strong>垃圾進、垃圾出（Garbage In, Garbage Out）。數據健檢是 AI 演算法精準度的先決條件。"
+      },
+      {
+        id: "t1",
+        seconds: 38,
+        timeStr: "00:38",
+        title: "describe() 報表登場：Pandas 核心健檢指令",
+        category: ["iqr", "median"],
+        visualType: "table",
+        speech: "在 Python 資料分析領域中，Pandas 提供了強大的 `df.describe()` 函式，只需一行程式碼，就能為所有數值欄位瞬間產出 8 大核心統計指標摘要。",
+        notes: "describe() 涵蓋 count、mean、std、min、25%、50%、75%、max，是評估數值特徵最有效率的報表。",
+        calloutType: "blue",
+        calloutText: "<strong>📘 指令語法：</strong><code>df.describe()</code> 或單一欄位 <code>df['sales'].describe()</code>。"
+      },
+      {
+        id: "t2",
+        seconds: 65,
+        timeStr: "01:05",
+        title: "iPAS 考試必考三大核心問題",
+        category: ["median", "skew", "iqr", "outlier"],
+        visualType: "table",
+        speech: "在 iPAS AI 應用規劃師的認證考卷中，只要出現 describe 報表，基本上 90% 的題目都是圍繞著三大核心提問：中位數是誰？資料是什麼偏態？異常值的界限邊界落在哪裡？",
+        notes: "掌握這三大考點，即可在短時間內秒殺 describe 相關考題。",
+        calloutType: "emerald",
+        calloutText: "<strong>🌟 iPAS 考卷必考三問：</strong>① 中位數是多少？ ② 資料偏向哪一側（偏態）？ ③ 異常值的安全上下限數值為多少？"
+      },
+      {
+        id: "t3",
+        seconds: 81,
+        timeStr: "01:21",
+        title: "解讀統計摘要表：Sales 與 Age 欄位剖析",
+        category: ["median"],
+        visualType: "table",
+        speech: "以示範的連鎖門市銷售額（sales）與顧客年齡（age）為例，透過報表能快速對比兩個欄位在集中趨勢與分佈上的巨大差異。",
+        notes: "不同欄位的數值尺度不同，sales 動輒數百上千，而 age 落在數十之間，需個別解讀其統計意涵。",
+        calloutType: "blue",
+        calloutText: "<strong>📘 欄位特性：</strong>數值欄位的統計檢視能迅速辨識出空值率、尺度差異與異常分佈。"
+      },
+      {
+        id: "t4",
+        seconds: 110,
+        timeStr: "01:50",
+        title: "送分題鐵律：50% 就是中位數！",
+        category: ["median"],
+        visualType: "table",
+        speech: "很多考生在考場上找中位數時，在 describe 報表裡瘋狂尋找 'median' 這個單字，結果找不到！請牢記：報表中的『50%』分位數，就是貨真價實的中位數！",
+        notes: "50% 分位數定義為將所有樣本由小到大排序後，剛好位於正中間的那一個數值。",
+        calloutType: "amber",
+        calloutText: "<strong>⚠️ 易錯考點陷阱：</strong>describe() 報表中永遠不會印出 'median' 字樣，<strong>50% 分位數即為中位數</strong>（本例 sales 中位數為 480.0）！"
+      },
+      {
+        id: "t5",
+        seconds: 129,
+        timeStr: "02:09",
+        title: "STD 標準差：資料的不穩定指數",
+        category: ["skew"],
+        visualType: "table",
+        speech: "std 是標準差（Standard Deviation）。它反映了資料偏離平均數的離散程度。標準差越大，代表資料波動越劇烈、離散程度越高。",
+        notes: "在產線品質控制或財務分析中，標準差常用來衡量穩定度與風險係數。",
+        calloutType: "blue",
+        calloutText: "<strong>📘 統計觀念：</strong>標準差衡量樣本數值偏離平均數的平均幅度，數值越大代表波動越不可預測。"
+      },
+      {
+        id: "t6",
+        seconds: 141,
+        timeStr: "02:21",
+        title: "Max 最大值紅色警報：極端落差診斷",
+        category: ["outlier", "iqr"],
+        visualType: "outlier_alert",
+        speech: "看一下 sales 欄位：第 75% 處的數值才 650，但是 max 卻突然暴增至 999！這往往是測試資料未清除、打字多按一位數或感測器溢位的紅色警報！",
+        notes: "如果 75% 與 max 之間存在鴻溝般的差距，極可能存在極端異常值（Outlier）。",
+        calloutType: "rose",
+        calloutText: "<strong>🚨 異常值紅色警訊：</strong>當 max 遠遠超過 75% 時，通常就是髒資料（Dirty Data）的警訊，必須進一步做離群值剔除！"
+      },
+      {
+        id: "t7",
+        seconds: 175,
+        timeStr: "02:55",
+        title: "偏態核心大戰：平均數 (Mean) vs 中位數 (Median)",
+        category: ["skew", "median"],
+        visualType: "skew_compare",
+        speech: "在統計學中，平均數與中位數是兩種衡量集中趨勢的工具。但在非對稱資料中，這兩者會發生劇烈拉扯，而這正是判斷資料偏態的秘密鑰匙。",
+        notes: "常態對稱分佈下 Mean = Median；但在非對稱分佈下，平均數會被極端值拉偏。",
+        calloutType: "blue",
+        calloutText: "<strong>📘 核心定義：</strong>偏態（Skewness）描述機率分佈不對稱的程度，依據 Mean 與 Median 的相對大小即可快速判讀。"
+      },
+      {
+        id: "t8",
+        seconds: 192,
+        timeStr: "03:12",
+        title: "生活經典比喻：比爾蓋茲走進小酒吧",
+        category: ["gates", "skew", "outlier"],
+        visualType: "bill_gates",
+        speech: "想像一下，酒吧裡有 9 位一般上班族，月薪都約 5 萬元。此時比爾蓋茲突然走進來，全酒吧的平均月薪瞬間破億！但這群顧客真實富有了嗎？並沒有！真正能代表群體常態的，依然是 5 萬元的中位數！",
+        notes: "這個經典案例證明：平均數對極端值極度脆弱，而中位數具有抗極端值的穩健特性（Robust）。",
+        calloutType: "amber",
+        calloutText: "<strong>⚠️ 概念陷阱：</strong>極端大值會把平均數（Mean）狠狠往右邊拉走，因此在評估貧富差距、房價水準時，<strong>中位數永遠比平均數更具公信力</strong>！"
+      },
+      {
+        id: "t9",
+        seconds: 216,
+        timeStr: "03:36",
+        title: "偏態判斷口訣與實例解析",
+        category: ["skew", "median"],
+        visualType: "skew_compare",
+        speech: "口訣非常簡單：『誰大看誰！』平均數大於中位數（Mean > Median），就是右偏（正偏態）；平均數小於中位數（Mean < Median），就是左偏（負偏態）。像本例 sales 中 Mean 505.2 > 50% 的 480，就是標準的右偏！",
+        notes: "右偏分佈的尾巴拖在右側（右側存在較多極端大值）；左偏分佈的尾巴拖在左側。",
+        calloutType: "emerald",
+        calloutText: "<strong>🌟 偏態秒殺口訣：</strong><br>• $\\text{Mean} > \\text{Median}$ ➔ <strong>右偏（正偏態）</strong><br>• $\\text{Mean} < \\text{Median}$ ➔ <strong>左偏（負偏態）</strong>"
+      },
+      {
+        id: "t10",
+        seconds: 252,
+        timeStr: "04:12",
+        title: "科學武器 IQR (四分位距) 登場",
+        category: ["iqr", "boxplot"],
+        visualType: "box_anatomy",
+        speech: "我們不能憑感覺說『999 看起來很大，所以它是異常值』，在工程與 AI 專案中，我們需要客觀、可重現的數學準則，這就是四分位距（IQR）派上用場的時候。",
+        notes: "IQR 代表資料中間 50% 核心樣本的分散程度，不受左右兩側極端值影響。",
+        calloutType: "blue",
+        calloutText: "<strong>📘 統計學定位：</strong>IQR 是一種穩健尺度估計量（Robust Scale Estimator），專為對抗異常值干擾而生。"
+      },
+      {
+        id: "t11",
+        seconds: 267,
+        timeStr: "04:27",
+        title: "IQR 計算三部曲：Q1、Q3 與相減",
+        category: ["iqr"],
+        visualType: "box_anatomy",
+        speech: "計算 IQR 只要三步：第一步，看 25% 取得第一四分位數 Q1；第二步，看 75% 取得第三四分位數 Q3；第三步，兩者相減：IQR = Q3 - Q1。",
+        notes: "公式：IQR = 75% 分位數 - 25% 分位數。",
+        calloutType: "blue",
+        calloutText: "<strong>📘 核心計算公式：</strong>$$\\text{IQR} = Q3 - Q1$$"
+      },
+      {
+        id: "t12",
+        seconds: 280,
+        timeStr: "04:40",
+        title: "1.5 倍業界公認法則：上下安全閥門檻",
+        category: ["iqr", "outlier"],
+        visualType: "box_anatomy",
+        speech: "統計大師圖基（Tukey）給出經典的 1.5 倍準則：以 Q3 往外加 1.5 倍 IQR 作為上限；以 Q1 往外減 1.5 倍 IQR 作為下限。只要超出這個範圍，就被定義為離群異常值！",
+        notes: "1.5 倍 IQR 在常態分佈下約對應 ±2.7 個標準差，可涵蓋 99.3% 的正常樣本。",
+        calloutType: "rose",
+        calloutText: "<strong>🚨 異常值檢驗門檻（必背）：</strong><br>• <strong>上限（Upper Bound）</strong> = $Q3 + 1.5 \\times \\text{IQR}$<br>• <strong>下限（Lower Bound）</strong> = $Q1 - 1.5 \\times \\text{IQR}$"
+      },
+      {
+        id: "t13",
+        seconds: 302,
+        timeStr: "05:02",
+        title: "實戰手算演練：Q1=200, Q3=600",
+        category: ["iqr", "outlier"],
+        visualType: "calc_step",
+        speech: "考試最常出現這種手算題：已知某數據 Q1=200，Q3=600。第一步：IQR = 600 - 200 = 400；第二步：1.5 倍 IQR = 1.5 × 400 = 600；第三步：正常上限 = 600 + 600 = 1200！如果數據出現 1250，就是異常值！",
+        notes: "這是考場上送分的大題，心算只需 10 秒鐘即可完成。",
+        calloutType: "emerald",
+        calloutText: "<strong>🌟 試算速記：</strong>$\\text{IQR}=400 \\rightarrow 1.5\\times\\text{IQR}=600 \\rightarrow \\text{上限} = 600 + 600 = 1200$。數值大於 1200 即判定異常！"
+      },
+      {
+        id: "t14",
+        seconds: 342,
+        timeStr: "05:42",
+        title: "箱形圖 (Box Plot) 幾何映射解析",
+        category: ["boxplot", "iqr"],
+        visualType: "box_anatomy",
+        speech: "將這些數字畫成圖，就是著名的箱形圖（Box Plot）。中間的箱體代表 Q1 到 Q3；箱體內的橫線是中位數；兩側延伸的鬍鬚最遠伸展到正常邊界；而鬍鬚之外的一個個孤立點，就是被我們逮捕的異常值！",
+        notes: "箱形圖能一次呈現位置、分散度、對稱性與極端值四種統計維度。",
+        calloutType: "blue",
+        calloutText: "<strong>📘 箱形圖幾何解構：</strong>箱身 = 50% 核心樣本（IQR）；中線 = 中位數；鬍鬚 = 正常極值邊界；散點 = 離群值（Outliers）。"
+      },
+      {
+        id: "t15",
+        seconds: 368,
+        timeStr: "06:08",
+        title: "實戰選圖思維：直方圖看山峰，箱形圖看邊界",
+        category: ["boxplot"],
+        visualType: "chart_choice",
+        speech: "考卷常問：什麼時候用直方圖？什麼時候用箱形圖？記住八字箴言：『直方圖看山峰，箱形圖看邊界』。想看資料分佈輪廓選直方圖；想抓異常值或比較不同群組的分位數，毫不猶豫選箱形圖！",
+        notes: "直方圖適合確認是否為雙峰（Bimodal）或常態；箱形圖適合多群組並列比對離群情況。",
+        calloutType: "emerald",
+        calloutText: "<strong>🌟 視覺化選圖八字真言：</strong><br>『<strong>直方圖看山峰</strong>（形狀分佈），<strong>箱形圖看邊界</strong>（異常值篩檢）』"
+      },
+      {
+        id: "t16",
+        seconds: 404,
+        timeStr: "06:44",
+        title: "考前四條鐵律總結複習",
+        category: ["median", "skew", "iqr", "boxplot", "outlier"],
+        visualType: "table",
+        speech: "在交卷前，務必在腦海中快速過一遍這四條鐵律：第一，50% 就是中位數；第二，Mean 大於 Median 是右偏；第三，上限等於 Q3 加 1.5 倍 IQR；第四，抓異常值首選箱形圖！",
+        notes: "將這四條原則烙印在腦海中，保證在 iPAS 考試中拿到滿分。",
+        calloutType: "emerald",
+        calloutText: "<strong>🏆 考前 4 大通關密碼：</strong><br>① 50% 欄位 = 中位數<br>② Mean > Median = 右偏分佈<br>③ 正常上限 = $Q3 + 1.5 \\times \\text{IQR}$<br>④ 偵測異常值圖表 = 箱形圖 (Box Plot)"
+      },
+      {
+        id: "t17",
+        seconds: 431,
+        timeStr: "07:11",
+        title: "預告與結語：抓出異常值後該怎麼辦？",
+        category: ["outlier", "iqr"],
+        visualType: "intro",
+        speech: "抓出異常值只是第一步，實務上我們該直接刪除？還是用中位數填補？或者進行截斷？這將是我們在下一單元『資料清洗與特徵工程』要深入探討的主題！",
+        notes: "異常值處理策略包含：刪除、Winsorization（截尾縮尾）、插補（Imputation）或轉換（Log Transform）。",
+        calloutType: "blue",
+        calloutText: "<strong>📘 後續工程策略：</strong>異常值不一定要盲目刪除，需評估其為量測噪聲還是罕見關鍵事件（如詐欺偵測）。"
+      }
+    ];
+
+    const transcriptStreamContainer = document.getElementById('transcriptStreamContainer');
+    const visualizerSvg = document.getElementById('transcriptVisualizerSvg');
+    const visualizerTitle = document.getElementById('visualizerTitle');
+    const visualizerExplanation = document.getElementById('visualizerExplanation');
+    const activeTopicBadge = document.getElementById('activeTopicBadge');
+    const currentTimeDisplay = document.getElementById('currentTimeDisplay');
+    const timelineScrubber = document.getElementById('timelineScrubber');
+    const btnPlayPause = document.getElementById('btnPlayPause');
+    const playIcon = document.getElementById('playIcon');
+    const pauseIcon = document.getElementById('pauseIcon');
+    const checkAutoScroll = document.getElementById('checkAutoScroll');
+    const transcriptSearch = document.getElementById('transcriptSearch');
+    const filterPills = document.querySelectorAll('.filter-pill');
+    const speedButtons = document.querySelectorAll('.speed-btn');
+
+    let isPlaying = false;
+    let playbackSeconds = 0;
+    let playbackSpeed = 1.0;
+    let playInterval = null;
+    let activeCardIndex = 0;
+    let currentFilterCategory = "all";
+    let searchQuery = "";
+
+    function renderTranscriptCards() {
+      transcriptStreamContainer.innerHTML = '';
+      
+      const filtered = transcriptData.filter(item => {
+        let matchesCategory = true;
+        if (currentFilterCategory !== "all") {
+          matchesCategory = item.category.includes(currentFilterCategory);
+        }
+        const matchesSearch = (searchQuery === "") || 
+                              item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                              item.speech.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              item.calloutText.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesCategory && matchesSearch;
+      });
+
+      if (filtered.length === 0) {
+        transcriptStreamContainer.innerHTML = `
+          <div class="text-center py-12 text-slate-500 text-xs">
+            查無符合條件的逐字稿段落，請嘗試更換關鍵字或點選「全部」。
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach((item) => {
+        const card = document.createElement('div');
+        card.id = `transcript-card-${item.id}`;
+        card.className = `transcript-card group p-4 rounded-xl border transition-all duration-200 cursor-pointer ${item.id === transcriptData[activeCardIndex].id ? 'bg-slate-800/90 border-blue-500 shadow-lg shadow-blue-500/10' : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/40'}`;
+
+        let calloutBorderClass = "border-blue-500/40 bg-blue-950/30 text-blue-300";
+        if (item.calloutType === "amber") calloutBorderClass = "border-amber-500/40 bg-amber-950/30 text-amber-300";
+        if (item.calloutType === "rose") calloutBorderClass = "border-rose-500/40 bg-rose-950/30 text-rose-300";
+        if (item.calloutType === "emerald") calloutBorderClass = "border-emerald-500/40 bg-emerald-950/30 text-emerald-300";
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2 flex-wrap">
+              <button class="ts-jump-btn font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition flex items-center gap-1" data-sec="${item.seconds}">
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                [${item.timeStr}]
+              </button>
+              <h3 class="text-sm font-bold text-slate-100 group-hover:text-blue-300 transition">${item.title}</h3>
+            </div>
+            <a href="https://www.youtube.com/watch?v=WyGqEGIvzDc&t=${item.seconds}s" target="_blank" rel="noopener noreferrer" class="text-[11px] text-slate-500 hover:text-red-400 flex items-center gap-0.5 shrink-0" title="在 YouTube 上從 ${item.timeStr} 開始播放">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+              YouTube
+            </a>
+          </div>
+
+          <p class="text-xs text-slate-300 leading-relaxed pl-2 border-l-2 border-slate-700 mb-3 italic">
+            “${item.speech}”
+          </p>
+
+          <div class="p-3 rounded-lg border text-xs leading-relaxed ${calloutBorderClass}">
+            ${item.calloutText}
+          </div>
+        `;
+
+        card.addEventListener('click', (e) => {
+          if (e.target.closest('a')) return;
+          jumpToTimestamp(item.seconds);
+        });
+
+        transcriptStreamContainer.appendChild(card);
+      });
+    }
+
+    function formatTime(totalSeconds) {
+      const m = Math.floor(totalSeconds / 60);
+      const s = Math.floor(totalSeconds % 60);
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function updateVisualizer(item) {
+      visualizerTitle.innerText = `[${item.timeStr}] ${item.title}`;
+      visualizerExplanation.innerHTML = `<strong>講義摘要：</strong>${item.notes}<div class="mt-1">${item.calloutText}</div>`;
+      activeTopicBadge.innerText = `[${item.timeStr}] ${item.title}`;
+
+      visualizerSvg.innerHTML = '';
+
+      switch (item.visualType) {
+        case 'bill_gates':
+          visualizerSvg.innerHTML = `
+            <text x="200" y="24" fill="#94a3b8" font-size="12" text-anchor="middle" font-weight="bold">比爾蓋茲酒吧效應 (極端值扭曲平均數)</text>
+            <g>
+              ${[0,1,2,3,4,5,6,7,8].map(i => `
+                <rect x="${40 + i*24}" y="120" width="16" height="40" rx="3" fill="#38bdf8" fill-opacity="0.8"/>
+                <text x="${48 + i*24}" y="175" fill="#64748b" font-size="9" text-anchor="middle">${i+1}</text>
+              `).join('')}
+              <text x="145" y="112" fill="#38bdf8" font-size="10" text-anchor="middle">月薪 5 萬</text>
+            </g>
+            <g>
+              <rect x="290" y="45" width="30" height="115" rx="4" fill="#f43f5e" />
+              <text x="305" y="38" fill="#f43f5e" font-size="11" font-weight="bold" text-anchor="middle">蓋茲 數億</text>
+              <line x1="285" y1="80" x2="325" y2="70" stroke="#0f172a" stroke-width="4"/>
+              <line x1="285" y1="88" x2="325" y2="78" stroke="#0f172a" stroke-width="4"/>
+            </g>
+            <line x1="30" y1="130" x2="370" y2="130" stroke="#34d399" stroke-width="2" stroke-dasharray="4 3"/>
+            <text x="375" y="133" fill="#34d399" font-size="9">中位數 5萬</text>
+            <line x1="30" y1="65" x2="370" y2="65" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4 3"/>
+            <text x="375" y="68" fill="#fbbf24" font-size="9">平均數 數千萬</text>
+          `;
+          break;
+
+        case 'skew_compare':
+          visualizerSvg.innerHTML = `
+            <text x="200" y="24" fill="#94a3b8" font-size="12" text-anchor="middle" font-weight="bold">右偏 (正偏態) 分佈：Mean > Median</text>
+            <path d="M 40 160 C 90 160, 110 50, 140 50 C 180 50, 240 130, 360 160" fill="none" stroke="#60a5fa" stroke-width="3"/>
+            <line x1="30" y1="160" x2="370" y2="160" stroke="#475569" stroke-width="1.5"/>
+            <line x1="140" y1="50" x2="140" y2="160" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3 3"/>
+            <text x="140" y="174" fill="#94a3b8" font-size="9" text-anchor="middle">眾數 Mode</text>
+            <line x1="175" y1="80" x2="175" y2="160" stroke="#34d399" stroke-width="2.5"/>
+            <text x="175" y="174" fill="#34d399" font-size="10" font-weight="bold" text-anchor="middle">50% (480)</text>
+            <line x1="225" y1="110" x2="225" y2="160" stroke="#fbbf24" stroke-width="2.5"/>
+            <text x="225" y="174" fill="#fbbf24" font-size="10" font-weight="bold" text-anchor="middle">Mean (505)</text>
+            <path d="M 270 140 L 330 140" stroke="#f43f5e" stroke-width="2"/>
+            <text x="300" y="132" fill="#f43f5e" font-size="9" text-anchor="middle">右側拖長尾</text>
+          `;
+          break;
+
+        case 'box_anatomy':
+          visualizerSvg.innerHTML = `
+            <text x="200" y="24" fill="#94a3b8" font-size="12" text-anchor="middle" font-weight="bold">箱形圖幾何解剖與 1.5×IQR 邊界</text>
+            <rect x="120" y="60" width="160" height="70" rx="4" fill="#1e3a8a" fill-opacity="0.6" stroke="#3b82f6" stroke-width="2"/>
+            <line x1="190" y1="60" x2="190" y2="130" stroke="#fbbf24" stroke-width="3"/>
+            <line x1="50" y1="95" x2="120" y2="95" stroke="#94a3b8" stroke-width="2" stroke-dasharray="3 3"/>
+            <line x1="50" y1="75" x2="50" y2="115" stroke="#f43f5e" stroke-width="3"/>
+            <line x1="280" y1="95" x2="350" y2="95" stroke="#94a3b8" stroke-width="2" stroke-dasharray="3 3"/>
+            <line x1="350" y1="75" x2="350" y2="115" stroke="#f43f5e" stroke-width="3"/>
+            <circle cx="375" cy="95" r="5" fill="#f43f5e"/>
+            <text x="50" y="135" fill="#f43f5e" font-size="9" text-anchor="middle">Q1-1.5*IQR</text>
+            <text x="120" y="52" fill="#60a5fa" font-size="10" text-anchor="middle">Q1 (25%)</text>
+            <text x="190" y="148" fill="#fbbf24" font-size="10" font-weight="bold" text-anchor="middle">中位數 50%</text>
+            <text x="280" y="52" fill="#60a5fa" font-size="10" text-anchor="middle">Q3 (75%)</text>
+            <text x="350" y="135" fill="#f43f5e" font-size="9" text-anchor="middle">Q3+1.5*IQR</text>
+            <text x="375" y="82" fill="#f43f5e" font-size="8" text-anchor="middle">異常值</text>
+          `;
+          break;
+
+        case 'calc_step':
+          visualizerSvg.innerHTML = `
+            <text x="200" y="24" fill="#94a3b8" font-size="12" text-anchor="middle" font-weight="bold">IQR 手算解題三步曲演算法</text>
+            <g transform="translate(40, 45)">
+              <rect x="0" y="0" width="90" height="50" rx="6" fill="#1e293b" stroke="#3b82f6"/>
+              <text x="45" y="20" fill="#93c5fd" font-size="10" text-anchor="middle">第 1 步</text>
+              <text x="45" y="38" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">IQR = 400</text>
+            </g>
+            <text x="145" y="75" fill="#64748b" font-size="14" font-weight="bold">→</text>
+            <g transform="translate(160, 45)">
+              <rect x="0" y="0" width="90" height="50" rx="6" fill="#1e293b" stroke="#fbbf24"/>
+              <text x="45" y="20" fill="#fde68a" font-size="10" text-anchor="middle">第 2 步</text>
+              <text x="45" y="38" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">1.5×IQR=600</text>
+            </g>
+            <text x="265" y="75" fill="#64748b" font-size="14" font-weight="bold">→</text>
+            <g transform="translate(280, 45)">
+              <rect x="0" y="0" width="90" height="50" rx="6" fill="#1e293b" stroke="#f43f5e"/>
+              <text x="45" y="20" fill="#fca5a5" font-size="10" text-anchor="middle">第 3 步</text>
+              <text x="45" y="38" fill="#f43f5e" font-size="11" font-weight="bold" text-anchor="middle">上限 1200</text>
+            </g>
+            <rect x="40" y="115" width="330" height="40" rx="6" fill="#0f172a" stroke="#334155"/>
+            <text x="205" y="140" fill="#34d399" font-size="11" font-weight="bold" text-anchor="middle">判斷結果：若讀數 = 1250 > 1200，即判定為異常值！</text>
+          `;
+          break;
+
+        case 'chart_choice':
+          visualizerSvg.innerHTML = `
+            <text x="200" y="24" fill="#94a3b8" font-size="12" text-anchor="middle" font-weight="bold">圖表選擇黃金心法</text>
+            <g transform="translate(50, 45)">
+              <rect x="0" y="0" width="130" height="90" rx="6" fill="#1e293b" stroke="#38bdf8"/>
+              <text x="65" y="25" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle">直方圖 (Histogram)</text>
+              <path d="M 20 75 L 40 50 L 65 35 L 90 60 L 110 75" fill="none" stroke="#38bdf8" stroke-width="2"/>
+              <text x="65" y="115" fill="#e2e8f0" font-size="11" font-weight="bold" text-anchor="middle">「看山峰 (分佈)」</text>
+            </g>
+            <g transform="translate(220, 45)">
+              <rect x="0" y="0" width="130" height="90" rx="6" fill="#1e293b" stroke="#34d399"/>
+              <text x="65" y="25" fill="#34d399" font-size="11" font-weight="bold" text-anchor="middle">箱形圖 (Box Plot)</text>
+              <rect x="35" y="45" width="60" height="30" rx="2" fill="#065f46" stroke="#34d399"/>
+              <line x1="15" y1="60" x2="35" y2="60" stroke="#34d399" stroke-width="1.5"/>
+              <line x1="95" y1="60" x2="115" y2="60" stroke="#34d399" stroke-width="1.5"/>
+              <text x="65" y="115" fill="#e2e8f0" font-size="11" font-weight="bold" text-anchor="middle">「看邊界 (異常)」</text>
+            </g>
+          `;
+          break;
+
+        default:
+          visualizerSvg.innerHTML = `
+            <text x="200" y="24" fill="#94a3b8" font-size="12" text-anchor="middle" font-weight="bold">Pandas describe() 報表雷達導航</text>
+            <rect x="50" y="40" width="300" height="130" rx="8" fill="#0f172a" stroke="#334155"/>
+            <text x="70" y="65" fill="#94a3b8" font-size="11">count: 1000.0</text>
+            <text x="70" y="85" fill="#38bdf8" font-size="11" font-weight="bold">mean: 505.2 (平均數)</text>
+            <text x="70" y="105" fill="#94a3b8" font-size="11">std: 145.8 (標準差)</text>
+            <text x="70" y="125" fill="#94a3b8" font-size="11">25%: 380.0 (Q1)</text>
+            <text x="70" y="145" fill="#fbbf24" font-size="12" font-weight="bold">50%: 480.0 (中位數 Median)</text>
+            
+            <text x="210" y="65" fill="#94a3b8" font-size="11">75%: 650.0 (Q3)</text>
+            <text x="210" y="85" fill="#f43f5e" font-size="11" font-weight="bold">max: 999.0 ⚠️ (極端警戒)</text>
+            <rect x="65" y="132" width="260" height="18" fill="#fbbf24" fill-opacity="0.15" rx="3" stroke="#fbbf24" stroke-width="1"/>
+          `;
+          break;
+      }
+    }
+
+    function jumpToTimestamp(sec) {
+      playbackSeconds = sec;
+      timelineScrubber.value = sec;
+      currentTimeDisplay.innerText = formatTime(sec);
+
+      let targetIndex = 0;
+      for (let i = transcriptData.length - 1; i >= 0; i--) {
+        if (sec >= transcriptData[i].seconds) {
+          targetIndex = i;
+          break;
+        }
+      }
+
+      activeCardIndex = targetIndex;
+      const activeItem = transcriptData[targetIndex];
+
+      document.querySelectorAll('.transcript-card').forEach(el => {
+        el.classList.remove('bg-slate-800/90', 'border-blue-500', 'shadow-lg', 'shadow-blue-500/10');
+        el.classList.add('bg-slate-900/60', 'border-slate-800');
+      });
+
+      const activeEl = document.getElementById(`transcript-card-${activeItem.id}`);
+      if (activeEl) {
+        activeEl.classList.remove('bg-slate-900/60', 'border-slate-800');
+        activeEl.classList.add('bg-slate-800/90', 'border-blue-500', 'shadow-lg', 'shadow-blue-500/10');
+
+        if (checkAutoScroll.checked) {
+          activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }
+
+      updateVisualizer(activeItem);
+    }
+
+    function togglePlayPause() {
+      isPlaying = !isPlaying;
+      if (isPlaying) {
+        playIcon.classList.add('hidden');
+        pauseIcon.classList.remove('hidden');
+        btnPlayPause.classList.replace('bg-blue-600', 'bg-amber-600');
+
+        playInterval = setInterval(() => {
+          playbackSeconds += 1 * playbackSpeed;
+          if (playbackSeconds > 450) {
+            playbackSeconds = 450;
+            togglePlayPause();
+            return;
+          }
+          timelineScrubber.value = Math.floor(playbackSeconds);
+          currentTimeDisplay.innerText = formatTime(playbackSeconds);
+
+          for (let i = transcriptData.length - 1; i >= 0; i--) {
+            if (playbackSeconds >= transcriptData[i].seconds) {
+              if (activeCardIndex !== i) {
+                jumpToTimestamp(playbackSeconds);
+              }
+              break;
+            }
+          }
+        }, 1000);
+      } else {
+        playIcon.classList.remove('hidden');
+        pauseIcon.classList.add('hidden');
+        btnPlayPause.classList.replace('bg-amber-600', 'bg-blue-600');
+        clearInterval(playInterval);
+      }
+    }
+
+    btnPlayPause.addEventListener('click', togglePlayPause);
+
+    timelineScrubber.addEventListener('input', (e) => {
+      jumpToTimestamp(parseInt(e.target.value));
+    });
+
+    speedButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        speedButtons.forEach(b => {
+          b.classList.remove('bg-blue-600', 'text-white', 'font-bold');
+          b.classList.add('text-slate-400');
+        });
+        btn.classList.add('bg-blue-600', 'text-white', 'font-bold');
+        btn.classList.remove('text-slate-400');
+        playbackSpeed = parseFloat(btn.dataset.speed);
+      });
+    });
+
+    transcriptSearch.addEventListener('input', (e) => {
+      searchQuery = e.target.value.trim();
+      renderTranscriptCards();
+    });
+
+    filterPills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        filterPills.forEach(p => {
+          p.classList.remove('bg-blue-600', 'text-white', 'font-semibold');
+          p.classList.add('bg-slate-800', 'text-slate-300');
+        });
+        pill.classList.add('bg-blue-600', 'text-white', 'font-semibold');
+        pill.classList.remove('bg-slate-800', 'text-slate-300');
+        currentFilterCategory = pill.dataset.filter;
+        renderTranscriptCards();
+      });
+    });
+
+    // --- 匯出/下載本頁面功能 ---
+    const btnExportPage = document.getElementById('btnExportPage');
+    btnExportPage.addEventListener('click', () => {
+      const fullHtml = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+      const blob = new Blob([fullHtml], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.href = url;
+      downloadAnchor.download = "06 - iPAS AI 應用規劃師 Python 特訓｜IQR 異常值偵測與 describe 報表解讀.html";
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      document.body.removeChild(downloadAnchor);
+      URL.revokeObjectURL(url);
+    });
+
+    // 頁面加載完成初始化
+    window.onload = function() {
+      updateBoxPlot();
+      loadQuiz(0);
+      runAnalysis();
+      renderTranscriptCards();
+      updateVisualizer(transcriptData[0]);
+    };
+  </script>
+</body>
+</html>
