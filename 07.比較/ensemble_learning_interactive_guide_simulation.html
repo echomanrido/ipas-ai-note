@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>集成學習 (Ensemble Learning) 全方位解析與互動模擬系統</title>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#075985',
+              800: '#0c4a6e',
+              900: '#082f49',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- KaTeX for LaTeX rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    .math-inline { display: inline-block; }
+    .math-display { overflow-x: auto; padding: 0.5rem 0; }
+    .tab-active { border-bottom: 2px solid #0284c7; color: #0284c7; font-weight: 600; }
+    /* Syntax Highlighting Custom Colors */
+    .py-kw { color: #f43f5e; font-weight: 600; }      /* def, class, return, import */
+    .py-fn { color: #38bdf8; font-weight: 600; }      /* function names */
+    .py-core { color: #eab308; font-weight: bold; }   /* key ensemble functions (fit, predict, backward) */
+    .py-str { color: #a3e635; }                      /* strings */
+    .py-num { color: #fb923c; }                      /* numbers */
+    .py-com { color: #94a3b8; font-style: italic; }  /* comments */
+    .py-cls { color: #c084fc; font-weight: 600; }    /* class types */
+  </style>
+</head>
+
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans leading-relaxed flex flex-col">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-50 bg-slate-900/90 backdrop-blur border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="p-2 bg-sky-500/20 text-sky-400 rounded-lg">
+          <i data-lucide="layers" class="w-6 h-6"></i>
+        </div>
+        <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-sky-400 to-indigo-400 bg-clip-text text-transparent">
+          集成學習 (Ensemble Learning) 互動手冊
+        </span>
+      </div>
+      <div class="flex items-center space-x-2">
+        <a href="../index.html" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5 shadow-sm" title="回首頁">
+          <i class="fa-solid fa-arrow-left"></i> <span class="hidden sm:inline">回首頁</span>
+        </a>
+        <a href="../程式心智圖.html" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5 shadow-sm" title="程式心智圖">
+          <i class="fa-solid fa-network-wired"></i> <span class="hidden sm:inline">程式心智圖</span>
+        </a>
+        <div class="hidden md:flex space-x-1 text-xs text-slate-300 pl-2 border-l border-slate-800">
+        <a href="#core" class="px-3 py-1.5 rounded hover:bg-slate-800 transition">核心與由來</a>
+        <a href="#ipas" class="px-3 py-1.5 rounded hover:bg-slate-800 transition">IPAS 考題</a>
+        <a href="#industry" class="px-3 py-1.5 rounded hover:bg-slate-800 transition">實務與工業</a>
+        <a href="#math" class="px-3 py-1.5 rounded hover:bg-slate-800 transition">數學推導</a>
+        <a href="#interactive-domains" class="px-3 py-1.5 rounded hover:bg-slate-800 transition">多範疇應用</a>
+        <a href="#code" class="px-3 py-1.5 rounded hover:bg-slate-800 transition">PyTorch 實作</a>
+        <a href="#simulation" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded transition">線上模擬器</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-16">
+
+    <!-- 01. 一句話簡介 -->
+    <section class="relative overflow-hidden bg-gradient-to-br from-slate-800/80 to-slate-900/90 border border-slate-700/60 rounded-2xl p-8 shadow-xl">
+      <div class="absolute -right-10 -bottom-10 opacity-10 text-sky-400">
+        <i data-lucide="network" class="w-96 h-96"></i>
+      </div>
+      <div class="relative z-10">
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-sky-500/10 text-sky-400 border border-sky-500/20 mb-4">
+          01. 一句話簡介
+        </span>
+        <blockquote class="text-2xl sm:text-3xl font-extrabold text-white tracking-wide leading-snug">
+          「結合多個弱學習器（Weak Learners）的群體智慧，協同建構出一個兼具<span class="text-sky-400 underline decoration-sky-500 underline-offset-4">低變異數（Low Variance）</span>與<span class="text-indigo-400 underline decoration-indigo-500 underline-offset-4">低偏差（Low Bias）</span>的高效強預測模型。」
+        </blockquote>
+        <p class="mt-4 text-slate-400 text-sm max-w-3xl">
+          俗稱「三個臭皮匠，勝過一個諸葛亮」。透過多樣化決策邊界的互補，大幅抑制單一模型的過擬合與系統性偏誤。
+        </p>
+      </div>
+    </section>
+
+    <!-- 【集成學習 Ensemble Learning】核心精華與產業實務應用 -->
+    <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1px solid rgba(2, 132, 199, 0.35); border-radius: 18px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 0 20px rgba(2, 132, 199, 0.15); padding: 1.6rem; color: #f8fafc; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; backdrop-filter: blur(12px);">
+      
+      <!-- 卡片 Header -->
+      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 0.85rem; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: linear-gradient(135deg, #0284c7, #6366f1); border-radius: 10px; color: #ffffff; font-size: 1.15rem; box-shadow: 0 2px 10px rgba(2, 132, 199, 0.4); flex-shrink: 0;">
+            <i class="fa-solid fa-layer-group"></i>
+          </span>
+          <div>
+            <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #ffffff; letter-spacing: -0.01em;">
+              【集成學習 Ensemble Learning】核心精華與產業實務應用
+            </h3>
+            <p style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: #94a3b8;">Key Takeaways · Paradigms Comparison · Industrial & Kaggle Applications</p>
+          </div>
+        </div>
+        <span style="font-size: 0.75rem; padding: 0.28rem 0.75rem; background: rgba(2, 132, 199, 0.15); color: #38bdf8; border: 1px solid rgba(2, 132, 199, 0.35); border-radius: 9999px; font-weight: 700; white-space: nowrap;">
+          群體智慧 · 偏差與方差權衡
+        </span>
+      </div>
+
+      <!-- 三大區塊 Grid -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 1.25rem;">
+        
+        <!-- 區塊 1: 重點整理 (Key Takeaways) -->
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(2, 132, 199, 0.25); border-radius: 14px; padding: 1.2rem; display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; color: #38bdf8; font-weight: 700; font-size: 0.95rem;">
+            <i class="fa-solid fa-list-check"></i>
+            <span>重點整理 (Key Takeaways)</span>
+          </div>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem; color: #cbd5e1; line-height: 1.65; flex: 1;">
+            <li><strong>群體智慧與大數法則：</strong>依據孔多塞陪審團定理（Condorcet's Jury Theorem），只要單個弱學習器準確率 \(p > 0.5\) 且彼此具備獨立性，集體投票多數決的錯誤率隨模型數增加呈<strong>指數級快速衰減</strong>。</li>
+            <li><strong>Bagging（裝袋法·降方差）：</strong>採用 Bootstrap 自助抽樣平行訓練基學習器（如隨機森林 Random Forest），透過多個無偏高方差模型取平均，大幅<strong>壓制過擬合（Reduce Variance）</strong>。</li>
+            <li><strong>Boosting（提升法·降偏差）：</strong>循序序列化串聯訓練（如 AdaBoost、GBDT、XGBoost、CatBoost），針對前一輪錯誤樣本提升權重或擬合負梯度，將多個弱模型<strong>逐步提升為強學習器（Reduce Bias）</strong>。</li>
+            <li><strong>Stacking（堆疊法·異質融合）：</strong>第一層由多種異質演算法（如 SVM + CNN + LightGBM）進行 K 折交叉驗證生成 Out-Of-Fold (OOF) 預測特徵，第二層以 Meta-Learner 完成最終決策，在各類 Kaggle 競賽中屢創冠軍。</li>
+          </ul>
+        </div>
+
+        <!-- 區塊 2: 核心機制與演算法原理 -->
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 14px; padding: 1.2rem; display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; color: #818cf8; font-weight: 700; font-size: 0.95rem;">
+            <i class="fa-solid fa-gears"></i>
+            <span>核心機制與原理說明 (Paradigms Overview)</span>
+          </div>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem; color: #cbd5e1; line-height: 1.65; flex: 1;">
+            <li><strong>偏差-方差分解本質：</strong>期望泛化誤差 \(\mathbb{E}[\text{MSE}] = \text{Bias}^2 + \text{Variance} + \sigma^2\)；Bagging 藉由多模型平均降低相關性，降低方差；Boosting 藉由迭代擬合殘差，持續縮減偏差。</li>
+            <li><strong>多樣性（Diversity）最大化：</strong>隨機森林不僅對樣本進行有放回抽樣（約包含 63.2% 獨特資料，其餘 36.8% 作為 OOB 評估），更在節點分裂時隨機挑選 \(\sqrt{d}\) 個特徵子空間，打破特徵共線性。</li>
+            <li><strong>結合決策策略：</strong>分類採用硬投票（多數決）或軟投票（機率值加權平均，Soft Voting 通常平滑度更佳）；回歸採簡單平均或基於各模型驗證集表現之自適應加權。</li>
+            <li><strong>資料洩漏防範：</strong>在 Stacking 訓練時必須嚴格執行 K-Fold OOF（Out-of-fold）生成第二層訓練特徵，嚴禁直接使用全量訓練集預測，避免 Meta 模型嚴重過擬合。</li>
+          </ul>
+        </div>
+
+        <!-- 區塊 3: 產業實務應用 -->
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 14px; padding: 1.2rem; display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; color: #34d399; font-weight: 700; font-size: 0.95rem;">
+            <i class="fa-solid fa-industry"></i>
+            <span>應用在何處 (Industrial Applications)</span>
+          </div>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem; color: #cbd5e1; line-height: 1.65; flex: 1;">
+            <li><strong>半導體晶圓瑕疵 AOI 混合分類：</strong>結合深度卷積神經網路（CNN）萃取之微觀圖案特徵，與隨機森林分析之數百道機台感測參數，Stacking 融合達到 >99.3% 瑕疵檢出率。</li>
+            <li><strong>金融反洗錢 AML 與信用卡盜刷：</strong>在 1:1000 極端不平衡資料下，採用 EasyEnsemble / Balanced Random Forest 結合 XGBoost，大幅提升偽陽性控制力與 Recall 表現。</li>
+            <li><strong>智慧製造預知保養（PdM RUL 預測）：</strong>結合多軸震動時序模型（LSTM / Transformer）與樹狀模型（LightGBM），加權集成預測關鍵旋轉主軸之剩餘使用壽命。</li>
+            <li><strong>智慧醫療多模態輔助診斷：</strong>結合病歷數值特徵、放射科影像與病理檢驗，以多層級集成學習提供具統計置信度區間的重症預警。</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- 三大核心方法與分類 & 為什麼要用集成學習？ -->
+    <section class="space-y-6">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <div class="flex items-center space-x-2">
+          <span class="text-xs font-semibold px-2.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">核心架構</span>
+          <h2 class="text-xl font-bold text-slate-100">三大核心方法與分類 (Ensemble Paradigms)</h2>
+        </div>
+        <span class="text-xs text-slate-400">經典三巨頭架構 · 偏差與變異數權衡</span>
+      </div>
+
+      <!-- 三大架構卡片 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- 1. Bagging -->
+        <div class="bg-gradient-to-b from-slate-800/80 to-slate-900/90 border border-sky-500/30 rounded-2xl p-6 flex flex-col justify-between shadow-lg relative overflow-hidden">
+          <div class="absolute -right-4 -top-4 w-24 h-24 bg-sky-500/10 rounded-full blur-xl pointer-events-none"></div>
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">平行訓練</span>
+              <span class="text-xs text-slate-400 font-mono">01. Bagging</span>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-2">Bagging (自舉彙總法)</h3>
+            <p class="text-xs text-slate-400 mb-4 font-mono">Bootstrap Aggregating</p>
+            
+            <div class="space-y-3 text-xs text-slate-300">
+              <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80">
+                <span class="text-sky-400 font-semibold block mb-1">💡 核心概念</span>
+                採平行訓練。透過隨機抽樣（放回抽樣，Bootstrap）建立多份不同的訓練子集，分別訓練多個相同的模型（通常是決策樹），最後透過「投票（分類問題）」或「平均（迴歸問題）」產生最終結果。
+              </div>
+              <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80">
+                <span class="text-amber-400 font-semibold block mb-1">🎯 主要目的</span>
+                降低模型的<strong>變異數（Variance）</strong>，平滑單一模型的極端波動，顯著減少過度擬合（Overfitting）。
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800/80">
+            <span class="text-[11px] text-slate-400 block mb-1.5 font-medium">代表演算法：</span>
+            <span class="inline-block px-2.5 py-1 rounded-md text-xs font-semibold bg-sky-950 text-sky-300 border border-sky-800/60">
+              隨機森林 (Random Forest)
+            </span>
+          </div>
+        </div>
+
+        <!-- 2. Boosting -->
+        <div class="bg-gradient-to-b from-slate-800/80 to-slate-900/90 border border-indigo-500/30 rounded-2xl p-6 flex flex-col justify-between shadow-lg relative overflow-hidden">
+          <div class="absolute -right-4 -top-4 w-24 h-24 bg-indigo-500/10 rounded-full blur-xl pointer-events-none"></div>
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">序列訓練</span>
+              <span class="text-xs text-slate-400 font-mono">02. Boosting</span>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-2">Boosting (提升法)</h3>
+            <p class="text-xs text-slate-400 mb-4 font-mono">Sequential Error-Correction</p>
+            
+            <div class="space-y-3 text-xs text-slate-300">
+              <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80">
+                <span class="text-indigo-400 font-semibold block mb-1">💡 核心概念</span>
+                採序列訓練。模型一個接一個串接訓練，後一個模型會專門去修正前一個模型預測錯誤的樣本或擬合負梯度殘差，並對容易出錯的資料給予更高權重。
+              </div>
+              <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80">
+                <span class="text-emerald-400 font-semibold block mb-1">🎯 主要目的</span>
+                降低模型的<strong>偏差（Bias）</strong>，將一組弱學習器逐步提升為高準確度的強預測器。
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800/80">
+            <span class="text-[11px] text-slate-400 block mb-1.5 font-medium">代表演算法：</span>
+            <div class="flex flex-wrap gap-1.5">
+              <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-950 text-indigo-300 border border-indigo-800/60">AdaBoost</span>
+              <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-950 text-indigo-300 border border-indigo-800/60">GBDT</span>
+              <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-950 text-indigo-300 border border-indigo-800/60">XGBoost</span>
+              <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-950 text-indigo-300 border border-indigo-800/60">LightGBM</span>
+              <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-950 text-indigo-300 border border-indigo-800/60">CatBoost</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Stacking -->
+        <div class="bg-gradient-to-b from-slate-800/80 to-slate-900/90 border border-pink-500/30 rounded-2xl p-6 flex flex-col justify-between shadow-lg relative overflow-hidden">
+          <div class="absolute -right-4 -top-4 w-24 h-24 bg-pink-500/10 rounded-full blur-xl pointer-events-none"></div>
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold px-2 py-0.5 rounded bg-pink-500/20 text-pink-300 border border-pink-500/30">異質融合</span>
+              <span class="text-xs text-slate-400 font-mono">03. Stacking</span>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-2">Stacking (堆疊法)</h3>
+            <p class="text-xs text-slate-400 mb-4 font-mono">Stacked Generalization</p>
+            
+            <div class="space-y-3 text-xs text-slate-300">
+              <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80">
+                <span class="text-pink-400 font-semibold block mb-1">💡 核心概念</span>
+                結合不同類型的演算法模型。先讓第一層多個異質模型（如 SVM、Random Forest、Neural Net）各自預測，再訓練一個次級模型（Meta-model）來學習如何把初級輸出最佳化組合成最終答案。
+              </div>
+              <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80">
+                <span class="text-purple-400 font-semibold block mb-1">🎯 主要目的</span>
+                整合不同演算法的架構優勢，達到截然不同的<strong>決策特徵互補</strong>與極限精度突破。
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800/80">
+            <span class="text-[11px] text-slate-400 block mb-1.5 font-medium">代表架構：</span>
+            <span class="inline-block px-2.5 py-1 rounded-md text-xs font-semibold bg-pink-950 text-pink-300 border border-pink-800/60">
+              Meta-Learner 雙層/多層堆疊架構
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 為什麼要用集成學習？ -->
+      <div class="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-6 shadow-md">
+        <h3 class="text-base font-bold text-white flex items-center mb-4">
+          <i data-lucide="help-circle" class="w-5 h-5 mr-2 text-amber-400"></i>
+          為什麼要用集成學習？(Why Ensemble Learning?)
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="p-4 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2">
+            <div class="flex items-center space-x-2 text-sky-400 font-semibold text-sm">
+              <i data-lucide="shield-check" class="w-4 h-4"></i>
+              <span>降低過度擬合 (Reduce Overfitting)</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              單一複雜模型容易記住訓練資料的雜訊與特殊離群點；群體決策能平滑化個別模型的極端邊界，提升面對未知測試資料的泛化能力。
+            </p>
+          </div>
+
+          <div class="p-4 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2">
+            <div class="flex items-center space-x-2 text-indigo-400 font-semibold text-sm">
+              <i data-lucide="sparkle" class="w-4 h-4"></i>
+              <span>結合多元優勢 (Diverse Perspectives)</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              不同的演算法（樹模型、線性模型、神經網絡）對資料的切入維度與特徵捕捉模式完全不同，合併後能全方位補足盲點，捕捉更豐富的資料空間結構。
+            </p>
+          </div>
+
+          <div class="p-4 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2">
+            <div class="flex items-center space-x-2 text-amber-400 font-semibold text-sm">
+              <i data-lucide="trophy" class="w-4 h-4"></i>
+              <span>競賽常勝技巧 (Competition Winning Trick)</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              在 Kaggle、KDD Cup 等世界級機器學習競賽中，前幾名的優勝團隊與頂級方案幾乎都會使用多種模型進行混合 Ensemble 組合以壓榨最後千分之一的指標精度。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02. 核心原理 & 05. 由來 -->
+    <section id="core" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- 02. 核心原理 -->
+      <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center space-x-2 mb-4">
+            <span class="text-xs font-semibold px-2.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">02. 核心原理</span>
+            <h2 class="text-lg font-bold text-slate-100">核心原理：多樣性與偏差-方差權衡</h2>
+          </div>
+          <p class="text-slate-300 text-sm mb-4">
+            機器學習的泛化誤差由三個要素構成：$\text{誤差} = \text{偏差}^2 + \text{變異數} + \text{不可消除誤差}$。集成學習透過三大主軸解決預測缺陷：
+          </p>
+          <ul class="space-y-3 text-sm text-slate-300">
+            <li class="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+              <strong class="text-sky-400">1. Bagging (Bootstrap Aggregating)</strong>：
+              透過自助重抽樣建立多個平行獨立模型，最終以平均或投票輸出。主要目的為<span class="text-amber-400 font-semibold">大幅降低變異數 (Variance Reduction)</span>。（代表：Random Forest）
+            </li>
+            <li class="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+              <strong class="text-indigo-400">2. Boosting (提升法)</strong>：
+              序列迭代訓練模型，後續模型著重修正前續模型犯錯的樣本權重或擬合殘差（Residuals）。主要目的為<span class="text-emerald-400 font-semibold">顯著降低偏差 (Bias Reduction)</span>。（代表：AdaBoost, XGBoost, LightGBM）
+            </li>
+            <li class="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+              <strong class="text-pink-400">3. Stacking (堆疊法)</strong>：
+              使用多種異質學習器（如 SVM + 神經網路 + 隨機森林），將其輸出作為新特徵，訓練元學習器 (Meta-Learner) 進行決策。
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 05. 由來 -->
+      <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center space-x-2 mb-4">
+            <span class="text-xs font-semibold px-2.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">05. 歷史淵源與演進</span>
+            <h2 class="text-lg font-bold text-slate-100">從 PAC 理論到現代集成架構</h2>
+          </div>
+          <div class="relative pl-6 border-l-2 border-slate-700 space-y-5 text-sm">
+            <div class="relative">
+              <span class="absolute -left-[31px] top-1 w-3 h-3 rounded-full bg-sky-500 ring-4 ring-slate-900"></span>
+              <span class="text-xs text-sky-400 font-bold">1988 - 1990 年代：Kearns & Valiant 猜想</span>
+              <p class="text-slate-300 mt-1">
+                Leslie Valiant 在機率近似正確（PAC）框架中提出核心懸念：弱學習演算法（略好於隨機猜測）是否在數學上等價於強學習演算法？Robert Schapire 於 1990 年在構造性證明中證實此命題，開啟集成學習大門。
+              </p>
+            </div>
+            <div class="relative">
+              <span class="absolute -left-[31px] top-1 w-3 h-3 rounded-full bg-indigo-500 ring-4 ring-slate-900"></span>
+              <span class="text-xs text-indigo-400 font-bold">1996 年：Breiman 提出 Bagging & 2001 隨機森林</span>
+              <p class="text-slate-300 mt-1">
+                Leo Breiman 提出 Bagging 與 Out-of-Bag (OOB) 估計，並結合隨機特徵子空間（Random Subspaces）誕生隨機森林（Random Forest），樹立穩健機器學習典範。
+              </p>
+            </div>
+            <div class="relative">
+              <span class="absolute -left-[31px] top-1 w-3 h-3 rounded-full bg-pink-500 ring-4 ring-slate-900"></span>
+              <span class="text-xs text-pink-400 font-bold">2014 年至今：極致梯度提升 (XGBoost / LightGBM / CatBoost)</span>
+              <p class="text-slate-300 mt-1">
+                Tianqi Chen (陳天奇) 提出 XGBoost，引入二階泰勒展開式與硬體級快取最佳化，集成學習在 Kaggle 等各類數據競賽與工業巨量資料中雄霸表格資料第一把交椅。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03. IPAS AI 考題解析 -->
+    <section id="ipas" class="bg-slate-800/40 border border-slate-700 rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div class="flex items-center space-x-2">
+          <span class="text-xs font-semibold px-2.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">03. IPAS 經濟部人工智慧工程師認證</span>
+          <h2 class="text-lg font-bold text-slate-100">實戰考題模擬與深入剖析</h2>
+        </div>
+        <span class="text-xs text-slate-400">標準單選題型 · 附完整考點論述</span>
+      </div>
+
+      <div class="bg-slate-900/80 border border-slate-800 p-5 rounded-xl space-y-4">
+        <div class="text-slate-200 font-medium">
+          【試題】關於集成學習（Ensemble Learning）中隨機森林（Random Forest）與梯度提升樹（Gradient Boosting Tree, GBDT）的比較，下列敘述何者最為正確？
+        </div>
+
+        <div class="space-y-2 text-sm text-slate-300" id="ipas-options">
+          <label class="flex items-start p-3 bg-slate-800/40 rounded-lg cursor-pointer hover:bg-slate-800 transition border border-transparent hover:border-slate-700">
+            <input type="radio" name="ipas-quiz" value="A" class="mt-1 mr-3 text-sky-500">
+            <span>(A) 隨機森林主要依賴降低模型偏差（Bias）來提升準確率，而 GBDT 主要依賴降低模型方差（Variance）。</span>
+          </label>
+          <label class="flex items-start p-3 bg-slate-800/40 rounded-lg cursor-pointer hover:bg-slate-800 transition border border-transparent hover:border-slate-700">
+            <input type="radio" name="ipas-quiz" value="B" class="mt-1 mr-3 text-sky-500">
+            <span>(B) 隨機森林各基學習器（Base Estimator）之間有強序列相依性；GBDT 的決策樹可高度平行分散訓練。</span>
+          </label>
+          <label class="flex items-start p-3 bg-slate-800/40 rounded-lg cursor-pointer hover:bg-slate-800 transition border border-transparent hover:border-slate-700">
+            <input type="radio" name="ipas-quiz" value="C" class="mt-1 mr-3 text-sky-500">
+            <span>(C) 隨機森林的每棵樹通常具備較大深度（低偏差、高方差）；GBDT 的基學習器通常為弱剪枝的淺層回歸樹（高偏差、低方差）。</span>
+          </label>
+          <label class="flex items-start p-3 bg-slate-800/40 rounded-lg cursor-pointer hover:bg-slate-800 transition border border-transparent hover:border-slate-700">
+            <input type="radio" name="ipas-quiz" value="D" class="mt-1 mr-3 text-sky-500">
+            <span>(D) 兩者在建構過程中皆不進行隨機子空間特徵採樣，只依賴資料列的重抽樣。</span>
+          </label>
+        </div>
+
+        <div class="pt-2 flex items-center space-x-3">
+          <button onclick="checkIpasAnswer()" class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-sm font-semibold rounded-lg transition">
+            送出核對答案
+          </button>
+          <div id="ipas-result" class="text-sm font-medium hidden"></div>
+        </div>
+
+        <div id="ipas-explanation" class="hidden mt-4 p-4 bg-slate-950/60 rounded-lg border border-slate-800 text-xs text-slate-300 space-y-2">
+          <p class="font-bold text-emerald-400">【官方解析與考點提示】 正確答案：(C)</p>
+          <p><strong>(A) 錯誤：</strong>隨機森林本質為 Bagging，目標是平均化各高方差樹以降低總 Variance；GBDT 本質為 Boosting，透過連續擬合殘差降低總 Bias。</p>
+          <p><strong>(B) 錯誤：</strong>剛好相反。隨機森林各樹完全獨立可平行訓練；GBDT 每一棵樹依賴上一輪模型的殘差與負梯度，本質為序列運算（雖然特徵切分可平行）。</p>
+          <p><strong>(C) 正確：</strong>隨機森林使用充分生長（未剪枝）之深樹以保證單樹低偏差，再靠 Bagging 抑制方差；GBDT 則使用 Shallow Tree（如最大深度 3~6），控制模型複雜度以防過擬合。</p>
+          <p><strong>(D) 錯誤：</strong>隨機森林標準機制即包含隨機特徵子空間選擇（如 $\sqrt{d}$ 個特徵），現代 GBDT（如 LightGBM、XGBoost）亦支援特徵隨機採樣（colsample_bytree）。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04. 實務特徵 & 06. 生活化例子 & 07. 工業應用 -->
+    <section id="industry" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- 04. 實務特徵 -->
+      <div class="bg-slate-800/40 border border-slate-700 rounded-2xl p-6">
+        <div class="flex items-center space-x-2 mb-3">
+          <span class="text-xs font-semibold px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">04. 實務特徵</span>
+          <h3 class="font-bold text-slate-100">工程優勢與妥協</h3>
+        </div>
+        <ul class="text-xs text-slate-300 space-y-3">
+          <li class="flex items-start">
+            <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400 mr-2 shrink-0 mt-0.5"></i>
+            <span><strong>絕佳穩健性 (Robustness)</strong>：不易對特定噪聲或異常離群點敏感，具備極強的抗噪能力。</span>
+          </li>
+          <li class="flex items-start">
+            <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400 mr-2 shrink-0 mt-0.5"></i>
+            <span><strong>非線性邊界擬合能力極高</strong>：對缺失值、非標準化特徵及各類尺度混雜的表格特徵具天然免疫力。</span>
+          </li>
+          <li class="flex items-start">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400 mr-2 shrink-0 mt-0.5"></i>
+            <span><strong>推論延遲與儲存代價</strong>：需同時加載並評估數百棵決策樹或多個子模型，對邊緣端硬體嚴苛。</span>
+          </li>
+          <li class="flex items-start">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400 mr-2 shrink-0 mt-0.5"></i>
+            <span><strong>可解釋性降低 (Black Box)</strong>：喪失單一決策樹清晰的 if-else 邏輯鏈，需依賴 SHAP 值或特徵重要性解析。</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 06. 生活化例子 -->
+      <div class="bg-slate-800/40 border border-slate-700 rounded-2xl p-6">
+        <div class="flex items-center space-x-2 mb-3">
+          <span class="text-xs font-semibold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">06. 生活化比喻</span>
+          <h3 class="font-bold text-slate-100">醫院名醫多學科聯合會診</h3>
+        </div>
+        <div class="text-xs text-slate-300 space-y-2">
+          <p>
+            想像一位患有罕見複雜疾病的病患：
+          </p>
+          <div class="p-2.5 bg-slate-900/80 rounded border border-slate-800">
+            <strong class="text-sky-400">Bagging 像是：</strong>召集 10 位資歷相當的心臟科主治醫師，各自查閱隨機抽出的病歷資料，獨立診斷後進行「少數服從多數投票」，消弭個別醫師的粗心偏見。
+          </div>
+          <div class="p-2.5 bg-slate-900/80 rounded border border-slate-800">
+            <strong class="text-indigo-400">Boosting 像是：</strong>資淺醫師先做初審；第二位醫師專注複查前位醫師遺漏或診斷錯誤的症狀；第三位資深主任再針對前兩位都猶豫的疑難雜症重點分析，層層補強。
+          </div>
+          <div class="p-2.5 bg-slate-900/80 rounded border border-slate-800">
+            <strong class="text-pink-400">Stacking 像是：</strong>外科、內科、放射科專家各自提交專屬分析報告，最後由院長（Meta-Model）綜合這些不同專科的意見做最終手術裁決。
+          </div>
+        </div>
+      </div>
+
+      <!-- 07. 工業上應用 -->
+      <div class="bg-slate-800/40 border border-slate-700 rounded-2xl p-6">
+        <div class="flex items-center space-x-2 mb-3">
+          <span class="text-xs font-semibold px-2 py-0.5 rounded bg-teal-500/10 text-teal-400 border border-teal-500/20">07. 工業落地範式</span>
+          <h3 class="font-bold text-slate-100">主流關鍵生產管線</h3>
+        </div>
+        <ul class="text-xs text-slate-300 space-y-2.5">
+          <li class="p-2 bg-slate-900/60 rounded border border-slate-800">
+            <span class="text-teal-400 font-bold">金融風控與信用卡反詐欺：</span>
+            毫秒級即時評估交易風險。利用 XGBoost/LightGBM 整合地理位置跳躍、歷史消費頻率等上千特徵，在極度不平衡資料集中精準捕捉詐騙。
+          </li>
+          <li class="p-2 bg-slate-900/60 rounded border border-slate-800">
+            <span class="text-teal-400 font-bold">半導體晶圓瑕疵預測 (Yield Prediction)：</span>
+            晶圓製造數千道製程中，感測器數據維度龐大且常有缺損，使用隨機森林進行特徵篩選與良率早期異常警示。
+          </li>
+          <li class="p-2 bg-slate-900/60 rounded border border-slate-800">
+            <span class="text-teal-400 font-bold">電子商務點擊率預估 (CTR & Ranking)：</span>
+            廣告點擊與電商推薦系統底層架構，將深度神經網路（DNN 抽取嵌入特徵）與 GBDT（決策空間劃分）串聯堆疊。
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 08. 理論簡介 & 09. 數學推導 (互動式動態推導) -->
+    <section id="math" class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 sm:p-8">
+      <div class="flex items-center justify-between mb-6 flex-wrap gap-2">
+        <div class="flex items-center space-x-2">
+          <span class="text-xs font-semibold px-2.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">08 & 09. 理論深究與動態數學推導</span>
+          <h2 class="text-xl font-bold text-slate-100">集成誤差為何必然小於單一模型？</h2>
+        </div>
+        <span class="text-xs text-slate-400">支援即時參數計算推導</span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <!-- 左側：理論說明 -->
+        <div class="lg:col-span-5 space-y-4 text-sm text-slate-300">
+          <h3 class="text-base font-bold text-white flex items-center">
+            <i data-lucide="sigma" class="w-4 h-4 mr-2 text-sky-400"></i> 孔多塞陪審團定理 (Condorcet's Theorem)
+          </h3>
+          <p>
+            假設有 $T$ 個獨立的基分類器，每個分類器預測正確的機率為 $p$（只要弱分類器優於隨機猜測，即 $p > 0.5$）。當我們使用<strong>簡單多數決（Majority Voting）</strong>時，集成分類器出錯的機率為超過半數分類器同時出錯的累加二項分佈：
+          </p>
+          <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center">
+            $$P_{\text{error}} = \sum_{k=\lfloor T/2 \rfloor + 1}^{T} \binom{T}{k} (1-p)^k p^{T-k}$$
+          </div>
+          <p>
+            根據霍夫丁不等式（Hoeffding's Inequality），當 $T \to \infty$ 時，$P_{\text{error}} \le \exp\left(-2T\left(p - \frac{1}{2}\right)^2\right) \to 0$。集成的失誤率呈指數級衰減！
+          </p>
+
+          <h3 class="text-base font-bold text-white flex items-center pt-2">
+            <i data-lucide="minimize-2" class="w-4 h-4 mr-2 text-indigo-400"></i> 回歸均方誤差的 Ambiguity 分解
+          </h3>
+          <p class="text-xs leading-relaxed">
+            Krogh & Vedelsby (1995) 證明了集成回歸預測值 $\bar{f}(x) = \sum w_i f_i(x)$ 的真實均方誤差可嚴格分解為：
+            $$\text{Ensemble Error} = \overline{\text{Individual Error}} - \text{Ensemble Ambiguity}$$
+            $$\mathbb{E}[(y - \bar{f})^2] = \sum_{i=1}^T w_i \mathbb{E}[(y - f_i)^2] - \sum_{i=1}^T w_i \mathbb{E}[(f_i - \bar{f})^2]$$
+            <strong>結論：</strong>集成模型的誤差永遠<strong>小於或等於</strong>個別單一模型誤差的加權平均值！兩者的差距正是個體多樣性（Ambiguity）。多樣性越強，誤差縮減越大。
+          </p>
+        </div>
+
+        <!-- 右側：動態推導互動計算板 -->
+        <div class="lg:col-span-7 bg-slate-900/90 border border-slate-800 rounded-xl p-6 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <span class="text-sm font-semibold text-sky-400 flex items-center">
+                <i data-lucide="calculator" class="w-4 h-4 mr-2"></i> 互動推導驗證模擬板
+              </span>
+              <span class="text-xs bg-slate-800 text-slate-400 px-2 py-1 rounded">即時重算</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 my-4">
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">
+                  單一分類器正確率 $p$: <span id="math-p-val" class="text-sky-400 font-bold">0.60</span>
+                </label>
+                <input type="range" id="math-p" min="0.51" max="0.95" step="0.01" value="0.60" class="w-full accent-sky-500">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">
+                  基學習器總數 $T$ (奇數): <span id="math-t-val" class="text-sky-400 font-bold">25</span>
+                </label>
+                <input type="range" id="math-t" min="3" max="101" step="2" value="25" class="w-full accent-sky-500">
+              </div>
+            </div>
+
+            <!-- 計算結果即時展示 -->
+            <div class="space-y-3 bg-slate-950 p-4 rounded-lg border border-slate-800/80">
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-slate-400">單一弱學習器錯誤率 $(1-p)$：</span>
+                <span id="math-single-err" class="text-amber-400 font-mono font-bold">40.00%</span>
+              </div>
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-slate-400">集成多數決出錯率 $P_{\text{error}}$：</span>
+                <span id="math-ensemble-err" class="text-emerald-400 font-mono font-bold text-lg">---</span>
+              </div>
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-slate-400">錯誤率下降幅度 $(\Delta \text{Error})$：</span>
+                <span id="math-err-drop" class="text-sky-400 font-mono font-bold">---</span>
+              </div>
+              <div class="text-xs text-slate-500 mt-2">
+                Hoeffding 上界值估計: $P_{\text{error}} \le$ <span id="math-hoeffding" class="font-mono text-slate-400">---</span>
+              </div>
+            </div>
+
+            <!-- 簡單視覺長條圖 -->
+            <div class="mt-4 space-y-2">
+              <div class="text-xs text-slate-400">出錯率比較圖：</div>
+              <div class="w-full bg-slate-800 h-4 rounded-full overflow-hidden flex">
+                <div id="bar-single" class="bg-amber-500 h-full text-[10px] text-center font-bold text-slate-950 leading-4 transition-all duration-300" style="width: 40%">單體</div>
+              </div>
+              <div class="w-full bg-slate-800 h-4 rounded-full overflow-hidden flex">
+                <div id="bar-ensemble" class="bg-emerald-500 h-full text-[10px] text-center font-bold text-slate-950 leading-4 transition-all duration-300" style="width: 15%">集成</div>
+              </div>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-500 mt-4 italic">
+            * 備註：此推導假設各基學習器之預測誤差彼此獨立無關（$Cov(e_i, e_j) = 0$）。在實際場景中特徵與資料具有相關性，但只要相關係數低於 1，集成依舊恆優於個別基模型。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. 集成學習跨領域互動展示範疇 -->
+    <section id="interactive-domains" class="bg-slate-800/40 border border-slate-700 rounded-2xl p-6 sm:p-8">
+      <div class="flex items-center space-x-2 mb-2">
+        <span class="text-xs font-semibold px-2.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">10. 領域交互展示</span>
+        <h2 class="text-xl font-bold text-slate-100">集成學習在 AI 各主流技術範疇的具體演進</h2>
+      </div>
+      <p class="text-slate-400 text-sm mb-6">
+        切換下方分頁，探索集成學習思想如何貫穿「經典機器學習」、「深度學習視覺語音」、「強化學習決策」與「現代大型語言模型（LLM）」。
+      </p>
+
+      <!-- 頁籤按鈕 -->
+      <div class="flex border-b border-slate-700 space-x-6 text-sm mb-6 overflow-x-auto">
+        <button onclick="switchDomain('ml')" id="tab-ml" class="tab-btn pb-3 tab-active flex items-center space-x-2 whitespace-nowrap">
+          <i data-lucide="git-merge" class="w-4 h-4"></i>
+          <span>機器學習 (ML) 範疇</span>
+        </button>
+        <button onclick="switchDomain('dl')" id="tab-dl" class="tab-btn pb-3 text-slate-400 hover:text-slate-200 flex items-center space-x-2 whitespace-nowrap">
+          <i data-lucide="cpu" class="w-4 h-4"></i>
+          <span>深度學習 (DL) 範疇</span>
+        </button>
+        <button onclick="switchDomain('rl')" id="tab-rl" class="tab-btn pb-3 text-slate-400 hover:text-slate-200 flex items-center space-x-2 whitespace-nowrap">
+          <i data-lucide="gamepad-2" class="w-4 h-4"></i>
+          <span>強化學習 (RL) 範疇</span>
+        </button>
+        <button onclick="switchDomain('llm')" id="tab-llm" class="tab-btn pb-3 text-slate-400 hover:text-slate-200 flex items-center space-x-2 whitespace-nowrap">
+          <i data-lucide="sparkles" class="w-4 h-4"></i>
+          <span>大型語言模型 (LLM) 範疇</span>
+        </button>
+      </div>
+
+      <!-- 分頁內容 -->
+      <!-- ML -->
+      <div id="content-ml" class="domain-content grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800">
+          <h4 class="font-bold text-sky-400 mb-2">Bagging: Random Forest</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            <strong>機制：</strong>有放回採樣（Bootstrap）抽取 $N$ 組訓練集，且每次結點分裂僅隨機抽取子特徵集。每棵樹最大化生長不剪枝。<br><br>
+            <strong>核心威力：</strong>將具有高方差的弱樹互相平均抵銷，泛化性強，極不容易 Overfitting。
+          </p>
+        </div>
+        <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800">
+          <h4 class="font-bold text-indigo-400 mb-2">Boosting: GBDT / XGBoost</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            <strong>機制：</strong>基於殘差前向分步演算法，新樹擬合損失函數的一階與二階導數資訊（Gradient & Hessian），並結合正則化懲罰項。<br><br>
+            <strong>核心威力：</strong>表格類資料極致的預測精度，霸榜結構化資料競賽。
+          </p>
+        </div>
+        <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800">
+          <h4 class="font-bold text-pink-400 mb-2">Stacking: 多模型融合</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            <strong>機制：</strong>透過 $K$-fold 交叉驗證生成基層學習器對驗證集的 Out-of-Fold (OOF) 預測，組合為 Meta-features 並訓練第二層元學習器（如 Logistic Regression）。<br><br>
+            <strong>核心威力：</strong>吸納異質演算法多樣性。
+          </p>
+        </div>
+      </div>
+
+      <!-- DL -->
+      <div id="content-dl" class="domain-content hidden grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800">
+          <h4 class="font-bold text-sky-400 mb-2">Dropout: 隱式子網路集成</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Srivastava et al. (2014) 證明，在神經網絡訓練時隨機將節點以機率 $p$ 暫時置零，在數學上等同於同時訓練了 $2^{|V|}$ 個共享權重的極薄子網路集成，大幅抑制深度模型過擬合。
+          </p>
+        </div>
+        <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800">
+          <h4 class="font-bold text-indigo-400 mb-2">Snapshot & SWA 權重平均</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            <strong>Stochastic Weight Averaging (SWA)</strong> 與 Snapshot Ensembles：利用餘弦退火學習率在訓練末期造訪多個局部最優解（Local Minima），將數個不同 Epoch 的權重直接平均，零額外推論成本下提升測試精度。
+          </p>
+        </div>
+        <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800">
+          <h4 class="font-bold text-pink-400 mb-2">Test-Time Augmentation (TTA)</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            推論階段對單張輸入影像執行翻轉、多尺度縮放、裁剪生成多張變形樣本，分別推論後將機率向量平均，達到輸入層級的集成預測增強。
+          </p>
+        </div>
+      </div>
+
+      <!-- RL -->
+      <div id="content-rl" class="domain-content hidden grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800">
+          <h4 class="font-bold text-sky-400 mb-2">REDQ & Double Q-Learning (消除高估偏差)</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            在 Q-Learning 中，$\max_{a} Q(s', a)$ 算子會引入系統性正向高估誤差（Overestimation Bias）。<br>
+            <strong>Ensemble RL</strong> 同時維護 $M$ 個 Q-網路（例如 Randomized Ensembled Double Q-Learning, REDQ），在更新時隨機選取子集取極小值 $\min_{i \in \mathcal{K}} Q_i(s', a')$，徹底破除價值高估陷阱，穩定強化學習訓練。
+          </p>
+        </div>
+        <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800">
+          <h4 class="font-bold text-indigo-400 mb-2">Bootstrapped DQN (引導高效探索)</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            利用集成神經網路的預測不確定性（Epistemic Uncertainty）來驅動探索（Exploration）。當所有子網路對某一狀態動作對估計差異極大時，代表模型對該區域尚未充分探索，引導 Agent 優先前往未探索策略空間。
+          </p>
+        </div>
+      </div>
+
+      <!-- LLM -->
+      <div id="content-llm" class="domain-content hidden grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800">
+          <h4 class="font-bold text-amber-400 mb-2">Self-Consistency (CoT 集成)</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Wang et al. (2022)：在思維鏈（Chain-of-Thought, CoT）推論時，透過 Temperature > 0 進行多重採樣生成數十條推論路徑，對最終答案進行多數決投票（Majority Voting），極大降低幻覺與邏輯卡頓。
+          </p>
+        </div>
+        <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800">
+          <h4 class="font-bold text-emerald-400 mb-2">Mixture of Experts (MoE) 稀疏混合專家</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            如 Mixtral 8x7B、GPT-4 架構。將單一巨大的 FFN 替換為多個不同專門化的 Expert 模組，透過門控網路（Router / Gating Network）依據 Token 動態選派 Top-2 專家進行加權集成，兼得超大參數量與高速推論。
+          </p>
+        </div>
+        <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800">
+          <h4 class="font-bold text-purple-400 mb-2">Model Merging (權重融合與模型融合)</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            如 SLERP (球面線性插值)、DARE (Drop and Rescale) 等技術，直接將多個基於同一基礎模型微導出的異質模型參數進行幾何張量融合，免重新訓練即可集成多重專長（代碼 + 數學 + 寫作）。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11. Python / PyTorch 實作 (語法醒目著色) -->
+    <section id="code" class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 sm:p-8">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div class="flex items-center space-x-2">
+          <span class="text-xs font-semibold px-2.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">11. Python / PyTorch 程式碼實作</span>
+          <h2 class="text-lg font-bold text-slate-100">神經網路投票與權重平均集成器 (Ensemble Model)</h2>
+        </div>
+        <div class="flex items-center space-x-2 text-xs">
+          <span class="inline-block w-3 h-3 rounded-full bg-yellow-400"></span>
+          <span class="text-slate-400">重點核心函式以亮黃色特別標註</span>
+        </div>
+      </div>
+
+      <div class="bg-slate-950 p-5 rounded-xl border border-slate-800 overflow-x-auto font-mono text-xs text-slate-300 leading-relaxed">
+        <pre><code><span class="py-kw">import</span> torch
+<span class="py-kw">import</span> torch.nn <span class="py-kw">as</span> nn
+<span class="py-kw">import</span> torch.optim <span class="py-kw">as</span> optim
+<span class="py-kw">from</span> typing <span class="py-kw">import</span> List
+
+<span class="py-com"># 1. 定義單一弱神經網路基分類器 (Base Estimator)</span>
+<span class="py-kw">class</span> <span class="py-cls">BaseClassifier</span>(nn.Module):
+    <span class="py-kw">def</span> <span class="py-fn">__init__</span>(self, input_dim: <span class="py-cls">int</span>, hidden_dim: <span class="py-cls">int</span> = <span class="py-num">16</span>):
+        <span class="py-fn">super</span>().<span class="py-fn">__init__</span>()
+        self.net = nn.<span class="py-cls">Sequential</span>(
+            nn.<span class="py-cls">Linear</span>(input_dim, hidden_dim),
+            nn.<span class="py-cls">ReLU</span>(),
+            nn.<span class="py-cls">Linear</span>(hidden_dim, <span class="py-num">2</span>)
+        )
+        
+    <span class="py-kw">def</span> <span class="py-core">forward</span>(self, x: torch.Tensor) -> torch.Tensor:
+        <span class="py-kw">return</span> self.net(x)
+
+<span class="py-com"># 2. 構建 Bagging & Soft-Voting 集成系統架構</span>
+<span class="py-kw">class</span> <span class="py-cls">NeuralEnsemble</span>(nn.Module):
+    <span class="py-kw">def</span> <span class="py-fn">__init__</span>(self, n_estimators: <span class="py-cls">int</span> = <span class="py-num">5</span>, input_dim: <span class="py-cls">int</span> = <span class="py-num">2</span>):
+        <span class="py-fn">super</span>().<span class="py-fn">__init__</span>()
+        self.n_estimators = n_estimators
+        <span class="py-com"># 使用 ModuleList 正確管理多個獨立子模型之參數</span>
+        self.models = nn.<span class="py-cls">ModuleList</span>([<span class="py-cls">BaseClassifier</span>(input_dim) <span class="py-kw">for</span> _ <span class="py-kw">in</span> <span class="py-fn">range</span>(n_estimators)])
+
+    <span class="py-com"># 【重點函式】Bootstrap 自助抽樣平行/獨立擬合</span>
+    <span class="py-kw">def</span> <span class="py-core">fit_ensemble</span>(self, X: torch.Tensor, y: torch.Tensor, epochs: <span class="py-cls">int</span> = <span class="py-num">30</span>):
+        criterion = nn.<span class="py-cls">CrossEntropyLoss</span>()
+        n_samples = X.size(<span class="py-num">0</span>)
+        
+        <span class="py-kw">for</span> idx, model <span class="py-kw">in</span> <span class="py-fn">enumerate</span>(self.models):
+            optimizer = optim.<span class="py-cls">Adam</span>(model.parameters(), lr=<span class="py-num">0.01</span>)
+            <span class="py-com"># Bootstrap 隨機有放回抽樣</span>
+            boot_idx = torch.<span class="py-core">randint</span>(high=n_samples, size=(n_samples,))
+            X_boot, y_boot = X[boot_idx], y[boot_idx]
+            
+            model.<span class="py-fn">train</span>()
+            <span class="py-kw">for</span> epoch <span class="py-kw">in</span> <span class="py-fn">range</span>(epochs):
+                optimizer.<span class="py-core">zero_grad</span>()
+                logits = model(X_boot)
+                loss = criterion(logits, y_boot)
+                loss.<span class="py-core">backward</span>()
+                optimizer.<span class="py-core">step</span>()
+
+    <span class="py-com"># 【重點函式】軟投票 (Soft-Voting) 機率平均集成推論</span>
+    <span class="py-kw">def</span> <span class="py-core">predict_proba</span>(self, X: torch.Tensor) -> torch.Tensor:
+        self.<span class="py-fn">eval</span>()
+        probs_sum = torch.<span class="py-fn">zeros</span>((X.size(<span class="py-num">0</span>), <span class="py-num">2</span>))
+        
+        <span class="py-kw">with</span> torch.<span class="py-fn">no_grad</span>():
+            <span class="py-kw">for</span> model <span class="py-kw">in</span> self.models:
+                logits = model(X)
+                probs = torch.<span class="py-core">softmax</span>(logits, dim=-<span class="py-num">1</span>)
+                probs_sum += probs
+                
+        <span class="py-com"># 計算所有弱模型之平均預測機率分佈</span>
+        ensemble_probs = probs_sum / self.n_estimators
+        <span class="py-kw">return</span> ensemble_probs
+
+    <span class="py-com"># 【重點函式】最終硬類別投票輸出</span>
+    <span class="py-kw">def</span> <span class="py-core">predict</span>(self, X: torch.Tensor) -> torch.Tensor:
+        probs = self.<span class="py-core">predict_proba</span>(X)
+        <span class="py-kw">return</span> torch.<span class="py-core">argmax</span>(probs, dim=-<span class="py-num">1</span>)
+
+<span class="py-com"># --- 示範運行 ---</span>
+<span class="py-kw">if</span> __name__ == <span class="py-str">"__main__"</span>:
+    <span class="py-com"># 模擬具有雜訊的二維雙月形資料點 (Toy Data)</span>
+    X_train = torch.<span class="py-fn">randn</span>(<span class="py-num">200</span>, <span class="py-num">2</span>)
+    y_train = ((X_train[:, <span class="py-num">0</span>] ** <span class="py-num">2</span> + X_train[:, <span class="py-num">1</span>] ** <span class="py-num">2</span>) > <span class="py-num">1.0</span>).long()
+
+    ensemble = <span class="py-cls">NeuralEnsemble</span>(n_estimators=<span class="py-num">7</span>, input_dim=<span class="py-num">2</span>)
+    ensemble.<span class="py-core">fit_ensemble</span>(X_train, y_train, epochs=<span class="py-num">40</span>)
+    
+    preds = ensemble.<span class="py-core">predict</span>(X_train[:<span class="py-num">5</span>])
+    <span class="py-fn">print</span>(<span class="py-str">"前五筆樣本集成預測標籤:"</span>, preds.numpy())</code></pre>
+      </div>
+    </section>
+
+    <!-- 12. 互動式模擬器：Step-by-Step 與 一鍵自動模擬 -->
+    <section id="simulation" class="bg-slate-800/60 border border-slate-700 rounded-2xl p-6 sm:p-8">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="text-xs font-semibold px-2.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">12. 互動式模擬</span>
+            <h2 class="text-xl font-bold text-slate-100">集成學習邊界演化實境模擬器 (2D Boundary Simulator)</h2>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">
+            觀察個別弱學習器（決策單元樁 Decision Stumps）如何隨迭代序列增長，最終堆疊出平滑準確的非線性集成邊界。
+          </p>
+        </div>
+      </div>
+
+      <!-- 控制列 -->
+      <div class="flex flex-wrap items-center gap-3 p-4 bg-slate-900/90 rounded-xl border border-slate-800 mb-6">
+        <div class="flex items-center space-x-2">
+          <label class="text-xs text-slate-400">資料集分佈:</label>
+          <select id="sim-dataset" class="bg-slate-800 border border-slate-700 text-xs text-white rounded px-2.5 py-1.5 focus:outline-none">
+            <option value="circles">同心圓環 (Concentric Circles)</option>
+            <option value="moons">雙月雙弧 (Two Moons)</option>
+            <option value="xor">XOR 異或分佈 (Nonlinear XOR)</option>
+          </select>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <label class="text-xs text-slate-400">雜訊干擾 (Noise):</label>
+          <input type="range" id="sim-noise" min="0" max="0.3" step="0.05" value="0.1" class="w-20 accent-sky-500">
+        </div>
+
+        <div class="h-6 w-px bg-slate-800 hidden sm:block"></div>
+
+        <!-- 動作按鈕 -->
+        <button id="btn-step" onclick="stepSimulation()" class="px-3.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition">
+          <i data-lucide="step-forward" class="w-3.5 h-3.5"></i>
+          <span>Step-by-Step (單步新增弱學習器)</span>
+        </button>
+
+        <button id="btn-auto" onclick="toggleAutoSimulation()" class="px-3.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition">
+          <i data-lucide="play" id="icon-auto" class="w-3.5 h-3.5"></i>
+          <span id="text-auto">一鍵自動模擬</span>
+        </button>
+
+        <button onclick="resetSimulation()" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+          <span>重設資料</span>
+        </button>
+      </div>
+
+      <!-- 畫布與資訊面板 -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <!-- Canvas 視覺化區域 -->
+        <div class="lg:col-span-8 flex flex-col items-center bg-slate-950 p-4 rounded-xl border border-slate-800">
+          <div class="w-full flex justify-between items-center text-xs text-slate-400 mb-2 px-1">
+            <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-sky-500 mr-1.5 inline-block"></span>類別 A (Class +1)</span>
+            <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-rose-500 mr-1.5 inline-block"></span>類別 B (Class -1)</span>
+            <span class="text-slate-500">背景色 = 集成決策置信度</span>
+          </div>
+
+          <div class="relative w-full max-w-[500px] aspect-square">
+            <canvas id="simCanvas" width="500" height="500" class="w-full h-full rounded-lg shadow-inner bg-slate-900 border border-slate-800"></canvas>
+          </div>
+        </div>
+
+        <!-- 即時指標與狀態面板 -->
+        <div class="lg:col-span-4 space-y-4">
+          <div class="bg-slate-900 p-5 rounded-xl border border-slate-800 space-y-4">
+            <h4 class="text-sm font-bold text-slate-200 border-b border-slate-800 pb-2 flex items-center">
+              <i data-lucide="activity" class="w-4 h-4 mr-2 text-sky-400"></i> 當前集成狀態指標
+            </h4>
+            
+            <div class="space-y-3 text-xs">
+              <div class="flex justify-between items-center">
+                <span class="text-slate-400">目前基學習器數量 (Estimators):</span>
+                <span id="stat-trees" class="font-mono text-sky-400 font-bold text-base">0</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-slate-400">集成訓練準確率 (Train Acc):</span>
+                <span id="stat-acc" class="font-mono text-emerald-400 font-bold text-base">-- %</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-slate-400">單一最新弱分類器權重 ($\alpha_t$):</span>
+                <span id="stat-alpha" class="font-mono text-amber-400 font-bold text-base">--</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-slate-400">殘差加權誤差率 ($\epsilon_t$):</span>
+                <span id="stat-err" class="font-mono text-rose-400 font-bold text-base">--</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 text-xs text-slate-400 space-y-2">
+            <span class="font-semibold text-slate-300">模擬演算法原理解析：</span>
+            <p>
+              本模擬實作經典 <strong>AdaBoost (Adaptive Boosting)</strong> 過程。每一步在 2D 平面尋找最優正交切分單元樁（Decision Stump: $x > \theta$ 或 $y > \theta$）。
+            </p>
+            <p>
+              切分錯誤的樣本在下一輪會獲得<strong>更高的權重 (Weight Re-scaling)</strong>，促使後續弱分類器專注攻克邊界邊緣的頑固噪點。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="mt-auto border-t border-slate-800 bg-slate-950/80 py-6 text-center text-xs text-slate-500">
+    Ensemble Learning Comprehensive Knowledge Base & Interactive Simulation Platform · 遵循嚴格數學推導與工業實踐
+  </footer>
+
+  <!-- 邏輯腳本區 -->
+  <script>
+    // 初始化 Lucide 圖標
+    document.addEventListener("DOMContentLoaded", () => {
+      lucide.createIcons();
+      if (window.renderMathInElement) {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false},
+            {left: '\\[', right: '\\]', display: true},
+            {left: '\\(', right: '\\)', display: false}
+          ]
+        });
+      }
+      initMathDerivation();
+      initSimulation();
+    });
+
+    // 03. IPAS 考題互動
+    function checkIpasAnswer() {
+      const selected = document.querySelector('input[name="ipas-quiz"]:checked');
+      const resultDiv = document.getElementById('ipas-result');
+      const explanationDiv = document.getElementById('ipas-explanation');
+      
+      if (!selected) {
+        resultDiv.className = "text-sm font-semibold text-amber-400";
+        resultDiv.textContent = "請先選擇一個選項！";
+        resultDiv.classList.remove('hidden');
+        return;
+      }
+      
+      explanationDiv.classList.remove('hidden');
+      resultDiv.classList.remove('hidden');
+      
+      if (selected.value === 'C') {
+        resultDiv.className = "text-sm font-semibold text-emerald-400";
+        resultDiv.textContent = "回答正確！隨機森林使用深樹降低偏差，GBDT 使用淺樹避免過擬合。";
+      } else {
+        resultDiv.className = "text-sm font-semibold text-rose-400";
+        resultDiv.textContent = "回答錯誤。正確選項為 (C)，請參考下方詳盡官方試題解析。";
+      }
+    }
+
+    // 09. 數學推導互動板運算
+    const pSlider = document.getElementById('math-p');
+    const tSlider = document.getElementById('math-t');
+    const pValLabel = document.getElementById('math-p-val');
+    const tValLabel = document.getElementById('math-t-val');
+    const singleErrLabel = document.getElementById('math-single-err');
+    const ensembleErrLabel = document.getElementById('math-ensemble-err');
+    const errDropLabel = document.getElementById('math-err-drop');
+    const hoeffdingLabel = document.getElementById('math-hoeffding');
+    const barSingle = document.getElementById('bar-single');
+    const barEnsemble = document.getElementById('bar-ensemble');
+
+    function factorial(n) {
+      let res = 1;
+      for (let i = 2; i <= n; i++) res *= i;
+      return res;
+    }
+
+    function nCr(n, r) {
+      if (r < 0 || r > n) return 0;
+      if (r === 0 || r === n) return 1;
+      let c = 1;
+      for (let i = 1; i <= r; i++) {
+        c = (c * (n - (r - i))) / i;
+      }
+      return c;
+    }
+
+    function updateMathDerivation() {
+      const p = parseFloat(pSlider.value);
+      const T = parseInt(tSlider.value, 10);
+      
+      pValLabel.textContent = p.toFixed(2);
+      tValLabel.textContent = T;
+
+      const singleErr = 1 - p;
+      singleErrLabel.textContent = (singleErr * 100).toFixed(2) + "%";
+
+      // 計算多數決出錯率 (累積二項分佈: 至少 floor(T/2) + 1 個出錯)
+      const majority = Math.floor(T / 2) + 1;
+      let ensembleErr = 0;
+      for (let k = majority; k <= T; k++) {
+        ensembleErr += nCr(T, k) * Math.pow(1 - p, k) * Math.pow(p, T - k);
+      }
+      ensembleErr = Math.max(0, Math.min(1, ensembleErr));
+
+      ensembleErrLabel.textContent = (ensembleErr * 100).toFixed(4) + "%";
+      const drop = ((singleErr - ensembleErr) / singleErr) * 100;
+      errDropLabel.textContent = drop.toFixed(1) + "%";
+
+      // Hoeffding 上界
+      const hoeffdingBound = Math.exp(-2 * T * Math.pow(p - 0.5, 2));
+      hoeffdingLabel.textContent = hoeffdingBound > 1 ? "1.0000" : hoeffdingBound.toFixed(5);
+
+      // 更新長條視覺圖
+      barSingle.style.width = (singleErr * 100) + "%";
+      barSingle.textContent = `單體 ${(singleErr * 100).toFixed(1)}%`;
+      const ensPct = Math.max(4, ensembleErr * 100);
+      barEnsemble.style.width = ensPct + "%";
+      barEnsemble.textContent = `集成 ${(ensembleErr * 100).toFixed(2)}%`;
+    }
+
+    function initMathDerivation() {
+      pSlider.addEventListener('input', updateMathDerivation);
+      tSlider.addEventListener('input', updateMathDerivation);
+      updateMathDerivation();
+    }
+
+    // 10. 領域標籤切換
+    function switchDomain(domain) {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('tab-active');
+        btn.classList.add('text-slate-400');
+      });
+      document.querySelectorAll('.domain-content').forEach(content => {
+        content.classList.add('hidden');
+      });
+
+      document.getElementById(`tab-${domain}`).classList.add('tab-active');
+      document.getElementById(`tab-${domain}`).classList.remove('text-slate-400');
+      document.getElementById(`content-${domain}`).classList.remove('hidden');
+    }
+
+    // ==========================================
+    // 12. 互動式 2D 模擬器 (AdaBoost Decision Stumps)
+    // ==========================================
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    let points = [];
+    let weights = [];
+    let ensemble = []; // 存放 { axis: 0|1, threshold, polarity: 1|-1, alpha }
+    let autoTimer = null;
+
+    function generateDataset(type, noise = 0.1, n = 120) {
+      points = [];
+      for (let i = 0; i < n; i++) {
+        let x, y, label;
+        if (type === 'circles') {
+          const r = (i < n / 2) ? 0.35 + (Math.random() - 0.5) * noise : 0.75 + (Math.random() - 0.5) * noise;
+          const theta = Math.random() * Math.PI * 2;
+          x = 0.5 + r * Math.cos(theta) * 0.5;
+          y = 0.5 + r * Math.sin(theta) * 0.5;
+          label = (i < n / 2) ? 1 : -1;
+        } else if (type === 'moons') {
+          if (i < n / 2) {
+            const theta = Math.PI * Math.random();
+            x = 0.35 + 0.25 * Math.cos(theta) + (Math.random() - 0.5) * noise;
+            y = 0.45 - 0.25 * Math.sin(theta) + (Math.random() - 0.5) * noise;
+            label = 1;
+          } else {
+            const theta = Math.PI * Math.random();
+            x = 0.65 - 0.25 * Math.cos(theta) + (Math.random() - 0.5) * noise;
+            y = 0.55 + 0.25 * Math.sin(theta) + (Math.random() - 0.5) * noise;
+            label = -1;
+          }
+        } else { // XOR
+          x = Math.random();
+          y = Math.random();
+          const inX = x > 0.5;
+          const inY = y > 0.5;
+          label = (inX !== inY) ? 1 : -1;
+          x += (Math.random() - 0.5) * noise * 0.5;
+          y += (Math.random() - 0.5) * noise * 0.5;
+        }
+        points.push({ x: Math.max(0.05, Math.min(0.95, x)), y: Math.max(0.05, Math.min(0.95, y)), label });
+      }
+      weights = new Array(points.length).fill(1 / points.length);
+      ensemble = [];
+    }
+
+    function initSimulation() {
+      const type = document.getElementById('sim-dataset').value;
+      const noise = parseFloat(document.getElementById('sim-noise').value);
+      generateDataset(type, noise);
+      renderSimulation();
+      updateSimStats(0, 0, 0);
+
+      document.getElementById('sim-dataset').addEventListener('change', resetSimulation);
+      document.getElementById('sim-noise').addEventListener('input', resetSimulation);
+    }
+
+    function resetSimulation() {
+      if (autoTimer) toggleAutoSimulation();
+      const type = document.getElementById('sim-dataset').value;
+      const noise = parseFloat(document.getElementById('sim-noise').value);
+      generateDataset(type, noise);
+      renderSimulation();
+      updateSimStats(0, 0, 0);
+    }
+
+    // 尋找最佳弱分類器 (Decision Stump: x > thresh or y > thresh)
+    function trainBestStump() {
+      let bestErr = Infinity;
+      let bestStump = null;
+      const steps = 30;
+
+      for (let axis = 0; axis < 2; axis++) {
+        for (let s = 1; s < steps; s++) {
+          const thresh = s / steps;
+          for (let polarity of [1, -1]) {
+            let weightedErr = 0;
+            for (let i = 0; i < points.length; i++) {
+              const val = axis === 0 ? points[i].x : points[i].y;
+              const pred = (val >= thresh) ? polarity : -polarity;
+              if (pred !== points[i].label) {
+                weightedErr += weights[i];
+              }
+            }
+
+            if (weightedErr < bestErr) {
+              bestErr = weightedErr;
+              bestStump = { axis, threshold: thresh, polarity };
+            }
+          }
+        }
+      }
+
+      // 避免除以零或極端邊界
+      bestErr = Math.max(1e-4, Math.min(1 - 1e-4, bestErr));
+      const alpha = 0.5 * Math.log((1 - bestErr) / bestErr);
+      bestStump.alpha = alpha;
+      bestStump.error = bestErr;
+
+      // 更新資料權重 (AdaBoost Weight Update)
+      let wSum = 0;
+      for (let i = 0; i < points.length; i++) {
+        const val = bestStump.axis === 0 ? points[i].x : points[i].y;
+        const pred = (val >= bestStump.threshold) ? bestStump.polarity : -bestStump.polarity;
+        weights[i] = weights[i] * Math.exp(-alpha * points[i].label * pred);
+        wSum += weights[i];
+      }
+      // 正規化權重
+      for (let i = 0; i < points.length; i++) {
+        weights[i] /= wSum;
+      }
+
+      return bestStump;
+    }
+
+    function predictEnsemble(x, y) {
+      if (ensemble.length === 0) return 0;
+      let sum = 0;
+      for (const stump of ensemble) {
+        const val = stump.axis === 0 ? x : y;
+        const pred = (val >= stump.threshold) ? stump.polarity : -stump.polarity;
+        sum += stump.alpha * pred;
+      }
+      return sum;
+    }
+
+    function stepSimulation() {
+      if (ensemble.length >= 50) return;
+      const stump = trainBestStump();
+      ensemble.push(stump);
+
+      // 計算目前集成的總訓練準確率
+      let correct = 0;
+      for (const p of points) {
+        const score = predictEnsemble(p.x, p.y);
+        const finalPred = score >= 0 ? 1 : -1;
+        if (finalPred === p.label) correct++;
+      }
+      const acc = (correct / points.length) * 100;
+
+      updateSimStats(ensemble.length, acc, stump.alpha, stump.error);
+      renderSimulation();
+    }
+
+    function updateSimStats(trees, acc, alpha = 0, err = 0) {
+      document.getElementById('stat-trees').textContent = trees;
+      document.getElementById('stat-acc').textContent = trees === 0 ? "-- %" : acc.toFixed(1) + " %";
+      document.getElementById('stat-alpha').textContent = trees === 0 ? "--" : alpha.toFixed(3);
+      document.getElementById('stat-err').textContent = trees === 0 ? "--" : err.toFixed(3);
+    }
+
+    function toggleAutoSimulation() {
+      const btn = document.getElementById('btn-auto');
+      const text = document.getElementById('text-auto');
+      const icon = document.getElementById('icon-auto');
+
+      if (autoTimer) {
+        clearInterval(autoTimer);
+        autoTimer = null;
+        text.textContent = "一鍵自動模擬";
+        icon.setAttribute('data-lucide', 'play');
+        btn.classList.replace('bg-rose-600', 'bg-sky-600');
+        btn.classList.replace('hover:bg-rose-500', 'hover:bg-sky-500');
+      } else {
+        text.textContent = "暫停模擬";
+        icon.setAttribute('data-lucide', 'pause');
+        btn.classList.replace('bg-sky-600', 'bg-rose-600');
+        btn.classList.replace('hover:bg-sky-500', 'hover:bg-rose-500');
+        
+        autoTimer = setInterval(() => {
+          if (ensemble.length >= 35) {
+            toggleAutoSimulation();
+            return;
+          }
+          stepSimulation();
+        }, 220);
+      }
+      lucide.createIcons();
+    }
+
+    function renderSimulation() {
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      // 1. 繪製背景置信度決策邊界 (Grid resolution: 40x40)
+      const res = 50;
+      const cellW = w / res;
+      const cellH = h / res;
+
+      if (ensemble.length > 0) {
+        for (let i = 0; i < res; i++) {
+          for (let j = 0; j < res; j++) {
+            const x = (i + 0.5) / res;
+            const y = (j + 0.5) / res;
+            const score = predictEnsemble(x, y);
+
+            // 雙曲正切壓縮至 [-1, 1]
+            const norm = Math.tanh(score);
+            if (norm > 0) {
+              // 藍色通道
+              ctx.fillStyle = `rgba(14, 165, 233, ${Math.min(0.55, norm * 0.6)})`;
+            } else {
+              // 紅色通道
+              ctx.fillStyle = `rgba(244, 63, 94, ${Math.min(0.55, -norm * 0.6)})`;
+            }
+            ctx.fillRect(i * cellW, j * cellH, cellW + 0.5, cellH + 0.5);
+          }
+        }
+      } else {
+        ctx.fillStyle = "#090d16";
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      // 2. 繪製弱學習器切分線 (最近一棵樹以醒目高亮標註)
+      if (ensemble.length > 0) {
+        const lastStump = ensemble[ensemble.length - 1];
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "rgba(250, 204, 21, 0.85)"; // 鮮黃色
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        if (lastStump.axis === 0) {
+          ctx.moveTo(lastStump.threshold * w, 0);
+          ctx.lineTo(lastStump.threshold * w, h);
+        } else {
+          ctx.moveTo(0, lastStump.threshold * h);
+          ctx.lineTo(w, lastStump.threshold * h);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // 3. 繪製資料點 (大小反映權重大小)
+      for (let i = 0; i < points.length; i++) {
+        const p = points[i];
+        const px = p.x * w;
+        const py = p.y * h;
+        // 權重越大圓點越大
+        const radius = Math.max(3, Math.min(10, weights[i] * points.length * 3.5));
+
+        ctx.beginPath();
+        ctx.arc(px, py, radius, 0, Math.PI * 2);
+        if (p.label === 1) {
+          ctx.fillStyle = "#38bdf8"; // Sky 400
+          ctx.strokeStyle = "#0284c7";
+        } else {
+          ctx.fillStyle = "#fb7185"; // Rose 400
+          ctx.strokeStyle = "#e11d48";
+        }
+        ctx.lineWidth = 1.5;
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+  </script>
+</body>
+</html>
