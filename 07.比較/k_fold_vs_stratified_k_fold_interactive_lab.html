@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K-Fold vs Stratified K-Fold 交叉驗證深度教學與互動模擬器</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- KaTeX for LaTeX Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+            onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        code, pre { font-family: 'JetBrains Mono', monospace; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        .dark ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        .katex-display { margin: 0.75em 0; overflow-x: auto; overflow-y: hidden; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen transition-colors duration-200">
+
+    <!-- Top Navigation Bar (With quick jump anchors) -->
+    <header class="sticky top-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <a href="#top-header" class="flex items-center space-x-3 group">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition">
+                        <i class="fa-solid fa-layer-group text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-base sm:text-lg font-bold tracking-tight bg-gradient-to-r from-indigo-600 to-violet-600 dark:from-indigo-400 dark:to-violet-400 bg-clip-text text-transparent">
+                            K-Fold vs Stratified K-Fold
+                        </h1>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">交叉驗證核心原理與動態實驗室</p>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Jump Navigation -->
+            <div class="flex items-center space-x-2 sm:space-x-4">
+                <nav class="hidden md:flex items-center space-x-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    <a href="#photo-section" class="px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition">首頁速查表</a>
+                    <a href="#knowledge-section" class="px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition">完整知識庫 (01-11)</a>
+                    <a href="#simulator-section" class="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 transition">
+                        <i class="fa-solid fa-play mr-1"></i>互動模擬器
+                    </a>
+                </nav>
+
+                <!-- Dark Mode Toggle -->
+                <button id="theme-toggle" class="p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="切換明暗模式">
+                    <i id="theme-icon" class="fa-solid fa-moon"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-10">
+
+        <!-- ======================================================== -->
+        <!-- 1. 照片內容 (網頁的頭：Banner + 核心差異比較表)            -->
+        <!-- ======================================================== -->
+        <section id="photo-section" class="space-y-6">
+            
+            <!-- Hero Banner: 照片上方深藍色對比引擎區塊 (已移除操作按鈕，移至底部模擬器) -->
+            <div class="bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-900 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-indigo-500/20">
+                <div class="absolute -right-10 -bottom-10 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                
+                <div class="relative z-10 space-y-3">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                        <i class="fa-solid fa-bolt mr-1.5 text-amber-400"></i> 即時實驗對比引擎
+                    </span>
+                    
+                    <h2 class="text-2xl sm:text-4xl font-black tracking-tight text-white">
+                        Standard K-Fold vs Stratified K-Fold
+                    </h2>
+                    
+                    <!-- 關鍵結論強調盒 (完全對應照片文字) -->
+                    <div class="p-3.5 bg-slate-950/60 border-l-4 border-indigo-400 rounded-r-xl backdrop-blur-md max-w-4xl shadow-inner">
+                        <p class="text-xs sm:text-sm text-slate-200 leading-relaxed font-normal">
+                            📌 <span class="font-bold text-white">關鍵結論：</span><strong class="text-white">K-Fold 交叉驗證與分層 K-Fold 交叉驗證（Stratified K-Fold）的主要差別在於</strong><span class="underline decoration-indigo-400 decoration-2 underline-offset-4 font-bold text-amber-300">資料分割的方式</span>與<span class="underline decoration-indigo-400 decoration-2 underline-offset-4 font-bold text-amber-300">是否維持類別比例</span>。
+                        </p>
+                    </div>
+                    
+                    <p class="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed pt-1">
+                        親眼見證：在類別不平衡資料中，一般 K-Fold 如何因隨機切分產生「零少數類驗證折 (Zero Minority Fold)」造成評估失真，以及 Stratified K-Fold 如何維持各折先驗機率一致性。
+                    </p>
+                </div>
+            </div>
+
+            <!-- 核心差異比較表 (精準符合照片樣式與內容) -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
+                    <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <i class="fa-solid fa-table-list text-indigo-600 dark:text-indigo-400"></i> 核心差異比較表
+                    </h3>
+                    <span class="text-xs text-slate-400">速查對照</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs sm:text-sm text-left border-collapse">
+                        <thead>
+                            <tr class="border-b-2 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100">
+                                <th class="py-3 px-3 sm:px-4 font-bold w-1/4">比較項目</th>
+                                <th class="py-3 px-3 sm:px-4 font-bold w-3/8 text-amber-700 dark:text-amber-400">K-Fold 交叉驗證</th>
+                                <th class="py-3 px-3 sm:px-4 font-bold w-3/8 text-indigo-700 dark:text-indigo-400">Stratified K-Fold 交叉驗證</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800 text-slate-600 dark:text-slate-300">
+                            <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+                                <td class="py-3.5 px-3 sm:px-4 font-bold text-slate-900 dark:text-slate-200 bg-slate-50/50 dark:bg-slate-800/40">分割邏輯</td>
+                                <td class="py-3.5 px-3 sm:px-4 leading-relaxed">隨機將資料集均分成 K 份，<span class="font-semibold text-rose-500 dark:text-rose-400">不理會標籤內容</span>。</td>
+                                <td class="py-3.5 px-3 sm:px-4 leading-relaxed">依據<span class="font-bold text-indigo-600 dark:text-indigo-400">目標變數（Label）的類別比例</span>來分層抽樣。</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+                                <td class="py-3.5 px-3 sm:px-4 font-bold text-slate-900 dark:text-slate-200 bg-slate-50/50 dark:bg-slate-800/40">類別分布</td>
+                                <td class="py-3.5 px-3 sm:px-4 leading-relaxed">每一折（Fold）的類別比例<span class="font-semibold text-amber-600 dark:text-amber-400">可能與整體不同</span>。</td>
+                                <td class="py-3.5 px-3 sm:px-4 leading-relaxed"><span class="font-bold text-emerald-600 dark:text-emerald-400">確保每一折的類別比例與整體資料集完全一致</span>。</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+                                <td class="py-3.5 px-3 sm:px-4 font-bold text-slate-900 dark:text-slate-200 bg-slate-50/50 dark:bg-slate-800/40">適用場景</td>
+                                <td class="py-3.5 px-3 sm:px-4 leading-relaxed">一般迴歸問題、或是類別分布平均的分類問題。</td>
+                                <td class="py-3.5 px-3 sm:px-4 leading-relaxed font-semibold text-indigo-600 dark:text-indigo-300">
+                                    <span class="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800">類別不平衡（Imbalanced Data）的分類問題</span>。
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 新增內容：1. K-Fold 交叉驗證 與 2. 分層 K-Fold 交叉驗證 詳細特徵卡片 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <!-- 1. K-Fold 交叉驗證 -->
+                <div class="bg-white dark:bg-slate-900 rounded-2xl border border-amber-200 dark:border-amber-900/50 p-6 shadow-sm hover:shadow-md transition">
+                    <div class="flex items-center gap-2.5 mb-3 text-amber-600 dark:text-amber-400">
+                        <span class="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-950/80 flex items-center justify-center font-black text-sm">1</span>
+                        <h4 class="font-bold text-base text-slate-900 dark:text-slate-100">K-Fold 交叉驗證 (K-Fold Cross-Validation)</h4>
+                    </div>
+                    <ul class="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <li class="flex items-start gap-2">
+                            <span class="font-bold text-amber-600 dark:text-amber-400 flex-shrink-0">▪ 做法：</span>
+                            <span>將全部資料<strong>隨機打亂（Shuffle）</strong>後，平均切割成 $K$ 個子集（Fold）。每次挑選其中 1 個子集當作驗證集，剩下的 $K-1$ 個子集當作訓練集，重複 $K$ 次。</span>
+                        </li>
+                        <li class="flex items-start gap-2 bg-amber-50/50 dark:bg-amber-950/30 p-2.5 rounded-xl border border-amber-200/50 dark:border-amber-900/40">
+                            <span class="font-bold text-rose-500 flex-shrink-0">▪ 潛在問題：</span>
+                            <span>如果資料集是分類問題，且<strong>類別比例嚴重失衡</strong>（例如：正樣本佔 95%，負樣本佔 5%），隨機切割可能會導致某一個 Fold 裡面<strong class="text-rose-500">「完全沒有負樣本」或「全是負樣本」</strong>，造成模型訓練與驗證失準。</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- 2. 分層 K-Fold 交叉驗證 -->
+                <div class="bg-white dark:bg-slate-900 rounded-2xl border border-indigo-200 dark:border-indigo-900/50 p-6 shadow-sm hover:shadow-md transition">
+                    <div class="flex items-center gap-2.5 mb-3 text-indigo-600 dark:text-indigo-400">
+                        <span class="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-950/80 flex items-center justify-center font-black text-sm">2</span>
+                        <h4 class="font-bold text-base text-slate-900 dark:text-slate-100">分層 K-Fold 交叉驗證 (Stratified K-Fold Cross-Validation)</h4>
+                    </div>
+                    <ul class="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <li class="flex items-start gap-2">
+                            <span class="font-bold text-indigo-600 dark:text-indigo-400 flex-shrink-0">▪ 做法：</span>
+                            <span>它是標準 K-Fold 的改良版。在切分資料時，會<strong>強制檢查每個類別的標籤數量</strong>，讓每一個 Fold 裡的類別比例都和原始資料集保持一致。</span>
+                        </li>
+                        <li class="flex items-start gap-2 bg-indigo-50/50 dark:bg-indigo-950/30 p-2.5 rounded-xl border border-indigo-200/50 dark:border-indigo-900/40">
+                            <span class="font-bold text-emerald-600 dark:text-emerald-400 flex-shrink-0">▪ 優點：</span>
+                            <span>能<strong>避免因為隨機抽樣巧合</strong>，導致某個 Fold 類別嚴重失真，特別適合用在樣本數少或<strong>類別不平衡（Imbalanced Data）</strong>的分類任務中。</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ======================================================== -->
+        <!-- 2. 完整知識庫 (01-11) (嚴謹 LaTeX 數學式渲染)             -->
+        <!-- ======================================================== -->
+        <section id="knowledge-section" class="space-y-6 pt-2">
+            
+            <!-- 知識庫導覽頭 -->
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-6 bg-indigo-600 rounded-full"></span>
+                    <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">完整知識庫體系 (01 ~ 11)</h2>
+                </div>
+                <span class="text-xs text-slate-500 font-mono">LaTeX Supported · Standard Guide</span>
+            </div>
+
+            <!-- 01. 一句話簡介 -->
+            <article class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                <div class="flex items-center gap-3 mb-3">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center text-sm">01</span>
+                    <h3 class="text-lg font-bold">一句話簡介</h3>
+                </div>
+                <div class="p-4 rounded-xl bg-gradient-to-r from-indigo-500/10 via-indigo-500/5 to-transparent border-l-4 border-indigo-600 text-slate-800 dark:text-slate-200 text-sm sm:text-base font-medium leading-relaxed">
+                    <strong>K-Fold 交叉驗證與分層 K-Fold 交叉驗證（Stratified K-Fold）的主要差別在於資料分割的方式與是否維持類別比例。</strong> K-Fold 是隨機盲切，而 Stratified K-Fold 則是依目標標籤等比均分的智慧切分，確保每一折的驗證集與訓練集都忠實複製全體資料的真實分佈。
+                </div>
+            </article>
+
+            <!-- 02. 核心原理 -->
+            <article class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center text-sm">02</span>
+                    <h3 class="text-lg font-bold">核心原理 (Core Mechanism)</h3>
+                </div>
+                <div class="space-y-4 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                    <p>
+                        交叉驗證 (Cross-Validation) 的初衷是透過將數據集 $\mathcal{D}$ 拆分為 $K$ 個互斥子集 $\{\mathcal{D}_1, \mathcal{D}_2, \dots, \mathcal{D}_K\}$，輪流以 $K-1$ 份為訓練集 $\mathcal{D}_{train}^{(k)} = \mathcal{D} \setminus \mathcal{D}_k$、剩餘 1 份 $\mathcal{D}_k$ 為驗證集，評估模型在未知資料上的泛化誤差。
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="p-4 rounded-xl border border-amber-200/70 dark:border-amber-900/50 bg-amber-50/30 dark:bg-amber-950/20">
+                            <h4 class="font-bold text-amber-700 dark:text-amber-400 mb-1.5 flex items-center gap-1.5">
+                                <i class="fa-solid fa-dice"></i> Standard K-Fold (普通隨機切分)
+                            </h4>
+                            <p class="text-xs leading-relaxed">
+                                將資料集無差別打亂 (Shuffle) 後均分為 $K$ 份。若樣本極度不平衡，某些折可能出現<strong>完全沒有少數類樣本 ($n_{minority} = 0$)</strong>，造成分佈偏移 (Covariate / Label Shift)，評估方差極大。
+                            </p>
+                        </div>
+                        <div class="p-4 rounded-xl border border-indigo-200/70 dark:border-indigo-900/50 bg-indigo-50/30 dark:bg-indigo-950/20">
+                            <h4 class="font-bold text-indigo-600 dark:text-indigo-400 mb-1.5 flex items-center gap-1.5">
+                                <i class="fa-solid fa-layer-group"></i> Stratified K-Fold (分層等比切分)
+                            </h4>
+                            <p class="text-xs leading-relaxed">
+                                先依目標標籤 $y \in \{0, 1, \dots, C\}$ 分組，對每個類別 $c$ 分別進行 $K$ 等分切片，再組合至各折中。數學上嚴格滿足：
+                                $$\forall k, c: \quad P_{\mathcal{D}_k}(y = c) \approx P_{\mathcal{D}}(y = c)$$
+                                確保每一折的先驗機率與母體嚴格一致。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 03. IPAS AI 考題 -->
+            <article class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center text-sm">03</span>
+                    <h3 class="text-lg font-bold">IPAS AI 人工智慧應用工程師 模擬考題</h3>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Q1 -->
+                    <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                        <span class="px-2 py-0.5 text-xs font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 rounded">考題 1 (單選)</span>
+                        <p class="mt-2 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100">
+                            在開發罕見疾病診斷模型時，正樣本（確診個案）僅佔總資料集的 2%。若採用標準 K-Fold 交叉驗證 ($K=5$)，最可能引發下列何種評估風險？
+                        </p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 text-xs">
+                            <div class="p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">(A) 造成模型嚴重的過擬合 (Overfitting)</div>
+                            <div class="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg border border-emerald-500 font-bold text-emerald-700 dark:text-emerald-300">(B) 某些驗證折可能完全缺乏正樣本，造成評估指標波動過大且失真 (正確答案)</div>
+                            <div class="p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">(C) 計算時間複雜度隨正樣本稀少程度呈現指數型增長</div>
+                            <div class="p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">(D) 造成梯度爆炸使損失函數無法收斂</div>
+                        </div>
+                        <div class="mt-3 p-3 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-lg text-xs text-indigo-900 dark:text-indigo-200 leading-relaxed">
+                            <strong>【IPAS 考點解析】：</strong> 當少數類樣本數量很少時，一般的均勻隨機抽樣極易產生「零少數類折 (Zero Minority Fold)」，使召回率 (Recall) 出現 $\frac{0}{0}$ 無法定義或 $0\%$ 的極端跳躍，造成評估指標方差 (Variance) 暴增。因此分類問題應優先使用 <code>StratifiedKFold</code>。
+                        </div>
+                    </div>
+
+                    <!-- Q2 -->
+                    <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                        <span class="px-2 py-0.5 text-xs font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 rounded">考題 2 (觀念陷阱題)</span>
+                        <p class="mt-2 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100">
+                            關於交叉驗證在不同機器學習任務的應用，下列敘述何者「錯誤」？
+                        </p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 text-xs">
+                            <div class="p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">(A) 連續型數值迴歸 (Regression) 問題通常採用標準 K-Fold</div>
+                            <div class="p-2.5 bg-rose-50 dark:bg-rose-950/40 rounded-lg border border-rose-500 font-bold text-rose-700 dark:text-rose-300">(B) 在時間序列 (Time Series) 預測任務中，Stratified K-Fold 是最佳選擇 (錯誤敘述，符合題意)</div>
+                            <div class="p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">(C) Stratified K-Fold 主要適用於單標籤 (Single-label) 分類任務</div>
+                            <div class="p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">(D) 在大樣本且類別完美平衡 (50%:50%) 的情況下，K-Fold 與 Stratified K-Fold 結果差異甚小</div>
+                        </div>
+                        <div class="mt-3 p-3 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-lg text-xs text-indigo-900 dark:text-indigo-200 leading-relaxed">
+                            <strong>【IPAS 考點解析】：</strong> 時間序列數據存在前後依賴性，不可進行隨機打亂或跨時段分層抽樣（會造成未來資訊洩漏 Data Leakage）。時間序列應使用 <code>TimeSeriesSplit</code> (前向滾動交叉驗證 Walk-Forward Validation)。故 (B) 錯誤。
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 04. 實務特徵 -->
+            <article class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center text-sm">04</span>
+                    <h3 class="text-lg font-bold">實務特徵 (Practical Characteristics)</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                        <thead class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+                            <tr>
+                                <th class="p-3 font-bold">評估維度</th>
+                                <th class="p-3 font-bold">Standard K-Fold (普通 K-Fold)</th>
+                                <th class="p-3 font-bold">Stratified K-Fold (分層 K-Fold)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200 dark:divide-slate-800 text-slate-600 dark:text-slate-300">
+                            <tr>
+                                <td class="p-3 font-semibold text-slate-900 dark:text-white">適用任務類型</td>
+                                <td class="p-3">連續型迴歸任務 (Regression)、無監督分群評估</td>
+                                <td class="p-3 text-indigo-600 dark:text-indigo-400 font-bold">二元分類、多元分類 (Classification)</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-semibold text-slate-900 dark:text-white">類別分佈保真度</td>
+                                <td class="p-3 text-rose-500 font-medium">差 (各 Fold 比例劇烈波動)</td>
+                                <td class="p-3 text-emerald-600 dark:text-emerald-400 font-bold">完美 (每折與母體比例一模一樣)</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-semibold text-slate-900 dark:text-white">評估指標方差 ($\mathrm{Var}$)</td>
+                                <td class="p-3 text-rose-500 font-medium">高 (容易因特定折分佈偏差而大幅震盪)</td>
+                                <td class="p-3 text-emerald-600 dark:text-emerald-400 font-bold">極低 (方差最小化，評估最具可信度)</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-semibold text-slate-900 dark:text-white">時間複雜度</td>
+                                <td class="p-3">$\mathcal{O}(N)$</td>
+                                <td class="p-3">$\mathcal{O}(N + C \log N)$ (增加分層排序分組，開銷可忽略)</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-semibold text-slate-900 dark:text-white">極端不平衡抵抗力</td>
+                                <td class="p-3 text-rose-500 font-medium">脆弱 (容易出現 Zero-Minority Fold)</td>
+                                <td class="p-3 text-emerald-600 dark:text-emerald-400 font-bold">強固 (只要少數類樣本數 $\ge K$)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+
+            <!-- 05. 由來 -->
+            <article class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center text-sm">05</span>
+                    <h3 class="text-lg font-bold">由來與歷史 (Historical Origin)</h3>
+                </div>
+                <div class="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                    <p>
+                        <strong>1. 交叉驗證的誕生 (1974)：</strong><br>
+                        統計學家 <strong>Seymour Geisser (1974)</strong> 與 <strong>Mervyn Stone (1974)</strong> 分別獨立提出了交叉驗證思想，早期以 Leave-One-Out (LOOCV, 留一法) 為主，但計算成本隨樣本量 $N$ 呈 $\mathcal{O}(N)$ 次模型重複訓練。
+                    </p>
+                    <p>
+                        <strong>2. K-Fold 的推廣 (1980s - 1990s)：</strong><br>
+                        為了在計算負載與方差間取得平衡，<strong>Bradley Efron (Bootstrap 發明者)</strong> 等人推廣了 $K=5$ 或 $K=10$ 的 K-Fold 概念。
+                    </p>
+                    <p>
+                        <strong>3. Ron Kohavi (1995) 經典定論 —— Stratified 的確立：</strong><br>
+                        在 1995 年的 IJCAI 頂級會議上，學者 <strong>Ron Kohavi</strong> 發表經典論文《<em>A Study of Cross-Validation and Bootstrap for Accuracy Estimation and Model Selection</em>》。Kohavi 透過嚴格實證證明：<strong>分層十折交叉驗證 (Stratified 10-Fold CV) 無論在偏差 (Bias) 還是方差 (Variance) 上，都是機器學習分類模型選擇的最佳黃金標準</strong>，自此奠定了現代機器學習在分類問題中預設使用 Stratified K-Fold 的標準！
+                    </p>
+                </div>
+            </article>
+
+            <!-- 06. 生活化例子 -->
+            <article class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center text-sm">06</span>
+                    <h3 class="text-lg font-bold">生活化例子：切草莓蛋糕的比喻</h3>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm">
+                    <div class="p-4 bg-amber-50/60 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900/50">
+                        <div class="font-bold text-amber-700 dark:text-amber-300 flex items-center gap-2 mb-2">
+                            <i class="fa-solid fa-cake-candles"></i> 普通 K-Fold：閉眼盲切蛋糕
+                        </div>
+                        <p class="text-slate-600 dark:text-slate-300 leading-relaxed">
+                            你做了一個 100 塊大小的蛋糕，上面點綴了 <strong>10 顆珍貴的日本草莓（少數類）</strong>，剩下 90 塊都是純鮮奶油（多數類）。
+                            現在你要切成 5 盤給 5 位挑剔的評審打分。如果你<strong>閉上眼睛隨機盲切</strong>：
+                            結果小明的盤子裡有 6 顆草莓，而<strong>小華的盤子裡竟然連半顆草莓都沒有</strong>！
+                            小華憤怒地評價：「這根本不是草莓蛋糕，給 0 分！」——這就是普通 K-Fold 造成的評估災難。
+                        </p>
+                    </div>
+
+                    <div class="p-4 bg-indigo-50/60 dark:bg-indigo-950/20 rounded-xl border border-indigo-200 dark:border-indigo-900/50">
+                        <div class="font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-2 mb-2">
+                            <i class="fa-solid fa-kitchen-set"></i> Stratified K-Fold：主廚精密分盤
+                        </div>
+                        <p class="text-slate-600 dark:text-slate-300 leading-relaxed">
+                            聰明的主廚會先拿出 10 顆草莓，<strong>平均分配給 5 個盤子，每盤保證恰好 2 顆草莓</strong>；
+                            接著把 90 塊鮮奶油均分成每盤 18 塊。
+                            如此一來，每一位評審拿到的蛋糕盤中，<strong>草莓與鮮奶油的比例全部都是完美的 1:9</strong>！
+                            每位評審的測試標準完全一致，評分客觀又公正。
+                        </p>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 07. 工業上應用 -->
+            <article class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center text-sm">07</span>
+                    <h3 class="text-lg font-bold">工業級真實落地應用</h3>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                    <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                        <div class="text-indigo-600 dark:text-indigo-400 text-lg mb-2"><i class="fa-solid fa-microchip"></i></div>
+                        <h4 class="font-bold text-slate-900 dark:text-white text-sm">半導體晶圓瑕疵檢測 (AOI)</h4>
+                        <p class="text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+                            良率高達 99.7% 的產線上，缺陷晶粒 (Defects) 僅佔 0.3%。若不用 Stratified 切分，驗證折極易完全缺乏致命刮痕或粒子瑕疵，導致檢驗模型上線後漏檢率失控。
+                        </p>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                        <div class="text-indigo-600 dark:text-indigo-400 text-lg mb-2"><i class="fa-solid fa-credit-card"></i></div>
+                        <h4 class="font-bold text-slate-900 dark:text-white text-sm">金融信用卡反洗錢與盜刷 (Fraud)</h4>
+                        <p class="text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+                            數百萬筆交易中盜刷僅佔萬分之幾。Stratified K-Fold 結合 Weighted F1 / PR-AUC，是銀行風控團隊評估風控樹模型 (XGBoost/LightGBM) 的硬性稽核標準。
+                        </p>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                        <div class="text-indigo-600 dark:text-indigo-400 text-lg mb-2"><i class="fa-solid fa-heart-pulse"></i></div>
+                        <h4 class="font-bold text-slate-900 dark:text-white text-sm">醫療罕見疾病病理切片判讀</h4>
+                        <p class="text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+                            癌症惡性轉移切片極度稀缺。醫學影像 AI 發表頂級期刊 (如 Lancet Digital Health) 時，審稿人必審是否採用 Patient-level Stratified 分層驗證以防偽陽性評估。
+                        </p>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 08. 理論簡介 (LaTeX 嚴謹式) -->
+            <article class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center text-sm">08</span>
+                    <h3 class="text-lg font-bold">理論簡介與假設 (Theoretical Framework)</h3>
+                </div>
+                <div class="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                    <p>
+                        交叉驗證的核心目標是估計模型 $f$ 在未知母體分佈 $\mathcal{D}$ 上的真實風險 (True Risk / Generalization Error)：
+                        $$R(f) = \mathbb{E}_{(x, y) \sim \mathcal{D}} [\mathcal{L}(f(x), y)]$$
+                    </p>
+                    <p>
+                        <strong>獨立同分佈假設 (i.i.d. Assumption)：</strong><br>
+                        統計學習理論假定訓練集與測試集皆獨立且同分佈於 $\mathcal{D}$，即 $P_{train}(x, y) = P_{val}(x, y) = P_{\mathcal{D}}(x, y)$。
+                        根據貝氏全機率分解：
+                        $$P(x, y) = P(x \mid y) \cdot P(y)$$
+                        當採用普通 K-Fold 時，隨機切分會導致<strong>先驗類別機率發生漂移</strong>，即 $P_{train}(y) \neq P_{val}(y)$，打破了同分佈假設；而 Stratified K-Fold 透過嚴格約束 $\forall k, \; P_{\mathcal{D}_k}(y) = P_{\mathcal{D}}(y)$，維護了跨折條件下的同分佈一致性。
+                    </p>
+                </div>
+            </article>
+
+            <!-- 09. 數學推導（互動式） (LaTeX 精準公式推導) -->
+            <article class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center text-sm">09</span>
+                    <h3 class="text-lg font-bold">數學推導（互動式）：超幾何分佈與方差分解</h3>
+                </div>
+
+                <div class="space-y-4 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- 數學推導區 -->
+                        <div class="space-y-3">
+                            <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm">1. 超幾何分佈推導 Standard K-Fold 缺陷機率</h4>
+                            <p>
+                                設母體總樣本數為 $N$，其中少數類正樣本有 $M$ 個（比例 $p = \frac{M}{N}$）。
+                                當採用 Standard K-Fold 隨機抽取大小為 $n = \lfloor N/K \rfloor$ 的一折驗證集時，該折中恰好包含 $k$ 個少數類樣本的機率服從<strong>超幾何分佈</strong>：
+                            </p>
+                            <div class="p-3 bg-slate-100 dark:bg-slate-800/80 rounded-xl font-mono text-center overflow-x-auto text-indigo-600 dark:text-indigo-300">
+                                $$P(X = k) = \frac{\displaystyle\binom{M}{k} \binom{N - M}{n - k}}{\displaystyle\binom{N}{n}}$$
+                            </div>
+                            <p>
+                                驗證折<strong>完全缺失少數類 ($k=0$) 的機率</strong>為：
+                            </p>
+                            <div class="p-3 bg-slate-100 dark:bg-slate-800/80 rounded-xl font-mono text-center overflow-x-auto text-amber-600 dark:text-amber-300">
+                                $$P(X = 0) = \frac{\displaystyle\binom{N - M}{n}}{\displaystyle\binom{N}{n}} = \prod_{i=0}^{n-1} \left(1 - \frac{M}{N - i}\right)$$
+                            </div>
+                            <p>
+                                在 $K$ 折中，至少有一折完全沒有少數類（產生致命評估癱瘓）的機率下界約為：
+                                $$P(\text{At least one fold with } X=0) \approx 1 - (1 - P(X=0))^K$$
+                            </p>
+                        </div>
+
+                        <!-- 互動推導計算機 -->
+                        <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-indigo-200/60 dark:border-indigo-900/60 flex flex-col justify-between">
+                            <div>
+                                <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block mb-3">
+                                    <i class="fa-solid fa-calculator mr-1"></i> 即時公式互動計算器
+                                </span>
+                                <div class="space-y-3">
+                                    <div>
+                                        <div class="flex justify-between text-xs font-semibold mb-1">
+                                            <span>母體樣本 $N$:</span>
+                                            <span id="math-calc-n-val" class="font-mono text-indigo-600 dark:text-indigo-400">100</span>
+                                        </div>
+                                        <input type="range" id="math-calc-n" min="40" max="300" step="10" value="100" class="w-full accent-indigo-600 cursor-pointer">
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between text-xs font-semibold mb-1">
+                                            <span>少數類比例 $p$:</span>
+                                            <span id="math-calc-p-val" class="font-mono text-indigo-600 dark:text-indigo-400">10%</span>
+                                        </div>
+                                        <input type="range" id="math-calc-p" min="1" max="25" step="1" value="10" class="w-full accent-indigo-600 cursor-pointer">
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between text-xs font-semibold mb-1">
+                                            <span>折數 $K$:</span>
+                                            <span id="math-calc-k-val" class="font-mono text-indigo-600 dark:text-indigo-400">5</span>
+                                        </div>
+                                        <input type="range" id="math-calc-k" min="3" max="10" step="1" value="5" class="w-full accent-indigo-600 cursor-pointer">
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-500">少數類樣本數 $M$:</span>
+                                        <span id="math-res-m" class="font-mono font-bold text-slate-800 dark:text-slate-200">10 筆</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-500">每折大小 $n$:</span>
+                                        <span id="math-res-n" class="font-mono font-bold text-slate-800 dark:text-slate-200">20 筆</span>
+                                    </div>
+                                    <div class="flex justify-between border-t border-slate-100 dark:border-slate-800 pt-1.5">
+                                        <span class="text-amber-600 font-bold">單折 $P(X=0)$ 機率:</span>
+                                        <span id="math-res-p0" class="font-mono font-bold text-amber-600">12.16%</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-rose-600 font-bold">至少一折出錯機率:</span>
+                                        <span id="math-res-pany" class="font-mono font-bold text-rose-600">48.33%</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p class="text-[11px] text-slate-400 mt-3 italic">
+                                * Stratified K-Fold 強制令 $k \in [\lfloor M/K \rfloor, \lceil M/K \rceil]$，只要 $M \ge K$，保證 $P(X=0) \equiv 0$。
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 2. 方差分解推導 -->
+                    <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                        <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm mb-2">2. 泛化誤差估計量的方差展開式 (Variance Decomposition)</h4>
+                        <p>
+                            交叉驗證泛化誤差為各折驗證誤差的樣本均值：$\hat{E}_{CV} = \frac{1}{K}\sum_{k=1}^K E_k$。其變異數為：
+                            $$\mathrm{Var}(\hat{E}_{CV}) = \frac{1}{K^2} \sum_{k=1}^K \mathrm{Var}(E_k) + \frac{2}{K^2} \sum_{i < j} \mathrm{Cov}(E_i, E_j)$$
+                            <strong>Stratified K-Fold 的數學保證：</strong> 透過固定各折的類別分佈，將抽樣分佈漂移引起的方差分量消除 ($\mathrm{Var}(\epsilon_{dist}) \to 0$)，從而最小化整體評估方差 $\mathrm{Var}(\hat{E}_{CV})$。
+                        </p>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 10. AI 領域範疇應用（互動式） -->
+            <article class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center text-sm">10</span>
+                    <h3 class="text-lg font-bold">AI 領域範疇應用（互動切換展示）</h3>
+                </div>
+
+                <!-- 互動標籤導航 -->
+                <div class="flex flex-wrap gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+                    <button onclick="switchDomain('ml')" id="tab-dom-ml" class="dom-tab-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-sm transition">
+                        <i class="fa-solid fa-table mr-1.5"></i>機器學習 (ML)
+                    </button>
+                    <button onclick="switchDomain('dl')" id="tab-dom-dl" class="dom-tab-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 transition">
+                        <i class="fa-solid fa-brain mr-1.5"></i>深度學習 (DL)
+                    </button>
+                    <button onclick="switchDomain('rl')" id="tab-dom-rl" class="dom-tab-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 transition">
+                        <i class="fa-solid fa-gamepad mr-1.5"></i>強化學習 (RL)
+                    </button>
+                    <button onclick="switchDomain('llm')" id="tab-dom-llm" class="dom-tab-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 transition">
+                        <i class="fa-solid fa-comments mr-1.5"></i>LLM 微調 (SFT/RLHF)
+                    </button>
+                    <button onclick="switchDomain('others')" id="tab-dom-others" class="dom-tab-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 transition">
+                        <i class="fa-solid fa-cube mr-1.5"></i>其他領域
+                    </button>
+                </div>
+
+                <!-- 動態顯示容器 -->
+                <div class="mt-4 p-5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm">
+                    <!-- ML Container -->
+                    <div id="domain-content-ml" class="space-y-3">
+                        <h4 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-indigo-500"></span> 機器學習應用：Out-of-Fold (OOF) 預測與集成堆疊
+                        </h4>
+                        <p class="text-slate-600 dark:text-slate-300 leading-relaxed">
+                            在表格數據（如 Kaggle 競賽、信貸違約預測）中，<strong>StratifiedKFold 是不可動搖的標準規範</strong>。
+                            當使用 Stacking / Blending 集成模型時，第一層基學習器（如 XGBoost, LightGBM, CatBoost）透過交叉驗證生成 OOF（Out-of-Fold）預測特徵。
+                            若此處未維持嚴格分層，元學習器 (Meta-learner) 將會學習到錯誤的先驗機率偏移，導致嚴重的推論泛化劣化。
+                        </p>
+                        <div class="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 font-mono text-xs text-indigo-600 dark:text-indigo-400">
+                            Scikit-Learn 常用工具：sklearn.model_selection.StratifiedKFold, RepeatedStratifiedKFold
+                        </div>
+                    </div>
+
+                    <!-- DL Container -->
+                    <div id="domain-content-dl" class="hidden space-y-3">
+                        <h4 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-indigo-500"></span> 深度學習應用：醫學影像與 StratifiedGroupKFold
+                        </h4>
+                        <p class="text-slate-600 dark:text-slate-300 leading-relaxed">
+                            在電腦視覺或病理切片診斷中，同一名病患可能包含 50 張不同的病理圖像切片。
+                            若僅使用一般分層，可能導致同一病患的切片同時出現在訓練集與驗證集，造成<strong>病患身份洩漏 (Subject Leakage)</strong>；
+                            此時業界標準是採用 <code>StratifiedGroupKFold</code>，既能以病患 ID 為分組保證嚴格隔離，又能同時使各折的疾病惡性/良性標籤比例維持恆定。
+                        </p>
+                        <div class="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 font-mono text-xs text-indigo-600 dark:text-indigo-400">
+                            PyTorch 常用工具：torch.utils.data.SubsetRandomSampler 結合 StratifiedGroupKFold
+                        </div>
+                    </div>
+
+                    <!-- RL Container -->
+                    <div id="domain-content-rl" class="hidden space-y-3">
+                        <h4 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-indigo-500"></span> 強化學習應用：軌跡分層評估 (Stratified Trajectory Evaluation)
+                        </h4>
+                        <p class="text-slate-600 dark:text-slate-300 leading-relaxed">
+                            強化學習 (Reinforcement Learning) 策略評估是以整條軌跡 (Episode / Trajectory) 為單位。
+                            分層概念推廣至離線強化學習 (Offline RL)：依據環境初始狀態難度、稀疏獎勵達標程度進行分層抽樣，避免在驗證時抽到全為高獎勵軌跡或全為死亡軌跡，精準衡量策略在多樣環境分佈下的期望回報 $\mathbb{E}[R]$。
+                        </p>
+                    </div>
+
+                    <!-- LLM Container -->
+                    <div id="domain-content-llm" class="hidden space-y-3">
+                        <h4 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-indigo-500"></span> LLM 應用細節：指令微調 (SFT) 與偏好對齊 (RLHF/DPO)
+                        </h4>
+                        <p class="text-slate-600 dark:text-slate-300 leading-relaxed">
+                            在大型語言模型 (LLM) 的指令微調數據集中，任務分佈高度不均（例如：程式碼 6%、多步驟數學推導 8%、日常閒聊 86%）。
+                            在切分評估 Benchmark 驗證集時，需依「能力標籤」進行分層抽樣。若隨機切分導致驗證折中缺乏程式碼或數學樣本，將完全無法偵測出模型在微調過程中所出現的「災難性遺忘 (Catastrophic Forgetting)」。
+                        </p>
+                    </div>
+
+                    <!-- Others Container -->
+                    <div id="domain-content-others" class="hidden space-y-3">
+                        <h4 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-indigo-500"></span> 其他範疇：多標籤分類與連續迴歸分層
+                        </h4>
+                        <p class="text-slate-600 dark:text-slate-300 leading-relaxed">
+                            <strong>多標籤分類 (Multi-label Classification)：</strong> 單一樣本可同時具備多個標籤時，標準分層無法直接運作，需採用 <em>Iterative Stratification</em> 演算法（如 <code>MultilabelStratifiedKFold</code>）。<br>
+                            <strong>連續迴歸任務分層：</strong> 對連續型目標變數 $y$ 進行分箱離散化 (Binning)，再針對箱子執行分層抽樣，確保極端高低數值在各折分佈一致。
+                        </p>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 11. Python / PyTorch 實作 (重點函式彩色標明) -->
+            <article class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center text-sm">11</span>
+                    <h3 class="text-lg font-bold">Python (Scikit-Learn) 與 PyTorch 工業級實作程式碼</h3>
+                </div>
+
+                <div class="space-y-6">
+                    <!-- Sklearn Code -->
+                    <div>
+                        <div class="flex justify-between items-center bg-slate-800 text-slate-300 px-4 py-2 rounded-t-xl text-xs font-mono">
+                            <span><i class="fa-brands fa-python text-yellow-400 mr-2"></i>sklearn_cv_comparison.py</span>
+                            <span class="text-indigo-400 font-semibold">重點函式彩色標記</span>
+                        </div>
+                        <pre class="bg-slate-950 p-4 rounded-b-xl overflow-x-auto text-xs text-slate-200 font-mono leading-relaxed border border-t-0 border-slate-800">
+<code><span class="text-purple-400">import</span> numpy <span class="text-purple-400">as</span> np
+<span class="text-purple-400">from</span> sklearn.model_selection <span class="text-purple-400">import</span> <span class="text-amber-400 font-bold underline">KFold</span>, <span class="text-emerald-400 font-bold underline">StratifiedKFold</span>, <span class="text-cyan-400 font-bold underline">cross_val_score</span>
+<span class="text-purple-400">from</span> sklearn.linear_model <span class="text-purple-400">import</span> LogisticRegression
+
+<span class="text-slate-500"># 建立 100 筆樣本，極端不平衡：90 筆負例 (0)，10 筆正例 (1)</span>
+X = np.random.randn(<span class="text-orange-400">100</span>, <span class="text-orange-400">10</span>)
+y = np.array([<span class="text-orange-400">0</span>]*<span class="text-orange-400">90</span> + [<span class="text-orange-400">1</span>]*<span class="text-orange-400">10</span>)
+K = <span class="text-orange-400">5</span>
+
+<span class="text-slate-500"># 1. 普通 K-Fold 切分 (不理會標籤內容，產生分佈偏移)</span>
+kf = <span class="text-amber-400 font-bold underline">KFold</span>(n_splits=K, shuffle=<span class="text-sky-400">True</span>, random_state=<span class="text-orange-400">42</span>)
+<span class="text-purple-400">for</span> fold, (train_idx, val_idx) <span class="text-purple-400">in</span> enumerate(kf.<span class="text-yellow-400 font-bold">split</span>(X, y)):
+    pos_count = np.sum(y[val_idx] == <span class="text-orange-400">1</span>)
+    print(<span class="text-slate-300">f"[Standard K-Fold] Fold {fold+1} 驗證集正例數: {pos_count} / {len(val_idx)}"</span>)
+
+<span class="text-slate-500"># 2. 分層 Stratified K-Fold 切分 (依目標變數比例分層抽樣)</span>
+skf = <span class="text-emerald-400 font-bold underline">StratifiedKFold</span>(n_splits=K, shuffle=<span class="text-sky-400">True</span>, random_state=<span class="text-orange-400">42</span>)
+<span class="text-purple-400">for</span> fold, (train_idx, val_idx) <span class="text-purple-400">in</span> enumerate(skf.<span class="text-yellow-400 font-bold">split</span>(X, y)):
+    pos_count = np.sum(y[val_idx] == <span class="text-orange-400">1</span>)
+    print(<span class="text-emerald-300">f"[Stratified K-Fold] Fold {fold+1} 驗證集正例數: {pos_count} / {len(val_idx)} (恆為 2 筆)"</span>)
+</code></pre>
+                    </div>
+
+                    <!-- PyTorch Code -->
+                    <div>
+                        <div class="flex justify-between items-center bg-slate-800 text-slate-300 px-4 py-2 rounded-t-xl text-xs font-mono">
+                            <span><i class="fa-solid fa-fire text-red-500 mr-2"></i>pytorch_stratified_training.py</span>
+                            <span class="text-red-400 font-semibold">PyTorch DataLoader 對接</span>
+                        </div>
+                        <pre class="bg-slate-950 p-4 rounded-b-xl overflow-x-auto text-xs text-slate-200 font-mono leading-relaxed border border-t-0 border-slate-800">
+<code><span class="text-purple-400">import</span> torch
+<span class="text-purple-400">from</span> torch.utils.data <span class="text-purple-400">import</span> Dataset, <span class="text-pink-400 font-bold underline">DataLoader</span>, <span class="text-yellow-400 font-bold underline">SubsetRandomSampler</span>
+<span class="text-purple-400">from</span> sklearn.model_selection <span class="text-purple-400">import</span> <span class="text-emerald-400 font-bold underline">StratifiedKFold</span>
+
+<span class="text-purple-400">class</span> <span class="text-yellow-300 font-bold">CustomDataset</span>(Dataset):
+    <span class="text-purple-400">def</span> <span class="text-blue-400">__init__</span>(self, features, labels):
+        self.features = torch.tensor(features, dtype=torch.float32)
+        self.labels = torch.tensor(labels, dtype=torch.long)
+    <span class="text-purple-400">def</span> <span class="text-blue-400">__len__</span>(self): <span class="text-purple-400">return</span> len(self.labels)
+    <span class="text-purple-400">def</span> <span class="text-blue-400">__getitem__</span>(self, idx): <span class="text-purple-400">return</span> self.features[idx], self.labels[idx]
+
+dataset = CustomDataset(X, y)
+skf = <span class="text-emerald-400 font-bold underline">StratifiedKFold</span>(n_splits=<span class="text-orange-400">5</span>, shuffle=<span class="text-sky-400">True</span>, random_state=<span class="text-orange-400">42</span>)
+
+<span class="text-slate-500"># 透過 SubsetRandomSampler 將 Stratified 索引對接至 PyTorch DataLoader</span>
+<span class="text-purple-400">for</span> fold, (train_idx, val_idx) <span class="text-purple-400">in</span> enumerate(skf.<span class="text-yellow-400 font-bold">split</span>(X, y)):
+    train_sampler = <span class="text-yellow-400 font-bold underline">SubsetRandomSampler</span>(train_idx)
+    val_sampler   = <span class="text-yellow-400 font-bold underline">SubsetRandomSampler</span>(val_idx)
+
+    train_loader = <span class="text-pink-400 font-bold underline">DataLoader</span>(dataset, batch_size=<span class="text-orange-400">16</span>, sampler=train_sampler)
+    val_loader   = <span class="text-pink-400 font-bold underline">DataLoader</span>(dataset, batch_size=<span class="text-orange-400">16</span>, sampler=val_sampler)
+    
+    <span class="text-slate-500"># 每一折重新初始化模型，杜絕資料洩漏</span>
+</code></pre>
+                    </div>
+                </div>
+            </article>
+
+        </section>
+
+        <!-- ======================================================== -->
+        <!-- 3. 互動模擬器 (放在同一網頁底部)                           -->
+        <!-- ======================================================== -->
+        <section id="simulator-section" class="space-y-6 pt-6 border-t-2 border-indigo-500/20">
+            
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-6 bg-indigo-600 rounded-full"></span>
+                    <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">12. 互動模擬器 (Step by step / 一鍵自動模擬)</h2>
+                </div>
+                <span class="text-xs text-slate-500 font-mono">Dynamic Fold Engine</span>
+            </div>
+
+            <!-- 控制列：還原圖片中深藍背景與按鈕樣式 (置於模擬器上方) -->
+            <div class="bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 p-5 rounded-2xl border border-indigo-500/30 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-3 h-3 rounded-full bg-emerald-400 animate-ping"></div>
+                    <div>
+                        <span class="text-xs uppercase tracking-wider text-indigo-300 font-bold block">模擬操控面板</span>
+                        <p class="text-xs text-slate-300">點擊按鈕執行單步驗證或自動循環評估各折</p>
+                    </div>
+                </div>
+
+                <!-- 嚴格依附圖還原的按鈕群組 -->
+                <div class="flex items-center gap-3 flex-shrink-0">
+                    <!-- 一鍵自動模擬 (藍紫色漸層按鈕，白字) -->
+                    <button id="btn-auto-simulate" onclick="toggleAutoSimulation()" 
+                            class="px-6 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 hover:from-indigo-500 hover:to-violet-500 active:scale-95 transition-all duration-200 shadow-lg shadow-indigo-600/40 flex items-center gap-2.5 text-xs sm:text-sm border border-indigo-400/40">
+                        <i id="auto-btn-icon" class="fa-solid fa-play"></i>
+                        <span id="auto-btn-text">一鍵自動模擬</span>
+                    </button>
+
+                    <!-- 單步執行 (半透明深色微圓角框線按鈕) -->
+                    <button onclick="stepSimulation()" 
+                            class="px-5 py-2.5 rounded-xl font-bold text-white bg-white/5 hover:bg-white/10 active:scale-95 transition-all duration-200 border border-white/20 hover:border-white/40 flex items-center gap-2 text-xs sm:text-sm backdrop-blur-sm shadow-sm">
+                        <i class="fa-solid fa-forward-step"></i>
+                        <span>單步執行</span>
+                    </button>
+
+                    <!-- 重置按鈕 (半透明深色圓角方塊) -->
+                    <button onclick="resetSimulation()" 
+                            class="w-10 h-10 rounded-xl font-bold text-white bg-white/5 hover:bg-white/10 active:scale-95 transition-all duration-200 border border-white/20 hover:border-white/40 flex items-center justify-center text-sm backdrop-blur-sm shadow-sm" 
+                            title="重置模擬器">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Control Parameters Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <!-- 樣本總數 N -->
+                <div>
+                    <div class="flex justify-between items-center text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
+                        <span>總樣本數 (N)</span>
+                        <span id="label-sample-size" class="font-bold text-indigo-600 dark:text-indigo-400">100</span>
+                    </div>
+                    <input type="range" id="param-n" min="40" max="300" step="10" value="100" class="w-full accent-indigo-600 cursor-pointer">
+                    <p class="text-[11px] text-slate-400 mt-1">樣本越少，普通 K-Fold 出錯率越高</p>
+                </div>
+
+                <!-- 類別比例 (Class Ratio) -->
+                <div>
+                    <div class="flex justify-between items-center text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
+                        <span>類別比例 (多數:少數)</span>
+                        <span id="label-ratio" class="font-bold text-indigo-600 dark:text-indigo-400">90% : 10%</span>
+                    </div>
+                    <select id="param-ratio" class="w-full text-xs font-semibold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="0.95">極端不平衡 (95% : 5%)</option>
+                        <option value="0.90" selected>嚴重不平衡 (90% : 10%)</option>
+                        <option value="0.80">中度不平衡 (80% : 20%)</option>
+                        <option value="0.50">完美平衡 (50% : 50%)</option>
+                    </select>
+                    <p class="text-[11px] text-slate-400 mt-1">設定母體中兩類別的分佈比例</p>
+                </div>
+
+                <!-- 折數 K (Folds) -->
+                <div>
+                    <div class="flex justify-between items-center text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
+                        <span>折數 (K Folds)</span>
+                        <span id="label-k-val" class="font-bold text-indigo-600 dark:text-indigo-400">K = 5</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" onclick="setK(3)" class="btn-k py-1.5 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition">K=3</button>
+                        <button type="button" onclick="setK(5)" class="btn-k py-1.5 text-xs font-bold rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 border border-indigo-500">K=5</button>
+                        <button type="button" onclick="setK(10)" class="btn-k py-1.5 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition">K=10</button>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-1">K 越大少數類分到每折越稀疏</p>
+                </div>
+
+                <!-- 控制操作與隨機種子 -->
+                <div class="flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
+                            <span>隨機重排 (Shuffle)</span>
+                            <span id="seed-badge" class="font-mono text-[11px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">Seed: 42</span>
+                        </div>
+                        <button onclick="reshuffle()" class="w-full py-2 px-3 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-shuffle"></i> 重新隨機抽樣切分
+                        </button>
+                    </div>
+                    <div class="text-[11px] text-indigo-500 dark:text-indigo-400 flex items-center gap-1 mt-2 font-mono">
+                        <i class="fa-solid fa-circle-info"></i> 狀態: <span id="sim-status-text" class="font-bold">就緒 (Ready)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Zero-Minority Hazard Alert Box -->
+            <div id="zero-minority-alert" class="hidden rounded-xl border border-rose-500/40 bg-rose-50 dark:bg-rose-950/40 p-4 text-rose-800 dark:text-rose-200 transition-all duration-300">
+                <div class="flex items-start gap-3">
+                    <div class="p-2 bg-rose-500 text-white rounded-lg flex-shrink-0">
+                        <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm tracking-wide">偵測到 Standard K-Fold 致命缺陷：驗證折「少數類為 0」！</h4>
+                        <p class="text-xs text-rose-700 dark:text-rose-300 mt-1 leading-relaxed">
+                            在標準 K-Fold 的隨機切分下，某折的驗證集中<strong>完全沒有少數類樣本 ($n_{minority} = 0$)</strong>！這會導致該折的評估指標（如 Recall, ROC-AUC, F1-Score）在數學上未定義（除以零）或產生虛假的 100% 準確率，使交叉驗證完全失去鑑別力！
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Synchronous Split Visualization (Standard vs Stratified) -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Standard K-Fold Panel -->
+                <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm relative flex flex-col">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+                            <h3 class="font-bold text-base text-slate-800 dark:text-slate-100">Standard K-Fold (普通 K 折)</h3>
+                        </div>
+                        <span class="text-xs px-2.5 py-1 bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-semibold rounded-full">
+                            隨機均分 (不看標籤)
+                        </span>
+                    </div>
+
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 mb-4">
+                        資料切分不考慮標籤分佈。各折驗證集中的類別比例會劇烈漂移。
+                    </p>
+
+                    <div id="standard-folds-container" class="space-y-3 flex-1">
+                        <!-- Injected by JS -->
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-3 gap-2 text-center">
+                        <div class="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+                            <span class="text-[10px] text-slate-400 block">少數類比例標準差 ($\sigma$)</span>
+                            <span id="std-variance" class="text-xs font-bold text-amber-600 dark:text-amber-400 font-mono">--</span>
+                        </div>
+                        <div class="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+                            <span class="text-[10px] text-slate-400 block">零少數類折數</span>
+                            <span id="std-zero-folds" class="text-xs font-bold text-rose-600 dark:text-rose-400 font-mono">0 折</span>
+                        </div>
+                        <div class="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+                            <span class="text-[10px] text-slate-400 block">評估方差估計</span>
+                            <span class="text-xs font-bold text-amber-600 dark:text-amber-400">極高 (High Var)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stratified K-Fold Panel -->
+                <div class="bg-white dark:bg-slate-900 rounded-2xl border-2 border-indigo-500/30 dark:border-indigo-500/20 p-5 shadow-sm relative flex flex-col">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-3 h-3 rounded-full bg-indigo-600"></span>
+                            <h3 class="font-bold text-base text-slate-800 dark:text-slate-100">Stratified K-Fold (分層 K 折)</h3>
+                        </div>
+                        <span class="text-xs px-2.5 py-1 bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold rounded-full">
+                            保持母體比例 (分層抽樣)
+                        </span>
+                    </div>
+
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 mb-4">
+                        依標籤分別進行均勻切割。每一折的訓練集與驗證集均忠實還原母體比例。
+                    </p>
+
+                    <div id="stratified-folds-container" class="space-y-3 flex-1">
+                        <!-- Injected by JS -->
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-3 gap-2 text-center">
+                        <div class="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+                            <span class="text-[10px] text-slate-400 block">少數類比例標準差 ($\sigma$)</span>
+                            <span id="strat-variance" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 font-mono">0.00%</span>
+                        </div>
+                        <div class="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+                            <span class="text-[10px] text-slate-400 block">零少數類折數</span>
+                            <span id="strat-zero-folds" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono">0 折</span>
+                        </div>
+                        <div class="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+                            <span class="text-[10px] text-slate-400 block">評估方差估計</span>
+                            <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400">極低穩定 (Robust)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart & Statistics Simulation -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+                    <div>
+                        <h3 class="font-bold text-base sm:text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-indigo-500"></i>
+                            每折驗證評估分數波動檢驗 (Weighted F1-Score)
+                        </h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            模擬分類器在各折上的評估分數。Stratified K-Fold 各折分數緊密收斂，而 Standard K-Fold 呈現大幅方差波動。
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="stepSimulation()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300">
+                            <i class="fa-solid fa-forward-step mr-1"></i> 單步執行下一折
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+                    <div class="lg:col-span-2 h-72">
+                        <canvas id="cvMetricsChart"></canvas>
+                    </div>
+
+                    <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl flex flex-col justify-between">
+                        <div>
+                            <h4 class="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">數值統計評估結果</h4>
+                            <div class="space-y-3 text-xs">
+                                <div class="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
+                                    <div class="flex justify-between font-semibold mb-1">
+                                        <span class="text-amber-600 dark:text-amber-400">Standard K-Fold</span>
+                                    </div>
+                                    <div class="flex justify-between text-slate-500">
+                                        <span>F1-Score 平均:</span>
+                                        <span id="std-f1-mean" class="font-mono font-bold text-slate-700 dark:text-slate-300">--</span>
+                                    </div>
+                                    <div class="flex justify-between text-slate-500">
+                                        <span>F1 方差 ($\mathrm{Var}$):</span>
+                                        <span id="std-f1-var" class="font-mono font-bold text-rose-500">--</span>
+                                    </div>
+                                </div>
+
+                                <div class="p-3 bg-white dark:bg-slate-900 rounded-lg border border-indigo-200 dark:border-indigo-900">
+                                    <div class="flex justify-between font-semibold mb-1">
+                                        <span class="text-indigo-600 dark:text-indigo-400">Stratified K-Fold</span>
+                                    </div>
+                                    <div class="flex justify-between text-slate-500">
+                                        <span>F1-Score 平均:</span>
+                                        <span id="strat-f1-mean" class="font-mono font-bold text-slate-700 dark:text-slate-300">--</span>
+                                    </div>
+                                    <div class="flex justify-between text-slate-500">
+                                        <span>F1 方差 ($\mathrm{Var}$):</span>
+                                        <span id="strat-f1-var" class="font-mono font-bold text-emerald-500">--</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 p-2.5 rounded-lg bg-indigo-50/50 dark:bg-indigo-950/30 text-[11px] text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900/50">
+                            <strong>結論驗證：</strong> Stratified K-Fold 大幅降低了評估指標的抽樣變異數 $\mathrm{Var}(\hat{E}_{CV})$，提供真實世界中更可靠的泛化評估。
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Global Simulation State
+        const state = {
+            totalN: 100,
+            majorityRatio: 0.90,
+            k: 5,
+            seed: 42,
+            currentStepFold: 0,
+            isAutoPlaying: false,
+            autoPlayTimer: null,
+            standardFolds: [],
+            stratifiedFolds: [],
+            stdMetrics: [],
+            stratMetrics: []
+        };
+
+        // Theme management
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        
+        function initTheme() {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.classList.add('dark');
+                themeIcon.className = 'fa-solid fa-sun text-amber-400';
+            }
+        }
+        initTheme();
+
+        themeToggleBtn.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            if (document.documentElement.classList.contains('dark')) {
+                themeIcon.className = 'fa-solid fa-sun text-amber-400';
+            } else {
+                themeIcon.className = 'fa-solid fa-moon text-slate-500';
+            }
+            updateChartColors();
+        });
+
+        // Seeded Pseudo Random Generator
+        function mulberry32(a) {
+            return function() {
+                var t = a += 0x6D2B79F5;
+                t = Math.imul(t ^ t >>> 15, t | 1);
+                t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+                return ((t ^ t >>> 14) >>> 0) / 4294967296;
+            }
+        }
+        let rng = mulberry32(state.seed);
+
+        function reshuffle() {
+            state.seed = Math.floor(Math.random() * 99999);
+            document.getElementById('seed-badge').innerText = `Seed: ${state.seed}`;
+            rng = mulberry32(state.seed);
+            resetSimulation();
+        }
+
+        function setK(kVal) {
+            state.k = kVal;
+            document.getElementById('label-k-val').innerText = `K = ${kVal}`;
+            document.querySelectorAll('.btn-k').forEach(b => {
+                b.className = "btn-k py-1.5 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition";
+            });
+            event.target.className = "btn-k py-1.5 text-xs font-bold rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 border border-indigo-500";
+            resetSimulation();
+        }
+
+        // Input listeners for main simulator
+        document.getElementById('param-n').addEventListener('input', (e) => {
+            state.totalN = parseInt(e.target.value);
+            document.getElementById('label-sample-size').innerText = state.totalN;
+            resetSimulation();
+        });
+
+        document.getElementById('param-ratio').addEventListener('change', (e) => {
+            state.majorityRatio = parseFloat(e.target.value);
+            const majPct = Math.round(state.majorityRatio * 100);
+            const minPct = 100 - majPct;
+            document.getElementById('label-ratio').innerText = `${majPct}% : ${minPct}%`;
+            resetSimulation();
+        });
+
+        // Math 推導互動計算機監聽器
+        const mathN = document.getElementById('math-calc-n');
+        const mathP = document.getElementById('math-calc-p');
+        const mathK = document.getElementById('math-calc-k');
+
+        function updateMathCalc() {
+            const N = parseInt(mathN.value);
+            const pPct = parseInt(mathP.value);
+            const K = parseInt(mathK.value);
+            const M = Math.round(N * (pPct / 100));
+            const n = Math.floor(N / K);
+
+            document.getElementById('math-calc-n-val').innerText = N;
+            document.getElementById('math-calc-p-val').innerText = `${pPct}%`;
+            document.getElementById('math-calc-k-val').innerText = K;
+            document.getElementById('math-res-m').innerText = `${M} 筆`;
+            document.getElementById('math-res-n').innerText = `${n} 筆`;
+
+            // P(X=0)
+            let p0 = 1.0;
+            for (let i = 0; i < n; i++) {
+                if (N - i <= 0) break;
+                p0 *= (1 - M / (N - i));
+            }
+            p0 = Math.max(0, Math.min(1, p0));
+            let pAny = 1 - Math.pow(1 - p0, K);
+            pAny = Math.max(0, Math.min(1, pAny));
+
+            document.getElementById('math-res-p0').innerText = `${(p0 * 100).toFixed(2)}%`;
+            document.getElementById('math-res-pany').innerText = `${(pAny * 100).toFixed(2)}%`;
+        }
+
+        mathN.addEventListener('input', updateMathCalc);
+        mathP.addEventListener('input', updateMathCalc);
+        mathK.addEventListener('input', updateMathCalc);
+
+        // Domain Switcher
+        function switchDomain(domainKey) {
+            const domains = ['ml', 'dl', 'rl', 'llm', 'others'];
+            domains.forEach(d => {
+                const el = document.getElementById(`domain-content-${d}`);
+                const btn = document.getElementById(`tab-dom-${d}`);
+                if (d === domainKey) {
+                    el.classList.remove('hidden');
+                    btn.className = "dom-tab-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-sm transition";
+                } else {
+                    el.classList.add('hidden');
+                    btn.className = "dom-tab-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 transition";
+                }
+            });
+        }
+
+        // Split Algorithms
+        function generateSplits() {
+            const N = state.totalN;
+            const K = state.k;
+            const majCount = Math.round(N * state.majorityRatio);
+            const minCount = N - majCount;
+
+            let dataset = [];
+            for (let i = 0; i < majCount; i++) dataset.push(0);
+            for (let i = 0; i < minCount; i++) dataset.push(1);
+
+            // 1. Standard K-Fold: Complete Random Shuffle
+            let shuffled = [...dataset];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(rng() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+
+            const foldSize = Math.floor(N / K);
+            const remainder = N % K;
+            state.standardFolds = [];
+            let currentIdx = 0;
+            for (let i = 0; i < K; i++) {
+                const take = foldSize + (i < remainder ? 1 : 0);
+                const foldData = shuffled.slice(currentIdx, currentIdx + take);
+                const pos = foldData.filter(v => v === 1).length;
+                const neg = foldData.filter(v => v === 0).length;
+                state.standardFolds.push({
+                    foldId: i + 1,
+                    total: foldData.length,
+                    minority: pos,
+                    majority: neg,
+                    minorityRatio: foldData.length > 0 ? (pos / foldData.length) : 0
+                });
+                currentIdx += take;
+            }
+
+            // 2. Stratified K-Fold: Stratified distribution
+            let majIndices = [];
+            let minIndices = [];
+            for (let i = 0; i < majCount; i++) majIndices.push(0);
+            for (let i = 0; i < minCount; i++) minIndices.push(1);
+
+            for (let i = majIndices.length - 1; i > 0; i--) {
+                const j = Math.floor(rng() * (i + 1));
+                [majIndices[i], majIndices[j]] = [majIndices[j], majIndices[i]];
+            }
+            for (let i = minIndices.length - 1; i > 0; i--) {
+                const j = Math.floor(rng() * (i + 1));
+                [minIndices[i], minIndices[j]] = [minIndices[j], minIndices[i]];
+            }
+
+            state.stratifiedFolds = Array.from({ length: K }, (_, idx) => ({
+                foldId: idx + 1,
+                total: 0,
+                minority: 0,
+                majority: 0,
+                minorityRatio: 0
+            }));
+
+            minIndices.forEach((val, idx) => {
+                state.stratifiedFolds[idx % K].minority += 1;
+            });
+            majIndices.forEach((val, idx) => {
+                state.stratifiedFolds[idx % K].majority += 1;
+            });
+
+            state.stratifiedFolds.forEach(fold => {
+                fold.total = fold.minority + fold.majority;
+                fold.minorityRatio = fold.total > 0 ? (fold.minority / fold.total) : 0;
+            });
+
+            calculateSimulatedMetrics();
+        }
+
+        // Simulate accuracy and weighted F1-score across folds
+        function calculateSimulatedMetrics() {
+            state.stdMetrics = [];
+            state.stratMetrics = [];
+            const trueMinRatio = 1 - state.majorityRatio;
+
+            for (let i = 0; i < state.k; i++) {
+                const stdFold = state.standardFolds[i];
+                if (stdFold.minority === 0) {
+                    state.stdMetrics.push({ accuracy: 1.0, f1: 0.0 });
+                } else {
+                    const deviation = Math.abs(stdFold.minorityRatio - trueMinRatio);
+                    const noise = (rng() - 0.5) * 0.08;
+                    const f1 = Math.max(0.2, Math.min(0.95, 0.82 - deviation * 1.5 + noise));
+                    state.stdMetrics.push({ f1: f1 });
+                }
+
+                const stratNoise = (rng() - 0.5) * 0.03;
+                state.stratMetrics.push({
+                    f1: Math.max(0.65, Math.min(0.95, 0.84 + stratNoise))
+                });
+            }
+        }
+
+        // Render Fold bars and UI
+        function renderFolds() {
+            const stdContainer = document.getElementById('standard-folds-container');
+            const stratContainer = document.getElementById('stratified-folds-container');
+            stdContainer.innerHTML = '';
+            stratContainer.innerHTML = '';
+
+            let hasZeroMinority = false;
+            let stdZeroCount = 0;
+            let stdRatios = [];
+            let stratRatios = [];
+
+            state.standardFolds.forEach((fold) => {
+                const isCurrent = (state.currentStepFold === 0 || state.currentStepFold === fold.foldId);
+                const isZero = fold.minority === 0;
+                if (isZero) {
+                    hasZeroMinority = true;
+                    stdZeroCount++;
+                }
+                stdRatios.push(fold.minorityRatio);
+
+                const majWidth = fold.total > 0 ? (fold.majority / fold.total * 100).toFixed(1) : 0;
+                const minWidth = fold.total > 0 ? (fold.minority / fold.total * 100).toFixed(1) : 0;
+
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-xl border transition-all duration-300 ${
+                    isZero ? 'border-rose-500 bg-rose-500/10' :
+                    isCurrent && state.currentStepFold > 0 ? 'border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/30' :
+                    'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40'
+                }`;
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center text-xs mb-1.5 font-mono">
+                        <span class="font-bold flex items-center gap-1.5 ${isCurrent && state.currentStepFold > 0 ? 'text-amber-600 dark:text-amber-400 font-black' : 'text-slate-700 dark:text-slate-300'}">
+                            ${state.currentStepFold === fold.foldId ? '<i class="fa-solid fa-arrow-right animate-pulse text-amber-500"></i>' : ''}
+                            Fold ${fold.foldId} (Val: ${fold.total} 筆)
+                        </span>
+                        <div class="flex items-center gap-2">
+                            ${isZero ? '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500 text-white animate-bounce"><i class="fa-solid fa-triangle-exclamation"></i> 0 少數類!</span>' : ''}
+                            <span class="text-slate-500">少數類: <strong class="${isZero ? 'text-rose-500 font-black' : 'text-amber-600 dark:text-amber-400'}">${fold.minority}</strong> (${minWidth}%)</span>
+                        </div>
+                    </div>
+                    <div class="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden flex">
+                        <div style="width: ${majWidth}%" class="h-full bg-slate-400 dark:bg-slate-500 transition-all duration-300" title="多數類 ${fold.majority} 筆"></div>
+                        <div style="width: ${minWidth}%" class="h-full ${isZero ? 'bg-transparent' : 'bg-amber-500'} transition-all duration-300" title="少數類 ${fold.minority} 筆"></div>
+                    </div>
+                `;
+                stdContainer.appendChild(card);
+            });
+
+            state.stratifiedFolds.forEach((fold) => {
+                const isCurrent = (state.currentStepFold === 0 || state.currentStepFold === fold.foldId);
+                stratRatios.push(fold.minorityRatio);
+
+                const majWidth = fold.total > 0 ? (fold.majority / fold.total * 100).toFixed(1) : 0;
+                const minWidth = fold.total > 0 ? (fold.minority / fold.total * 100).toFixed(1) : 0;
+
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-xl border transition-all duration-300 ${
+                    isCurrent && state.currentStepFold > 0 ? 'border-indigo-500 bg-indigo-500/10 ring-2 ring-indigo-500/30' :
+                    'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40'
+                }`;
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center text-xs mb-1.5 font-mono">
+                        <span class="font-bold flex items-center gap-1.5 ${isCurrent && state.currentStepFold > 0 ? 'text-indigo-600 dark:text-indigo-400 font-black' : 'text-slate-700 dark:text-slate-300'}">
+                            ${state.currentStepFold === fold.foldId ? '<i class="fa-solid fa-arrow-right animate-pulse text-indigo-500"></i>' : ''}
+                            Fold ${fold.foldId} (Val: ${fold.total} 筆)
+                        </span>
+                        <span class="text-slate-500">少數類: <strong class="text-indigo-600 dark:text-indigo-400 font-bold">${fold.minority}</strong> (${minWidth}%)</span>
+                    </div>
+                    <div class="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden flex">
+                        <div style="width: ${majWidth}%" class="h-full bg-slate-400 dark:bg-slate-500 transition-all duration-300" title="多數類 ${fold.majority} 筆"></div>
+                        <div style="width: ${minWidth}%" class="h-full bg-indigo-600 transition-all duration-300" title="少數類 ${fold.minority} 筆"></div>
+                    </div>
+                `;
+                stratContainer.appendChild(card);
+            });
+
+            const alertBox = document.getElementById('zero-minority-alert');
+            if (hasZeroMinority) alertBox.classList.remove('hidden');
+            else alertBox.classList.add('hidden');
+
+            const calcStdDev = (arr) => {
+                const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+                const variance = arr.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / arr.length;
+                return Math.sqrt(variance);
+            };
+
+            const stdDevStd = calcStdDev(stdRatios) * 100;
+            const stratDevStd = calcStdDev(stratRatios) * 100;
+
+            document.getElementById('std-variance').innerText = `±${stdDevStd.toFixed(2)}%`;
+            document.getElementById('strat-variance').innerText = `±${stratDevStd.toFixed(2)}%`;
+            document.getElementById('std-zero-folds').innerText = `${stdZeroCount} 折`;
+            document.getElementById('strat-zero-folds').innerText = `0 折`;
+
+            updateSummaryMetrics();
+            updateChart();
+        }
+
+        function updateSummaryMetrics() {
+            const stdF1s = state.stdMetrics.map(m => m.f1);
+            const stratF1s = state.stratMetrics.map(m => m.f1);
+
+            const getMean = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
+            const getVar = (arr) => {
+                const m = getMean(arr);
+                return arr.reduce((a, b) => a + Math.pow(b - m, 2), 0) / arr.length;
+            };
+
+            document.getElementById('std-f1-mean').innerText = getMean(stdF1s).toFixed(3);
+            document.getElementById('std-f1-var').innerText = getVar(stdF1s).toFixed(4);
+            document.getElementById('strat-f1-mean').innerText = getMean(stratF1s).toFixed(3);
+            document.getElementById('strat-f1-var').innerText = getVar(stratF1s).toFixed(4);
+        }
+
+        // Chart.js
+        let metricsChart = null;
+
+        function initChart() {
+            const ctx = document.getElementById('cvMetricsChart').getContext('2d');
+            const isDark = document.documentElement.classList.contains('dark');
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+            const gridColor = isDark ? '#334155' : '#e2e8f0';
+
+            metricsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({ length: state.k }, (_, i) => `Fold ${i + 1}`),
+                    datasets: [
+                        {
+                            label: 'Standard K-Fold (F1-Score)',
+                            data: state.stdMetrics.map(m => m.f1),
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            borderWidth: 2.5,
+                            borderDash: [5, 5],
+                            tension: 0.3,
+                            pointRadius: 5
+                        },
+                        {
+                            label: 'Stratified K-Fold (F1-Score)',
+                            data: state.stratMetrics.map(m => m.f1),
+                            borderColor: '#6366f1',
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            pointRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: textColor,
+                                font: { family: 'Inter', size: 12, weight: 600 }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 1.05,
+                            ticks: { color: textColor },
+                            grid: { color: gridColor },
+                            title: { display: true, text: 'Weighted F1-Score', color: textColor }
+                        },
+                        x: {
+                            ticks: { color: textColor },
+                            grid: { color: gridColor }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            if (!metricsChart) return;
+            metricsChart.data.labels = Array.from({ length: state.k }, (_, i) => `Fold ${i + 1}`);
+            metricsChart.data.datasets[0].data = state.stdMetrics.map(m => m.f1);
+            metricsChart.data.datasets[1].data = state.stratMetrics.map(m => m.f1);
+            metricsChart.update();
+        }
+
+        function updateChartColors() {
+            if (!metricsChart) return;
+            const isDark = document.documentElement.classList.contains('dark');
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+            const gridColor = isDark ? '#334155' : '#e2e8f0';
+
+            metricsChart.options.plugins.legend.labels.color = textColor;
+            metricsChart.options.scales.x.ticks.color = textColor;
+            metricsChart.options.scales.x.grid.color = gridColor;
+            metricsChart.options.scales.y.ticks.color = textColor;
+            metricsChart.options.scales.y.grid.color = gridColor;
+            metricsChart.options.scales.y.title.color = textColor;
+            metricsChart.update();
+        }
+
+        // Stepping & Auto Simulation
+        function stepSimulation() {
+            if (state.isAutoPlaying) pauseAutoSimulation();
+            state.currentStepFold++;
+            if (state.currentStepFold > state.k) state.currentStepFold = 1;
+            document.getElementById('sim-status-text').innerText = `正在評估 Fold ${state.currentStepFold} / ${state.k}`;
+            renderFolds();
+        }
+
+        function toggleAutoSimulation() {
+            if (state.isAutoPlaying) {
+                pauseAutoSimulation();
+            } else {
+                startAutoSimulation();
+            }
+        }
+
+        function startAutoSimulation() {
+            state.isAutoPlaying = true;
+            const btn = document.getElementById('btn-auto-simulate');
+            const icon = document.getElementById('auto-btn-icon');
+            const text = document.getElementById('auto-btn-text');
+            if (icon && text) {
+                icon.className = 'fa-solid fa-pause';
+                text.innerText = '暫停自動模擬';
+            }
+            if (btn) btn.classList.add('ring-2', 'ring-indigo-400');
+
+            state.autoPlayTimer = setInterval(() => {
+                state.currentStepFold++;
+                if (state.currentStepFold > state.k) state.currentStepFold = 1;
+                document.getElementById('sim-status-text').innerText = `自動循環評估 Fold ${state.currentStepFold} / ${state.k}`;
+                renderFolds();
+            }, 900);
+        }
+
+        function pauseAutoSimulation() {
+            state.isAutoPlaying = false;
+            clearInterval(state.autoPlayTimer);
+            const btn = document.getElementById('btn-auto-simulate');
+            const icon = document.getElementById('auto-btn-icon');
+            const text = document.getElementById('auto-btn-text');
+            if (icon && text) {
+                icon.className = 'fa-solid fa-play';
+                text.innerText = '一鍵自動模擬';
+            }
+            if (btn) btn.classList.remove('ring-2', 'ring-indigo-400');
+            document.getElementById('sim-status-text').innerText = `已暫停`;
+        }
+
+        function resetSimulation() {
+            if (state.isAutoPlaying) pauseAutoSimulation();
+            state.currentStepFold = 0;
+            document.getElementById('sim-status-text').innerText = `就緒 (Ready)`;
+            generateSplits();
+            renderFolds();
+        }
+
+        window.onload = function() {
+            generateSplits();
+            initChart();
+            renderFolds();
+            updateMathCalc();
+        };
+    </script>
+</body>
+</html>

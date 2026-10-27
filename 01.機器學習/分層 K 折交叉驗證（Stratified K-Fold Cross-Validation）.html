@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>分層 K 折交叉驗證（Stratified K-Fold Cross-Validation）</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- KaTeX 數學公式渲染引擎 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            },
+            classA: '#3b82f6', // 藍色 (多數類)
+            classB: '#f43f5e', // 粉紅色 (少數類)
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    code, pre {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 4px;
+    }
+    /* Syntax Highlighting Custom Colors */
+    .hl-func { color: #f43f5e; font-weight: 600; background: rgba(244, 63, 94, 0.1); padding: 1px 4px; border-radius: 4px; }
+    .hl-class { color: #38bdf8; font-weight: 600; }
+    .hl-keyword { color: #c084fc; font-weight: 600; }
+    .hl-param { color: #fbbf24; }
+    .hl-str { color: #4ade80; }
+    .hl-comment { color: #94a3b8; font-style: italic; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/90 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-rose-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+          <i class="fa-solid fa-layer-group text-white text-lg"></i>
+        </div>
+        <div>
+          <span class="font-bold text-lg text-white tracking-wide">Stratified K-Fold</span>
+          <span class="text-xs ml-2 px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">ML Evaluation</span>
+        </div>
+      </div>
+
+      <!-- Nav Links -->
+      <nav class="hidden md:flex items-center gap-1 text-sm font-medium">
+        <button onclick="scrollToSection('sec-overview')" class="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">理論核心</button>
+        <button onclick="scrollToSection('sec-ipas')" class="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">IPAS考題</button>
+        <button onclick="scrollToSection('sec-math')" class="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">數學推導</button>
+        <button onclick="scrollToSection('sec-kchoice')" class="px-3 py-1.5 rounded-lg text-amber-300 hover:text-amber-200 hover:bg-slate-800 transition">K值權衡</button>
+        <button onclick="scrollToSection('sec-domains')" class="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">跨領域應用</button>
+        <button onclick="scrollToSection('sec-code')" class="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">實作程式碼</button>
+        <button onclick="scrollToSection('sec-sim')" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 transition flex items-center gap-1.5">
+          <i class="fa-solid fa-play text-xs"></i> 互動模擬器
+        </button>
+      </nav>
+      <!-- Action buttons -->
+      <div class="flex items-center gap-2">
+        <a href="05.k_fold(K-Fold（K折交叉驗證）).html" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:text-amber-200 bg-amber-950/60 hover:bg-amber-900/60 border border-amber-500/40 rounded-lg transition shadow-sm" title="K-Fold 交叉驗證全維度解析">
+          <i class="fa-solid fa-table-cells"></i> K-Fold
+        </a>
+        <a href="../index.html" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition shadow-sm">
+          <i class="fa-solid fa-arrow-left"></i> 回首頁
+        </a>
+        <a href="../程式心智圖.html" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:text-emerald-200 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-500/40 rounded-lg transition shadow-sm" title="開啟 1:1 程式心智圖">
+          <i class="fa-solid fa-network-wired"></i> 程式心智圖
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+    <!-- ==========================================
+         核心精華與產業應用方框 (Key Concepts & Real-world Applications)
+         ========================================== -->
+    <div class="summary-app-callout" style="margin: 0 auto; width: 100%; box-sizing: border-box;">
+      <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 0 15px rgba(99, 102, 241, 0.12); padding: 1.5rem; color: #f8fafc; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; backdrop-filter: blur(10px);">
+        
+        <!-- 頂部 Header -->
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 0.85rem; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 0.65rem;">
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: linear-gradient(135deg, #4f46e5, #6366f1); border-radius: 8px; color: #ffffff; font-size: 1.05rem; box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4); flex-shrink: 0;">
+              <i class="fa-solid fa-lightbulb"></i>
+            </span>
+            <div>
+              <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #ffffff; letter-spacing: -0.01em;">
+                【分層 K 折交叉驗證 (Stratified K-Fold)】核心精華與產業實務應用
+              </h3>
+              <p style="margin: 0.15rem 0 0 0; font-size: 0.78rem; color: #94a3b8;">Key Takeaways · Sampling Constraint · Imbalanced Industrial Scenarios</p>
+            </div>
+          </div>
+          <span style="font-size: 0.72rem; padding: 0.25rem 0.65rem; background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 9999px; font-weight: 700; white-space: nowrap;">
+            重點精華 · 實務落地
+          </span>
+        </div>
+
+        <!-- 三大區塊 Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.2rem;">
+          
+          <!-- 區塊 1: 重點整理 -->
+          <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem; color: #818cf8; font-weight: 700; font-size: 0.92rem;">
+              <i class="fa-solid fa-list-check"></i>
+              <span>重點整理 (Key Takeaways)</span>
+            </div>
+            <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.84rem; color: #cbd5e1; line-height: 1.6; flex: 1;">
+              <li><strong>分層等比例抽樣：</strong>確保每個 Fold 的標籤比例嚴格等於母體比例（例如正負樣本比 1:99，每折訓練與驗證集皆保持 1:99）。</li>
+              <li><strong>防禦極端評估偏差：</strong>徹底根除標準 K-Fold 在少數類別上可能發生的「零陽性樣本折」或「少數類過度集中折」，消除評估分數的大幅震盪。</li>
+              <li><strong>分類專用 vs 迴歸限制：</strong>本質為針對離散分類標籤設計；連續型目標迴歸無法直接使用（需改採自定義分箱 Continuous Stratified 或標準 K-Fold）。</li>
+              <li><strong>非採樣合成技術：</strong>僅改變「數據劃分方式」以客觀評估泛化性能，不生成虛擬樣本（區別於 SMOTE/ADASYN 等數據擴增技術）。</li>
+            </ul>
+          </div>
+
+          <!-- 區塊 2: 原理解析與說明 -->
+          <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(168, 85, 247, 0.25); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem; color: #c084fc; font-weight: 700; font-size: 0.92rem;">
+              <i class="fa-solid fa-microchip"></i>
+              <span>核心機制與原理說明</span>
+            </div>
+            <p style="margin: 0; font-size: 0.84rem; color: #cbd5e1; line-height: 1.6; flex: 1;">
+              演算法首先將母體數據依據目標標籤 $y$ 進行層化分組（Stratification），對各個獨立類別子集合分別執行打散與 $K$ 等分切分，最後再將每個折中各類別的等分區塊對齊合併成 $K$ 個完整折。數學上強制滿足條件：
+              $$\forall k \in \{1,\dots,K\}, \quad P(y=c \mid \text{Fold}_k) = P(y=c \mid \mathcal{D})$$
+              在 Scikit-Learn 中呼叫 <code>StratifiedKFold(n_splits=5, shuffle=True, random_state=42)</code>，迭代器 <code>.split(X, y)</code> 必須傳入標籤 <code>y</code> 方能按類別比例分配索引。
+            </p>
+          </div>
+
+          <!-- 區塊 3: 應用在何處 -->
+          <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(52, 211, 153, 0.25); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem; color: #34d399; font-weight: 700; font-size: 0.92rem;">
+              <i class="fa-solid fa-industry"></i>
+              <span>應用在何處 (產業與落地實務)</span>
+            </div>
+            <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.84rem; color: #cbd5e1; line-height: 1.6; flex: 1;">
+              <li><strong>金融防盜刷與洗錢防制 (AML)：</strong>盜刷率通常低於 0.01%，標準隨機切分極易讓驗證折完全沒有盜刷樣本，分層交叉驗證確保每折穩定評估 PR-AUC 與 Recall。</li>
+              <li><strong>半導體晶圓瑕疵篩檢 (Wafer AOI)：</strong>良率 99.5% 時瑕疵僅 0.5%，透過 Stratified K-Fold 驗證缺陷分類模型（如致命刮痕、顆粒污染），避免誤殺或漏檢模型過擬合。</li>
+              <li><strong>醫療罕見疾病與癌症病理快篩：</strong>陽性病患極度稀缺（< 1%），分層保證每輪驗證集皆能客觀考核對少數類陽性病患的靈敏度 (Sensitivity)。</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Hero / 一句話簡介 (01) & 核心原理 (02) -->
+    <section id="sec-overview" class="relative overflow-hidden rounded-3xl bg-gradient-to-b from-slate-800/80 to-slate-900/80 border border-slate-700/60 p-6 sm:p-10 shadow-2xl">
+      <div class="absolute -right-20 -top-20 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      
+      <!-- 01. 一句話簡介 -->
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-400/30 text-indigo-300 text-xs font-semibold mb-4">
+        <i class="fa-solid fa-bolt"></i> 01. 一句話簡介
+      </div>
+      <h1 class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
+        「按標籤比例切分，確保每折都是母體的完美縮影」
+      </h1>
+      <div class="mt-4 space-y-3 text-slate-300 text-base sm:text-lg max-w-4xl leading-relaxed">
+        <p>
+          分層 K 折交叉驗證（<strong class="text-indigo-300">Stratified K-Fold Cross-Validation</strong>）是機器學習模型評估的重要工具，也是標準 K 折交叉驗證的改良版本。在將資料分割成 $K$ 個折時，增加了一個關鍵約束：<strong>確保每個折中各類別的樣本比例與原始資料集嚴格保持一致</strong>。
+        </p>
+        <p class="text-sm sm:text-base text-slate-400">
+          這對於處理類別不平衡（Class Imbalance）的分類問題尤為重要，能有效避免某個折中缺乏少數類別樣本而導致評估結果產生偏誤與極端變異。
+        </p>
+      </div>
+
+      <!-- 關鍵認知澄清：評估工具 vs 不平衡學習 -->
+      <div class="mt-6 p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-indigo-500/10 to-slate-900 border border-amber-500/30 relative overflow-hidden">
+        <div class="flex items-start gap-3.5">
+          <div class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+            <i class="fa-solid fa-scale-balanced text-base"></i>
+          </div>
+          <div class="space-y-2">
+            <h3 class="text-base font-bold text-amber-300 flex items-center gap-2">
+              重要觀念釐清：分層 K 折是「評估工具」，而非「不平衡學習方案」
+            </h3>
+            <p class="text-sm text-slate-200 leading-relaxed">
+              <strong>分層 K 折解決的是評估過程中的類別分佈問題，但它本身並不解決類別不平衡的學習問題。</strong>
+            </p>
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              若需要讓模型更好地學習少數類別，仍需要配合<strong>過採樣（如 SMOTE）</strong>、<strong>欠採樣</strong>、調整類別損失權重（如 <code>class_weight='balanced'</code> 或 Focal Loss）等針對不平衡學習的技術。<strong>分層 K 折確保的是我們在「公平且一致的條件下」，客觀評估這些技術的真實效益與泛化能力。</strong>
+            </p>
+            <div class="pt-2 flex flex-wrap items-center gap-2 text-xs font-mono text-amber-200/90">
+              <span class="px-2 py-0.5 rounded bg-amber-400/20 border border-amber-400/30">
+                <i class="fa-solid fa-triangle-exclamation mr-1"></i>IPAS 避坑警語：
+              </span>
+              <span>若搭配 SMOTE，必須在每個 Fold 內部對訓練集採樣，切忌在分折前對母體全域進行過採樣（避免資料洩漏 Data Leakage）！</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 02. 核心原理 Grid -->
+      <div class="mt-8 pt-8 border-t border-slate-700/60">
+        <h2 class="text-xl font-bold text-white flex items-center gap-2 mb-4">
+          <i class="fa-solid fa-microchip text-indigo-400"></i> 02. 核心原理
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div class="bg-slate-800/60 border border-slate-700/50 p-5 rounded-2xl hover:border-indigo-500/40 transition">
+            <div class="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold mb-3">
+              1
+            </div>
+            <h3 class="font-semibold text-white mb-2">類別獨立子分組</h3>
+            <p class="text-sm text-slate-400 leading-relaxed">
+              先將整體樣本依標籤 $Y$ 分組（例如分為多數類群與少數類群），避免類別在混洗時隨機聚集。
+            </p>
+          </div>
+          <div class="bg-slate-800/60 border border-slate-700/50 p-5 rounded-2xl hover:border-indigo-500/40 transition">
+            <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold mb-3">
+              2
+            </div>
+            <h3 class="font-semibold text-white mb-2">組內等分 K 份</h3>
+            <p class="text-sm text-slate-400 leading-relaxed">
+              在每個類別內部獨立打散，並平均均分為 $K$ 等份。確保每一份中少數類的數值皆為 $\lfloor N_c / K \rfloor$。
+            </p>
+          </div>
+          <div class="bg-slate-800/60 border border-slate-700/50 p-5 rounded-2xl hover:border-indigo-500/40 transition">
+            <div class="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold mb-3">
+              3
+            </div>
+            <h3 class="font-semibold text-white mb-2">交叉對齊組裝</h3>
+            <p class="text-sm text-slate-400 leading-relaxed">
+              將每個類別的第 $k$ 等份合併形成 Fold $k$。徹底杜絕一般 K-Fold 可能發生「某個 Fold 根本抽不到少數類別」的致命評估偏誤。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03. IPAS AI 考題解析 -->
+    <section id="sec-ipas" class="rounded-3xl bg-slate-800/70 border border-slate-700/60 p-6 sm:p-8">
+      <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-400/30 text-emerald-300 text-xs font-semibold mb-2">
+            <i class="fa-solid fa-graduation-cap"></i> 03. IPAS AI 應用工程師經典考題
+          </div>
+          <h2 class="text-2xl font-bold text-white">證照考題模擬與深入拆解</h2>
+        </div>
+        <span class="text-xs bg-slate-700 text-slate-300 px-3 py-1 rounded-full">評估指標與驗證策略單元</span>
+      </div>
+
+      <div class="space-y-6">
+        <!-- 題目卡片 1 -->
+        <div class="bg-slate-900/80 rounded-2xl border border-slate-700 p-6">
+          <div class="flex items-start justify-between gap-4">
+            <div class="space-y-2">
+              <span class="text-xs font-bold text-indigo-400 tracking-wider uppercase">[單選題] 考題 1</span>
+              <p class="text-base text-slate-100 font-medium">
+                某金融防偽團隊正在訓練交易詐欺（Fraud Detection）預測模型。在收集到的 100,000 筆刷卡紀錄中，只有 200 筆為盜刷詐欺交易（正類樣本佔比 0.2%）。工程師若採用標準 10-Fold 交叉驗證（Standard K-Fold），最常面臨的根本性評估問題為何？
+              </p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 text-sm">
+            <div class="p-3 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-300">
+              (A) 模型訓練時間會增加 10 倍以上
+            </div>
+            <div class="p-3 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-300">
+              (B) 某些 Fold 的驗證集中可能完全不包含正類詐欺樣本，導致評價指標（如 Recall/AUC）產生極端變異
+            </div>
+            <div class="p-3 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-300">
+              (C) 模型會自動將所有特徵正規化而遺失尺度資訊
+            </div>
+            <div class="p-3 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-300">
+              (D) 會引發嚴重反向傳播梯度爆炸
+            </div>
+          </div>
+
+          <!-- 解析折疊 -->
+          <div class="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between flex-wrap gap-2">
+            <button onclick="toggleAnswer('ans-1')" class="text-sm font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-circle-question"></i> 查看 IPAS 參考解答與解析
+            </button>
+            <span class="text-xs text-slate-400">常見度：★★★★★ | 難度：中等</span>
+          </div>
+          <div id="ans-1" class="hidden mt-3 p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-emerald-200 text-sm leading-relaxed">
+            <strong class="font-bold text-emerald-300">正確答案：(B)</strong><br>
+            <strong>深度解析：</strong> 正類僅 200 筆，若完全隨機切分為 10 份，由二項分布可知部分 Fold 分配到的正樣本數可能極低甚至為 0。當驗證集正類為 0 時，召回率（Recall = TP / (TP+FN)）的分母為 0 無法計算，且模型在該折的評估分數會產生強烈雜訊，導致平均估計的變異數（Variance）過高。此題最佳解即為採用 <strong>Stratified K-Fold</strong>，保證每一折均有剛好 20 筆正類。
+          </div>
+        </div>
+
+        <!-- 題目卡片 2 -->
+        <div class="bg-slate-900/80 rounded-2xl border border-slate-700 p-6">
+          <div class="flex items-start justify-between gap-4">
+            <div class="space-y-2">
+              <span class="text-xs font-bold text-indigo-400 tracking-wider uppercase">[觀念判斷題] 考題 2</span>
+              <p class="text-base text-slate-100 font-medium">
+                關於 Stratified K-Fold 與其他交叉驗證技術的適用情境，下列敘述何者「錯誤」？
+              </p>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 text-sm">
+            <div class="p-3 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-300">
+              (A) Stratified K-Fold 主要適用於二元與多元「分類任務」，無法直接原封不動套用在連續值的「回歸任務」
+            </div>
+            <div class="p-3 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-300">
+              (B) 在樣本類別極度平衡（如 50:50）時，Stratified K-Fold 與 Standard K-Fold 的表現差異會顯著收斂
+            </div>
+            <div class="p-3 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-300">
+              (C) 面對金融股價等時間序列預測任務時，Stratified K-Fold 依然是最佳推薦方案
+            </div>
+            <div class="p-3 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-300">
+              (D) Kohavi (1995) 的實證研究表明，Stratified K-Fold 相較普通 CV 能有效降低評估偏差與變異數
+            </div>
+          </div>
+
+          <div class="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between flex-wrap gap-2">
+            <button onclick="toggleAnswer('ans-2')" class="text-sm font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-circle-question"></i> 查看 IPAS 參考解答與解析
+            </button>
+            <span class="text-xs text-slate-400">考點：驗證方法適用邊界與時間洩漏</span>
+          </div>
+          <div id="ans-2" class="hidden mt-3 p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-emerald-200 text-sm leading-relaxed">
+            <strong class="font-bold text-emerald-300">正確答案：(C)</strong><br>
+            <strong>深度解析：</strong> (C) 錯誤。時間序列（Time-Series）資料具備強烈時序相依性（Temporal Dependency）。若使用 Stratified K-Fold 隨機打散後切分，會造成「未來的資訊被用來訓練過去的模型」，產生致命的<strong>資料外洩（Data Leakage / Look-ahead bias）</strong>。時間序列應使用 <code>TimeSeriesSplit</code> 或前向滾動驗證（Walk-Forward Validation）。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 09. 數學推導（互動式） -->
+    <section id="sec-math" class="rounded-3xl bg-slate-800/80 border border-indigo-500/30 p-6 sm:p-8 shadow-xl">
+      <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-400/30 text-indigo-300 text-xs font-semibold mb-2">
+            <i class="fa-solid fa-square-root-variable"></i> 09. 嚴謹數學推導與配額演算法
+          </div>
+          <h2 class="text-2xl font-bold text-white">KL 散度最小化目標與 Hamilton 最大餘數分配法</h2>
+        </div>
+        <span class="text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-3 py-1 rounded-full">動態數學推導</span>
+      </div>
+
+      <!-- 理論目標與公式 -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div class="bg-slate-900/90 border border-slate-700/80 p-5 rounded-2xl">
+          <h3 class="text-sm font-bold text-indigo-400 mb-2 flex items-center gap-2">
+            <i class="fa-solid fa-bullseye"></i> 數學優化目標：各折類別分布對齊
+          </h3>
+          <p class="text-xs text-slate-300 leading-relaxed mb-3">
+            設資料集樣本總數為 $N$，類別集合為 $\mathcal{C}$，類別 $c$ 的真實母體比例為 $P(Y=c) = \frac{N_c}{N}$。分層交叉驗證劃分為 $K$ 個互相獨立的折 $\mathcal{S}_1, \dots, \mathcal{S}_K$，其最佳化目標為最小化各折與母體分布之 **Kullback-Leibler (KL) 散度**：
+          </p>
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 text-center text-xs sm:text-sm text-indigo-200 overflow-x-auto custom-scrollbar my-2">
+            $$\min_{\{\mathcal{S}_k\}} \sum_{k=1}^K D_{\mathrm{KL}}\left( P_{\mathcal{S}_k}(Y) \,\parallel\, P(Y) \right)$$
+          </div>
+          <div class="text-[11px] text-slate-400 mt-2">
+            約束條件：$\bigcup_{k=1}^K \mathcal{S}_k = \mathcal{D}$，且當 $i \ne j$ 時 $\mathcal{S}_i \cap \mathcal{S}_j = \emptyset$。
+          </div>
+        </div>
+
+        <div class="bg-slate-900/90 border border-slate-700/80 p-5 rounded-2xl">
+          <h3 class="text-sm font-bold text-indigo-400 mb-2 flex items-center gap-2">
+            <i class="fa-solid fa-calculator"></i> 離散整數分配：Hamilton 最大餘數法
+          </h3>
+          <p class="text-xs text-slate-300 leading-relaxed mb-3">
+            因為樣本數必須為整數，當 $N_c$ 無法被 $K$ 整除時，各折樣本數需滿足嚴格約束：
+          </p>
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 text-center text-xs sm:text-sm text-indigo-200 overflow-x-auto custom-scrollbar my-2">
+            $$n_{k, c} \in \left\{ \left\lfloor \frac{N_c}{K} \right\rfloor, \; \left\lceil \frac{N_c}{K} \right\rceil \right\}, \quad \sum_{k=1}^K n_{k, c} = N_c$$
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">
+            計算基本商數 $q_c = \lfloor N_c / K \rfloor$ 與餘數 $r_c = N_c \bmod K$。前 $r_c$ 個 Fold 分配 $q_c + 1$ 筆，其餘折分配 $q_c$ 筆。
+          </p>
+        </div>
+      </div>
+
+      <!-- 互動式動態試算器 -->
+      <div class="bg-slate-900/70 border border-slate-700 p-5 rounded-2xl">
+        <h3 class="text-sm font-bold text-emerald-400 mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-sliders"></i> 互動配額計算機：即時驗證整數分層推導
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 text-xs">
+          <div>
+            <label class="block text-slate-300 mb-1">多數類樣本數 ($N_A$):</label>
+            <input type="number" id="math-na" value="180" min="10" max="2000" oninput="calculateMathDistribution()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:border-indigo-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-slate-300 mb-1">少數類樣本數 ($N_B$):</label>
+            <input type="number" id="math-nb" value="20" min="1" max="500" oninput="calculateMathDistribution()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:border-indigo-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-slate-300 mb-1">折數 ($K$ 值):</label>
+            <input type="number" id="math-k" value="5" min="2" max="20" oninput="calculateMathDistribution()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:border-indigo-500 outline-none">
+          </div>
+        </div>
+
+        <!-- 算式與各折結果注入處 -->
+        <div id="math-output" class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 text-xs">
+          <!-- 動態注入內容 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 04. 實務特徵、05. 由來、06. 生活化例子、07. 工業上應用、08. 理論簡介 -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      
+      <!-- 04. 實務特徵 & 08. 理論簡介 -->
+      <div class="bg-slate-800/70 border border-slate-700/60 rounded-3xl p-6 sm:p-8 flex flex-col justify-between">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-400/30 text-cyan-300 text-xs font-semibold mb-3">
+            <i class="fa-solid fa-chart-line"></i> 04. 實務特徵 & 08. 理論架構
+          </div>
+          <h3 class="text-2xl font-bold text-white mb-4">理論與實務的核心優勢與限制</h3>
+          
+          <div class="space-y-4 text-sm">
+            <div class="p-4 rounded-2xl bg-slate-900/70 border border-slate-700/50">
+              <span class="font-semibold text-emerald-400 flex items-center gap-2">
+                <i class="fa-solid fa-circle-check"></i> 實務優勢 (Pros)
+              </span>
+              <ul class="list-disc list-inside mt-2 text-slate-300 space-y-1">
+                <li><strong>變異數顯著降低 (Variance Reduction)：</strong> 各折驗證分數震盪幅度小，超參數調優更加穩定可靠。</li>
+                <li><strong>避免零樣本陷阱：</strong> 杜絕特定 Fold 少數類樣本為 0 造成 Recall、F1-Score 無法定義的問題。</li>
+                <li><strong>公正檢驗不平衡演算法：</strong> 為 SMOTE、Focal Loss、Threshold-Moving 等演算法提供無偏差的公平測試基準。</li>
+                <li><strong>高覆蓋率：</strong> 每一筆樣本既是 $K-1$ 次訓練資料，又恰好擔任 1 次驗證資料。</li>
+              </ul>
+            </div>
+
+            <div class="p-4 rounded-2xl bg-slate-900/70 border border-slate-700/50">
+              <span class="font-semibold text-rose-400 flex items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation"></i> 使用邊界與注意事項 (Cons & Pitfalls)
+              </span>
+              <ul class="list-disc list-inside mt-2 text-slate-300 space-y-1">
+                <li><strong>連續回歸無法直接用：</strong> 連續型標籤需先進行分箱（Binning）轉為離散分位數，方可執行分層。</li>
+                <li><strong>不適用獨立群組：</strong> 若同病患有多筆切片或同使用者有多筆評論，應使用 <code>StratifiedGroupKFold</code> 避免同群組跨折洩漏。</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 pt-4 border-t border-slate-700/50 text-xs text-slate-400 flex items-center justify-between">
+          <span>推薦實務標準：Scikit-Learn 的分類器 cross_val_score 預設即為 StratifiedKFold</span>
+          <i class="fa-solid fa-shield-halved text-cyan-400"></i>
+        </div>
+      </div>
+
+      <!-- 05. 由來、06. 生活例子、07. 工業應用 -->
+      <div class="bg-slate-800/70 border border-slate-700/60 rounded-3xl p-6 sm:p-8 space-y-6">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-400/30 text-amber-300 text-xs font-semibold mb-3">
+            <i class="fa-solid fa-landmark"></i> 05. 由來 ＆ 歷史背景
+          </div>
+          <h3 class="text-xl font-bold text-white mb-2">統計學與機器學習的演進</h3>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            交叉驗證概念由 Seymour Geisser (1975) 等統計學家奠定。然而在 1995 年的國際人工智慧聯合會議 (IJCAI) 上，史丹佛學者 <strong>Ron Kohavi</strong> 發表了劃時代的經典論文 <em>"A Study of Cross-Validation and Bootstrap for Accuracy Estimation and Model Selection"</em>，透過大規模實驗證明：<strong>Stratified Cross-Validation 在平衡偏差與變異數表現上，全面優於普通交叉驗證與 Bootstrap</strong>，自此成為分類模型評估的黃金準則。
+          </p>
+        </div>
+
+        <div class="pt-4 border-t border-slate-700/60">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-400/30 text-purple-300 text-xs font-semibold mb-3">
+            <i class="fa-solid fa-mug-hot"></i> 06. 生活化生動比喻
+          </div>
+          <h3 class="text-xl font-bold text-white mb-2">大學品酒社的調酒盲測</h3>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            假設社團有 100 瓶酒，其中 90 瓶平價紅酒，10 瓶珍稀年份酒（比例 9:1）。現在要分 5 場盲測品鑑：
+            <br>• <strong class="text-rose-400">普通隨機分組：</strong> 可能前三場全是平價酒，最後一場一次湧入 7 瓶珍稀酒，評審完全無法客觀衡量各場標準。
+            <br>• <strong class="text-indigo-400">分層分組：</strong> 先把 10 瓶珍稀酒挑出均分 5 場（每場 2 瓶），平價酒也均分（每場 18 瓶）。每場都固定 18:2，完全真實反映社團的酒藏比例！
+          </p>
+        </div>
+
+        <div class="pt-4 border-t border-slate-700/60">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-400/30 text-rose-300 text-xs font-semibold mb-3">
+            <i class="fa-solid fa-industry"></i> 07. 工業級真實應用場景
+          </div>
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-700">
+              <strong class="text-indigo-300 block mb-1">半導體晶圓瑕疵篩檢</strong>
+              良率 99.2%，致命缺陷率 0.8%。切分驗證時確保每一批次瑕疵分布恆定。
+            </div>
+            <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-700">
+              <strong class="text-indigo-300 block mb-1">生醫罕病與癌症篩檢</strong>
+              百萬病例中陽性僅幾百例，分層切分避免少數類驗證指標虛高或失效。
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 新增：K 值權衡深度解析與互動探索器 -->
+    <section id="sec-kchoice" class="rounded-3xl bg-slate-800/80 border border-amber-500/30 p-6 sm:p-8 shadow-xl">
+      <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-400/30 text-amber-300 text-xs font-semibold mb-2">
+            <i class="fa-solid fa-scale-balanced"></i> 關鍵決策：折數 K 的奧秘
+          </div>
+          <h2 class="text-2xl font-bold text-white">$K$ 值的選擇權衡：偏差（Bias）與變異數（Variance）的拉鋸戰</h2>
+        </div>
+        <span class="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1 rounded-full">IPAS 高頻重點觀念</span>
+      </div>
+
+      <p class="text-sm text-slate-300 leading-relaxed mb-6">
+        在交叉驗證中，$K$ 代表將資料集分割成的子集（折）數量。<strong>「$K$ 不是愈大就愈好」</strong>，選擇 $K$ 本質上是在<strong>估計偏差（Bias）</strong>、<strong>估計變異數（Variance）</strong>與<strong>計算資源消耗（Computational Cost）</strong>三者之間進行最佳折衷（Trade-off）。
+      </p>
+
+      <!-- 互動 K 值選擇器 -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <button onclick="selectKValue(2)" id="btn-k-2" class="p-3.5 rounded-2xl border border-slate-700 bg-slate-900/80 hover:border-amber-400 transition text-left group">
+          <div class="text-xs text-slate-400 group-hover:text-amber-300 font-mono">極速試驗</div>
+          <div class="text-lg font-bold text-white mt-1">$K = 2$</div>
+          <div class="text-[11px] text-slate-400 mt-1">50% 訓練 : 50% 驗證</div>
+        </button>
+        <button onclick="selectKValue(5)" id="btn-k-5" class="p-3.5 rounded-2xl border border-slate-700 bg-slate-900/80 hover:border-amber-400 transition text-left group">
+          <div class="text-xs text-slate-400 group-hover:text-amber-300 font-mono">業界輕量首選</div>
+          <div class="text-lg font-bold text-white mt-1">$K = 5$</div>
+          <div class="text-[11px] text-slate-400 mt-1">80% 訓練 : 20% 驗證</div>
+        </button>
+        <button onclick="selectKValue(10)" id="btn-k-10" class="p-3.5 rounded-2xl border-2 border-amber-500 bg-slate-800 transition text-left group shadow-lg shadow-amber-500/10">
+          <div class="text-xs text-amber-300 font-mono font-bold">學術黃金標準 ★</div>
+          <div class="text-lg font-bold text-amber-300 mt-1">$K = 10$</div>
+          <div class="text-[11px] text-slate-300 mt-1">90% 訓練 : 10% 驗證</div>
+        </button>
+        <button onclick="selectKValue('n')" id="btn-k-n" class="p-3.5 rounded-2xl border border-slate-700 bg-slate-900/80 hover:border-amber-400 transition text-left group">
+          <div class="text-xs text-slate-400 group-hover:text-amber-300 font-mono">留一法 (LOOCV)</div>
+          <div class="text-lg font-bold text-white mt-1">$K = N$</div>
+          <div class="text-[11px] text-slate-400 mt-1">(N-1) 訓練 : 1 驗證</div>
+        </button>
+      </div>
+
+      <!-- K 值動態詳解卡片 -->
+      <div id="k-detail-card" class="bg-slate-900/90 border border-slate-700 rounded-2xl p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- 動態內容由 JavaScript 注入 -->
+      </div>
+
+      <!-- IPAS 必背總結表格 -->
+      <div class="mt-6 overflow-x-auto custom-scrollbar">
+        <table class="w-full text-xs text-left border-collapse">
+          <thead>
+            <tr class="border-b border-slate-700 text-slate-400 bg-slate-900/50">
+              <th class="p-3">指標維度</th>
+              <th class="p-3">小 $K$ 值 (如 $K=2, 3$)</th>
+              <th class="p-3 text-amber-300 font-bold">中等 $K$ 值 (推薦 $K=5 \sim 10$)</th>
+              <th class="p-3">留一法 $K=N$ (LOOCV)</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800 text-slate-300">
+            <tr>
+              <td class="p-3 font-semibold text-white">模型估計偏差 (Bias)</td>
+              <td class="p-3 text-rose-400">高（訓練樣本過少，容易低估模型性能）</td>
+              <td class="p-3 text-emerald-400">低至適中（80%~90% 資料訓練）</td>
+              <td class="p-3 text-emerald-400">極低（近乎使用整體樣本訓練）</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-semibold text-white">評估變異數 (Variance)</td>
+              <td class="p-3 text-emerald-400">較低（各折訓練集重疊度低，相互獨立）</td>
+              <td class="p-3 text-emerald-400">平衡穩定（經 Kohavi 實證最具穩定度）</td>
+              <td class="p-3 text-rose-400">極高（各折訓練集重疊率達 $(N-2)/(N-1)$，高度正相關）</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-semibold text-white">運算負擔 (Compute)</td>
+              <td class="p-3 text-emerald-400">極低（僅需訓練 2 次）</td>
+              <td class="p-3 text-emerald-400">可接受（訓練 5~10 次）</td>
+              <td class="p-3 text-rose-400">極巨大（需重新訓練模型 $N$ 次）</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-semibold text-white">IPAS 建議適用情境</td>
+              <td class="p-3">海量大數據（大於數百萬筆）快速原型驗證</td>
+              <td class="p-3 font-bold text-amber-300">絕大多數分類/回歸實務與競賽標準</td>
+              <td class="p-3">樣本極度珍稀且昂貴時（如罕病醫學幾十筆資料）</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 10. 領域範疇：ML / DL / LLM 互動示範 -->
+    <section id="sec-domains" class="rounded-3xl bg-slate-800/80 border border-slate-700/60 p-6 sm:p-8">
+      <div class="mb-6">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-400/30 text-blue-300 text-xs font-semibold mb-2">
+          <i class="fa-solid fa-cubes"></i> 10. 屬於哪個範疇？跨領域關鍵互動實務
+        </div>
+        <h2 class="text-2xl font-bold text-white">機器學習、深度學習與 LLM 中的分層交叉驗證</h2>
+      </div>
+
+      <!-- Tab Buttons -->
+      <div class="flex border-b border-slate-700 mb-6 gap-2">
+        <button onclick="switchDomain('ml')" id="tab-btn-ml" class="px-4 py-2 border-b-2 border-indigo-500 text-indigo-400 font-semibold text-sm flex items-center gap-2">
+          <i class="fa-solid fa-tree"></i> 機器學習 (Tabular / XGBoost)
+        </button>
+        <button onclick="switchDomain('dl')" id="tab-btn-dl" class="px-4 py-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 font-semibold text-sm flex items-center gap-2">
+          <i class="fa-solid fa-brain"></i> 深度學習 (PyTorch Vision)
+        </button>
+        <button onclick="switchDomain('llm')" id="tab-btn-llm" class="px-4 py-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 font-semibold text-sm flex items-center gap-2">
+          <i class="fa-solid fa-comments"></i> 大語言模型 (LLM Intent Fine-tuning)
+        </button>
+      </div>
+
+      <!-- Domain Tab Panels -->
+      <div id="domain-content-ml" class="space-y-4">
+        <p class="text-sm text-slate-300 leading-relaxed">
+          在傳統結構化資料中，極度不平衡分類（如 XGBoost、LightGBM、CatBoost）依賴 <code>StratifiedKFold</code> 進行早停（Early Stopping）監控與超參數搜尋（Bayesian Optimization）。若未分層，驗證折的少數類樣本震盪會讓提早停機策略誤判過擬合時機。
+        </p>
+        <div class="p-4 rounded-2xl bg-slate-900 border border-slate-700 flex items-center justify-between text-xs text-slate-300 flex-wrap gap-3">
+          <div><span class="text-emerald-400 font-bold">最佳實務：</span> 搭配 <code>scale_pos_weight</code> 或 Focal Loss，並以 <code>StratifiedKFold(n_splits=5, shuffle=True, random_state=42)</code> 作為內外層驗證。</div>
+        </div>
+      </div>
+
+      <div id="domain-content-dl" class="hidden space-y-4">
+        <p class="text-sm text-slate-300 leading-relaxed">
+          在電腦視覺與醫學影像分類中（如 CNN, Vision Transformer），影像通常以資料夾分類。我們不可直接做隨機 <code>random_split</code>，而是利用 <code>StratifiedKFold</code> 獲取 Indices，再傳入 PyTorch <code>torch.utils.data.Subset</code> 與 <code>DataLoader</code>。
+        </p>
+        <div class="p-4 rounded-2xl bg-slate-900 border border-slate-700 flex items-center justify-between text-xs text-slate-300 flex-wrap gap-3">
+          <div><span class="text-indigo-400 font-bold">PyTorch 關鍵字：</span> 使用 <code>Subset(dataset, train_idx)</code> 與 <code>WeightedRandomSampler</code> 結合。</div>
+        </div>
+      </div>
+
+      <div id="domain-content-llm" class="hidden space-y-4">
+        <p class="text-sm text-slate-300 leading-relaxed">
+          在大語言模型領域中，<strong>長尾意圖分類（Long-tail Intent Classification）</strong>與<strong>有害內容安全過濾（Guardrail Moderation）</strong>極度依賴分層切分。罕見的安全越獄指令（Jailbreak Prompts）佔比可能低於 1%，若微調評估驗證集未分層，會造成基準評測（Benchmark）出現虛假的高安全性假象。
+        </p>
+        <div class="p-4 rounded-2xl bg-slate-900 border border-slate-700 flex items-center justify-between text-xs text-slate-300 flex-wrap gap-3">
+          <div><span class="text-rose-400 font-bold">LLM 應用細節：</span> 針對 Prompt 意圖標籤分層切分訓練 / 驗證 LoRA Adapter，確保評估時各少數攻擊類別均被嚴格檢驗。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11. Python / PyTorch 實作 (程式碼重點函式特殊高亮) -->
+    <section id="sec-code" class="rounded-3xl bg-slate-800/80 border border-slate-700/60 p-6 sm:p-8">
+      <div class="flex items-center justify-between flex-wrap gap-4 mb-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-400/30 text-rose-300 text-xs font-semibold mb-2">
+            <i class="fa-brands fa-python"></i> 11. Python & PyTorch 工業級標準實作
+          </div>
+          <h2 class="text-2xl font-bold text-white">關鍵函式色標高亮實作程式碼</h2>
+        </div>
+        <button onclick="copyCodeSnippet()" id="btn-copy" class="text-xs px-3.5 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 transition flex items-center gap-2 border border-slate-600">
+          <i class="fa-regular fa-copy"></i> 複製程式碼
+        </button>
+      </div>
+
+      <!-- Color Legend -->
+      <div class="flex flex-wrap gap-4 text-xs mb-4 p-3 bg-slate-900/60 rounded-xl border border-slate-700/70">
+        <span class="text-slate-400">圖例高亮標示：</span>
+        <span class="hl-func">核心 API 函式 (Red Highlight)</span>
+        <span class="hl-class">類別結構 (Cyan)</span>
+        <span class="hl-param">重要超參數 (Amber)</span>
+        <span class="hl-keyword">語法關鍵字 (Purple)</span>
+      </div>
+
+      <pre id="code-block" class="bg-slate-950 p-5 rounded-2xl text-xs sm:text-sm text-slate-200 overflow-x-auto custom-scrollbar border border-slate-800 leading-relaxed font-mono">
+<span class="hl-keyword">import</span> numpy <span class="hl-keyword">as</span> np
+<span class="hl-keyword">import</span> torch
+<span class="hl-keyword">from</span> torch.utils.data <span class="hl-keyword">import</span> <span class="hl-class">Dataset</span>, <span class="hl-class">DataLoader</span>, <span class="hl-class">Subset</span>
+<span class="hl-keyword">from</span> sklearn.model_selection <span class="hl-keyword">import</span> <span class="hl-class">StratifiedKFold</span>
+
+<span class="hl-comment"># ==========================================</span>
+<span class="hl-comment"># 1. 模擬高不平衡資料集 (1000 筆，正類僅 5%)</span>
+<span class="hl-comment"># ==========================================</span>
+np.random.seed(42)
+X = np.random.randn(1000, 16)
+y = np.random.choice([0, 1], size=1000, p=[<span class="hl-param">0.95</span>, <span class="hl-param">0.05</span>])
+
+<span class="hl-comment"># ==========================================</span>
+<span class="hl-comment"># 2. 宣告 StratifiedKFold 分層交叉驗證器</span>
+<span class="hl-comment"># ==========================================</span>
+skf = <span class="hl-class">StratifiedKFold</span>(
+    <span class="hl-param">n_splits</span>=5, 
+    <span class="hl-param">shuffle</span>=True, 
+    <span class="hl-param">random_state</span>=42
+)
+
+print(<span class="hl-str">f"母體資料集類別分布: Class 0={np.sum(y==0)}, Class 1={np.sum(y==1)}"</span>)
+
+<span class="hl-comment"># ==========================================</span>
+<span class="hl-comment"># 3. 執行分層切割並整合 PyTorch DataLoader</span>
+<span class="hl-comment"># ==========================================</span>
+<span class="hl-keyword">for</span> fold, (train_idx, val_idx) <span class="hl-keyword">in</span> enumerate(skf.<span class="hl-func">split</span>(X, y)):
+    y_train_fold, y_val_fold = y[train_idx], y[val_idx]
+    
+    <span class="hl-comment"># 驗證每個 Fold 的正類比例是否一致</span>
+    val_pos_ratio = np.mean(y_val_fold == 1) * 100
+    print(<span class="hl-str">f"[Fold {fold+1}] 驗證集樣本: {len(val_idx)} 筆 | 正類比例: {val_pos_ratio:.2f}%"</span>)
+    
+    <span class="hl-comment"># 轉換為 PyTorch DataLoader (適用於深度學習訓練迴圈)</span>
+    train_tensor_x = torch.tensor(X[train_idx], dtype=torch.float32)
+    train_tensor_y = torch.tensor(y[train_idx], dtype=torch.long)
+    
+    val_tensor_x = torch.tensor(X[val_idx], dtype=torch.float32)
+    val_tensor_y = torch.tensor(y[val_idx], dtype=torch.long)
+    
+    val_loader = <span class="hl-class">DataLoader</span>(
+        torch.utils.data.<span class="hl-class">TensorDataset</span>(val_tensor_x, val_tensor_y),
+        <span class="hl-param">batch_size</span>=32,
+        <span class="hl-param">shuffle</span>=False
+    )
+    <span class="hl-comment"># model.train_one_epoch(...) / model.evaluate(val_loader)</span>
+      </pre>
+    </section>
+
+    <!-- 12. 模擬：Step by Step 與一鍵自動模擬 (互動視效對比) -->
+    <section id="sec-sim" class="rounded-3xl bg-slate-800/90 border border-slate-700 p-6 sm:p-8 shadow-2xl relative">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-400/30 text-emerald-300 text-xs font-semibold mb-2">
+            <i class="fa-solid fa-gamepad"></i> 12. 互動模擬實驗室
+          </div>
+          <h2 class="text-2xl font-bold text-white">標準 K-Fold vs 分層 K-Fold 動態對比模擬</h2>
+          <p class="text-xs text-slate-400 mt-1">即時可視化資料取樣：觀察各折中「類別比例波動」與「少數類消失危機」</p>
+        </div>
+
+        <!-- 模擬操作面板 -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <button id="btn-next-step" onclick="simulationStep()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md transition flex items-center gap-1.5">
+            <i class="fa-solid fa-forward-step"></i> 單步切分 (Step-by-Step)
+          </button>
+          <button id="btn-auto-sim" onclick="toggleAutoSimulation()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-md transition flex items-center gap-1.5">
+            <i class="fa-solid fa-play" id="icon-auto"></i> <span id="text-auto">一鍵自動模擬</span>
+          </button>
+          <button onclick="resetSimulation()" class="px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+            <i class="fa-solid fa-rotate-left"></i> 重置
+          </button>
+        </div>
+      </div>
+
+      <!-- Controls & Parameters -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 p-4 rounded-2xl bg-slate-900/80 border border-slate-700 text-xs">
+        <div>
+          <div class="flex justify-between text-slate-300 mb-1">
+            <span>折數 (K 值): <strong id="val-k" class="text-indigo-400">5</strong></span>
+          </div>
+          <input id="slider-k" type="range" min="3" max="8" value="5" step="1" oninput="updateParams()" class="w-full accent-indigo-500 cursor-pointer">
+        </div>
+        <div>
+          <div class="flex justify-between text-slate-300 mb-1">
+            <span>多數類與少數類比例: <strong id="val-ratio" class="text-rose-400">85% : 15%</strong></span>
+          </div>
+          <input id="slider-ratio" type="range" min="70" max="95" value="85" step="5" oninput="updateParams()" class="w-full accent-rose-500 cursor-pointer">
+        </div>
+        <div>
+          <div class="flex justify-between text-slate-300 mb-1">
+            <span>總樣本數: <strong id="val-total" class="text-blue-400">100 筆</strong></span>
+          </div>
+          <input id="slider-total" type="range" min="40" max="160" value="100" step="20" oninput="updateParams()" class="w-full accent-blue-500 cursor-pointer">
+        </div>
+      </div>
+
+      <!-- Comparison Visualizer Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Left: Standard K-Fold (Unstratified) -->
+        <div class="bg-slate-900/90 rounded-2xl border border-rose-500/30 p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-sm font-bold text-rose-400 flex items-center gap-2">
+                <i class="fa-solid fa-shuffle"></i> 標準隨機 K-Fold (Standard CV)
+              </span>
+              <span class="text-[11px] px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30">無比例約束</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">隨機打散後切分。在少數類存在時，各折比例常出現嚴重震盪，甚至出現 0% 少數類的畸形折。</p>
+
+            <!-- Folds Container -->
+            <div id="standard-folds-container" class="space-y-3">
+              <!-- Dynamically generated bars -->
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-800 text-xs flex justify-between items-center text-slate-400">
+            <span>類別比例標準差 (Variance): <strong id="std-variance" class="text-rose-400 font-mono">--</strong></span>
+            <span id="std-warning" class="text-rose-400 hidden font-bold flex items-center gap-1">
+              <i class="fa-solid fa-triangle-exclamation"></i> 出現極端樣本缺失折！
+            </span>
+          </div>
+        </div>
+
+        <!-- Right: Stratified K-Fold -->
+        <div class="bg-slate-900/90 rounded-2xl border border-indigo-500/40 p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-sm font-bold text-indigo-400 flex items-center gap-2">
+                <i class="fa-solid fa-layer-group"></i> 分層 K-Fold (Stratified K-Fold)
+              </span>
+              <span class="text-[11px] px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">嚴格依比例分配</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">每個類別個別均勻分攤到 $K$ 個折中，各折類別分布幾乎與母體完全同構。</p>
+
+            <!-- Folds Container -->
+            <div id="stratified-folds-container" class="space-y-3">
+              <!-- Dynamically generated bars -->
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-800 text-xs flex justify-between items-center text-slate-400">
+            <span>類別比例標準差 (Variance): <strong id="strat-variance" class="text-emerald-400 font-mono">--</strong></span>
+            <span class="text-emerald-400 font-medium flex items-center gap-1">
+              <i class="fa-solid fa-circle-check"></i> 完美維持母體比例
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Current Step Banner -->
+      <div class="mt-6 p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between text-xs">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+          <span class="text-slate-300 font-medium">當前狀態：<span id="sim-status" class="text-white">點擊「單步切分」或「一鍵自動模擬」開始觀察取樣分配過程</span></span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-blue-500 inline-block"></span> 多數類別 (A)</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-rose-500 inline-block"></span> 少數類別 (B)</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="mt-16 border-t border-slate-800 py-6 text-center text-xs text-slate-500">
+    Stratified K-Fold Interactive Learning Sandbox · 依據 IPAS AI 應用規範設計
+  </footer>
+
+  <!-- JavaScript Logic -->
+  <script>
+    // Global State for Simulation
+    let state = {
+      k: 5,
+      majorityRatio: 0.85,
+      totalSamples: 100,
+      currentStep: 0,
+      autoPlaying: false,
+      autoTimer: null,
+      dataset: [], // { id, class: 0 or 1 }
+      stdFolds: [],
+      stratFolds: []
+    };
+
+    // Smooth Scroll Helper
+    function scrollToSection(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+
+    // Toggle Exam Answer
+    function toggleAnswer(id) {
+      const el = document.getElementById(id);
+      if (el.classList.contains('hidden')) {
+        el.classList.remove('hidden');
+      } else {
+        el.classList.add('hidden');
+      }
+    }
+
+    // Switch Domain Tabs
+    function switchDomain(domain) {
+      ['ml', 'dl', 'llm'].forEach(d => {
+        document.getElementById(`domain-content-${d}`).classList.add('hidden');
+        const btn = document.getElementById(`tab-btn-${d}`);
+        btn.classList.remove('border-indigo-500', 'text-indigo-400');
+        btn.classList.add('border-transparent', 'text-slate-400');
+      });
+
+      document.getElementById(`domain-content-${domain}`).classList.remove('hidden');
+      const activeBtn = document.getElementById(`tab-btn-${domain}`);
+      activeBtn.classList.add('border-indigo-500', 'text-indigo-400');
+      activeBtn.classList.remove('border-transparent', 'text-slate-400');
+    }
+
+    // Copy Code Helper
+    function copyCodeSnippet() {
+      const codeText = document.getElementById('code-block').innerText;
+      const textArea = document.createElement('textarea');
+      textArea.value = codeText;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        const btn = document.getElementById('btn-copy');
+        btn.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> 已複製！';
+        setTimeout(() => {
+          btn.innerHTML = '<i class="fa-regular fa-copy"></i> 複製程式碼';
+        }, 2000);
+      } catch (err) {
+        console.error('複製失敗', err);
+      }
+      document.body.removeChild(textArea);
+    }
+
+    // Helper: 觸發 KaTeX 重新渲染指定元素或全頁面 LaTeX 語法
+    function renderLatex(container) {
+      if (typeof renderMathInElement === 'function') {
+        renderMathInElement(container || document.body, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false }
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    // 09. Mathematical Allocation Calculator (Hamilton Largest Remainder Algorithm)
+    function calculateMathDistribution() {
+      const Na = parseInt(document.getElementById('math-na').value) || 180;
+      const Nb = parseInt(document.getElementById('math-nb').value) || 20;
+      const K = parseInt(document.getElementById('math-k').value) || 5;
+      const N = Na + Nb;
+
+      const pA = (Na / N * 100).toFixed(2);
+      const pB = (Nb / N * 100).toFixed(2);
+
+      // Allocations for class A
+      const baseA = Math.floor(Na / K);
+      const remA = Na % K;
+      // Allocations for class B
+      const baseB = Math.floor(Nb / K);
+      const remB = Nb % K;
+
+      let html = `
+        <div class="text-slate-300 font-sans mb-2">
+          <strong>母體總量：</strong> $N = ${N}$ | 類別 A 比例: <span class="text-blue-400">${pA}\\% (${Na})</span> | 類別 B 比例: <span class="text-rose-400">${pB}\\% (${Nb})</span>
+        </div>
+        <div class="text-slate-400 space-y-1">
+          <div>• 類別 A 基本商數 $\\lfloor ${Na}/${K} \\rfloor = ${baseA}$，餘數 $R_A = ${remA}$ (前 ${remA} 折分配 ${baseA + 1} 筆，其餘 ${baseA} 筆)</div>
+          <div>• 類別 B 基本商數 $\\lfloor ${Nb}/${K} \\rfloor = ${baseB}$，餘數 $R_B = ${remB}$ (前 ${remB} 折分配 ${baseB + 1} 筆，其餘 ${baseB} 筆)</div>
+        </div>
+        <div class="mt-3 grid grid-cols-2 sm:grid-cols-5 gap-2 text-center pt-2 border-t border-slate-700">
+      `;
+
+      for (let k = 1; k <= K; k++) {
+        const countA = k <= remA ? baseA + 1 : baseA;
+        const countB = k <= remB ? baseB + 1 : baseB;
+        const foldTotal = countA + countB;
+        const foldRatioB = ((countB / foldTotal) * 100).toFixed(1);
+        html += `
+          <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800">
+            <div class="text-indigo-400 font-bold">Fold ${k}</div>
+            <div class="text-slate-300 text-[11px] mt-0.5">A: ${countA} | B: ${countB}</div>
+            <div class="text-rose-400 text-[10px] mt-0.5 font-bold">少數類 B: ${foldRatioB}%</div>
+          </div>
+        `;
+      }
+      html += `</div>`;
+      const outputEl = document.getElementById('math-output');
+      outputEl.innerHTML = html;
+      renderLatex(outputEl);
+    }
+
+    // 12. Interactive Simulation Core Logic
+    function updateParams() {
+      state.k = parseInt(document.getElementById('slider-k').value);
+      state.majorityRatio = parseInt(document.getElementById('slider-ratio').value) / 100;
+      state.totalSamples = parseInt(document.getElementById('slider-total').value);
+
+      document.getElementById('val-k').innerText = state.k;
+      const majPercent = Math.round(state.majorityRatio * 100);
+      document.getElementById('val-ratio').innerText = `${majPercent}% : ${100 - majPercent}%`;
+      document.getElementById('val-total').innerText = `${state.totalSamples} 筆`;
+
+      resetSimulation();
+    }
+
+    function generateDataset() {
+      const totalA = Math.round(state.totalSamples * state.majorityRatio);
+      const totalB = state.totalSamples - totalA;
+      
+      let data = [];
+      for (let i = 0; i < totalA; i++) data.push({ id: `A_${i}`, class: 0 });
+      for (let j = 0; j < totalB; j++) data.push({ id: `B_${j}`, class: 1 });
+      
+      state.dataset = data;
+    }
+
+    function prepareFolds() {
+      // 1. Standard K-Fold (Shuffle randomly and partition sequentially)
+      let shuffled = [...state.dataset].sort(() => Math.random() - 0.5);
+      state.stdFolds = Array.from({ length: state.k }, () => []);
+      shuffled.forEach((item, idx) => {
+        state.stdFolds[idx % state.k].push(item);
+      });
+
+      // 2. Stratified K-Fold (Shuffle within class, then partition into folds)
+      let listA = state.dataset.filter(d => d.class === 0).sort(() => Math.random() - 0.5);
+      let listB = state.dataset.filter(d => d.class === 1).sort(() => Math.random() - 0.5);
+      
+      state.stratFolds = Array.from({ length: state.k }, () => []);
+      listA.forEach((item, idx) => {
+        state.stratFolds[idx % state.k].push(item);
+      });
+      listB.forEach((item, idx) => {
+        state.stratFolds[idx % state.k].push(item);
+      });
+    }
+
+    function renderEmptyContainers() {
+      const stdContainer = document.getElementById('standard-folds-container');
+      const stratContainer = document.getElementById('stratified-folds-container');
+
+      stdContainer.innerHTML = '';
+      stratContainer.innerHTML = '';
+
+      for (let i = 0; i < state.k; i++) {
+        stdContainer.innerHTML += createFoldSkeleton(i, 'std');
+        stratContainer.innerHTML += createFoldSkeleton(i, 'strat');
+      }
+
+      document.getElementById('std-variance').innerText = '--';
+      document.getElementById('strat-variance').innerText = '--';
+      document.getElementById('std-warning').classList.add('hidden');
+    }
+
+    function createFoldSkeleton(idx, prefix) {
+      return `
+        <div id="${prefix}-fold-card-${idx}" class="p-3 rounded-xl bg-slate-800/60 border border-slate-700/60 transition-all duration-300">
+          <div class="flex justify-between items-center text-xs mb-1.5">
+            <span class="font-bold text-slate-300">折 ${idx + 1} (Fold ${idx + 1})</span>
+            <span id="${prefix}-fold-stat-${idx}" class="text-slate-400 font-mono text-[11px]">待分派...</span>
+          </div>
+          <!-- Progress bar -->
+          <div class="w-full h-4 bg-slate-950 rounded-full overflow-hidden flex" id="${prefix}-bar-${idx}">
+            <div class="h-full bg-slate-800 w-full transition-all duration-500"></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function simulationStep() {
+      if (state.currentStep >= state.k) {
+        document.getElementById('sim-status').innerText = '所有 Fold 已切分完畢！可觀察兩者在比例變異數上的極端差異。';
+        stopAutoPlay();
+        return;
+      }
+
+      const step = state.currentStep;
+      renderFoldResult(step, 'std', state.stdFolds[step]);
+      renderFoldResult(step, 'strat', state.stratFolds[step]);
+
+      state.currentStep++;
+      document.getElementById('sim-status').innerText = `已完成 Fold ${state.currentStep} / ${state.k} 的樣本採樣...`;
+
+      if (state.currentStep === state.k) {
+        calculateVariances();
+        stopAutoPlay();
+      }
+    }
+
+    function renderFoldResult(foldIdx, prefix, foldItems) {
+      const total = foldItems.length;
+      const countA = foldItems.filter(d => d.class === 0).length;
+      const countB = foldItems.filter(d => d.class === 1).length;
+      const percentA = ((countA / total) * 100).toFixed(1);
+      const percentB = ((countB / total) * 100).toFixed(1);
+
+      const card = document.getElementById(`${prefix}-fold-card-${foldIdx}`);
+      const stat = document.getElementById(`${prefix}-fold-stat-${foldIdx}`);
+      const bar = document.getElementById(`${prefix}-bar-${foldIdx}`);
+
+      card.classList.remove('bg-slate-800/60');
+      card.classList.add('bg-slate-800', 'border-indigo-500/30');
+
+      stat.innerHTML = `<span class="text-blue-400">A:${countA}</span> | <span class="text-rose-400 font-bold">B:${countB} (${percentB}%)</span>`;
+
+      // Color danger if countB is 0 in standard fold
+      if (prefix === 'std' && countB === 0) {
+        card.classList.add('ring-2', 'ring-rose-500');
+        document.getElementById('std-warning').classList.remove('hidden');
+      }
+
+      bar.innerHTML = `
+        <div class="h-full bg-blue-500 transition-all duration-500" style="width: ${percentA}%" title="類別A: ${countA}"></div>
+        <div class="h-full bg-rose-500 transition-all duration-500" style="width: ${percentB}%" title="類別B: ${countB}"></div>
+      `;
+    }
+
+    function calculateVariances() {
+      // Calculate standard deviation of minority ratio for both methods
+      const stdRatios = state.stdFolds.map(f => (f.filter(d => d.class === 1).length / f.length) * 100);
+      const stratRatios = state.stratFolds.map(f => (f.filter(d => d.class === 1).length / f.length) * 100);
+
+      const stdStdDev = calcStdDev(stdRatios);
+      const stratStdDev = calcStdDev(stratRatios);
+
+      document.getElementById('std-variance').innerText = `±${stdStdDev.toFixed(2)}%`;
+      document.getElementById('strat-variance').innerText = `±${stratStdDev.toFixed(2)}%`;
+    }
+
+    function calcStdDev(arr) {
+      const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+      const variance = arr.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / arr.length;
+      return Math.sqrt(variance);
+    }
+
+    function toggleAutoSimulation() {
+      if (state.autoPlaying) {
+        stopAutoPlay();
+      } else {
+        if (state.currentStep >= state.k) {
+          resetSimulation();
+        }
+        state.autoPlaying = true;
+        document.getElementById('icon-auto').classList.remove('fa-play');
+        document.getElementById('icon-auto').classList.add('fa-pause');
+        document.getElementById('text-auto').innerText = '暫停';
+
+        state.autoTimer = setInterval(() => {
+          if (state.currentStep < state.k) {
+            simulationStep();
+          } else {
+            stopAutoPlay();
+          }
+        }, 600);
+      }
+    }
+
+    function stopAutoPlay() {
+      state.autoPlaying = false;
+      clearInterval(state.autoTimer);
+      document.getElementById('icon-auto').classList.remove('fa-pause');
+      document.getElementById('icon-auto').classList.add('fa-play');
+      document.getElementById('text-auto').innerText = '一鍵自動模擬';
+    }
+
+    function resetSimulation() {
+      stopAutoPlay();
+      state.currentStep = 0;
+      generateDataset();
+      prepareFolds();
+      renderEmptyContainers();
+      document.getElementById('sim-status').innerText = '資料集已重置。可點擊「單步切分」或「一鍵自動模擬」。';
+    }
+
+    // Initialize on Load
+    window.onload = function() {
+      // 確保 KaTeX 函式庫載入完成後進行全頁公式初次渲染
+      setTimeout(() => {
+        renderLatex();
+        calculateMathDistribution();
+        updateParams();
+        selectKValue(10); // 預設呈現最佳推薦 K=10
+      }, 50);
+    };
+
+    // K 值選擇器互動切換
+    const kConfig = {
+      2: {
+        title: '$K = 2$ 折交叉驗證',
+        badge: '超高速，高偏差',
+        biasText: '高 (High Bias)',
+        biasWidth: '80%',
+        biasColor: 'bg-rose-500',
+        varianceText: '低 (Low Variance)',
+        varianceWidth: '30%',
+        varianceColor: 'bg-emerald-500',
+        computeText: '超快（2次訓練迴圈）',
+        desc: '每次僅拿母體的 50% 進行模型訓練，與實際使用 100% 資料上線時的模型能力有顯著落差，因此會產生嚴重的「悲觀偏差」（估計準確率偏低）。優點是計算速度極快。'
+      },
+      5: {
+        title: '$K = 5$ 折交叉驗證',
+        badge: '業界速度與精度平衡首選',
+        biasText: '適中 (Moderate Bias)',
+        biasWidth: '35%',
+        biasColor: 'bg-emerald-500',
+        varianceText: '適中 (Moderate Variance)',
+        varianceWidth: '40%',
+        varianceColor: 'bg-emerald-500',
+        computeText: '經濟（5次訓練迴圈）',
+        desc: '訓練集佔 80%，驗證集佔 20%。在大部分深度學習（因訓練成本高昂）或大規模 Tabular 資料集中，5 折是業界最普遍的折衷方案。'
+      },
+      10: {
+        title: '$K = 10$ 折交叉驗證 (黃金標準)',
+        badge: 'Kohavi (1995) 實證最佳折衷點',
+        biasText: '低 (Low Bias)',
+        biasWidth: '20%',
+        biasColor: 'bg-emerald-500',
+        varianceText: '低且穩定 (Optimal Variance)',
+        varianceWidth: '25%',
+        varianceColor: 'bg-emerald-500',
+        computeText: '標準（10次訓練迴圈）',
+        desc: '90% 訓練 : 10% 驗證。Kohavi 的經典實證論文指出，10-Fold 在絕大多數機器學習任務中，能同時有效壓制偏差（不致過度悲觀）與變異數（評估穩定），是 Scikit-Learn 與學界評測的默認最高規範。'
+      },
+      'n': {
+        title: '$K = N$ 留一交叉驗證 (Leave-One-Out CV)',
+        badge: '極端特例：零偏差、高方差、算力黑洞',
+        biasText: '極低 (Nearly Zero Bias)',
+        biasWidth: '10%',
+        biasColor: 'bg-emerald-500',
+        varianceText: '極高 (High Variance - 考點!)',
+        varianceWidth: '95%',
+        varianceColor: 'bg-rose-500',
+        computeText: '極高（需訓練 N 次）',
+        desc: '每次拿 $N-1$ 筆訓練、僅測 1 筆。因為每折的訓練集只差 1 筆樣本，各折訓練出的模型近乎完全相同（高正相關性），導致平均後的評估變異數反而極度敏感。且當樣本 $N > 1000$ 時，重複訓練 1000 次通常在算力上不可承受。'
+      }
+    };
+
+    function selectKValue(val) {
+      ['2', '5', '10', 'n'].forEach(k => {
+        const btn = document.getElementById(`btn-k-${k}`);
+        btn.classList.remove('border-2', 'border-amber-500', 'bg-slate-800', 'shadow-lg', 'shadow-amber-500/10');
+        btn.classList.add('border', 'border-slate-700', 'bg-slate-900/80');
+      });
+
+      const activeBtn = document.getElementById(`btn-k-${val}`);
+      activeBtn.classList.remove('border', 'border-slate-700', 'bg-slate-900/80');
+      activeBtn.classList.add('border-2', 'border-amber-500', 'bg-slate-800', 'shadow-lg', 'shadow-amber-500/10');
+
+      const data = kConfig[val];
+      const container = document.getElementById('k-detail-card');
+      container.innerHTML = `
+        <div class="md:col-span-2 space-y-3">
+          <div class="flex items-center gap-2">
+            <h4 class="text-lg font-bold text-white">${data.title}</h4>
+            <span class="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">${data.badge}</span>
+          </div>
+          <p class="text-sm text-slate-300 leading-relaxed">${data.desc}</p>
+          <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-amber-200/90 font-mono">
+            <i class="fa-solid fa-lightbulb text-amber-400 mr-1.5"></i><strong>IPAS 應試速記：</strong> 
+            ${val === 'n' ? 'LOOCV 雖然偏差最低，但變異數最高且極度耗時；非極度稀有資料集勿用！' : (val === 10 ? 'Kohavi (1995) 推薦 10-Fold 作為綜合效能最強的標準設定。' : '小 K 值偏差大但方差小，適用於大數據快速驗證。')}
+          </div>
+        </div>
+        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3 text-xs">
+          <div>
+            <div class="flex justify-between text-slate-300 mb-1">
+              <span>估計偏差 (Bias)</span>
+              <span class="font-bold text-slate-200">${data.biasText}</span>
+            </div>
+            <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+              <div class="h-full ${data.biasColor} transition-all duration-500" style="width: ${data.biasWidth}"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-slate-300 mb-1">
+              <span>評估變異數 (Variance)</span>
+              <span class="font-bold text-slate-200">${data.varianceText}</span>
+            </div>
+            <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+              <div class="h-full ${data.varianceColor} transition-all duration-500" style="width: ${data.varianceWidth}"></div>
+            </div>
+          </div>
+          <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-slate-300">
+            <span>訓練次數與算力</span>
+            <span class="font-mono font-bold text-amber-400">${data.computeText}</span>
+          </div>
+        </div>
+      `;
+      renderLatex(container);
+    }
+  </script>
+</body>
+</html>
