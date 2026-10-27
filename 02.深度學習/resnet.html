@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ResNet 殘差連接與梯度消失深度解析實驗室</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- KaTeX for LaTeX rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+  <!-- Chart.js for gradient decay curves -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap');
+    body {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+    }
+    pre, code {
+      font-family: 'Fira Code', monospace;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+    /* Pulse glow for simulation */
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 10px rgba(59, 130, 246, 0.4); }
+      50% { box-shadow: 0 0 25px rgba(59, 130, 246, 0.9); }
+    }
+    .active-node {
+      animation: pulse-glow 1.5s infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-blue-600 selection:text-white">
+
+  <!-- Navigation Bar -->
+  <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/90 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/30">
+          <i class="ph-bold ph-git-fork text-2xl text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold bg-gradient-to-r from-blue-400 via-indigo-200 to-white bg-clip-text text-transparent">
+            ResNet 殘差連接實驗室
+          </h1>
+          <p class="text-xs text-slate-400">Deep Learning · Computer Vision Backbone</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2">
+        <a href="../index.html" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5 shadow-sm" title="回首頁">
+          <i class="fa-solid fa-arrow-left"></i> 回首頁
+        </a>
+        <a href="../程式心智圖.html" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5 shadow-sm" title="程式心智圖">
+          <i class="fa-solid fa-network-wired"></i> 程式心智圖
+        </a>
+        <a href="#simulator" class="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md transition flex items-center gap-1.5">
+          <i class="ph-bold ph-play"></i> 動態模擬器
+        </a>
+        <a href="#math-interactive" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition flex items-center gap-1.5">
+          <i class="ph-bold ph-function"></i> 數學推導
+        </a>
+        <a href="#quiz-section" class="px-3.5 py-1.5 rounded-lg bg-emerald-700/80 hover:bg-emerald-600 text-white text-xs font-semibold transition flex items-center gap-1.5">
+          <i class="ph-bold ph-exam"></i> IPAS 考題
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+    <!-- 01 一句話簡介 Hero Banner -->
+    <section class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 p-8 sm:p-10 border border-slate-800 shadow-2xl">
+      <div class="absolute -right-20 -top-20 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="relative z-10 max-w-4xl space-y-4">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+          <span class="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span>
+          01. 核心精髓概括
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-black tracking-tight text-white leading-tight">
+          一句話掌握 <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">ResNet 殘差連接</span>
+        </h2>
+        <p class="text-lg sm:text-xl text-slate-200 font-normal leading-relaxed border-l-4 border-blue-500 pl-4 py-1 bg-blue-950/20 rounded-r-xl">
+          <strong class="text-white font-semibold">ResNet（殘差網路，Residual Network）</strong>透過引入<strong class="text-blue-400 font-semibold">殘差連接（Residual/Skip Connections，跳躍連接）</strong>，在反向傳播時建立起梯度的<span class="text-cyan-300 font-bold bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/50">「高速公路」</span>，有效緩解了深層神經網路的<span class="text-rose-400 font-medium">梯度消失</span>與<span class="text-amber-300 font-medium">網路退化</span>問題。
+        </p>
+      </div>
+    </section>
+
+    <!-- 【ResNet 殘差神經網絡】核心精華與產業實務應用 -->
+    <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 20px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 0 20px rgba(59, 130, 246, 0.15); padding: 1.6rem; color: #f8fafc; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; backdrop-filter: blur(12px);">
+      
+      <!-- 卡片 Header -->
+      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 0.85rem; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: linear-gradient(135deg, #2563eb, #06b6d4); border-radius: 10px; color: #ffffff; font-size: 1.15rem; box-shadow: 0 2px 10px rgba(37, 99, 235, 0.4); flex-shrink: 0;">
+            <i class="fa-solid fa-network-wired"></i>
+          </span>
+          <div>
+            <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #ffffff; letter-spacing: -0.01em;">
+              【ResNet 殘差神經網絡】核心精華與產業實務應用
+            </h3>
+            <p style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: #94a3b8;">Key Takeaways · Residual Mechanism · Industrial & Edge Applications</p>
+          </div>
+        </div>
+        <span style="font-size: 0.75rem; padding: 0.28rem 0.75rem; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 9999px; font-weight: 700; white-space: nowrap;">
+          電腦視覺骨幹 · 梯度高速公路
+        </span>
+      </div>
+
+      <!-- 三大區塊 Grid -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 1.25rem;">
+        
+        <!-- 區塊 1: 重點整理 -->
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 14px; padding: 1.2rem; display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; color: #60a5fa; font-weight: 700; font-size: 0.95rem;">
+            <i class="fa-solid fa-list-check"></i>
+            <span>重點整理 (Key Takeaways)</span>
+          </div>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem; color: #cbd5e1; line-height: 1.65; flex: 1;">
+            <li><strong>破解網路退化（Degradation）：</strong>傳統深度卷積網路在超過 20 層後，訓練誤差與測試誤差不降反升，這不是過擬合，而是深層優化難題。</li>
+            <li><strong>殘差學習思想（Residual Learning）：</strong>將學習目標由原始對應 \(H(x)\) 轉向擬合殘差 \(F(x) = H(x) - x\)。當新層無額外資訊時，只需讓權重趨向 0，網路自動退化為恆等映射（Identity Mapping），保證深層性能不劣於淺層。</li>
+            <li><strong>梯度無損反向傳播：</strong>梯度傳導公式 \(\frac{\partial \mathcal{E}}{\partial x} = \frac{\partial \mathcal{E}}{\partial H}\left(1 + \frac{\partial F}{\partial x}\right)\)，因為恆包含獨立項 \(+1\)，即使卷積層梯度衰減趨近於 0，梯度仍能直接 xuyên 到淺層，徹底攻克梯度消失。</li>
+            <li><strong>瓶頸架構（Bottleneck Design）：</strong>在 ResNet-50/101/152 中引入 \(1\times1 \to 3\times3 \to 1\times1\) 降維再升維結構，兼顧感受野並大幅壓低參數量與計算開銷（FLOPs）。</li>
+          </ul>
+        </div>
+
+        <!-- 區塊 2: 核心機制與原理說明 -->
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(168, 85, 247, 0.25); border-radius: 14px; padding: 1.2rem; display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; color: #c084fc; font-weight: 700; font-size: 0.95rem;">
+            <i class="fa-solid fa-gears"></i>
+            <span>核心機制與原理說明 (Mechanism Overview)</span>
+          </div>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem; color: #cbd5e1; line-height: 1.65; flex: 1;">
+            <li><strong>快捷跳躍連接（Skip Connection）：</strong>透過 Element-wise Addition（向量逐元素相加）將輸入直接附加到輸出 \(H(x) = F(x) + x\)，完全不增加任何可學習參數量。</li>
+            <li><strong>維度投影適配（Projection Shortcut）：</strong>當特徵圖尺度縮小（步長 \(s=2\)）或通道數增加時，使用 \(1\times1\) 卷積進行線性投影對齊：\(y = F(x) + W_s x\)。</li>
+            <li><strong>批次正規化（Batch Normalization）：</strong>每個卷積後緊隨 BN 與 ReLU 激活，抑制內部協變量偏移（Internal Covariate Shift），使極深層訓練得以收斂。</li>
+            <li><strong>特徵重複利用：</strong>殘差架構本質上類似多個淺層網路隱含集成（Implicit Ensemble），大幅強化特徵的多尺度重用。</li>
+          </ul>
+        </div>
+
+        <!-- 區塊 3: 應用在何處 -->
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 14px; padding: 1.2rem; display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; color: #34d399; font-weight: 700; font-size: 0.95rem;">
+            <i class="fa-solid fa-industry"></i>
+            <span>應用在何處 (Applications & Practical Scenarios)</span>
+          </div>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem; color: #cbd5e1; line-height: 1.65; flex: 1;">
+            <li><strong>半導體晶圓瑕疵 AOI 檢測：</strong>晶圓顯微圖影像微粒刮痕辨識；採用 ResNet-50 骨幹網路，深層特徵能精準區分微米級圖案異常與製程噪聲。</li>
+            <li><strong>PCB 電路板缺陷識別：</strong>SMT 產線虛焊、連錫、空焊等高精度瑕疵分類，提供極低漏檢率（False Negative Rate）。</li>
+            <li><strong>自駕車與機器人視覺骨幹：</strong>作為 Faster R-CNN、Mask R-CNN 及 YOLO 系列的骨幹特徵提取網路（Backbone），提供高鑑別度特徵圖。</li>
+            <li><strong>智慧醫療與生物辨識：</strong>胸腔 X 光片肺炎與腫瘤診斷、人臉識別（Face ID）與邊緣端嵌入式視覺檢測。</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- 02 核心原理 & 08 理論簡介 -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- 02. 核心原理 -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col justify-between hover:border-slate-700 transition">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs uppercase font-bold tracking-wider text-blue-400 flex items-center gap-1.5">
+              <i class="ph-bold ph-cpu"></i> 02. 核心原理 (Core Principle)
+            </span>
+            <span class="px-2 py-0.5 text-xs bg-slate-800 text-slate-400 rounded">Architecture</span>
+          </div>
+          <h3 class="text-2xl font-bold text-white">殘差學習 (Residual Learning)</h3>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            傳統卷積層直接學習原始特徵映射 $H(x)$。當層數加深時，直接優化恆等映射 $H(x) \to x$ 極為困難。何愷明團隊重構學習架構為：
+          </p>
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center text-blue-300 font-mono text-base">
+            $$H(x) = F(x, \{W_i\}) + x$$
+          </div>
+          <ul class="text-sm text-slate-300 space-y-2.5">
+            <li class="flex items-start gap-2">
+              <i class="ph-bold ph-check-circle text-emerald-400 mt-1 flex-shrink-0"></i>
+              <span><strong>容易優化恆等映射：</strong>若某幾層無助於提升特徵表現，網路只需將權重學習為零 $F(x)=0$，輸出即可平滑退回恆等映射 $H(x)=x$，性能絕不劣於淺層網路。</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i class="ph-bold ph-check-circle text-emerald-400 mt-1 flex-shrink-0"></i>
+              <span><strong>梯度恆定直通車：</strong>反向傳播時，$\frac{\partial H}{\partial x} = \frac{\partial F}{\partial x} + 1$。即便中間層權重導數 $\frac{\partial F}{\partial x} \approx 0$，加法分支仍能無損保留 $1$ 的梯度傳輸能力。</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 08. 理論簡介 -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col justify-between hover:border-slate-700 transition">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs uppercase font-bold tracking-wider text-purple-400 flex items-center gap-1.5">
+              <i class="ph-bold ph-books"></i> 08. 理論簡介 (Theoretical Insight)
+            </span>
+            <span class="px-2 py-0.5 text-xs bg-slate-800 text-slate-400 rounded">Analysis</span>
+          </div>
+          <h3 class="text-2xl font-bold text-white">退化問題 (Degradation Problem)</h3>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            在 ResNet 誕生前，學界發現隨網路深度增加，**訓練誤差（Training Error）反而上升**。這不是「過擬合（Overfitting，因為訓練集誤差並未接近 0）」，而是深層神經網路高度非凸結構引發的**優化退化困境**。
+          </p>
+          <div class="bg-slate-950/80 p-4 rounded-xl border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between text-xs font-semibold text-slate-400">
+              <span>損失曲面 (Loss Landscape) 平滑化理論：</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-normal">
+              李飛飛團隊（Li et al., 2018）可視化研究表明：無 Skip Connection 的深層網絡損失曲面呈現劇烈混亂的尖銳極小值與鞍點；而加入 Skip Connection 後，損失曲面轉為平緩光滑的碗狀凹面，使梯度下降優化器（SGD/Adam）能暢行無阻。
+            </p>
+          </div>
+          <ul class="text-sm text-slate-300 space-y-1.5">
+            <li class="flex items-center gap-2">
+              <i class="ph-bold ph-shield-check text-blue-400"></i>
+              <span>破除集成觀點：ResNet 可被視為多個不同有效深度子網路的隱式集成（Veit et al., 2016）。</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 09 數學推導（互動式參數演算） -->
+    <section id="math-interactive" class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-10 space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+            <i class="ph-bold ph-calculator"></i> 09. 數學推導（互動式反向傳播演算）
+          </span>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1">
+            為什麼常數項「$+1$」能破除指數衰減？
+          </h2>
+        </div>
+        <div class="text-xs bg-slate-800/80 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700/60 flex items-center gap-2">
+          <i class="ph-fill ph-info text-blue-400"></i>
+          支援自訂權重係數與深度滑動檢視
+        </div>
+      </div>
+
+      <!-- 數學推導步驟 -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-1 space-y-4 text-sm text-slate-300 leading-relaxed bg-slate-950/60 p-5 rounded-2xl border border-slate-800">
+          <h4 class="font-bold text-white text-base flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-blue-600 text-xs flex items-center justify-center font-mono">1</span>
+            前向傳播疊加形式
+          </h4>
+          <p>
+            設淺層為第 $l$ 層，深層為第 $L$ 層。由於 $x_{i+1} = x_i + F(x_i, W_i)$，遞歸展開可得：
+          </p>
+          <div class="bg-slate-900 p-2.5 rounded-lg text-center font-mono text-cyan-300">
+            $$x_L = x_l + \sum_{i=l}^{L-1} F(x_i, W_i)$$
+          </div>
+          <h4 class="font-bold text-white text-base flex items-center gap-2 pt-2">
+            <span class="w-6 h-6 rounded-full bg-blue-600 text-xs flex items-center justify-center font-mono">2</span>
+            反向傳播梯度展開
+          </h4>
+          <p>
+            對損失函數 $\mathcal{E}$ 沿鏈式法則對 $x_l$ 求偏導：
+          </p>
+          <div class="bg-slate-900 p-2.5 rounded-lg text-center font-mono text-emerald-300 text-xs sm:text-sm">
+            $$\frac{\partial \mathcal{E}}{\partial x_l} = \frac{\partial \mathcal{E}}{\partial x_L} \frac{\partial x_L}{\partial x_l} = \frac{\partial \mathcal{E}}{\partial x_L} \left( 1 + \frac{\partial}{\partial x_l}\sum_{i=l}^{L-1} F(x_i, W_i) \right)$$
+          </div>
+          <div class="p-3 bg-blue-950/40 border border-blue-800/40 rounded-xl text-xs text-blue-200">
+            <strong>核心洞察：</strong>即使非線性卷積分支的加總梯度 $\frac{\partial}{\partial x_l}\sum F$ 趨近於 0，括號內仍有一個固定項 <strong>$1$</strong> 保底，梯度直通無損抵達底層 $x_l$！
+          </div>
+        </div>
+
+        <!-- 互動參數模擬圖表 (Plain Net vs ResNet) -->
+        <div class="lg:col-span-2 bg-slate-950 p-6 rounded-2xl border border-slate-800 flex flex-col justify-between space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h4 class="text-white font-bold text-base">梯度反向衰減對比模擬</h4>
+              <p class="text-xs text-slate-400">假設每層權重反向傳播的乘積係數平均為 $\gamma$</p>
+            </div>
+            <!-- 控制滑桿 -->
+            <div class="flex items-center gap-6">
+              <div class="flex items-center gap-2">
+                <label class="text-xs text-slate-300 font-mono">層數 $L$:</label>
+                <input id="slider-layers" type="range" min="10" max="60" value="34" class="w-24 accent-blue-500 cursor-pointer">
+                <span id="label-layers" class="text-xs font-mono text-cyan-400 w-6">34</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <label class="text-xs text-slate-300 font-mono">平均權重導數 $\gamma$:</label>
+                <input id="slider-gamma" type="range" min="0.5" max="0.95" step="0.05" value="0.8" class="w-24 accent-blue-500 cursor-pointer">
+                <span id="label-gamma" class="text-xs font-mono text-cyan-400 w-8">0.8</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Canvas Chart -->
+          <div class="relative h-64 w-full">
+            <canvas id="gradientChart"></canvas>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="bg-red-950/30 border border-red-900/40 p-3 rounded-lg text-slate-300">
+              <span class="text-red-400 font-bold block mb-1">傳統無殘差 Plain Net</span>
+              底層梯度: $\prod_{i=1}^L \gamma_i \approx \gamma^L \to 0$。<br>
+              在 34 層時，衰減率達 <span id="plain-decay-val" class="font-mono text-red-300 font-bold">1e-7</span>，深層網絡完全停滯學習。
+            </div>
+            <div class="bg-emerald-950/30 border border-emerald-900/40 p-3 rounded-lg text-slate-300">
+              <span class="text-emerald-400 font-bold block mb-1">ResNet 殘差網絡</span>
+              底層梯度: $\frac{\partial \mathcal{E}}{\partial x_L} \cdot (1 + \text{residual})$。<br>
+              殘差恆有 $\ge 1$ 的梯度基底，即便 1000+ 層仍能維持數值穩定更新！
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 12 模擬：Step by Step 一鍵自動模擬器 (互動式主畫布) -->
+    <section id="simulator" class="bg-slate-900 border border-blue-500/30 rounded-3xl p-6 sm:p-10 space-y-6 shadow-2xl relative overflow-hidden">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-blue-400 flex items-center gap-2">
+            <i class="ph-bold ph-circuitry"></i> 10 & 12. 深度學習架構：殘差塊訊號與梯度動態模擬
+          </span>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1">
+            殘差塊（Residual Block）互動實驗室
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">體驗特徵前向匯流 (Addition) 與梯度反向「直通車 + 卷積層」雙向回傳流程</p>
+        </div>
+        <!-- 操作按鈕群 -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <button id="sim-btn-step" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-blue-300 text-xs font-semibold rounded-xl border border-slate-700 transition flex items-center gap-1.5 shadow">
+            <i class="ph-bold ph-steps"></i> 單步演繹 (Step)
+          </button>
+          <button id="sim-btn-auto" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-blue-600/30 transition flex items-center gap-1.5">
+            <i class="ph-bold ph-play" id="sim-auto-icon"></i> <span id="sim-auto-text">一鍵自動模擬</span>
+          </button>
+          <button id="sim-btn-reset" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white text-xs font-semibold rounded-xl transition">
+            <i class="ph-bold ph-arrow-counter-clockwise"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- 模擬器畫布區域 -->
+      <div class="relative bg-slate-950 rounded-2xl border border-slate-800 p-6 min-h-[380px] flex flex-col justify-between select-none">
+        <!-- 當前狀態與註解看板 -->
+        <div class="flex items-center justify-between bg-slate-900/80 px-4 py-2.5 rounded-xl border border-slate-800 text-xs">
+          <div class="flex items-center gap-3">
+            <span class="flex items-center gap-1.5 text-slate-300">
+              <span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
+              當前階段：<strong id="stage-name" class="text-blue-400 font-mono">準備就緒 (Idle)</strong>
+            </span>
+            <span class="text-slate-500">|</span>
+            <span class="text-slate-400" id="stage-desc">請點擊「單步演繹」或「一鍵自動模擬」觀察數據流動與梯度分解。</span>
+          </div>
+          <span class="font-mono text-slate-400 text-xs" id="sim-step-indicator">步驟: 0 / 6</span>
+        </div>
+
+        <!-- 拓撲結構圖 (SVG + HTML 節點) -->
+        <div class="relative my-8 h-48 flex items-center justify-between px-6 sm:px-12 max-w-4xl mx-auto w-full">
+
+          <!-- 節點 1: 輸入 x -->
+          <div id="node-x" class="z-10 flex flex-col items-center transition-all duration-300">
+            <div class="w-14 h-14 rounded-2xl bg-slate-900 border-2 border-slate-700 flex items-center justify-center font-mono font-bold text-slate-200 text-base shadow-lg">
+              $x$
+            </div>
+            <span class="text-xs font-semibold text-slate-400 mt-2">輸入特徵</span>
+            <span id="node-x-val" class="text-[11px] font-mono text-blue-400 mt-0.5 opacity-0 transition-opacity">val=2.5</span>
+            <span id="node-x-grad" class="text-[11px] font-mono text-emerald-400 opacity-0 transition-opacity">$\nabla x = 1.05$</span>
+          </div>
+
+          <!-- 分支 1 (上路：殘差卷積層 Weight Layers F(x)) -->
+          <div class="flex-1 flex flex-col items-center justify-center relative px-4">
+            <!-- 卷積區塊 Box -->
+            <div id="node-conv" class="z-10 px-4 py-3 rounded-xl bg-slate-900 border-2 border-slate-700 flex flex-col items-center justify-center shadow-lg transition-all duration-300">
+              <div class="text-xs font-bold text-indigo-300 font-mono">Conv + BN + ReLU</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">擬合殘差映射 $F(x)$</div>
+              <div id="node-conv-detail" class="text-[10px] font-mono text-yellow-400 mt-1 opacity-0">$\frac{\partial F}{\partial x} = 0.05$</div>
+            </div>
+            
+            <!-- 上路路徑箭頭示意 -->
+            <div class="w-full h-0.5 bg-slate-800 absolute top-1/2 -translate-y-1/2 -z-0"></div>
+          </div>
+
+          <!-- 加法合併節點 (+) -->
+          <div id="node-add" class="z-10 flex flex-col items-center transition-all duration-300">
+            <div class="w-12 h-12 rounded-full bg-slate-900 border-2 border-slate-700 flex items-center justify-center text-lg font-bold text-white shadow-lg">
+              $\oplus$
+            </div>
+            <span class="text-xs font-semibold text-slate-400 mt-2">Element-wise Add</span>
+            <span id="node-add-val" class="text-[10px] font-mono text-purple-400 mt-0.5 opacity-0">$\mathcal{F}(x) + x$</span>
+          </div>
+
+          <!-- 激活函數節點 ReLU -->
+          <div class="flex-1 flex flex-col items-center justify-center relative px-4">
+            <div id="node-relu" class="z-10 px-4 py-2 rounded-xl bg-slate-900 border-2 border-slate-700 flex items-center justify-center shadow-lg transition-all duration-300">
+              <span class="text-xs font-bold text-pink-300 font-mono">ReLU</span>
+            </div>
+            <div class="w-full h-0.5 bg-slate-800 absolute top-1/2 -translate-y-1/2 -z-0"></div>
+          </div>
+
+          <!-- 節點 2: 輸出 H(x) -->
+          <div id="node-out" class="z-10 flex flex-col items-center transition-all duration-300">
+            <div class="w-14 h-14 rounded-2xl bg-slate-900 border-2 border-slate-700 flex items-center justify-center font-mono font-bold text-slate-200 text-base shadow-lg">
+              $H(x)$
+            </div>
+            <span class="text-xs font-semibold text-slate-400 mt-2">最終輸出</span>
+            <span id="node-out-grad" class="text-[11px] font-mono text-red-400 mt-0.5 opacity-0">$\nabla Loss = 1.0$</span>
+          </div>
+
+          <!-- 下路跳躍連接 (Skip / Identity Connection SVG) -->
+          <svg class="absolute top-1/2 left-12 right-12 h-24 pointer-events-none -z-0 overflow-visible" style="transform: translateY(2px);">
+            <path id="svg-skip-path" d="M 30,15 C 30,85 460,85 460,15" fill="none" stroke="#334155" stroke-width="2.5" stroke-dasharray="6 4" class="transition-all duration-500"/>
+            <!-- 標籤 -->
+            <text x="50%" y="75" text-anchor="middle" fill="#94a3b8" font-size="11" font-weight="600" letter-spacing="1">Identity Shortcut (跳躍連接: 無參數)</text>
+          </svg>
+
+        </div>
+
+        <!-- 數值細節即時面板 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-800/80 text-xs">
+          <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+            <span class="text-slate-400 block mb-1">前向傳播特徵融合：</span>
+            <div id="status-forward-box" class="font-mono text-slate-300">尚未啟動前向計算</div>
+          </div>
+          <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+            <span class="text-slate-400 block mb-1">加法節點梯度分流：</span>
+            <div id="status-backward-box" class="font-mono text-slate-300">等待反向傳播...</div>
+          </div>
+          <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+            <span class="text-slate-400 block mb-1">梯度消失防禦判定：</span>
+            <div id="status-verdict-box" class="font-mono text-emerald-400 font-bold">待機中</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 實務特徵 & 05 由來 & 06 生活化例子 & 07 工業應用 -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      
+      <!-- 04. 實務特徵 -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-4 hover:border-slate-700 transition">
+        <div class="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase tracking-wider">
+          <i class="ph-bold ph-sliders"></i> 04. 實務特徵 (Practical Characteristics)
+        </div>
+        <h3 class="text-xl font-bold text-white">工程實務三大殺手級特徵</h3>
+        <div class="space-y-3 text-sm text-slate-300">
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800/80">
+            <strong class="text-blue-400 block">1. 零計算負擔的 Identity Shortcut</strong>
+            在通道與維度一致時，跳躍連接純粹是張量元素級加法（`+`），**不引入任何額外參數量**，亦不增加浮點運算量（FLOPs）。
+          </div>
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800/80">
+            <strong class="text-indigo-400 block">2. 瓶頸結構 (Bottleneck Architecture)</strong>
+            在 ResNet-50 / 101 / 152 等深層網絡中採用 $1\times 1 \to 3\times 3 \to 1\times 1$ 設計：先用 $1\times 1$ 卷積降維（減少計算量），在低維進行 $3\times 3$ 卷積，最後再用 $1\times 1$ 升維還原。
+          </div>
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800/80">
+            <strong class="text-purple-400 block">3. 卓越的收斂速度與極限深度</strong>
+            相較傳統 VGG 網絡無法穩定訓練超過 20+ 層，ResNet 能輕鬆擴展至 152 層乃至 1202 層，且在訓練初期即可迅速以高學習率（Learning Rate）收斂。
+          </div>
+        </div>
+      </div>
+
+      <!-- 05. 由來 -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-4 hover:border-slate-700 transition">
+        <div class="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-wider">
+          <i class="ph-bold ph-hourglass-high"></i> 05. 由來與里程碑 (History & Origin)
+        </div>
+        <h3 class="text-xl font-bold text-white">微軟亞洲研究院 (MSRA) 的傳奇突破</h3>
+        <p class="text-sm text-slate-300 leading-relaxed">
+          2015 年底，何愷明（Kaiming He）、張祥雨、任少卿與孫劍在微軟亞洲研究院發表論文《Deep Residual Learning for Image Recognition》（CVPR 2016 最佳論文）。
+        </p>
+        <div class="p-4 bg-amber-950/20 border border-amber-800/30 rounded-xl space-y-2 text-xs text-amber-200">
+          <div class="font-bold text-sm text-amber-300">ILSVRC 2015 橫掃五項大滿貫：</div>
+          <p>• ImageNet 分類任務 Top-5 錯誤率降至 <strong>3.57%</strong>（首度超越人類肉眼辨識基準 ~5.1%）。</p>
+          <p>• 同時囊括 ImageNet 偵測、ImageNet 定位、COCO 偵測與 COCO 分割全部冠軍。</p>
+          <p>• 該論文至今 Google Scholar 引用次數已超 <strong>200,000+ 次</strong>，成為整個人工智慧歷史上最具影響力的論文之一。</p>
+        </div>
+      </div>
+
+      <!-- 06. 生活化例子 -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-5 hover:border-slate-700 transition">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-wider">
+            <i class="ph-bold ph-lightbulb-filament"></i> 06. 生活化例子 (Intuitive Analogies)
+          </div>
+          <span class="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded">通俗易懂</span>
+        </div>
+        <h3 class="text-xl font-bold text-white">兩大生動場景：秒懂殘差連接的底層邏輯</h3>
+        
+        <div class="space-y-4 text-xs sm:text-sm text-slate-300">
+          <!-- 比喻一 -->
+          <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-lg bg-blue-600/20 text-blue-400 font-bold flex items-center justify-center text-xs border border-blue-500/30">1</span>
+              <strong class="text-white text-sm">傳話遊戲與「錄音檔留底」</strong>
+              <span class="ml-auto text-[11px] font-mono text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/50">破解梯度消失</span>
+            </div>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              想像你在玩一個 200 人的傳話遊戲：
+            </p>
+            <div class="space-y-2 pl-2">
+              <div class="border-l-2 border-rose-500/60 pl-3 py-0.5 text-xs">
+                <span class="font-semibold text-rose-300">傳統網路（無殘差連接）：</span>
+                第一個人對第二個人講一句話，第二個人憑記憶傳給第三個人……以此類推。每個人傳話時都會漏掉細節、甚至聽錯（就像每層網路的矩陣連乘和非線性轉換）。傳到第 150 個人時，訊息已完全失真（<strong class="text-rose-400">梯度消失</strong>，後面的層不知道前面最初要學什麼），遊戲根本玩不下去。
+              </div>
+              <div class="border-l-2 border-emerald-500/60 pl-3 py-0.5 text-xs">
+                <span class="font-semibold text-emerald-300">殘差網路（有殘差連接）：</span>
+                規則改變！第一個人講話時，不僅傳給第二個人，還同時用錄音筆錄下做成「備份」直接快遞給最後一個人（<strong class="text-cyan-300">Skip Connection</strong>）。後面不管怎麼傳歪，最後一棒只要打開錄音檔（$+x$），就能直接聽到最初的正確訊息（<strong class="text-emerald-400">保底梯度 $1$</strong>）。因此 ResNet 即使傳到 1000 層，訊息依然不會丟失。
+              </div>
+            </div>
+          </div>
+
+          <!-- 比喻二 -->
+          <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-lg bg-purple-600/20 text-purple-400 font-bold flex items-center justify-center text-xs border border-purple-500/30">2</span>
+              <strong class="text-white text-sm">老鳥帶新人與「放手做 vs. 照抄」</strong>
+              <span class="ml-auto text-[11px] font-mono text-purple-400 bg-purple-950/60 px-2 py-0.5 rounded border border-purple-800/50">破解網路退化</span>
+            </div>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              部門主管（輸入 $x$）要帶領底下的新進員工（卷積層 $F(x)$）去完成一份報告（輸出 $y$）：
+            </p>
+            <div class="space-y-2 pl-2">
+              <div class="border-l-2 border-rose-500/60 pl-3 py-0.5 text-xs">
+                <span class="font-semibold text-rose-300">傳統網路：</span>
+                主管把任務全權交給新人。如果新人能力不夠，寫出來的報告可能比主管自己寫的還要爛（<strong class="text-rose-400">網路退化</strong>，加深層數反而效果變差）。
+              </div>
+              <div class="border-l-2 border-emerald-500/60 pl-3 py-0.5 text-xs">
+                <span class="font-semibold text-emerald-300">殘差網路：</span>
+                主管交給新人時說：「這是我之前寫好的公版（$x$），你在這個基礎上『修改補充』就好（$F(x)$），最後把修改與我的公版合在一起（$F(x) + x$）交出去。」
+                <ul class="list-disc list-inside mt-1.5 space-y-1 text-slate-300">
+                  <li>新人很聰明：做出建設性修改（學到新特徵）。</li>
+                  <li>新人什麼都不會：選擇什麼都不做（$F(x) = 0$），直接原封不動交出公版（<strong class="text-indigo-300">恆等映射 Identity Mapping</strong>）。</li>
+                </ul>
+                <div class="mt-1.5 text-slate-400">
+                  👉 部門表現最差也有主管的保底水準，絕不會更糟。這就是 ResNet 疊再多層效能也不會退化的原因！
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 07. 工業上應用 -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-4 hover:border-slate-700 transition">
+        <div class="flex items-center gap-2 text-rose-400 text-xs font-bold uppercase tracking-wider">
+          <i class="ph-bold ph-factory"></i> 07. 工業上應用 (Industrial Applications)
+        </div>
+        <h3 class="text-xl font-bold text-white">智慧製造與高精度電腦視覺落地</h3>
+        <div class="grid grid-cols-2 gap-3 text-xs text-slate-300">
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+            <span class="font-bold text-blue-400 block mb-1">半導體 AOI 缺陷檢測</span>
+            用於晶圓（Wafer）微米級刮痕、封裝銲線偏移。ResNet-50 能保留微弱高頻瑕疵紋理，避免深層降採樣丟失微小缺陷。
+          </div>
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+            <span class="font-bold text-indigo-400 block mb-1">醫療影像病灶分割</span>
+            搭配 UNet/FPN 架構，以 ResNet 為特徵提取主幹（Backbone），用於 CT 與 MRI 的肺結節、腫瘤組織高精度分割。
+          </div>
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+            <span class="font-bold text-cyan-400 block mb-1">自動駕駛感知演算法</span>
+            Tesla 及眾多自動駕駛車載攝影機多視角 3D 鳥瞰圖（BEV）模型，多採用改良版 ResNet 骨幹快速提取特徵流。
+          </div>
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+            <span class="font-bold text-pink-400 block mb-1">Transformer / LLM 核心</span>
+            ResNet 的殘差連接思想被完整繼承至現代大語言模型（如 GPT、LLaMA、BERT 中的 Pre/Post-LN Residual），是所有 Transformer 架構穩定訓練的支柱！
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 11 Python / PyTorch 實作 (程式碼重點函式色彩標示) -->
+    <section class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-10 space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-green-400 flex items-center gap-2">
+            <i class="ph-bold ph-code"></i> 11. Python / PyTorch 實作與重點程式標註
+          </span>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1">
+            ResNet 基礎殘差塊 (BasicBlock) 實作
+          </h2>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs px-2.5 py-1 rounded bg-slate-800 text-slate-300 font-mono">PyTorch 2.x</span>
+          <span class="text-xs px-2.5 py-1 rounded bg-blue-900/50 text-blue-300 font-mono">GPU Ready</span>
+        </div>
+      </div>
+
+      <!-- 程式碼與圖解左右分欄 -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- 程式碼區域 -->
+        <div class="lg:col-span-8 bg-slate-950 rounded-2xl border border-slate-800 p-5 overflow-x-auto custom-scrollbar font-mono text-xs leading-relaxed">
+          <pre class="text-slate-300">
+<span class="text-purple-400 font-semibold">import</span> torch
+<span class="text-purple-400 font-semibold">import</span> torch.nn <span class="text-purple-400 font-semibold">as</span> nn
+
+<span class="text-blue-400 font-semibold">class</span> <span class="text-yellow-300 font-bold">BasicBlock</span>(nn.Module):
+    <span class="text-slate-500">""" ResNet-18 / ResNet-34 採用的基本殘差單元 """</span>
+    expansion = <span class="text-orange-400">1</span>
+
+    <span class="text-blue-400 font-semibold">def</span> <span class="text-yellow-300 font-bold">__init__</span>(<span class="text-red-300">self</span>, in_planes, planes, stride=<span class="text-orange-400">1</span>, downsample=<span class="text-cyan-400">None</span>):
+        <span class="text-cyan-400">super</span>().<span class="text-yellow-300 font-bold">__init__</span>()
+        <span class="text-slate-500"># 第 1 層卷積：卷積 -> 批次歸一化 (BN) -> ReLU</span>
+        <span class="text-red-300">self</span>.conv1 = nn.<span class="text-green-400 font-bold">Conv2d</span>(in_planes, planes, kernel_size=<span class="text-orange-400">3</span>, stride=stride, padding=<span class="text-orange-400">1</span>, bias=<span class="text-cyan-400">False</span>)
+        <span class="text-red-300">self</span>.bn1 = nn.<span class="text-green-400 font-bold">BatchNorm2d</span>(planes)
+        <span class="text-red-300">self</span>.relu = nn.<span class="text-green-400 font-bold">ReLU</span>(inplace=<span class="text-cyan-400">True</span>)
+
+        <span class="text-slate-500"># 第 2 層卷積：卷積 -> 批次歸一化 (BN)</span>
+        <span class="text-red-300">self</span>.conv2 = nn.<span class="text-green-400 font-bold">Conv2d</span>(planes, planes, kernel_size=<span class="text-orange-400">3</span>, stride=<span class="text-orange-400">1</span>, padding=<span class="text-orange-400">1</span>, bias=<span class="text-cyan-400">False</span>)
+        <span class="text-red-300">self</span>.bn2 = nn.<span class="text-green-400 font-bold">BatchNorm2d</span>(planes)
+        
+        <span class="text-slate-500"># 若維度或步長改變，需對 shortcut 分支進行下採樣適配</span>
+        <span class="text-red-300">self</span>.downsample = downsample
+
+    <span class="text-blue-400 font-semibold">def</span> <span class="text-yellow-300 font-bold">forward</span>(<span class="text-red-300">self</span>, x):
+        <span class="bg-blue-950/70 text-blue-200 px-1 py-0.5 rounded border border-blue-800/60 font-bold"># ★ 關鍵一：保留原始特徵輸入作為跳躍連接 (Identity)</span>
+        <span class="text-cyan-300 font-bold">identity = x</span>
+
+        <span class="text-slate-500"># 主線殘差路徑計算 F(x)</span>
+        out = <span class="text-red-300">self</span>.conv1(x)
+        out = <span class="text-red-300">self</span>.bn1(out)
+        out = <span class="text-red-300">self</span>.relu(out)
+
+        out = <span class="text-red-300">self</span>.conv2(out)
+        out = <span class="text-red-300">self</span>.bn2(out)
+
+        <span class="text-purple-400 font-semibold">if</span> <span class="text-red-300">self</span>.downsample <span class="text-purple-400 font-semibold">is not</span> <span class="text-cyan-400">None</span>:
+            <span class="text-cyan-300 font-bold">identity = <span class="text-red-300">self</span>.downsample(x)</span>
+
+        <span class="bg-emerald-950/70 text-emerald-200 px-1 py-0.5 rounded border border-emerald-800/60 font-bold"># ★ 關鍵二：殘差融合 (F(x) + x) 元素級相加</span>
+        <span class="text-emerald-300 font-bold">out += identity</span>
+
+        <span class="bg-pink-950/70 text-pink-200 px-1 py-0.5 rounded border border-pink-800/60 font-bold"># ★ 關鍵三：相加後再通過非線性激活 ReLU</span>
+        out = <span class="text-red-300">self</span>.relu(out)
+
+        <span class="text-purple-400 font-semibold">return</span> out
+</pre>
+        </div>
+
+        <!-- 程式碼實務解讀 -->
+        <div class="lg:col-span-4 space-y-4 text-xs text-slate-300">
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+            <span class="font-bold text-white text-sm flex items-center gap-1.5">
+              <i class="ph-bold ph-lightbulb text-amber-400"></i> 三大實作細節
+            </span>
+            <div class="space-y-2 pt-1 text-slate-300">
+              <p>
+                <strong class="text-blue-400">1. bias=False 的緣由：</strong><br>
+                因為卷積後緊接 `BatchNorm2d`，其均值減法常數會完全抵消 Conv 的偏置項（bias），設為 `False` 可節省參數量與記憶體。
+              </p>
+              <p>
+                <strong class="text-emerald-400">2. 原位相加 (out += identity)：</strong><br>
+                PyTorch 的 `+=` 會直接於當前記憶體完成張量累加，減少額外緩衝區開銷。
+              </p>
+              <p>
+                <strong class="text-pink-400">3. 激活函數放置順序：</strong><br>
+                加法完成後才執行最終的 ReLU，確保直通捷徑上的數值保持原始線性範圍傳輸。
+              </p>
+            </div>
+          </div>
+          <div class="bg-blue-950/20 border border-blue-800/30 p-4 rounded-xl text-blue-200">
+            <strong>張量維度匹配（Downsample）：</strong><br>
+            當空間分辨率折半（stride=2）或通道數增加時，$x$ 與 $F(x)$ 形狀不同無法相加，此時 shortcut 需使用 $1\times 1$ 卷積進行步長降採樣與升維。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 IPAS AI 經濟部能力鑑定考題 (互動式測驗模組) -->
+    <section id="quiz-section" class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-10 space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+            <i class="ph-bold ph-graduation-cap"></i> 03. IPAS AI 經濟部產業人才能力鑑定精選模擬題
+          </span>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1">
+            電腦視覺與深度學習實戰測驗
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">點選答案即時獲取評分與解析</p>
+        </div>
+        <div class="text-xs bg-slate-800 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 font-mono">
+          題庫進度：2 / 2
+        </div>
+      </div>
+
+      <div class="space-y-6">
+        <!-- 題目 1 -->
+        <div class="bg-slate-950 p-6 rounded-2xl border border-slate-800 space-y-4" id="quiz-card-1">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-blue-400 bg-blue-950/60 px-2.5 py-1 rounded border border-blue-800/50">
+              【單選題】常考觀念
+            </span>
+            <span class="text-xs text-slate-500 font-mono">題目編號：IPAS-AI-CV-041</span>
+          </div>
+          <h4 class="text-base font-bold text-white leading-snug">
+            Q1. 關於 ResNet 所解決的神經網路「退化問題（Degradation Problem）」，下列敘述何者最為正確？
+          </h4>
+          <div class="space-y-2.5 text-xs sm:text-sm">
+            <button onclick="checkQuiz(1, 'A')" class="quiz-opt-1 w-full text-left p-3.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 transition flex items-center justify-between">
+              <span>(A) 退化問題主要是因為模型參數量過多導致嚴重的過擬合（Overfitting）。</span>
+              <span class="opt-mark font-mono"></span>
+            </button>
+            <button onclick="checkQuiz(1, 'B')" class="quiz-opt-1 w-full text-left p-3.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 transition flex items-center justify-between">
+              <span>(B) 隨著網絡深度增加，訓練誤差（Training Error）反而上升，起因於深層非凸函數優化困難。</span>
+              <span class="opt-mark font-mono"></span>
+            </button>
+            <button onclick="checkQuiz(1, 'C')" class="quiz-opt-1 w-full text-left p-3.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 transition flex items-center justify-between">
+              <span>(C) 跳躍連接（Skip Connection）大幅增加了模型的參數量，因此能學習更複雜的特徵。</span>
+              <span class="opt-mark font-mono"></span>
+            </button>
+            <button onclick="checkQuiz(1, 'D')" class="quiz-opt-1 w-full text-left p-3.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 transition flex items-center justify-between">
+              <span>(D) 殘差連接是將每層的輸出與輸入進行特徵相乘（Element-wise Multiply）以放大信號。</span>
+              <span class="opt-mark font-mono"></span>
+            </button>
+          </div>
+          <div id="quiz-explain-1" class="hidden p-4 rounded-xl text-xs space-y-2"></div>
+        </div>
+
+        <!-- 題目 2 -->
+        <div class="bg-slate-950 p-6 rounded-2xl border border-slate-800 space-y-4" id="quiz-card-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-purple-400 bg-purple-950/60 px-2.5 py-1 rounded border border-purple-800/50">
+              【單選題】數學與架構
+            </span>
+            <span class="text-xs text-slate-500 font-mono">題目編號：IPAS-AI-CV-042</span>
+          </div>
+          <h4 class="text-base font-bold text-white leading-snug">
+            Q2. 在殘差塊 $H(x) = F(x) + x$ 的反向傳播中，損失函數 $\mathcal{E}$ 對輸入 $x$ 的梯度為 $\frac{\partial \mathcal{E}}{\partial x} = \frac{\partial \mathcal{E}}{\partial H} (1 + \frac{\partial F}{\partial x})$。下列何者是 ResNet 能有效緩解梯度消失的最關鍵數學原因？
+          </h4>
+          <div class="space-y-2.5 text-xs sm:text-sm">
+            <button onclick="checkQuiz(2, 'A')" class="quiz-opt-2 w-full text-left p-3.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 transition flex items-center justify-between">
+              <span>(A) 公式中存在常數項 $+1$，使得即使卷積權重導數 $\frac{\partial F}{\partial x} \approx 0$，梯度也能無損回傳。</span>
+              <span class="opt-mark font-mono"></span>
+            </button>
+            <button onclick="checkQuiz(2, 'B')" class="quiz-opt-2 w-full text-left p-3.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 transition flex items-center justify-between">
+              <span>(B) 卷積神經網絡的權重導數 $\frac{\partial F}{\partial x}$ 恆大於 1，保證梯度持續放大。</span>
+              <span class="opt-mark font-mono"></span>
+            </button>
+            <button onclick="checkQuiz(2, 'C')" class="quiz-opt-2 w-full text-left p-3.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 transition flex items-center justify-between">
+              <span>(C) 加法運算能自動對梯度進行 L2 正規化（Weight Decay）。</span>
+              <span class="opt-mark font-mono"></span>
+            </button>
+            <button onclick="checkQuiz(2, 'D')" class="quiz-opt-2 w-full text-left p-3.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 transition flex items-center justify-between">
+              <span>(D) 替換掉原本所有的激活函數（Activation Function），使傳導路徑變為純線性矩陣運算。</span>
+              <span class="opt-mark font-mono"></span>
+            </button>
+          </div>
+          <div id="quiz-explain-2" class="hidden p-4 rounded-xl text-xs space-y-2"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-500">
+    ResNet (Residual Neural Network) Interactive Deep Learning Suite · 依循微軟 CVPR 2016 經典架構設計
+  </footer>
+
+  <!-- Logic & Simulator JS -->
+  <script>
+    // --- Render LaTeX via KaTeX ---
+    document.addEventListener("DOMContentLoaded", function() {
+      if (typeof renderMathInElement !== 'undefined') {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false},
+            {left: '\\[', right: '\\]', display: true},
+            {left: '\\(', right: '\\)', display: false}
+          ],
+          throwOnError : false
+        });
+      }
+      initGradientChart();
+    });
+
+    // --- 09. 數學推導 Chart.js 互動圖表 ---
+    let gradientChart;
+    function initGradientChart() {
+      const ctx = document.getElementById('gradientChart').getContext('2d');
+      const layersSlider = document.getElementById('slider-layers');
+      const gammaSlider = document.getElementById('slider-gamma');
+
+      function calculateData(layers, gamma) {
+        const labels = [];
+        const plainData = [];
+        const resData = [];
+        
+        for (let i = 1; i <= layers; i++) {
+          labels.push(`L-${i}`);
+          // Plain network gradient decay: gamma^i
+          const plainVal = Math.pow(gamma, i);
+          plainData.push(plainVal);
+          // ResNet: base gradient 1 + small residual oscillation
+          const resVal = 1.0 + 0.15 * Math.sin(i * 0.5) * Math.pow(gamma, 1.2);
+          resData.push(resVal);
+        }
+        return { labels, plainData, resData };
+      }
+
+      const initialData = calculateData(34, 0.8);
+
+      gradientChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: initialData.labels,
+          datasets: [
+            {
+              label: '傳統 Plain Net 梯度量 (γ^L)',
+              data: initialData.plainData,
+              borderColor: '#f87171',
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              borderWidth: 2.5,
+              tension: 0.2,
+              fill: true,
+              pointRadius: 2
+            },
+            {
+              label: 'ResNet 殘差網絡梯度量 (1 + ∂F/∂x)',
+              data: initialData.resData,
+              borderColor: '#38bdf8',
+              backgroundColor: 'rgba(56, 189, 248, 0.1)',
+              borderWidth: 2.5,
+              tension: 0.2,
+              fill: true,
+              pointRadius: 2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              type: 'linear',
+              grid: { color: '#1e293b' },
+              ticks: { color: '#94a3b8', font: { family: 'Fira Code' } },
+              title: { display: true, text: '傳遞至淺層之梯度幅度', color: '#94a3b8' }
+            },
+            x: {
+              grid: { color: '#1e293b' },
+              ticks: { color: '#94a3b8', maxTicksLimit: 12, font: { family: 'Fira Code' } }
+            }
+          },
+          plugins: {
+            legend: {
+              labels: { color: '#cbd5e1', font: { family: 'Inter', size: 12 } }
+            }
+          }
+        }
+      });
+
+      function updateChart() {
+        const layers = parseInt(layersSlider.value);
+        const gamma = parseFloat(gammaSlider.value);
+        document.getElementById('label-layers').innerText = layers;
+        document.getElementById('label-gamma').innerText = gamma;
+
+        const updated = calculateData(layers, gamma);
+        gradientChart.data.labels = updated.labels;
+        gradientChart.data.datasets[0].data = updated.plainData;
+        gradientChart.data.datasets[1].data = updated.resData;
+        gradientChart.update();
+
+        // Update plain decay text
+        const finalDecay = Math.pow(gamma, layers);
+        document.getElementById('plain-decay-val').innerText = finalDecay < 1e-4 ? finalDecay.toExponential(2) : finalDecay.toFixed(4);
+      }
+
+      layersSlider.addEventListener('input', updateChart);
+      gammaSlider.addEventListener('input', updateChart);
+    }
+
+    // --- 12. 動態模擬器 (Step by Step & Auto Simulation) ---
+    const simSteps = [
+      {
+        step: 1,
+        title: "特徵輸入 $x$",
+        desc: "輸入特徵向量 $x$ 抵達當前殘差塊，準備同時進入主卷積路徑與跳躍捷徑。",
+        action: () => {
+          highlightNodes(['node-x']);
+          document.getElementById('node-x-val').classList.remove('opacity-0');
+          document.getElementById('status-forward-box').innerHTML = "輸入特徵 $x = [2.50]$ 進入分流";
+        }
+      },
+      {
+        step: 2,
+        title: "卷積層計算殘差 $F(x)$",
+        desc: "主路徑經過 Conv2d -> BatchNorm -> ReLU 變換，提取非線性特徵殘差 $F(x) = -0.30$。",
+        action: () => {
+          highlightNodes(['node-conv']);
+          document.getElementById('node-conv-detail').classList.remove('opacity-0');
+          document.getElementById('status-forward-box').innerHTML = "殘差非線性特徵 $F(x) = -0.30$ 運算完成";
+        }
+      },
+      {
+        step: 3,
+        title: "跳躍連接 (Identity Shortcut) 直通傳遞",
+        desc: "原始特徵 $x = 2.50$ 無損跨越卷積層，抵達加法節點 $\\oplus$。此路徑完全不產生任何乘法計算！",
+        action: () => {
+          document.getElementById('svg-skip-path').setAttribute('stroke', '#38bdf8');
+          document.getElementById('svg-skip-path').setAttribute('stroke-width', '4');
+          document.getElementById('status-forward-box').innerHTML = "恆等跳躍捷徑攜帶 $x=2.50$ 無失真會合";
+        }
+      },
+      {
+        step: 4,
+        title: "元素級相加融合 $H(x) = F(x) + x$",
+        desc: "加法融合：$H(x) = -0.30 + 2.50 = 2.20$，隨後進入最後一層 ReLU 輸出。",
+        action: () => {
+          highlightNodes(['node-add', 'node-relu', 'node-out']);
+          document.getElementById('node-add-val').classList.remove('opacity-0');
+          document.getElementById('status-forward-box').innerHTML = "前向聚合完成: $H(x) = 2.20$";
+        }
+      },
+      {
+        step: 5,
+        title: "反向傳播啟動：頂層梯度回流",
+        desc: "損失函數產生回傳梯度 $\\nabla Loss = \\frac{\\partial \\mathcal{E}}{\\partial H} = 1.00$ 抵達加法節點。",
+        action: () => {
+          document.getElementById('node-out-grad').classList.remove('opacity-0');
+          document.getElementById('status-backward-box').innerHTML = "頂層梯度 $\\nabla Loss = 1.00$ 進入反向傳播";
+        }
+      },
+      {
+        step: 6,
+        title: "加法節點梯度的雙向無損分流",
+        desc: "加法反向傳導法則：梯度直接分配至兩條分支！一條經由 Conv 乘上權重偏導（0.05），另一條藉由跳躍連接無損回傳 1.00！",
+        action: () => {
+          highlightNodes(['node-x']);
+          document.getElementById('node-x-grad').classList.remove('opacity-0');
+          document.getElementById('status-backward-box').innerHTML = "梯渡直流通路: $\\nabla x = 1.00 + 0.05 = 1.05$";
+          document.getElementById('status-verdict-box').innerHTML = "✅ 梯度完全無損！防禦梯度消失成功！";
+        }
+      }
+    ];
+
+    let currentStep = 0;
+    let autoInterval = null;
+
+    function highlightNodes(nodeIds) {
+      document.querySelectorAll('#simulator [id^="node-"]').forEach(el => {
+        el.classList.remove('active-node', 'border-blue-500', 'border-emerald-500');
+      });
+      nodeIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('active-node', 'border-blue-500');
+      });
+    }
+
+    function runStep(targetStep) {
+      if (targetStep > simSteps.length) {
+        resetSimulator();
+        return;
+      }
+      currentStep = targetStep;
+      const data = simSteps[currentStep - 1];
+
+      document.getElementById('stage-name').innerText = data.title;
+      document.getElementById('stage-desc').innerText = data.desc;
+      document.getElementById('sim-step-indicator').innerText = `步驟: ${currentStep} / ${simSteps.length}`;
+      data.action();
+
+      // Render KaTeX for newly generated dynamic content
+      if (typeof renderMathInElement !== 'undefined') {
+        renderMathInElement(document.getElementById('simulator'), {
+          delimiters: [{left: '$', right: '$', display: false}],
+          throwOnError : false
+        });
+      }
+    }
+
+    function resetSimulator() {
+      if (autoInterval) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+        document.getElementById('sim-auto-text').innerText = "一鍵自動模擬";
+        document.getElementById('sim-auto-icon').className = "ph-bold ph-play";
+      }
+      currentStep = 0;
+      document.getElementById('stage-name').innerText = "準備就緒 (Idle)";
+      document.getElementById('stage-desc').innerText = "請點擊「單步演繹」或「一鍵自動模擬」觀察數據流動與梯度分解。";
+      document.getElementById('sim-step-indicator').innerText = "步驟: 0 / 6";
+      
+      document.querySelectorAll('#simulator [id^="node-"]').forEach(el => {
+        el.classList.remove('active-node', 'border-blue-500', 'border-emerald-500');
+      });
+      document.getElementById('node-x-val').classList.add('opacity-0');
+      document.getElementById('node-x-grad').classList.add('opacity-0');
+      document.getElementById('node-conv-detail').classList.add('opacity-0');
+      document.getElementById('node-add-val').classList.add('opacity-0');
+      document.getElementById('node-out-grad').classList.add('opacity-0');
+
+      document.getElementById('svg-skip-path').setAttribute('stroke', '#334155');
+      document.getElementById('svg-skip-path').setAttribute('stroke-width', '2.5');
+
+      document.getElementById('status-forward-box').innerText = "尚未啟動前向計算";
+      document.getElementById('status-backward-box').innerText = "等待反向傳播...";
+      document.getElementById('status-verdict-box').innerText = "待機中";
+      document.getElementById('status-verdict-box').className = "font-mono text-emerald-400 font-bold";
+    }
+
+    document.getElementById('sim-btn-step').addEventListener('click', () => {
+      if (autoInterval) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+        document.getElementById('sim-auto-text').innerText = "一鍵自動模擬";
+        document.getElementById('sim-auto-icon').className = "ph-bold ph-play";
+      }
+      runStep(currentStep + 1);
+    });
+
+    document.getElementById('sim-btn-auto').addEventListener('click', () => {
+      if (autoInterval) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+        document.getElementById('sim-auto-text').innerText = "一鍵自動模擬";
+        document.getElementById('sim-auto-icon').className = "ph-bold ph-play";
+      } else {
+        if (currentStep >= simSteps.length) resetSimulator();
+        document.getElementById('sim-auto-text').innerText = "暫停播放";
+        document.getElementById('sim-auto-icon').className = "ph-bold ph-pause";
+        runStep(currentStep + 1);
+        autoInterval = setInterval(() => {
+          if (currentStep < simSteps.length) {
+            runStep(currentStep + 1);
+          } else {
+            clearInterval(autoInterval);
+            autoInterval = null;
+            document.getElementById('sim-auto-text').innerText = "再次演練";
+            document.getElementById('sim-auto-icon').className = "ph-bold ph-arrow-counter-clockwise";
+          }
+        }, 1800);
+      }
+    });
+
+    document.getElementById('sim-btn-reset').addEventListener('click', resetSimulator);
+
+    // --- 03. IPAS 考題互動評分邏輯 ---
+    const quizAnswers = {
+      1: {
+        correct: 'B',
+        exp: "<strong>正解：(B)</strong><br>解析：退化問題（Degradation Problem）是指當層數增加時，訓練誤差（Training Error）反而上升，這並非過擬合（過擬合是訓練誤差極低但驗證誤差高），而是深層網路在現有最佳化演算法（SGD）下極難逼近恆等映射所致。跳躍連接並不引入額外參數（選項 C 錯誤），運算是特徵逐元素相加（Element-wise Add）而非相乘（選項 D 錯誤）。"
+      },
+      2: {
+        correct: 'A',
+        exp: "<strong>正解：(A)</strong><br>解析：ResNet 反向傳播鏈式求導時，括號內必定包含常數項 $+1$。即使中間卷積層因為權重縮小導致梯度 $\\frac{\\partial F}{\\partial x} \\to 0$，梯度依然能乘上 1 毫無衰減地傳導至前層，徹底破除了深層網絡連乘衰減至零的困境。"
+      }
+    };
+
+    function checkQuiz(qNum, selected) {
+      const q = quizAnswers[qNum];
+      const buttons = document.querySelectorAll(`.quiz-opt-${qNum}`);
+      const explainBox = document.getElementById(`quiz-explain-${qNum}`);
+
+      buttons.forEach(btn => {
+        btn.classList.remove('bg-emerald-950/70', 'border-emerald-500', 'bg-red-950/70', 'border-red-500', 'text-white');
+        btn.disabled = true;
+      });
+
+      const clickedBtn = event.currentTarget;
+      explainBox.classList.remove('hidden', 'bg-emerald-950/40', 'border-emerald-800/50', 'text-emerald-200', 'bg-red-950/40', 'border-red-800/50', 'text-red-200');
+
+      if (selected === q.correct) {
+        clickedBtn.classList.add('bg-emerald-950/70', 'border-emerald-500', 'text-white');
+        explainBox.classList.add('bg-emerald-950/40', 'border', 'border-emerald-800/50', 'text-emerald-200');
+        explainBox.innerHTML = `🎉 <strong>答對了！</strong><br>${q.exp}`;
+      } else {
+        clickedBtn.classList.add('bg-red-950/70', 'border-red-500', 'text-white');
+        explainBox.classList.add('bg-red-950/40', 'border', 'border-red-800/50', 'text-red-200');
+        explainBox.innerHTML = `❌ <strong>回答錯誤！</strong><br>${q.exp}`;
+      }
+    }
+  </script>
+</body>
+</html>
