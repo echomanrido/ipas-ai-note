@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>決策樹(Decision Tree)與梯度提升決策樹(Gradient Boosting Decision Tree, GBDT) 與XGBoost(eXtreme Gradient Boosting)</title>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- KaTeX 數學式渲染 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+          onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\[', right: '\\]', display: true}, {left: '\\(', right: '\\)', display: false}]});"></script>
+  
+  <style>
+    /* 基礎強制深色背景，防止 CDN 延遲或渲染樣式缺失導致白屏 */
+    html, body {
+      background-color: #020617 !important;
+      color: #f1f5f9 !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    
+    /* 滾動條美化 */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #020617; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    
+    /* 程式碼色彩高亮 */
+    .c-kw { color: #f43f5e; font-weight: 600; }     /* 關鍵字 */
+    .c-func { color: #38bdf8; font-weight: 600; }   /* 函式 */
+    .c-param { color: #fbbf24; }                   /* 參數 */
+    .c-comment { color: #64748b; font-style: italic; } /* 註解 */
+    .c-str { color: #a3e635; }                     /* 字串 */
+    .c-num { color: #c084fc; }                     /* 數字 */
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-emerald-500/30 selection:text-emerald-200">
+
+  <!-- 頂部 Sticky 導覽列 -->
+  <header class="border-b border-slate-800 bg-slate-950/90 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 font-mono font-black text-slate-950 text-lg">
+          🌲
+        </div>
+        <div>
+          <h1 class="font-bold text-sm sm:text-base leading-tight text-white flex items-center gap-2">
+            決策樹(Decision Tree)與梯度提升決策樹(Gradient Boosting Decision Tree, GBDT) 與XGBoost(eXtreme Gradient Boosting)
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">12大維度精解</span>
+          </h1>
+          <p class="text-xs text-slate-400 hidden sm:block">單一模型 ➔ 傳統集成模型 ➔ 高效能優化版本</p>
+        </div>
+      </div>
+
+      <!-- 快速導航與錨點選單 -->
+      <div class="flex items-center space-x-2">
+        <a href="../index.html" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5 shadow-sm" title="回首頁">
+          <i class="fa-solid fa-arrow-left"></i> <span class="hidden sm:inline">回首頁</span>
+        </a>
+        <a href="../程式心智圖.html" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5 shadow-sm" title="程式心智圖">
+          <i class="fa-solid fa-network-wired"></i> <span class="hidden sm:inline">程式心智圖</span>
+        </a>
+        <nav class="hidden lg:flex items-center space-x-1 text-xs font-medium pl-2 border-l border-slate-800">
+        <a href="#sec-overview" class="px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">01-02 概念與差異</a>
+        <a href="#sec-story" class="px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">06 生活比喻</a>
+        <a href="#sec-math" class="px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">08-09 數學推導</a>
+        <a href="#sec-sim" class="px-2.5 py-1.5 rounded-lg text-amber-400 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 transition">⚡ 10,12 互動模擬器</a>
+        <a href="#sec-code" class="px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">11 Python 實作</a>
+        <a href="#sec-ipas" class="px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">03 IPAS 題庫</a>
+      </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主要內容區 (一頁式向下展開) -->
+  <main class="flex-grow max-w-7xl mx-auto px-4 py-8 w-full space-y-12">
+
+    <!-- 頂部核心總結橫幅 -->
+    <div class="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+      <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">核心演進脈絡</span>
+            <span class="text-xs text-slate-400">樹模型的代際躍遷</span>
+          </div>
+          <h2 class="text-lg sm:text-2xl font-black text-white">單一模型 ➔ 傳統集成模型 ➔ 高效能優化版本</h2>
+          <p class="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed">
+            決策樹（Decision Tree）、梯度提升決策樹（GBDT）與 XGBoost 是機器學習中層層演進、核心皆基於「樹模型」的經典演算法。從獨立是非規則切分，到前後串聯針對前人錯誤進行殘差修正，最終融合二階泰勒展開、正則化約束與系統工程平行化。
+          </p>
+        </div>
+
+        <!-- 一分鐘精闢心法總結卡 -->
+        <div class="w-full lg:w-96 bg-slate-950/90 border border-slate-800 rounded-xl p-4 text-xs space-y-2.5 shadow-inner">
+          <div class="font-bold text-amber-300 text-xs flex items-center gap-1.5">
+            <span>📌</span> 一分鐘精闢心法總結
+          </div>
+          <div class="text-slate-300 text-xs leading-relaxed space-y-2">
+            <div class="p-2 rounded bg-slate-900/80 border border-slate-800">
+              <strong class="text-emerald-400">🌲 決策樹：</strong> 一個人單打獨鬥，雖然好懂，但容易有偏見。
+            </div>
+            <div class="p-2 rounded bg-slate-900/80 border border-slate-800">
+              <strong class="text-cyan-400">🏹 GBDT：</strong> 大家排隊「針對前人的錯誤進行修正」，雖然精準，但很花時間。
+            </div>
+            <div class="p-2 rounded bg-slate-900/80 border border-slate-800">
+              <strong class="text-amber-400">🚀 XGBoost：</strong> 同樣是針對錯誤修正，但換上了「精準測量儀器」和「平行分工工具」，並且「嚴禁廢話」，又快又準！
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    
+    <!-- 【決策樹 ➔ GBDT ➔ XGBoost 演進代際】核心精華與產業實務應用 -->
+    <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 18px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 0 20px rgba(16, 185, 129, 0.12); padding: 1.6rem; color: #f8fafc; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; backdrop-filter: blur(12px);">
+      
+      <!-- 卡片 Header -->
+      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 0.85rem; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: linear-gradient(135deg, #059669, #10b981); border-radius: 10px; color: #ffffff; font-size: 1.15rem; box-shadow: 0 2px 10px rgba(16, 185, 129, 0.4); flex-shrink: 0;">
+            <i class="fa-solid fa-tree"></i>
+          </span>
+          <div>
+            <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #ffffff; letter-spacing: -0.01em;">
+              【決策樹 ➔ GBDT ➔ XGBoost 演進代際】核心精華與產業實務應用
+            </h3>
+            <p style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: #94a3b8;">Key Takeaways · Algorithmic Mechanism · Industrial Applications & Tabular King</p>
+          </div>
+        </div>
+        <span style="font-size: 0.75rem; padding: 0.28rem 0.75rem; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 9999px; font-weight: 700; white-space: nowrap;">
+          樹模型代際演進 · 表格資料之王
+        </span>
+      </div>
+
+      <!-- 三大區塊 Grid -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 1.25rem;">
+        
+        <!-- 區塊 1: 重點整理 (Key Takeaways) -->
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 14px; padding: 1.2rem; display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; color: #34d399; font-weight: 700; font-size: 0.95rem;">
+            <i class="fa-solid fa-list-check"></i>
+            <span>重點整理 (Key Takeaways)</span>
+          </div>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem; color: #cbd5e1; line-height: 1.65; flex: 1;">
+            <li><strong>決策樹（單一弱分類器）：</strong>基於資訊增益（ID3）、增益率（C4.5）或基尼不純度（CART）進行二元/多元切分；好解釋且能處理混合特徵，但<strong>極易過擬合（High Variance）</strong>。</li>
+            <li><strong>GBDT（串聯殘差集成）：</strong>採用 Boosting 架構，第 \(t\) 棵樹擬合前 \(t-1\) 棵樹的<strong>負梯度（偽殘差，Pseudo-Residuals）</strong>；大幅降低偏差（Bias），但僅使用一階導數且無法跨樹平行。</li>
+            <li><strong>XGBoost（極致優化版）：</strong>引入<strong>二階泰勒展開</strong>（一階梯度 \(g_i\) + 二階 Hessian \(h_i\)）、目標函數<strong>顯式正則化</strong>（懲罰葉片數 \(T\) 與權重平方 \(\|w\|^2\) 防過擬合），並支援特徵分塊平行與缺失值自適應分裂。</li>
+            <li><strong>實務王者：</strong>在表格資料（Tabular Data）與各類 Kaggle 競賽中，XGBoost 因極高精度、速度與可控正則性，被公認為「結構化數據首選骨幹」。</li>
+          </ul>
+        </div>
+
+        <!-- 區塊 2: 核心機制與演算法原理 -->
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 14px; padding: 1.2rem; display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; color: #38bdf8; font-weight: 700; font-size: 0.95rem;">
+            <i class="fa-solid fa-gears"></i>
+            <span>核心機制與原理說明 (Mechanism Overview)</span>
+          </div>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem; color: #cbd5e1; line-height: 1.65; flex: 1;">
+            <li><strong>殘差逼近數學架構：</strong>模型預測值累加 \(\hat{y}_i^{(t)} = \hat{y}_i^{(t-1)} + f_t(x_i)\)，GBDT 視為在函數空間中以負梯度進行梯度下降：\(r_{ti} = -\left[\frac{\partial L(y_i, \hat{y}_i)}{\partial \hat{y}_i}\right]_{\hat{y}_i = \hat{y}_i^{(t-1)}}\)。</li>
+            <li><strong>二階展開與最優葉權重：</strong>XGBoost 將目標函數展開為二次項，解析求得第 \(j\) 個葉節點最優權重 \(w_j^* = -\frac{G_j}{H_j + \lambda}\)，避免傳統 GBDT 依賴複雜行搜尋。</li>
+            <li><strong>增益分裂評估準則：</strong>節點切分增益公式 \(\mathcal{L}_{\text{split}} = \frac{1}{2}\left[\frac{G_L^2}{H_L+\lambda} + \frac{G_R^2}{H_R+\lambda} - \frac{(G_L+G_R)^2}{H_L+H_R+\lambda}\right] - \gamma\)，當增益小於閾值 \(\gamma\) 時即停止分裂，自帶前序剪枝效果。</li>
+            <li><strong>工程與記憶體突破：</strong>預排序（Block 結構）、直方圖逼近演算法（Histogram-based）、Cache-aware 存取優化與 Out-of-Core 磁碟分塊壓縮。</li>
+          </ul>
+        </div>
+
+        <!-- 區塊 3: 產業實務應用 -->
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 14px; padding: 1.2rem; display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; color: #fbbf24; font-weight: 700; font-size: 0.95rem;">
+            <i class="fa-solid fa-industry"></i>
+            <span>應用在何處 (Industrial Applications)</span>
+          </div>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem; color: #cbd5e1; line-height: 1.65; flex: 1;">
+            <li><strong>金融風控與徵信評分卡（Credit Scoring）：</strong>銀行個人信貸違約預測與信用卡盜刷審核；結合 SHAP 值進行特徵歸因分析，滿足金融監管的可解釋性規範。</li>
+            <li><strong>半導體晶圓良率預測（Yield Prediction）：</strong>在黃光、蝕刻與薄膜等數百道製程中，處理上千個非線性感測器參數，提早預警晶圓破片或電性不良。</li>
+            <li><strong>電商搜尋推薦與廣告 CTR 預估：</strong>結合 Facebook 提出的 GBDT + LR 架構，將樹模型的葉節點編號作為離散特徵，完成高階特徵自動交叉組合。</li>
+            <li><strong>智慧製造預知保養（PdM RUL）：</strong>分析馬達與主軸振動、溫度與電流數據，精準回歸預測關鍵軸承與刀具之剩餘可用壽命（RUL）。</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- SVG 向量全景圖 1: 三大模型架構演進全景圖   -->
+    <!-- ========================================== -->
+    <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-3">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          視覺化全景圖 01 · 樹模型三代架構演進與工作流全景
+        </h3>
+        <span class="text-[11px] text-slate-400 font-mono">架構比對 SVG</span>
+      </div>
+      
+      <div class="w-full overflow-x-auto bg-slate-950 rounded-xl p-3 border border-slate-800/80 flex justify-center">
+        <svg viewBox="0 0 960 260" class="w-full max-w-5xl h-auto" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arr-em" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+              <polygon points="0 0, 7 3.5, 0 7" fill="#10b981" />
+            </marker>
+            <marker id="arr-cy" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+              <polygon points="0 0, 7 3.5, 0 7" fill="#06b6d4" />
+            </marker>
+            <marker id="arr-am" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+              <polygon points="0 0, 7 3.5, 0 7" fill="#f59e0b" />
+            </marker>
+            <linearGradient id="grad-dt" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#064e3b" stop-opacity="0.8"/>
+              <stop offset="100%" stop-color="#022c22" stop-opacity="0.9"/>
+            </linearGradient>
+            <linearGradient id="grad-gbdt" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#164e63" stop-opacity="0.8"/>
+              <stop offset="100%" stop-color="#083344" stop-opacity="0.9"/>
+            </linearGradient>
+            <linearGradient id="grad-xgb" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#78350f" stop-opacity="0.8"/>
+              <stop offset="100%" stop-color="#451a03" stop-opacity="0.9"/>
+            </linearGradient>
+          </defs>
+
+          <!-- 區塊 1: 決策樹 -->
+          <g transform="translate(10, 10)">
+            <rect width="270" height="240" rx="14" fill="url(#grad-dt)" stroke="#059669" stroke-width="1.5" />
+            <text x="135" y="28" fill="#34d399" font-size="13" font-weight="bold" text-anchor="middle">1. 決策樹 (Decision Tree)</text>
+            <text x="135" y="45" fill="#94a3b8" font-size="10" text-anchor="middle">單一白箱是非決策結構</text>
+
+            <!-- 樹節點示意 -->
+            <circle cx="135" cy="78" r="14" fill="#047857" stroke="#6ee7b7" stroke-width="1.5"/>
+            <text x="135" y="82" fill="#fff" font-size="9" text-anchor="middle" font-weight="bold">X &lt; c₁</text>
+
+            <line x1="123" y1="88" x2="85" y2="125" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr-em)" />
+            <line x1="147" y1="88" x2="185" y2="125" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr-em)" />
+
+            <circle cx="85" cy="135" r="12" fill="#047857" stroke="#6ee7b7" stroke-width="1.5"/>
+            <text x="85" y="139" fill="#fff" font-size="8" text-anchor="middle">X₂ &lt; c₂</text>
+
+            <rect x="165" y="125" width="40" height="20" rx="6" fill="#065f46" stroke="#34d399" stroke-width="1.2"/>
+            <text x="185" y="138" fill="#a7f3d0" font-size="9" text-anchor="middle" font-weight="bold">葉 y₁</text>
+
+            <line x1="76" y1="144" x2="52" y2="175" stroke="#10b981" stroke-width="1.2" marker-end="url(#arr-em)" />
+            <line x1="94" y1="144" x2="118" y2="175" stroke="#10b981" stroke-width="1.2" marker-end="url(#arr-em)" />
+
+            <rect x="32" y="175" width="40" height="20" rx="6" fill="#065f46" stroke="#34d399" stroke-width="1.2"/>
+            <text x="52" y="188" fill="#a7f3d0" font-size="9" text-anchor="middle" font-weight="bold">葉 y₂</text>
+            <rect x="98" y="175" width="40" height="20" rx="6" fill="#065f46" stroke="#34d399" stroke-width="1.2"/>
+            <text x="118" y="188" fill="#a7f3d0" font-size="9" text-anchor="middle" font-weight="bold">葉 y₃</text>
+
+            <text x="135" y="222" fill="#6ee7b7" font-size="9" text-anchor="middle">✔ 直觀易懂 ✖ 易過擬合、精度有限</text>
+          </g>
+
+          <!-- 區塊 2: GBDT -->
+          <g transform="translate(300, 10)">
+            <rect width="320" height="240" rx="14" fill="url(#grad-gbdt)" stroke="#0891b2" stroke-width="1.5" />
+            <text x="160" y="28" fill="#22d3ee" font-size="13" font-weight="bold" text-anchor="middle">2. GBDT (梯度提升樹)</text>
+            <text x="160" y="45" fill="#94a3b8" font-size="10" text-anchor="middle">加法模型：序列擬合負梯度（殘差）</text>
+
+            <!-- 序列鏈 -->
+            <rect x="18" y="75" width="65" height="70" rx="8" fill="#0e7490" stroke="#67e8f9" stroke-width="1.2"/>
+            <text x="50" y="98" fill="#fff" font-size="10" font-weight="bold" text-anchor="middle">樹 1: f₁(x)</text>
+            <text x="50" y="115" fill="#cffafe" font-size="8" text-anchor="middle">初擬合 y</text>
+            <text x="50" y="130" fill="#a5f3fc" font-size="8" text-anchor="middle">殘差 r₁</text>
+
+            <path d="M 83 110 L 115 110" stroke="#06b6d4" stroke-width="2" marker-end="url(#arr-cy)" />
+
+            <rect x="118" y="75" width="65" height="70" rx="8" fill="#0e7490" stroke="#67e8f9" stroke-width="1.2"/>
+            <text x="150" y="98" fill="#fff" font-size="10" font-weight="bold" text-anchor="middle">樹 2: f₂(x)</text>
+            <text x="150" y="115" fill="#cffafe" font-size="8" text-anchor="middle">擬合 r₁</text>
+            <text x="150" y="130" fill="#a5f3fc" font-size="8" text-anchor="middle">殘差 r₂</text>
+
+            <path d="M 183 110 L 215 110" stroke="#06b6d4" stroke-width="2" marker-end="url(#arr-cy)" />
+
+            <rect x="218" y="75" width="70" height="70" rx="8" fill="#0e7490" stroke="#67e8f9" stroke-width="1.2"/>
+            <text x="253" y="98" fill="#fff" font-size="10" font-weight="bold" text-anchor="middle">樹 K: f_K(x)</text>
+            <text x="253" y="115" fill="#cffafe" font-size="8" text-anchor="middle">擬合 r_{K-1}</text>
+            <text x="253" y="130" fill="#a5f3fc" font-size="8" text-anchor="middle">殘差趨近 0</text>
+
+            <!-- 聚合結果 -->
+            <rect x="40" y="165" width="240" height="32" rx="8" fill="#083344" stroke="#06b6d4" stroke-width="1"/>
+            <text x="160" y="185" fill="#67e8f9" font-size="10" text-anchor="middle" font-family="monospace">F(x) = f₁(x) + η·f₂(x) + ... + η·f_K(x)</text>
+
+            <text x="160" y="222" fill="#a5f3fc" font-size="9" text-anchor="middle">✔ 精度飛躍 ✖ 串聯訓練無並行、調參繁雜</text>
+          </g>
+
+          <!-- 區塊 3: XGBoost -->
+          <g transform="translate(640, 10)">
+            <rect width="310" height="240" rx="14" fill="url(#grad-xgb)" stroke="#d97706" stroke-width="1.5" />
+            <text x="155" y="28" fill="#fbbf24" font-size="13" font-weight="bold" text-anchor="middle">3. XGBoost (極致提升)</text>
+            <text x="155" y="45" fill="#94a3b8" font-size="10" text-anchor="middle">二階導角 + 結構正則化 + 系統級平行</text>
+
+            <!-- 核心優化徽章 -->
+            <rect x="20" y="70" width="125" height="42" rx="6" fill="#451a03" stroke="#f59e0b" stroke-width="1"/>
+            <text x="82" y="86" fill="#fde68a" font-size="9" font-weight="bold" text-anchor="middle">二階泰勒展開</text>
+            <text x="82" y="100" fill="#fcd34d" font-size="8" font-family="monospace" text-anchor="middle">g_i (一階) + h_i (Hessian)</text>
+
+            <rect x="165" y="70" width="125" height="42" rx="6" fill="#451a03" stroke="#f59e0b" stroke-width="1"/>
+            <text x="227" y="86" fill="#fde68a" font-size="9" font-weight="bold" text-anchor="middle">結構複雜度正則</text>
+            <text x="227" y="100" fill="#fcd34d" font-size="8" font-family="monospace" text-anchor="middle">Ω = γT + ½λ∑w²</text>
+
+            <rect x="20" y="125" width="125" height="42" rx="6" fill="#451a03" stroke="#f59e0b" stroke-width="1"/>
+            <text x="82" y="141" fill="#fde68a" font-size="9" font-weight="bold" text-anchor="middle">特徵塊並行 / Hist</text>
+            <text x="82" y="155" fill="#cbd5e1" font-size="8" text-anchor="middle">Block多執行緒切分點搜尋</text>
+
+            <rect x="165" y="125" width="125" height="42" rx="6" fill="#451a03" stroke="#f59e0b" stroke-width="1"/>
+            <text x="227" y="141" fill="#fde68a" font-size="9" font-weight="bold" text-anchor="middle">稀疏感知自動補值</text>
+            <text x="227" y="155" fill="#cbd5e1" font-size="8" text-anchor="middle">自動學習缺失預設方向</text>
+
+            <!-- 葉權重公式亮點 -->
+            <rect x="20" y="178" width="270" height="28" rx="6" fill="#291202" stroke="#d97706" stroke-width="1"/>
+            <text x="155" y="196" fill="#fbbf24" font-size="10" font-weight="bold" font-family="monospace" text-anchor="middle">解析解: w* = -G / (H + λ)  |  Gain &gt; 0 後剪枝</text>
+
+            <text x="155" y="224" fill="#fed7aa" font-size="9" text-anchor="middle">✔ 極速・精準・抗過擬合 (Kaggle/工業常勝軍)</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 區塊 1: 01 一句話簡介與 02 核心概念剖析    -->
+    <!-- ========================================== -->
+    <section id="sec-overview" class="space-y-6">
+      <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+        <span class="w-2 h-6 bg-emerald-500 rounded-full"></span>
+        <h2 class="text-xl font-bold text-white tracking-wide">01 & 02. 基本概念、運作方式與優缺點剖析</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- 1. 決策樹 -->
+        <div class="bg-slate-900 border border-slate-800 hover:border-emerald-500/50 rounded-2xl p-6 transition flex flex-col justify-between">
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-mono text-emerald-400 font-bold px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">單一模型 (基石)</span>
+              <span class="text-2xl">🌲</span>
+            </div>
+            <h3 class="text-lg font-bold text-white">決策樹 (Decision Tree)</h3>
+            
+            <div class="text-xs text-slate-300 space-y-3">
+              <div>
+                <strong class="text-emerald-300 block mb-1">🔹 基本概念：</strong>
+                一種基本的監督式學習方法，透過類似「是非問句」的樹狀結構（根節點、分支、葉節點）來進行分類或迴歸。
+              </div>
+              <div>
+                <strong class="text-emerald-300 block mb-1">🔹 運作方式：</strong>
+                由上而下，根據資料特徵進行切割（例如：熵 Entropy、吉尼不純度 Gini Impurity 或資訊增益 Information Gain），把資料劃分到不同葉子中。
+              </div>
+              <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
+                <div>
+                  <span class="text-emerald-400 font-bold">✔ 優點：</span>
+                  <p class="text-slate-400 mt-0.5">結構直觀、可解釋性極高（像是一張流程圖），不需要太多的資料預處理（免特徵縮放）。</p>
+                </div>
+                <div>
+                  <span class="text-red-400 font-bold">✖ 缺點：</span>
+                  <p class="text-slate-400 mt-0.5">非常容易發生過擬合（Overfitting），對資料中的微小雜訊敏感，單一樹預測準確率有限（屬於「弱學習器」Weak Learner）。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-xs text-emerald-400 font-mono">
+            心法：單打獨鬥，雖好懂但易偏見
+          </div>
+        </div>
+
+        <!-- 2. GBDT -->
+        <div class="bg-slate-900 border border-slate-800 hover:border-cyan-500/50 rounded-2xl p-6 transition flex flex-col justify-between">
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-mono text-cyan-400 font-bold px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20">傳統集成模型</span>
+              <span class="text-2xl">🏹</span>
+            </div>
+            <h3 class="text-lg font-bold text-white">梯度提升樹 (GBDT)</h3>
+            
+            <div class="text-xs text-slate-300 space-y-3">
+              <div>
+                <strong class="text-cyan-300 block mb-1">🔹 基本概念：</strong>
+                一種「提升法（Boosting）」的整合學習演算法，由多棵決策樹以串聯（疊加）方式組成。
+              </div>
+              <div>
+                <strong class="text-cyan-300 block mb-1">🔹 運作方式（加法模型 + 前向分布）：</strong>
+                <ul class="list-disc list-inside space-y-1 text-slate-400">
+                  <li>第一棵樹先對目標做預測，算出與真實值的差距（殘差 Residual）。</li>
+                  <li>第二棵樹不直接預測目標，而是專門去擬合第一棵樹的殘差。</li>
+                  <li>第三棵樹再擬合前兩棵樹累加後的殘差，以此類推。最後把所有樹的結果加總起來得到最終預測。</li>
+                </ul>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
+                <div>
+                  <span class="text-emerald-400 font-bold">✔ 優點：</span>
+                  <p class="text-slate-400 mt-0.5">準確度通常比單一決策樹高出許多，泛化表現優異，能處理多種類型的資料。</p>
+                </div>
+                <div>
+                  <span class="text-red-400 font-bold">✖ 缺點：</span>
+                  <p class="text-slate-400 mt-0.5">因屬於「串聯」訓練，無法平行化計算，訓練速度慢；計算量大且深樹仍有過擬合風險。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-xs text-cyan-400 font-mono">
+            心法：排隊修前人錯誤，精準但耗時
+          </div>
+        </div>
+
+        <!-- 3. XGBoost -->
+        <div class="bg-slate-900 border border-slate-800 hover:border-amber-500/50 rounded-2xl p-6 transition flex flex-col justify-between">
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-mono text-amber-400 font-bold px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">高效能優化版本</span>
+              <span class="text-2xl">🚀</span>
+            </div>
+            <h3 class="text-lg font-bold text-white">XGBoost</h3>
+            
+            <div class="text-xs text-slate-300 space-y-3">
+              <div>
+                <strong class="text-amber-300 block mb-1">🔹 基本概念：</strong>
+                由陳天奇所開發、基於 GBDT 框架的工程優化與劃時代升級版實作，是巨量資料與 Kaggle 競賽的標竿。
+              </div>
+              <div>
+                <strong class="text-amber-300 block mb-1">🔹 改進要點：</strong>
+                引入二階泰勒展開、顯式樹複雜度正則化懲罰、支援特徵塊平行化、直方圖分箱與稀疏缺失值自動學習。
+              </div>
+              <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
+                <div>
+                  <span class="text-emerald-400 font-bold">✔ 優點：</span>
+                  <p class="text-slate-400 mt-0.5">執行速度極快、精準度極高、泛化能力強，是無數競賽與金融量化交易的常勝軍。</p>
+                </div>
+                <div>
+                  <span class="text-red-400 font-bold">✖ 缺點：</span>
+                  <p class="text-slate-400 mt-0.5">超參數較多（$\lambda, \alpha, \gamma$, 列抽樣等），調參門檻相對傳統單樹高。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-xs text-amber-400 font-mono">
+            心法：精準量測＋平行分工＋嚴禁廢話
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- SVG 向量全景圖 05: CART 特徵空間劃分與不純度曲線 -->
+      <!-- ========================================== -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            視覺化全景圖 05 · CART 二維特徵空間正交分割與不純度指標 (Gini vs 熵) 比較
+          </h3>
+          <span class="text-[11px] text-slate-400 font-mono">空間幾何 & 不純度曲線 SVG</span>
+        </div>
+        
+        <div class="w-full overflow-x-auto bg-slate-950 rounded-xl p-3 border border-slate-800/80 flex justify-center">
+          <svg viewBox="0 0 940 220" class="w-full max-w-5xl h-auto" xmlns="http://www.w3.org/2000/svg">
+            <!-- 視圖 1: 2D 特徵空間分割 -->
+            <g transform="translate(15, 15)">
+              <rect width="270" height="190" rx="10" fill="#020617" stroke="#1e293b" stroke-width="1.2"/>
+              <text x="135" y="22" fill="#34d399" font-size="11" font-weight="bold" text-anchor="middle">1. 二維特徵空間正交超平面切分</text>
+              
+              <!-- 坐標軸 -->
+              <line x1="30" y1="165" x2="250" y2="165" stroke="#475569" stroke-width="1.5"/>
+              <line x1="30" y1="35" x2="30" y2="165" stroke="#475569" stroke-width="1.5"/>
+              <text x="245" y="180" fill="#94a3b8" font-size="9" font-family="monospace">特徵 X₁</text>
+              <text x="20" y="42" fill="#94a3b8" font-size="9" font-family="monospace">X₂</text>
+
+              <!-- 切分線 1: X1 = 5 -->
+              <line x1="140" y1="35" x2="140" y2="165" stroke="#10b981" stroke-width="1.8" stroke-dasharray="3,3"/>
+              <text x="140" y="32" fill="#6ee7b7" font-size="8" text-anchor="middle" font-family="monospace">切分 ①: X₁ &lt; c₁</text>
+
+              <!-- 切分線 2: 左側 X2 = 4 -->
+              <line x1="30" y1="100" x2="140" y2="100" stroke="#06b6d4" stroke-width="1.5" stroke-dasharray="3,3"/>
+              <text x="85" y="94" fill="#67e8f9" font-size="8" text-anchor="middle" font-family="monospace">切分 ②: X₂ &lt; c₂</text>
+
+              <!-- 切分線 3: 右側 X2 = 7 -->
+              <line x1="140" y1="70" x2="250" y2="70" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="3,3"/>
+              <text x="195" y="64" fill="#fde68a" font-size="8" text-anchor="middle" font-family="monospace">切分 ③: X₂ &lt; c₃</text>
+
+              <!-- 空間區域標示 -->
+              <rect x="35" y="105" width="100" height="55" fill="#047857" fill-opacity="0.25" rx="4"/>
+              <text x="85" y="136" fill="#6ee7b7" font-size="9" font-weight="bold" text-anchor="middle">區域 R₁ (正例)</text>
+
+              <rect x="35" y="40" width="100" height="55" fill="#dc2626" fill-opacity="0.2" rx="4"/>
+              <text x="85" y="72" fill="#fca5a5" font-size="9" font-weight="bold" text-anchor="middle">區域 R₂ (負例)</text>
+
+              <rect x="145" y="75" width="100" height="85" fill="#dc2626" fill-opacity="0.2" rx="4"/>
+              <text x="195" y="122" fill="#fca5a5" font-size="9" font-weight="bold" text-anchor="middle">區域 R₃ (負例)</text>
+
+              <rect x="145" y="40" width="100" height="25" fill="#047857" fill-opacity="0.25" rx="4"/>
+              <text x="195" y="57" fill="#6ee7b7" font-size="8.5" font-weight="bold" text-anchor="middle">區域 R₄ (正例)</text>
+            </g>
+
+            <!-- 視圖 2: 對應的二元樹狀結構 -->
+            <g transform="translate(305, 15)">
+              <rect width="280" height="190" rx="10" fill="#020617" stroke="#1e293b" stroke-width="1.2"/>
+              <text x="140" y="22" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle">2. 二元樹條件判斷拓撲對應</text>
+
+              <!-- 根節點 -->
+              <rect x="95" y="38" width="90" height="26" rx="6" fill="#0f172a" stroke="#10b981" stroke-width="1.5"/>
+              <text x="140" y="55" fill="#a7f3d0" font-size="9.5" font-weight="bold" text-anchor="middle">X₁ &lt; c₁ ?</text>
+
+              <!-- 分支線 -->
+              <line x1="115" y1="64" x2="70" y2="92" stroke="#64748b" stroke-width="1.2"/>
+              <text x="82" y="78" fill="#34d399" font-size="8">是</text>
+              <line x1="165" y1="64" x2="210" y2="92" stroke="#64748b" stroke-width="1.2"/>
+              <text x="195" y="78" fill="#f87171" font-size="8">否</text>
+
+              <!-- 第二層節點 -->
+              <rect x="25" y="92" width="90" height="24" rx="6" fill="#0f172a" stroke="#06b6d4" stroke-width="1.2"/>
+              <text x="70" y="108" fill="#cffafe" font-size="9" text-anchor="middle">X₂ &lt; c₂ ?</text>
+
+              <rect x="165" y="92" width="90" height="24" rx="6" fill="#0f172a" stroke="#f59e0b" stroke-width="1.2"/>
+              <text x="210" y="108" fill="#fef3c7" font-size="9" text-anchor="middle">X₂ &lt; c₃ ?</text>
+
+              <!-- 葉節點線 -->
+              <line x1="50" y1="116" x2="35" y2="142" stroke="#475569" stroke-width="1"/>
+              <line x1="90" y1="116" x2="105" y2="142" stroke="#475569" stroke-width="1"/>
+              <line x1="190" y1="116" x2="175" y2="142" stroke="#475569" stroke-width="1"/>
+              <line x1="230" y1="116" x2="245" y2="142" stroke="#475569" stroke-width="1"/>
+
+              <!-- 葉節點輸出 -->
+              <rect x="15" y="142" width="40" height="22" rx="4" fill="#065f46" stroke="#34d399"/>
+              <text x="35" y="157" fill="#ecfdf5" font-size="8" font-weight="bold" text-anchor="middle">葉 R₁</text>
+              <rect x="85" y="142" width="40" height="22" rx="4" fill="#7f1d1d" stroke="#f87171"/>
+              <text x="105" y="157" fill="#fef2f2" font-size="8" font-weight="bold" text-anchor="middle">葉 R₂</text>
+              <rect x="155" y="142" width="40" height="22" rx="4" fill="#7f1d1d" stroke="#f87171"/>
+              <text x="175" y="157" fill="#fef2f2" font-size="8" font-weight="bold" text-anchor="middle">葉 R₃</text>
+              <rect x="225" y="142" width="40" height="22" rx="4" fill="#065f46" stroke="#34d399"/>
+              <text x="245" y="157" fill="#ecfdf5" font-size="8" font-weight="bold" text-anchor="middle">葉 R₄</text>
+
+              <text x="140" y="182" fill="#94a3b8" font-size="8.5" text-anchor="middle">所有決策邊界皆平行於坐標軸 (軸對齊切分)</text>
+            </g>
+
+            <!-- 視圖 3: 不純度指標函數曲線對比 -->
+            <g transform="translate(605, 15)">
+              <rect width="320" height="190" rx="10" fill="#020617" stroke="#1e293b" stroke-width="1.2"/>
+              <text x="160" y="22" fill="#fbbf24" font-size="11" font-weight="bold" text-anchor="middle">3. 二分類不純度函數曲線比較</text>
+
+              <!-- 坐標軸 -->
+              <line x1="40" y1="155" x2="285" y2="155" stroke="#475569" stroke-width="1.5"/>
+              <line x1="40" y1="35" x2="40" y2="155" stroke="#475569" stroke-width="1.5"/>
+              <text x="40" y="170" fill="#94a3b8" font-size="8.5" font-family="monospace">0.0</text>
+              <text x="162" y="170" fill="#94a3b8" font-size="8.5" font-family="monospace">p = 0.5</text>
+              <text x="275" y="170" fill="#94a3b8" font-size="8.5" font-family="monospace">1.0</text>
+              <text x="18" y="42" fill="#94a3b8" font-size="8.5" font-family="monospace">I(p)</text>
+
+              <!-- 熵曲線 0.5 * Entropy (藍綠色) -->
+              <path d="M 40 155 Q 162 45 285 155" fill="none" stroke="#06b6d4" stroke-width="2.5"/>
+              <!-- Gini 曲線 2 * Gini = 2*2*p*(1-p) (琥珀金) -->
+              <path d="M 40 155 Q 162 65 285 155" fill="none" stroke="#f59e0b" stroke-width="2.5"/>
+              <!-- 分類誤差率 (紫紅色折線) -->
+              <path d="M 40 155 L 162 95 L 285 155" fill="none" stroke="#c084fc" stroke-width="1.8" stroke-dasharray="4,3"/>
+
+              <!-- 圖例 -->
+              <line x1="60" y1="45" x2="80" y2="45" stroke="#06b6d4" stroke-width="2.5"/>
+              <text x="85" y="48" fill="#67e8f9" font-size="8">熵 (½ Entropy, ID3/C4.5)</text>
+
+              <line x1="60" y1="60" x2="80" y2="60" stroke="#f59e0b" stroke-width="2.5"/>
+              <text x="85" y="63" fill="#fde68a" font-size="8">吉尼係數 (2 × Gini, CART)</text>
+
+              <line x1="60" y1="75" x2="80" y2="75" stroke="#c084fc" stroke-width="1.8" stroke-dasharray="3,2"/>
+              <text x="85" y="78" fill="#e9d5ff" font-size="8">分類誤差率 (Misclassification)</text>
+
+              <rect x="50" y="95" width="245" height="48" rx="6" fill="#0f172a" stroke="#334155" stroke-width="0.8"/>
+              <text x="172" y="112" fill="#e2e8f0" font-size="8" text-anchor="middle">Gini 與熵在 p=0.5 處均達最大值 (最混亂)</text>
+              <text x="172" y="128" fill="#38bdf8" font-size="8" text-anchor="middle">CART 採用 Gini 免去對數 log 計算，效率更高！</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <!-- XGBoost 與傳統 GBDT 的 5 大核心差異與改進 -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        <h3 class="text-base font-bold text-amber-300 mb-4 flex items-center gap-2">
+          <span>⚡</span> XGBoost 與傳統 GBDT 的 5 大核心差異與技術改進
+        </h3>
+        
+        <!-- SVG 向量全景圖 2: 5大核心技術與稀疏感知決策流圖 -->
+        <div class="w-full overflow-x-auto bg-slate-950 rounded-xl p-3 border border-slate-800 mb-5 flex justify-center">
+          <svg viewBox="0 0 920 220" class="w-full max-w-5xl h-auto" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arr-gold" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                <polygon points="0 0, 6 3, 0 6" fill="#f59e0b" />
+              </marker>
+              <marker id="arr-purple" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                <polygon points="0 0, 6 3, 0 6" fill="#c084fc" />
+              </marker>
+            </defs>
+
+            <!-- 步驟 1: 二階展開 -->
+            <g transform="translate(15, 20)">
+              <rect width="165" height="180" rx="12" fill="#1e1b4b" stroke="#6366f1" stroke-width="1.5" />
+              <circle cx="82" cy="35" r="16" fill="#312e81" stroke="#818cf8" stroke-width="1.5"/>
+              <text x="82" y="40" fill="#e0e7ff" font-size="12" font-weight="bold" text-anchor="middle">1</text>
+              <text x="82" y="72" fill="#c7d2fe" font-size="11" font-weight="bold" text-anchor="middle">二階泰勒導角</text>
+              <text x="82" y="94" fill="#a5b4fc" font-size="9" text-anchor="middle">g_i = 1st, h_i = 2nd</text>
+              <line x1="25" y1="108" x2="140" y2="108" stroke="#4338ca" stroke-width="1"/>
+              <text x="82" y="126" fill="#94a3b8" font-size="8.5" text-anchor="middle">不只知殘差方向</text>
+              <text x="82" y="142" fill="#94a3b8" font-size="8.5" text-anchor="middle">更知損失曲率大小</text>
+              <text x="82" y="160" fill="#38bdf8" font-size="9" font-family="monospace" text-anchor="middle">最優步長精準落定</text>
+            </g>
+
+            <!-- 箭頭 -->
+            <line x1="185" y1="110" x2="198" y2="110" stroke="#f59e0b" stroke-width="2" marker-end="url(#arr-gold)" />
+
+            <!-- 步驟 2: 結構正則化 -->
+            <g transform="translate(205, 20)">
+              <rect width="165" height="180" rx="12" fill="#3b0764" stroke="#c084fc" stroke-width="1.5" />
+              <circle cx="82" cy="35" r="16" fill="#581c87" stroke="#e9d5ff" stroke-width="1.5"/>
+              <text x="82" y="40" fill="#f5d0fe" font-size="12" font-weight="bold" text-anchor="middle">2</text>
+              <text x="82" y="72" fill="#f0abfc" font-size="11" font-weight="bold" text-anchor="middle">結構複雜度正則</text>
+              <text x="82" y="94" fill="#e879f9" font-size="9" font-family="monospace" text-anchor="middle">γT + ½λ∑w²</text>
+              <line x1="25" y1="108" x2="140" y2="108" stroke="#7e22ce" stroke-width="1"/>
+              <text x="82" y="126" fill="#94a3b8" font-size="8.5" text-anchor="middle">γ 限制葉節點過多</text>
+              <text x="82" y="142" fill="#94a3b8" font-size="8.5" text-anchor="middle">λ 平滑葉輸出權重</text>
+              <text x="82" y="160" fill="#f43f5e" font-size="9" font-weight="bold" text-anchor="middle">根絕過擬合廢話</text>
+            </g>
+
+            <!-- 箭頭 -->
+            <line x1="375" y1="110" x2="388" y2="110" stroke="#f59e0b" stroke-width="2" marker-end="url(#arr-gold)" />
+
+            <!-- 步驟 3: 特徵塊並行 -->
+            <g transform="translate(395, 20)">
+              <rect width="165" height="180" rx="12" fill="#042f2e" stroke="#14b8a6" stroke-width="1.5" />
+              <circle cx="82" cy="35" r="16" fill="#115e59" stroke="#99f6e4" stroke-width="1.5"/>
+              <text x="82" y="40" fill="#ccfbf1" font-size="12" font-weight="bold" text-anchor="middle">3</text>
+              <text x="82" y="72" fill="#5eead4" font-size="11" font-weight="bold" text-anchor="middle">Block 平行加速</text>
+              <text x="82" y="94" fill="#2dd4bf" font-size="9" text-anchor="middle">預排序特徵分塊儲存</text>
+              <line x1="25" y1="108" x2="140" y2="108" stroke="#0f766e" stroke-width="1"/>
+              <text x="82" y="126" fill="#94a3b8" font-size="8.5" text-anchor="middle">多執行緒同時尋找</text>
+              <text x="82" y="142" fill="#94a3b8" font-size="8.5" text-anchor="middle">各特徵最佳分裂點</text>
+              <text x="82" y="160" fill="#a7f3d0" font-size="9" font-weight="bold" text-anchor="middle">訓練提速數倍至十倍</text>
+            </g>
+
+            <!-- 箭頭 -->
+            <line x1="565" y1="110" x2="578" y2="110" stroke="#f59e0b" stroke-width="2" marker-end="url(#arr-gold)" />
+
+            <!-- 步驟 4: 稀疏感知與自動缺失處理 -->
+            <g transform="translate(585, 20)">
+              <rect width="170" height="180" rx="12" fill="#431407" stroke="#ea580c" stroke-width="1.5" />
+              <circle cx="85" cy="35" r="16" fill="#9a3412" stroke="#fed7aa" stroke-width="1.5"/>
+              <text x="85" y="40" fill="#ffedd5" font-size="12" font-weight="bold" text-anchor="middle">4</text>
+              <text x="85" y="72" fill="#fdba74" font-size="11" font-weight="bold" text-anchor="middle">稀疏感知 (Sparsity)</text>
+              <text x="85" y="94" fill="#fb923c" font-size="9" text-anchor="middle">缺失值自動走預設分支</text>
+              <line x1="25" y1="108" x2="145" y2="108" stroke="#7c2d12" stroke-width="1"/>
+              <text x="85" y="126" fill="#94a3b8" font-size="8.5" text-anchor="middle">分裂時只遍歷非缺失</text>
+              <text x="85" y="142" fill="#94a3b8" font-size="8.5" text-anchor="middle">自動比較缺失歸左/右</text>
+              <text x="85" y="160" fill="#fde047" font-size="9" font-weight="bold" text-anchor="middle">免人工填補空值</text>
+            </g>
+
+            <!-- 箭頭 -->
+            <line x1="760" y1="110" x2="773" y2="110" stroke="#f59e0b" stroke-width="2" marker-end="url(#arr-gold)" />
+
+            <!-- 步驟 5: 增益後剪枝 -->
+            <g transform="translate(780, 20)">
+              <rect width="125" height="180" rx="12" fill="#4c0519" stroke="#f43f5e" stroke-width="1.5" />
+              <circle cx="62" cy="35" r="16" fill="#9f1239" stroke="#fecdd3" stroke-width="1.5"/>
+              <text x="62" y="40" fill="#ffe4e6" font-size="12" font-weight="bold" text-anchor="middle">5</text>
+              <text x="62" y="72" fill="#fda4af" font-size="11" font-weight="bold" text-anchor="middle">Gain 剪枝</text>
+              <text x="62" y="94" fill="#fb7185" font-size="9" text-anchor="middle">增益門檻制</text>
+              <line x1="18" y1="108" x2="107" y2="108" stroke="#881337" stroke-width="1"/>
+              <text x="62" y="126" fill="#94a3b8" font-size="8.5" text-anchor="middle">設 max_depth</text>
+              <text x="62" y="142" fill="#94a3b8" font-size="8.5" text-anchor="middle">從後往前剪</text>
+              <text x="62" y="160" fill="#f43f5e" font-size="9" font-weight="bold" text-anchor="middle">Gain ≤ 0 即停</text>
+            </g>
+          </svg>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-xs">
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1.5">
+            <span class="text-amber-400 font-bold block text-sm">1. 加入正則化項</span>
+            <span class="text-[11px] text-slate-500 font-mono">Regularization</span>
+            <p class="text-slate-300 leading-relaxed mt-1">
+              在目標函數加入控制樹複雜度的懲罰項（葉節點數 $\gamma T$ 與葉權重之 L1/L2 正則化），有效抑制過擬合。
+            </p>
+          </div>
+
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1.5">
+            <span class="text-cyan-400 font-bold block text-sm">2. 二階泰勒展開式</span>
+            <span class="text-[11px] text-slate-500 font-mono">Second-order Taylor</span>
+            <p class="text-slate-300 leading-relaxed mt-1">
+              傳統 GBDT 僅使用一階導數（梯度）；XGBoost 同時利用一階 $g_i$ 與二階 $h_i$ (Hessian)，讓數值優化更精確。
+            </p>
+          </div>
+
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1.5">
+            <span class="text-emerald-400 font-bold block text-sm">3. 平行化與硬體優化</span>
+            <span class="text-[11px] text-slate-500 font-mono">Parallel & Hardware</span>
+            <p class="text-slate-300 leading-relaxed mt-1">
+              在尋找最佳分割點時，支援特徵預排序後的特徵塊（Block）多執行緒並行運算，大幅縮短訓練時間。
+            </p>
+          </div>
+
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1.5">
+            <span class="text-purple-400 font-bold block text-sm">4. 缺失值自動處理</span>
+            <span class="text-[11px] text-slate-500 font-mono">Sparsity-aware</span>
+            <p class="text-slate-300 leading-relaxed mt-1">
+              內建稀疏感知演算法，分裂時僅遍歷非缺失樣本，自動學習資料中缺失值（Missing values）的最優預設劃分路徑。
+            </p>
+          </div>
+
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1.5">
+            <span class="text-rose-400 font-bold block text-sm">5. 雙重剪枝策略</span>
+            <span class="text-[11px] text-slate-500 font-mono">Max Depth + Pruning</span>
+            <p class="text-slate-300 leading-relaxed mt-1">
+              傳統 GBDT 多為貪心法建完再剪枝；XGBoost 採用預先設定最大深度，並從後往前進行剪枝（增益 $\text{Gain} \le 0$ 立即停止）。
+            </p>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- SVG 向量全景圖 06: 稀疏感知與特徵塊並行演算法 -->
+        <!-- ========================================== -->
+        <div class="mt-6 pt-5 border-t border-slate-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+              <span>🛠️</span> 視覺化全景圖 06 · XGBoost 稀疏感知（Sparsity-aware）與特徵塊並行硬體加速
+            </h4>
+            <span class="text-[10px] text-slate-400 font-mono">演算法細節 SVG</span>
+          </div>
+
+          <div class="w-full overflow-x-auto bg-slate-950 rounded-xl p-3 border border-slate-800/80 flex justify-center">
+            <svg viewBox="0 0 920 185" class="w-full max-w-5xl h-auto" xmlns="http://www.w3.org/2000/svg">
+              <!-- 步驟 A: 特徵塊預排序儲存 (Block) -->
+              <g transform="translate(15, 12)">
+                <rect width="260" height="160" rx="10" fill="#0f172a" stroke="#334155" stroke-width="1.2"/>
+                <text x="130" y="24" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle">A. 特徵分塊 (Block) 預排序儲存</text>
+                
+                <rect x="20" y="40" width="105" height="48" rx="6" fill="#1e293b" stroke="#0ea5e9" stroke-width="1"/>
+                <text x="72" y="58" fill="#e0f2fe" font-size="9" font-weight="bold" text-anchor="middle">特徵 1 (預排序)</text>
+                <text x="72" y="74" fill="#94a3b8" font-size="8" font-family="monospace" text-anchor="middle">值: 1.2, 3.5, 7.8...</text>
+
+                <rect x="135" y="40" width="105" height="48" rx="6" fill="#1e293b" stroke="#0ea5e9" stroke-width="1"/>
+                <text x="187" y="58" fill="#e0f2fe" font-size="9" font-weight="bold" text-anchor="middle">特徵 2 (預排序)</text>
+                <text x="187" y="74" fill="#94a3b8" font-size="8" font-family="monospace" text-anchor="middle">值: 0.1, 0.4, 0.9...</text>
+
+                <rect x="20" y="100" width="220" height="48" rx="6" fill="#020617" stroke="#475569" stroke-width="0.8"/>
+                <text x="130" y="120" fill="#67e8f9" font-size="8.5" text-anchor="middle">以 CSC 格式常駐記憶體</text>
+                <text x="130" y="136" fill="#94a3b8" font-size="8" text-anchor="middle">只需在訓練前排序一次，後續迭代重複複用</text>
+              </g>
+
+              <line x1="285" y1="92" x2="310" y2="92" stroke="#f59e0b" stroke-width="2" marker-end="url(#arr-gold)"/>
+
+              <!-- 步驟 B: 多執行緒並行切分點掃描 -->
+              <g transform="translate(320, 12)">
+                <rect width="260" height="160" rx="10" fill="#0f172a" stroke="#334155" stroke-width="1.2"/>
+                <text x="130" y="24" fill="#a7f3d0" font-size="11" font-weight="bold" text-anchor="middle">B. 多執行緒並行尋找最佳分割</text>
+
+                <rect x="20" y="42" width="220" height="30" rx="6" fill="#064e3b" stroke="#10b981" stroke-width="1"/>
+                <text x="130" y="61" fill="#ecfdf5" font-size="9" font-weight="bold" text-anchor="middle">CPU Thread 1 ➔ 掃描特徵 1 切分點 Gain</text>
+
+                <rect x="20" y="78" width="220" height="30" rx="6" fill="#064e3b" stroke="#10b981" stroke-width="1"/>
+                <text x="130" y="97" fill="#ecfdf5" font-size="9" font-weight="bold" text-anchor="middle">CPU Thread 2 ➔ 掃描特徵 2 切分點 Gain</text>
+
+                <rect x="20" y="114" width="220" height="30" rx="6" fill="#064e3b" stroke="#10b981" stroke-width="1"/>
+                <text x="130" y="133" fill="#ecfdf5" font-size="9" font-weight="bold" text-anchor="middle">CPU Thread K ➔ 掃描特徵 M 切分點 Gain</text>
+              </g>
+
+              <line x1="590" y1="92" x2="615" y2="92" stroke="#f59e0b" stroke-width="2" marker-end="url(#arr-gold)"/>
+
+              <!-- 步驟 C: 稀疏感知自動學習缺失路徑 -->
+              <g transform="translate(625, 12)">
+                <rect width="280" height="160" rx="10" fill="#291202" stroke="#d97706" stroke-width="1.2"/>
+                <text x="140" y="24" fill="#fbbf24" font-size="11" font-weight="bold" text-anchor="middle">C. 稀疏感知 (Sparsity-aware)</text>
+
+                <rect x="15" y="40" width="250" height="36" rx="6" fill="#451a03" stroke="#f59e0b" stroke-width="0.8"/>
+                <text x="140" y="56" fill="#fde68a" font-size="8.5" font-weight="bold" text-anchor="middle">1. 僅遍歷非缺失樣本計算 G &amp; H</text>
+                <text x="140" y="69" fill="#fed7aa" font-size="7.5" text-anchor="middle">計算量與非零樣本數成正比，巨量資料飛速</text>
+
+                <rect x="15" y="82" width="250" height="66" rx="6" fill="#451a03" stroke="#f59e0b" stroke-width="0.8"/>
+                <text x="140" y="99" fill="#fde68a" font-size="8.5" font-weight="bold" text-anchor="middle">2. 自動比較缺失值歸屬方向：</text>
+                <text x="140" y="116" fill="#cbd5e1" font-size="8" font-family="monospace" text-anchor="middle">Gain(缺失劃入左) vs Gain(缺失劃入右)</text>
+                <text x="140" y="133" fill="#34d399" font-size="8.5" font-weight="bold" text-anchor="middle">自動記住最優方向作為預設分支！</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 區塊 4: 08 理論簡介與 09 數學推導 (含互動計算)-->
+    <!-- ========================================== -->
+    <section id="sec-math" class="space-y-6">
+      <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+        <span class="w-2 h-6 bg-cyan-500 rounded-full"></span>
+        <h2 class="text-xl font-bold text-white tracking-wide">08 & 09. 理論簡介與嚴謹數學推導 (互動式)</h2>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+          梯度提升演算法本質上是在<strong>函數空間（Function Space）</strong>中透過梯度下降法優化經驗風險。預測模型由 $K$ 棵樹相加組成：
+        </p>
+        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center text-emerald-400 font-mono text-sm overflow-x-auto">
+          $$\hat{y}_i = F_K(x_i) = \sum_{k=1}^K f_k(x_i), \quad f_k \in \mathcal{F}$$
+        </div>
+
+        <!-- SVG 向量全景圖 4: 數值優化幾何圖解（一階切線 vs 二階拋物線近似） -->
+        <div class="w-full overflow-x-auto bg-slate-950 rounded-xl p-4 border border-slate-800 mt-3 flex justify-center">
+          <svg viewBox="0 0 900 240" class="w-full max-w-4xl h-auto" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arr-red" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                <polygon points="0 0, 6 3, 0 6" fill="#f43f5e" />
+              </marker>
+              <marker id="arr-green" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                <polygon points="0 0, 6 3, 0 6" fill="#10b981" />
+              </marker>
+            </defs>
+
+            <!-- 網格與座標軸 -->
+            <line x1="60" y1="200" x2="840" y2="200" stroke="#334155" stroke-width="1.5" />
+            <line x1="60" y1="20" x2="60" y2="200" stroke="#334155" stroke-width="1.5" />
+            <text x="830" y="220" fill="#94a3b8" font-size="11" font-family="monospace">權重調整量 (w)</text>
+            <text x="40" y="25" fill="#94a3b8" font-size="11" font-family="monospace">損失 Loss L(w)</text>
+
+            <!-- 真實損失曲線 (深藍實線) -->
+            <path d="M 100 170 Q 300 40 450 45 Q 600 50 800 190" fill="none" stroke="#38bdf8" stroke-width="3.5" />
+            <text x="730" y="165" fill="#38bdf8" font-size="11" font-weight="bold">真實損失函數曲線 L(w)</text>
+
+            <!-- 當前工作點 w^(t-1) -->
+            <circle cx="280" cy="80" r="6" fill="#f59e0b" stroke="#fff" stroke-width="1.5" />
+            <line x1="280" y1="80" x2="280" y2="200" stroke="#f59e0b" stroke-dasharray="4,4" stroke-width="1.2" />
+            <text x="280" y="218" fill="#fbbf24" font-size="11" font-weight="bold" text-anchor="middle">當前點 w^(t-1)</text>
+
+            <!-- GBDT: 一階切線逼近 (紅色虛線) -->
+            <line x1="160" y1="130" x2="420" y2="20" stroke="#f43f5e" stroke-width="2" stroke-dasharray="5,4" />
+            <text x="140" y="115" fill="#f87171" font-size="10" font-weight="bold">一階切線近似 (GBDT: 僅用負梯度 g)</text>
+            <path d="M 280 80 L 350 45" stroke="#f43f5e" stroke-width="2" marker-end="url(#arr-red)" />
+            <text x="320" y="35" fill="#fca5a5" font-size="9">盲目步長需依賴縮減率 η</text>
+
+            <!-- XGBoost: 二階泰勒拋物線密切擬合 (綠色圓弧) -->
+            <path d="M 180 155 Q 350 25 500 135" fill="none" stroke="#34d399" stroke-width="2.5" />
+            <text x="510" y="125" fill="#34d399" font-size="10" font-weight="bold">二階泰勒展開密切拋物線 (XGBoost)</text>
+            
+            <!-- XGBoost 最低點解析解 w* -->
+            <circle cx="345" cy="53" r="5" fill="#10b981" stroke="#fff" stroke-width="1.5"/>
+            <line x1="345" y1="53" x2="345" y2="200" stroke="#10b981" stroke-dasharray="3,3" stroke-width="1" />
+            <text x="345" y="218" fill="#34d399" font-size="11" font-weight="bold" font-family="monospace" text-anchor="middle">w* = -G/(H+λ)</text>
+
+            <rect x="580" y="45" width="250" height="70" rx="8" fill="#020617" stroke="#334155" stroke-width="1"/>
+            <text x="592" y="66" fill="#e2e8f0" font-size="10" font-weight="bold">幾何本質解析：</text>
+            <text x="592" y="83" fill="#cbd5e1" font-size="9">• GBDT 僅有一階斜率，無法感知谷底曲率。</text>
+            <text x="592" y="99" fill="#fde047" font-size="9">• XGBoost 藉由 H(二階導) 直接解析抵達極值！</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- 三大公式推導卡 -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 space-y-4">
+            <!-- 擬合曲線 -->
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <div class="flex justify-between items-center text-xs text-slate-400 px-2 mb-2 font-mono">
+                <span class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span> 真實樣本分佈 $y_i$
+                  <span class="w-3.5 h-1 bg-amber-400 rounded"></span> 模型階梯累計預測 $F_m(x)$
+                </span>
+                <span class="text-[11px] text-slate-500">主擬合圖</span>
+              </div>
+              <canvas id="fitCanvas" width="750" height="240" class="w-full h-56 bg-slate-900/90 rounded-lg"></canvas>
+            </div>
+
+            <!-- 殘差曲線 -->
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <div class="flex justify-between items-center text-xs text-slate-400 px-2 mb-2 font-mono">
+                <span>每輪擬合之偽殘差流動 (Residuals: $y_i - \hat{y}_i$)</span>
+                <span class="text-[11px] text-slate-500">隨迭代逐漸趨向於 0</span>
+              </div>
+              <canvas id="resCanvas" width="750" height="130" class="w-full h-32 bg-slate-900/90 rounded-lg"></canvas>
+            </div>
+          </div>
+
+          <!-- 側邊 Log -->
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
+                <span class="text-xs font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  即時運算執行紀錄 (Runtime Log)
+                </span>
+                <button onclick="clearLog()" class="text-[10px] text-slate-500 hover:text-slate-300">清空</button>
+              </div>
+              <div id="simLog" class="space-y-2 text-[11px] font-mono text-slate-300 max-h-72 overflow-y-auto pr-1">
+                <div class="p-2 bg-slate-900/70 rounded-lg border border-slate-800/80 text-slate-400">
+                  系統初始化完成。請點擊上方按鈕開始單步擬合或自動演化。
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800/80 mt-4 text-[11px] text-slate-400 leading-relaxed bg-slate-900/50 p-2.5 rounded-lg">
+              💡 <strong class="text-amber-300">觀察重點：</strong>
+              <ul class="list-disc list-inside mt-1 space-y-1 text-slate-400">
+                <li><strong>GBDT</strong>：每棵樹只預測殘差，並以學習率縮減步長。</li>
+                <li><strong>XGBoost</strong>：分母加上 $\lambda$，當葉節點樣本數較少時能有效抑制極端權重。</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 10. 所屬範疇與生態系拓展 -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
+          <span class="text-teal-400">🌐</span> 10. 領域範疇界定與現代 AI 生態系拓展
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs">
+          <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800">
+            <span class="font-bold text-emerald-400 block mb-1">機器學習 (ML) 應用</span>
+            <p class="text-slate-400">樹模型是表格資料 (Tabular Data) 的無冕之王，在 Kaggle 結構化資料競賽中表現歷久彌新。</p>
+          </div>
+          <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800">
+            <span class="font-bold text-cyan-400 block mb-1">深度學習 (DL) 對比</span>
+            <p class="text-slate-400">CNN/Transformer 主宰影像與自然語言；但對異質特徵與小樣本，樹模型免歸一化且不易受雜訊干擾。</p>
+          </div>
+          <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800">
+            <span class="font-bold text-amber-400 block mb-1">強化學習 (RL) 結合</span>
+            <p class="text-slate-400">蒙地卡羅樹搜尋 (MCTS) 與決策樹結合，能為強化學習代理人提供具備白箱規則可溯源的策略路徑。</p>
+          </div>
+          <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800">
+            <span class="font-bold text-purple-400 block mb-1">LLM 協同應用細節</span>
+            <p class="text-slate-400">利用大語言模型將文字或非結構化 Log 轉換為 Embedding 特徵，再輸入 XGBoost 進行高速分類與評分。</p>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- SVG 向量全景圖 07: 工業落地經典架構管線圖 -->
+        <!-- ========================================== -->
+        <div class="mt-6 pt-5 border-t border-slate-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+              <span>🏭</span> 視覺化全景圖 07 · 工業級經典管線：Facebook GBDT+LR 特徵交叉與金融風控 SHAP 審計架構
+            </h4>
+            <span class="text-[10px] text-slate-400 font-mono">工業管線 SVG</span>
+          </div>
+
+          <div class="w-full overflow-x-auto bg-slate-950 rounded-xl p-3 border border-slate-800/80 flex justify-center">
+            <svg viewBox="0 0 920 190" class="w-full max-w-5xl h-auto" xmlns="http://www.w3.org/2000/svg">
+              <!-- 輸入層 -->
+              <g transform="translate(10, 15)">
+                <rect width="150" height="160" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.2"/>
+                <text x="75" y="25" fill="#e2e8f0" font-size="10" font-weight="bold" text-anchor="middle">多源異質原始特徵</text>
+                
+                <rect x="15" y="42" width="120" height="26" rx="4" fill="#1e293b"/>
+                <text x="75" y="58" fill="#94a3b8" font-size="8.5" text-anchor="middle">用戶屬性 (年齡/收入)</text>
+
+                <rect x="15" y="76" width="120" height="26" rx="4" fill="#1e293b"/>
+                <text x="75" y="92" fill="#94a3b8" font-size="8.5" text-anchor="middle">行為歷史 (點擊/瀏覽)</text>
+
+                <rect x="15" y="110" width="120" height="26" rx="4" fill="#1e293b"/>
+                <text x="75" y="126" fill="#94a3b8" font-size="8.5" text-anchor="middle">實時情境 (時間/地點)</text>
+              </g>
+
+              <line x1="168" y1="95" x2="190" y2="95" stroke="#06b6d4" stroke-width="2" marker-end="url(#arr-cy)"/>
+
+              <!-- GBDT/XGBoost 特徵抽取器 -->
+              <g transform="translate(200, 15)">
+                <rect width="210" height="160" rx="8" fill="#083344" stroke="#0891b2" stroke-width="1.2"/>
+                <text x="105" y="25" fill="#67e8f9" font-size="10" font-weight="bold" text-anchor="middle">GBDT / XGBoost 樹轉換器</text>
+                
+                <rect x="15" y="40" width="180" height="34" rx="6" fill="#0e7490" stroke="#22d3ee" stroke-width="0.8"/>
+                <text x="105" y="56" fill="#fff" font-size="8.5" font-weight="bold" text-anchor="middle">樹 1 (落在葉子節點 3)</text>
+                <text x="105" y="68" fill="#cffafe" font-size="7.5" font-family="monospace" text-anchor="middle">編碼 ➔ [0, 0, 1, 0]</text>
+
+                <rect x="15" y="80" width="180" height="34" rx="6" fill="#0e7490" stroke="#22d3ee" stroke-width="0.8"/>
+                <text x="105" y="96" fill="#fff" font-size="8.5" font-weight="bold" text-anchor="middle">樹 2 (落在葉子節點 1)</text>
+                <text x="105" y="108" fill="#cffafe" font-size="7.5" font-family="monospace" text-anchor="middle">編碼 ➔ [1, 0, 0, 0]</text>
+
+                <text x="105" y="132" fill="#a5f3fc" font-size="8" text-anchor="middle">自動非線性特徵交叉組合！</text>
+                <text x="105" y="146" fill="#67e8f9" font-size="7.5" text-anchor="middle">將多維連續變數轉為離散稀疏向量</text>
+              </g>
+
+              <line x1="418" y1="95" x2="440" y2="95" stroke="#06b6d4" stroke-width="2" marker-end="url(#arr-cy)"/>
+
+              <!-- 線性分類 / 點擊預估層 (LR) -->
+              <g transform="translate(450, 15)">
+                <rect width="180" height="160" rx="8" fill="#1e1b4b" stroke="#6366f1" stroke-width="1.2"/>
+                <text x="90" y="25" fill="#c7d2fe" font-size="10" font-weight="bold" text-anchor="middle">線性分類器 (LR / Softmax)</text>
+
+                <rect x="15" y="45" width="150" height="50" rx="6" fill="#312e81" stroke="#818cf8" stroke-width="0.8"/>
+                <text x="90" y="65" fill="#e0e7ff" font-size="8.5" font-weight="bold" text-anchor="middle">百萬維稀疏 One-Hot 輸入</text>
+                <text x="90" y="82" fill="#a5b4fc" font-size="8" font-family="monospace" text-anchor="middle">y = σ( W^T · [Leaf_IDs] )</text>
+
+                <rect x="15" y="105" width="150" height="40" rx="6" fill="#020617" stroke="#4338ca" stroke-width="0.8"/>
+                <text x="90" y="123" fill="#38bdf8" font-size="9" font-weight="bold" text-anchor="middle">點擊率 CTR / 違約率 PD</text>
+                <text x="90" y="137" fill="#94a3b8" font-size="7.5" text-anchor="middle">超大規模線上高併發實時推論</text>
+              </g>
+
+              <line x1="638" y1="95" x2="660" y2="95" stroke="#f59e0b" stroke-width="2" marker-end="url(#arr-gold)"/>
+
+              <!-- 監管與可解釋性層 (SHAP Waterfall) -->
+              <g transform="translate(670, 15)">
+                <rect width="240" height="160" rx="8" fill="#451a03" stroke="#d97706" stroke-width="1.2"/>
+                <text x="120" y="25" fill="#fde68a" font-size="10" font-weight="bold" text-anchor="middle">TreeSHAP 金融合規可解釋審計</text>
+
+                <!-- SHAP 條狀示意 -->
+                <rect x="20" y="45" width="130" height="16" rx="3" fill="#10b981"/>
+                <text x="155" y="57" fill="#a7f3d0" font-size="7.5">+0.32 信用分高</text>
+
+                <rect x="20" y="68" width="90" height="16" rx="3" fill="#f43f5e"/>
+                <text x="115" y="80" fill="#fecdd3" font-size="7.5">-0.18 負債比偏高</text>
+
+                <rect x="20" y="91" width="60" height="16" rx="3" fill="#10b981"/>
+                <text x="85" y="103" fill="#a7f3d0" font-size="7.5">+0.11 無逾期</text>
+
+                <rect x="15" y="120" width="210" height="28" rx="5" fill="#291202" stroke="#f59e0b" stroke-width="0.8"/>
+                <text x="120" y="138" fill="#fde68a" font-size="8" font-weight="bold" text-anchor="middle">滿足以沙賓法案／金管會之嚴格審查</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 區塊 7: 03 IPAS 考題與解答                -->
+    <!-- ========================================== -->
+    <section id="sec-ipas" class="space-y-6">
+      <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+        <span class="w-2 h-6 bg-pink-500 rounded-full"></span>
+        <h2 class="text-xl font-bold text-white tracking-wide">03. 經濟部 IPAS AI 應用規劃師認證：樹模型核心考題</h2>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- SVG 向量全景圖 08: Bagging vs Boosting 偏差與變異數分析 -->
+      <!-- ========================================== -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-pink-400 animate-pulse"></span>
+            視覺化全景圖 08 · IPAS 核心考點圖解：Bagging 與 Boosting 之靶心偏差 (Bias) 與 變異數 (Variance) 權衡
+          </h3>
+          <span class="text-[11px] text-slate-400 font-mono">靶心幾何對比 SVG</span>
+        </div>
+
+        <div class="w-full overflow-x-auto bg-slate-950 rounded-xl p-3 border border-slate-800/80 flex justify-center">
+          <svg viewBox="0 0 920 200" class="w-full max-w-5xl h-auto" xmlns="http://www.w3.org/2000/svg">
+            <!-- 靶心 1: Bagging (隨機森林) -->
+            <g transform="translate(40, 15)">
+              <rect width="380" height="170" rx="12" fill="#0f172a" stroke="#0284c7" stroke-width="1.2"/>
+              <text x="190" y="24" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle">Bagging (裝袋法，如隨機森林) ➔ 降低變異數 (Variance)</text>
+
+              <!-- 靶心圖案 -->
+              <circle cx="85" cy="98" r="50" fill="#082f49" stroke="#334155" stroke-width="1"/>
+              <circle cx="85" cy="98" r="35" fill="#0c4a6e" stroke="#334155" stroke-width="1"/>
+              <circle cx="85" cy="98" r="20" fill="#0369a1" stroke="#334155" stroke-width="1"/>
+              <circle cx="85" cy="98" r="7" fill="#f43f5e"/>
+
+              <!-- 擊中散點 (圍繞中心但分散度小) -->
+              <circle cx="82" cy="95" r="3" fill="#38bdf8"/>
+              <circle cx="88" cy="100" r="3" fill="#38bdf8"/>
+              <circle cx="84" cy="103" r="3" fill="#38bdf8"/>
+              <circle cx="90" cy="93" r="3" fill="#38bdf8"/>
+              <circle cx="78" cy="98" r="3" fill="#38bdf8"/>
+              <circle cx="86" cy="92" r="3" fill="#38bdf8"/>
+
+              <!-- 說明文字 -->
+              <rect x="155" y="42" width="210" height="110" rx="8" fill="#020617" stroke="#1e293b" stroke-width="0.8"/>
+              <text x="170" y="64" fill="#67e8f9" font-size="9" font-weight="bold">• 基底模型：高深度/低偏差單樹</text>
+              <text x="170" y="82" fill="#94a3b8" font-size="8.5">• 運作機制：互不相依，平行訓練</text>
+              <text x="170" y="100" fill="#94a3b8" font-size="8.5">• 投票平均：Var(X̄) = σ²/B</text>
+              <text x="170" y="122" fill="#34d399" font-size="9" font-weight="bold">✔ 核心目標：顯著降低變異數</text>
+              <text x="170" y="138" fill="#fca5a5" font-size="8">✖ 對偏差 (Bias) 的改善極為有限</text>
+            </g>
+
+            <!-- 靶心 2: Boosting (GBDT / XGBoost) -->
+            <g transform="translate(500, 15)">
+              <rect width="380" height="170" rx="12" fill="#0f172a" stroke="#ea580c" stroke-width="1.2"/>
+              <text x="190" y="24" fill="#fb923c" font-size="11" font-weight="bold" text-anchor="middle">Boosting (提升法，如 GBDT/XGB) ➔ 降低偏差 (Bias)</text>
+
+              <!-- 靶心圖案 -->
+              <circle cx="85" cy="98" r="50" fill="#431407" stroke="#334155" stroke-width="1"/>
+              <circle cx="85" cy="98" r="35" fill="#7c2d12" stroke="#334155" stroke-width="1"/>
+              <circle cx="85" cy="98" r="20" fill="#9a3412" stroke="#334155" stroke-width="1"/>
+              <circle cx="85" cy="98" r="7" fill="#f43f5e"/>
+
+              <!-- 擊中軌跡：從偏遠一步步修正至靶心 -->
+              <circle cx="120" cy="130" r="3" fill="#fca5a5"/>
+              <line x1="118" y1="127" x2="105" y2="114" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="2,2"/>
+              <circle cx="103" cy="112" r="3" fill="#fde047"/>
+              <line x1="101" y1="110" x2="90" y2="102" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="2,2"/>
+              <circle cx="86" cy="99" r="3.5" fill="#34d399"/>
+              <text x="123" y="142" fill="#fca5a5" font-size="7">第1棵(偏)</text>
+              <text x="86" y="87" fill="#34d399" font-size="7">收斂至紅心</text>
+
+              <!-- 說明文字 -->
+              <rect x="155" y="42" width="210" height="110" rx="8" fill="#020617" stroke="#1e293b" stroke-width="0.8"/>
+              <text x="170" y="64" fill="#fdba74" font-size="9" font-weight="bold">• 基底模型：淺層弱學習器 (Stump)</text>
+              <text x="170" y="82" fill="#94a3b8" font-size="8.5">• 運作機制：串列相依，後擬前殘差</text>
+              <text x="170" y="100" fill="#94a3b8" font-size="8.5">• 加法逼近：逐步修正系統誤差</text>
+              <text x="170" y="122" fill="#34d399" font-size="9" font-weight="bold">✔ 核心目標：顯著降低偏差 (Bias)</text>
+              <text x="170" y="138" fill="#fde047" font-size="8">需配合正則化與收縮率控制變異數</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+        <!-- 考題 1 -->
+        <div class="bg-slate-950 p-5 rounded-xl border border-slate-800 space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-mono font-bold text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-md border border-blue-500/20">
+              考題 01 · 偏差 (Bias) 與 變異數 (Variance) 原理
+            </span>
+            <span class="text-xs text-slate-500">難度：★☆☆☆☆</span>
+          </div>
+
+          <p class="text-sm font-medium text-white">
+            【單選題】關於決策樹（Decision Tree）、隨機森林（Random Forest）與梯度提升樹（GBDT）之特性，下列敘述何者<strong>錯誤</strong>？
+          </p>
+
+          <div class="space-y-2 text-xs">
+            <button onclick="checkQuiz(1, 'A')" class="quiz-btn-1 w-full text-left p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 transition text-slate-300">
+              (A) 隨機森林採用 Bagging 策略，各決策樹之間互不相依，可進行平行運算。
+            </button>
+            <button onclick="checkQuiz(1, 'B')" class="quiz-btn-1 w-full text-left p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 transition text-slate-300">
+              (B) GBDT 採用 Boosting 策略，其主要目標在於降低整體的變異數（Variance）。
+            </button>
+            <button onclick="checkQuiz(1, 'C')" class="quiz-btn-1 w-full text-left p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 transition text-slate-300">
+              (C) 單一決策樹若未設深度限制，容易對訓練資料產生過度擬合（Overfitting）。
+            </button>
+            <button onclick="checkQuiz(1, 'D')" class="quiz-btn-1 w-full text-left p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 transition text-slate-300">
+              (D) GBDT 在處理迴歸與分類任務時，其內部之基底弱學習器通常均為 CART 迴歸樹。
+            </button>
+          </div>
+
+          <div id="quizResult1" class="hidden p-3.5 rounded-lg border text-xs leading-relaxed"></div>
+        </div>
+
+        <!-- 考題 2 -->
+        <div class="bg-slate-950 p-5 rounded-xl border border-slate-800 space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-mono font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-md border border-amber-500/20">
+              考題 02 · XGBoost 演算法與工程優化機制
+            </span>
+            <span class="text-xs text-slate-500">難度：★★★☆☆</span>
+          </div>
+
+          <p class="text-sm font-medium text-white">
+            【單選題】XGBoost 在大數據分析競賽中廣受採用。下列何者<strong>不是</strong> XGBoost 相較於傳統 GBDT 的核心改進機制？
+          </p>
+
+          <div class="space-y-2 text-xs">
+            <button onclick="checkQuiz(2, 'A')" class="quiz-btn-2 w-full text-left p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 transition text-slate-300">
+              (A) 在近似損失函數時，同時採用了一階導數與二階泰勒展開式。
+            </button>
+            <button onclick="checkQuiz(2, 'B')" class="quiz-btn-2 w-full text-left p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 transition text-slate-300">
+              (B) 在目標函數中顯式加入包含葉節點數與葉節點輸出權重平方之正則化懲罰項。
+            </button>
+            <button onclick="checkQuiz(2, 'C')" class="quiz-btn-2 w-full text-left p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 transition text-slate-300">
+              (C) 將整棵樹模型的訓練架構完全改寫為無序列依賴的卷積深度神經網路進行並行化。
+            </button>
+            <button onclick="checkQuiz(2, 'D')" class="quiz-btn-2 w-full text-left p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 transition text-slate-300">
+              (D) 提出稀疏感知演算法（Sparsity-aware Split Finding），能自動學習缺失值預設分割方向。
+            </button>
+          </div>
+
+          <div id="quizResult2" class="hidden p-3.5 rounded-lg border text-xs leading-relaxed"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 底部 Footer -->
+  <footer class="border-t border-slate-800 bg-slate-900/60 py-6 mt-12 text-center text-xs text-slate-500 font-mono">
+    決策樹(Decision Tree)與梯度提升決策樹(Gradient Boosting Decision Tree, GBDT) 與XGBoost(eXtreme Gradient Boosting) 權威指南與動態模擬引擎 · 適用於機器學習教育與專業考照研習
+  </footer>
+
+  <!-- 互動邏輯 JavaScript -->
+  <script>
+    // IPAS 測驗判斷
+    function checkQuiz(qNum, selected) {
+      const resEl = document.getElementById(`quizResult${qNum}`);
+      resEl.classList.remove('hidden');
+
+      if (qNum === 1) {
+        if (selected === 'B') {
+          resEl.className = "p-3.5 rounded-lg border bg-emerald-950/40 border-emerald-500/50 text-emerald-300 text-xs";
+          resEl.innerHTML = `<strong>✔ 正確！答案為 (B)</strong><br>
+          <strong>試題詳解：</strong>Bagging 演算法（如 Random Forest）是以互不相依的多棵樹平均取樣，主要目的在於降低模型的<strong>變異數（Variance）</strong>；而 Boosting 演算法（如 GBDT、XGBoost）是以循序累加弱學習器擬合殘差的方式，核心目的在於降低模型的<strong>偏差（Bias）</strong>。因此選項 (B) 敘述錯誤。`;
+        } else {
+          resEl.className = "p-3.5 rounded-lg border bg-red-950/40 border-red-500/50 text-red-300 text-xs";
+          resEl.innerHTML = `<strong>✖ 答錯了，請再想想！</strong><br>提示：注意 Bagging（隨機森林）與 Boosting（GBDT）在降低偏差 (Bias) 與變異數 (Variance) 上的本質定位差異。`;
+        }
+      } else if (qNum === 2) {
+        if (selected === 'C') {
+          resEl.className = "p-3.5 rounded-lg border bg-emerald-950/40 border-emerald-500/50 text-emerald-300 text-xs";
+          resEl.innerHTML = `<strong>✔ 正確！答案為 (C)</strong><br>
+          <strong>試題詳解：</strong>XGBoost 本質仍屬於 Boosting 加法模型，第 $t$ 棵樹必須依賴第 $t-1$ 棵樹的輸出梯度，無法在樹的層面做到完全無依賴並行。XGBoost 的「平行加速」是落在<strong>特徵維度的切分點尋找（Split Finding）與分塊預排序（Block-level Parallelism）</strong>，絕非改為神經網路結構。`;
+        } else {
+          resEl.className = "p-3.5 rounded-lg border bg-red-950/40 border-red-500/50 text-red-300 text-xs";
+          resEl.innerHTML = `<strong>✖ 答錯了，請再想想！</strong><br>提示：思考 Boosting 樹與樹之間是否存在時序相依？XGBoost 的並行運算是在哪個維度實現的？`;
+        }
+      }
+    }
+
+    // 互動公式計算機
+    function calcXGBFormula() {
+      const GL = parseFloat(document.getElementById('calc_GL').value) || 0;
+      const HL = Math.max(0.001, parseFloat(document.getElementById('calc_HL').value) || 0.001);
+      const GR = parseFloat(document.getElementById('calc_GR').value) || 0;
+      const HR = Math.max(0.001, parseFloat(document.getElementById('calc_HR').value) || 0.001);
+      const lambda = Math.max(0, parseFloat(document.getElementById('calc_lambda').value) || 0);
+      const gamma = Math.max(0, parseFloat(document.getElementById('calc_gamma').value) || 0);
+
+      const wL = - GL / (HL + lambda);
+      const wR = - GR / (HR + lambda);
+
+      const scoreL = (GL * GL) / (HL + lambda);
+      const scoreR = (GR * GR) / (HR + lambda);
+      const scoreTotal = Math.pow(GL + GR, 2) / (HL + HR + lambda);
+
+      const gain = 0.5 * (scoreL + scoreR - scoreTotal) - gamma;
+
+      document.getElementById('res_wL').innerText = (wL >= 0 ? "+" : "") + wL.toFixed(3);
+      document.getElementById('res_wR').innerText = (wR >= 0 ? "+" : "") + wR.toFixed(3);
+      document.getElementById('res_gain').innerText = (gain >= 0 ? "+" : "") + gain.toFixed(2);
+
+      const decEl = document.getElementById('res_decision');
+      if (gain > 0) {
+        decEl.innerText = "✔ 允許切分 (Gain > 0)";
+        decEl.className = "text-xs px-2 py-0.5 rounded font-bold bg-emerald-500/20 text-emerald-300";
+      } else {
+        decEl.innerText = "✖ 剪枝抑制 (Gain ≤ 0)";
+        decEl.className = "text-xs px-2 py-0.5 rounded font-bold bg-red-500/20 text-red-300";
+      }
+    }
+
+    // ----------------------------------------------------
+    // 10 & 12 互動模擬器引擎核心
+    // ----------------------------------------------------
+    const N_POINTS = 50;
+    let dataX = [];
+    let dataY = [];
+    let predictions = [];
+    let residuals = [];
+    let treeCount = 0;
+    let isAutoPlaying = false;
+    let autoInterval = null;
+
+    let learningRate = 0.3;
+    let regLambda = 1.0;
+
+    function initData() {
+      dataX = [];
+      dataY = [];
+      predictions = new Array(N_POINTS).fill(0);
+      residuals = [];
+
+      for (let i = 0; i < N_POINTS; i++) {
+        const x = (i / (N_POINTS - 1)) * 10;
+        // 具備雙峰與輕微雜訊之非線性分佈
+        const y = Math.sin(x) * 1.6 + Math.cos(x * 0.7) * 0.9 + 0.12 * (x - 5);
+        dataX.push(x);
+        dataY.push(y);
+      }
+
+      const meanY = dataY.reduce((a, b) => a + b, 0) / N_POINTS;
+      predictions.fill(meanY);
+
+      calcResiduals();
+      treeCount = 0;
+      updateMetrics();
+      appendLog(`數據集已初始化 (50 個連續取樣點)。模型起步均值 = ${meanY.toFixed(3)}`);
+    }
+
+    function calcResiduals() {
+      residuals = [];
+      for (let i = 0; i < N_POINTS; i++) {
+        residuals.push(dataY[i] - predictions[i]);
+      }
+    }
+
+    function updateSimParams() {
+      learningRate = parseFloat(document.getElementById('lrInput').value);
+      regLambda = parseFloat(document.getElementById('lambdaInput').value);
+      document.getElementById('lrVal').innerText = learningRate.toFixed(2);
+      document.getElementById('lambdaVal').innerText = regLambda.toFixed(1);
+    }
+
+    function updateMetrics() {
+      let mse = 0;
+      for (let i = 0; i < N_POINTS; i++) {
+        mse += Math.pow(dataY[i] - predictions[i], 2);
+      }
+      mse /= N_POINTS;
+      document.getElementById('mseDisplay').innerText = mse.toFixed(4);
+      document.getElementById('treeCountDisplay').innerText = `${treeCount} 棵樹`;
+    }
+
+    function appendLog(msg) {
+      const logEl = document.getElementById('simLog');
+      const div = document.createElement('div');
+      div.className = "p-2 bg-slate-900 rounded-lg border border-slate-800 text-slate-300";
+      div.innerHTML = msg;
+      logEl.prepend(div);
+    }
+
+    function clearLog() {
+      document.getElementById('simLog').innerHTML = "";
+    }
+
+    function onModelTypeChange() {
+      resetSimulation();
+    }
+
+    // 尋找最佳切分點
+    function fitOneStump(targets) {
+      let bestGain = -Infinity;
+      let bestSplitIdx = 0;
+      let bestLeftVal = 0;
+      let bestRightVal = 0;
+      const modelType = document.getElementById('simModelType').value;
+
+      for (let s = 1; s < N_POINTS - 1; s++) {
+        const leftTargets = targets.slice(0, s);
+        const rightTargets = targets.slice(s);
+
+        let leftW = 0, rightW = 0, gain = 0;
+
+        if (modelType === 'dt' || modelType === 'gbdt') {
+          leftW = leftTargets.reduce((a, b) => a + b, 0) / leftTargets.length;
+          rightW = rightTargets.reduce((a, b) => a + b, 0) / rightTargets.length;
+
+          const leftVar = leftTargets.reduce((a, b) => a + Math.pow(b - leftW, 2), 0);
+          const rightVar = rightTargets.reduce((a, b) => a + Math.pow(b - rightW, 2), 0);
+          const totalVar = targets.reduce((a, b) => a + Math.pow(b, 2), 0);
+          gain = totalVar - (leftVar + rightVar);
+        } else {
+          // XGBoost 二階計算：針對 MSE 損失，g_i = -residual, h_i = 1
+          const g_left = -leftTargets.reduce((a, b) => a + b, 0);
+          const h_left = leftTargets.length * 1.0;
+          const g_right = -rightTargets.reduce((a, b) => a + b, 0);
+          const h_right = rightTargets.length * 1.0;
+
+          // 最優葉權重 w* = -G / (H + lambda)
+          leftW = -g_left / (h_left + regLambda);
+          rightW = -g_right / (h_right + regLambda);
+
+          const sL = Math.pow(g_left, 2) / (h_left + regLambda);
+          const sR = Math.pow(g_right, 2) / (h_right + regLambda);
+          const sTot = Math.pow(g_left + g_right, 2) / (h_left + h_right + regLambda);
+          gain = 0.5 * (sL + sR - sTot);
+        }
+
+        if (gain > bestGain) {
+          bestGain = gain;
+          bestSplitIdx = s;
+          bestLeftVal = leftW;
+          bestRightVal = rightW;
+        }
+      }
+
+      return {
+        splitX: (dataX[bestSplitIdx - 1] + dataX[bestSplitIdx]) / 2,
+        splitIndex: bestSplitIdx,
+        leftVal: bestLeftVal,
+        rightVal: bestRightVal,
+        gain: bestGain
+      };
+    }
+
+    // 單步執行演進
+    function stepSimulation() {
+      const modelType = document.getElementById('simModelType').value;
+      treeCount++;
+
+      if (modelType === 'dt') {
+        const stump = fitOneStump(dataY);
+        for (let i = 0; i < N_POINTS; i++) {
+          predictions[i] = i < stump.splitIndex ? stump.leftVal : stump.rightVal;
+        }
+        appendLog(`[DT 決策樹] 劃分於 X = ${stump.splitX.toFixed(2)}，左輸出 = ${stump.leftVal.toFixed(2)}，右輸出 = ${stump.rightVal.toFixed(2)}`);
+      } else if (modelType === 'gbdt') {
+        calcResiduals();
+        const stump = fitOneStump(residuals);
+        for (let i = 0; i < N_POINTS; i++) {
+          const delta = (i < stump.splitIndex ? stump.leftVal : stump.rightVal) * learningRate;
+          predictions[i] += delta;
+        }
+        appendLog(`[GBDT 迭代 #${treeCount}] 擬合偽殘差於 X = ${stump.splitX.toFixed(2)}，學習率 η = ${learningRate}`);
+      } else {
+        calcResiduals();
+        const stump = fitOneStump(residuals);
+        for (let i = 0; i < N_POINTS; i++) {
+          const delta = (i < stump.splitIndex ? stump.leftVal : stump.rightVal) * learningRate;
+          predictions[i] += delta;
+        }
+        appendLog(`[XGBoost 迭代 #${treeCount}] 二階增益 Gain = ${stump.gain.toFixed(2)}，正則項 λ = ${regLambda}`);
+      }
+
+      calcResiduals();
+      updateMetrics();
+      drawVisuals();
+
+      if (treeCount >= 25 && isAutoPlaying) {
+        toggleAutoPlay();
+        appendLog(`已達迭代上限 (25 輪)，自動模擬已停止。`);
+      }
+    }
+
+    // 自動播放控制
+    function toggleAutoPlay() {
+      const btn = document.getElementById('autoBtn');
+      if (isAutoPlaying) {
+        clearInterval(autoInterval);
+        isAutoPlaying = false;
+        btn.innerHTML = "<span>⚡</span> 一鍵自動模擬";
+        btn.className = "px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 font-black rounded-xl text-xs transition shadow-lg shadow-amber-500/20 flex items-center gap-1.5";
+      } else {
+        isAutoPlaying = true;
+        btn.innerHTML = "<span>⏹</span> 停止自動演化";
+        btn.className = "px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-black rounded-xl text-xs transition shadow-lg shadow-red-500/20 flex items-center gap-1.5";
+        autoInterval = setInterval(stepSimulation, 280);
+      }
+    }
+
+    function resetSimulation() {
+      if (isAutoPlaying) toggleAutoPlay();
+      initData();
+      drawVisuals();
+    }
+
+    // 繪製雙視圖畫布
+    function drawVisuals() {
+      const fitCanvas = document.getElementById('fitCanvas');
+      const resCanvas = document.getElementById('resCanvas');
+      if (!fitCanvas || !resCanvas) return;
+
+      const ctxFit = fitCanvas.getContext('2d');
+      const ctxRes = resCanvas.getContext('2d');
+
+      const w = fitCanvas.width;
+      const h = fitCanvas.height;
+
+      const mapX = (x) => 35 + (x / 10) * (w - 70);
+      const mapY = (y) => h / 2 - (y / 3.2) * (h * 0.42);
+
+      // --- 主擬合圖 ---
+      ctxFit.clearRect(0, 0, w, h);
+
+      // 基準網格線
+      ctxFit.strokeStyle = '#1e293b';
+      ctxFit.lineWidth = 1;
+      ctxFit.beginPath();
+      ctxFit.moveTo(35, h / 2);
+      ctxFit.lineTo(w - 35, h / 2);
+      ctxFit.stroke();
+
+      // 繪製真實數據點 (青色)
+      for (let i = 0; i < N_POINTS; i++) {
+        ctxFit.fillStyle = '#38bdf8';
+        ctxFit.beginPath();
+        ctxFit.arc(mapX(dataX[i]), mapY(dataY[i]), 3.8, 0, Math.PI * 2);
+        ctxFit.fill();
+      }
+
+      // 繪製模型階梯預測線 (琥珀金)
+      ctxFit.strokeStyle = '#fbbf24';
+      ctxFit.lineWidth = 2.5;
+      ctxFit.beginPath();
+      for (let i = 0; i < N_POINTS; i++) {
+        const px = mapX(dataX[i]);
+        const py = mapY(predictions[i]);
+        if (i === 0) ctxFit.moveTo(px, py);
+        else ctxFit.lineTo(px, py);
+      }
+      ctxFit.stroke();
+
+      // --- 殘差條狀圖 ---
+      const rh = resCanvas.height;
+      const mapResY = (r) => rh / 2 - (r / 2.6) * (rh * 0.42);
+
+      ctxRes.clearRect(0, 0, w, rh);
+
+      // 0 基準虛線
+      ctxRes.strokeStyle = '#334155';
+      ctxRes.lineWidth = 1;
+      ctxRes.setLineDash([4, 4]);
+      ctxRes.beginPath();
+      ctxRes.moveTo(35, rh / 2);
+      ctxRes.lineTo(w - 35, rh / 2);
+      ctxRes.stroke();
+      ctxRes.setLineDash([]);
+
+      for (let i = 0; i < N_POINTS; i++) {
+        const px = mapX(dataX[i]);
+        const zeroY = rh / 2;
+        const ry = mapResY(residuals[i] || 0);
+
+        ctxRes.strokeStyle = (residuals[i] >= 0) ? '#34d399' : '#f87171';
+        ctxRes.lineWidth = 2.5;
+        ctxRes.beginPath();
+        ctxRes.moveTo(px, zeroY);
+        ctxRes.lineTo(px, ry);
+        ctxRes.stroke();
+      }
+    }
+
+    // 視窗加載完成後自動初始化
+    window.addEventListener('DOMContentLoaded', () => {
+      initData();
+      calcXGBFormula();
+      drawVisuals();
+    });
+
+    // 視窗縮放時自適應畫布
+    window.addEventListener('resize', () => {
+      drawVisuals();
+    });
+  </script>
+</body>
+</html>
