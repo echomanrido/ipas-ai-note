@@ -1,0 +1,2108 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EP09. 卷積神經網路｜帶你看懂 CNN 的四種層、ResNet 和遷移學習</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            mono: ['Fira Code', 'Consolas', 'Courier New', 'monospace'],
+          },
+          colors: {
+            slate: {
+              850: '#152033',
+              950: '#0b1120',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- KaTeX for Math Equations -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+    onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+
+  <style>
+    /* 質感微發光與動畫特效 */
+    .glow-cyan {
+      box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.35);
+    }
+    .glow-purple {
+      box-shadow: 0 0 25px -5px rgba(168, 85, 247, 0.35);
+    }
+    @keyframes pulse-flow {
+      0% { stroke-dashoffset: 60; }
+      100% { stroke-dashoffset: 0; }
+    }
+    .flow-line {
+      stroke-dasharray: 6 4;
+      animation: pulse-flow 1.5s linear infinite;
+    }
+    .grid-cell {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased selection:bg-cyan-500 selection:text-slate-950">
+
+  <!-- 頂部浮動導航列 -->
+  <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-950/80 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span class="p-2 bg-gradient-to-tr from-cyan-600 to-indigo-600 rounded-xl shadow-lg">
+          <i data-lucide="layers" class="w-5 h-5 text-white"></i>
+        </span>
+        <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-cyan-400 via-sky-200 to-indigo-300 bg-clip-text text-transparent">
+          EP09. 卷積神經網路 (CNN)
+        </span>
+        <span class="hidden md:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-950 border border-cyan-800 text-cyan-300">
+          iPAS AI 核心考點
+        </span>
+      </div>
+
+      <nav class="hidden lg:flex items-center space-x-6 text-sm font-medium text-slate-300">
+        <a href="#section-1" class="hover:text-cyan-400 transition-colors">1. CNN 四大層</a>
+        <a href="#section-2" class="hover:text-cyan-400 transition-colors">2. 為什麼省運算</a>
+        <a href="#section-3" class="hover:text-cyan-400 transition-colors">3. 參數 vs FLOPs</a>
+        <a href="#section-4" class="hover:text-cyan-400 transition-colors">4. ResNet 殘差</a>
+        <a href="#section-5" class="hover:text-cyan-400 transition-colors">5. 遷移學習</a>
+        <a href="#section-quiz" class="hover:text-amber-400 transition-colors flex items-center gap-1">
+          <i data-lucide="check-circle-2" class="w-4 h-4 text-amber-400"></i>考點實測
+        </a>
+        <a href="#section-transcript" class="hover:text-teal-300 transition-colors flex items-center gap-1 text-cyan-400 font-semibold">
+          <i data-lucide="list-video" class="w-4 h-4 text-cyan-400"></i>時間軸逐字稿
+        </a>
+      </nav>
+
+      <div class="flex items-center space-x-3">
+        <button id="downloadBtn" class="flex items-center space-x-1.5 px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 rounded-lg border border-slate-700 transition shadow">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span>下載教材</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主視覺 Header -->
+  <section class="relative overflow-hidden pt-12 pb-16 border-b border-slate-800 bg-gradient-to-b from-slate-900 to-slate-950">
+    <div class="absolute -top-32 -left-32 w-96 h-96 bg-cyan-600/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute -top-32 -right-32 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
+    
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-950/80 border border-indigo-700/60 text-indigo-300 mb-6">
+        <i data-lucide="award" class="w-3.5 h-3.5"></i>
+        <span>iPAS AI 應用規劃師・中級科目三 系列精華</span>
+      </div>
+      <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white mb-6">
+        卷積神經網路全解析<br>
+        <span class="bg-gradient-to-r from-cyan-400 via-teal-300 to-indigo-400 bg-clip-text text-transparent">
+          CNN 四種層、ResNet 與遷移學習實務
+        </span>
+      </h1>
+      <p class="text-base sm:text-lg text-slate-400 max-w-3xl mx-auto leading-relaxed mb-8">
+        本教學整合視訊核心精華，透過向量視覺圖解、動態 SVG 計算沙盒與考題模擬，深度剖析卷積計算、感受野、全連接層瓶頸、梯度高速公路與邊緣硬體優化決策。
+      </p>
+
+      <!-- 色彩框圖例說明 -->
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs text-left max-w-4xl mx-auto">
+        <div class="p-2.5 rounded-lg bg-indigo-950/40 border border-indigo-500/40 text-indigo-200">
+          <span class="font-bold flex items-center gap-1.5"><i data-lucide="info" class="w-3.5 h-3.5 text-indigo-400"></i>藍紫框</span>
+          核心原理與定理
+        </div>
+        <div class="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-500/40 text-emerald-200">
+          <span class="font-bold flex items-center gap-1.5"><i data-lucide="key" class="w-3.5 h-3.5 text-emerald-400"></i>綠色框</span>
+          記憶口訣與公式
+        </div>
+        <div class="p-2.5 rounded-lg bg-amber-950/40 border border-amber-500/40 text-amber-200">
+          <span class="font-bold flex items-center gap-1.5"><i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-amber-400"></i>琥珀框</span>
+          實戰考點與陷阱
+        </div>
+        <div class="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/40 text-rose-200">
+          <span class="font-bold flex items-center gap-1.5"><i data-lucide="cpu" class="w-3.5 h-3.5 text-rose-400"></i>玫瑰框</span>
+          邊緣硬體與瓶頸
+        </div>
+        <div class="p-2.5 rounded-lg bg-cyan-950/40 border border-cyan-500/40 text-cyan-200">
+          <span class="font-bold flex items-center gap-1.5"><i data-lucide="git-branch" class="w-3.5 h-3.5 text-cyan-400"></i>青色框</span>
+          遷移學習決策樹
+        </div>
+      </div>
+
+      <!-- 7 大精華投影片快速索引列 -->
+      <div class="mt-6 p-4 rounded-2xl bg-slate-900/80 border border-slate-800 max-w-4xl mx-auto space-y-2">
+        <div class="flex items-center justify-between text-xs font-bold text-slate-300">
+          <span class="flex items-center gap-2">
+            <i data-lucide="presentation" class="w-4 h-4 text-cyan-400"></i>
+            <span>EP09 原片教學投影片快速導覽（共 7 張・支援全螢幕放大與時間軸連動）：</span>
+          </span>
+          <span class="text-[11px] text-slate-500 font-mono">點擊卡片跳轉</span>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-1 text-xs font-medium">
+          <a href="#slide-card-ep09-01" class="p-2 rounded-lg bg-indigo-950/60 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-900/60 transition text-center flex flex-col items-center">
+            <span class="font-mono font-bold text-[10px] text-indigo-400">P.01 [00:41]</span>
+            <span class="truncate w-full text-[11px]">四種層架構</span>
+          </a>
+          <a href="#slide-card-ep09-02" class="p-2 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/60 transition text-center flex flex-col items-center">
+            <span class="font-mono font-bold text-[10px] text-emerald-400">P.02 [02:41]</span>
+            <span class="truncate w-full text-[11px]">為什麼省運算</span>
+          </a>
+          <a href="#slide-card-ep09-03" class="p-2 rounded-lg bg-rose-950/60 border border-rose-500/40 text-rose-300 hover:bg-rose-900/60 transition text-center flex flex-col items-center">
+            <span class="font-mono font-bold text-[10px] text-rose-400">P.03 [05:31]</span>
+            <span class="truncate w-full text-[11px]">參數與FLOPs</span>
+          </a>
+          <a href="#slide-card-ep09-04" class="p-2 rounded-lg bg-purple-950/60 border border-purple-500/40 text-purple-300 hover:bg-purple-900/60 transition text-center flex flex-col items-center">
+            <span class="font-mono font-bold text-[10px] text-purple-400">P.04 [08:25]</span>
+            <span class="truncate w-full text-[11px]">經典架構招牌</span>
+          </a>
+          <a href="#slide-card-ep09-05" class="p-2 rounded-lg bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/60 transition text-center flex flex-col items-center">
+            <span class="font-mono font-bold text-[10px] text-cyan-400">P.05 [11:31]</span>
+            <span class="truncate w-full text-[11px]">遷移學習做法</span>
+          </a>
+          <a href="#slide-card-ep09-06" class="p-2 rounded-lg bg-amber-950/60 border border-amber-500/40 text-amber-300 hover:bg-amber-900/60 transition text-center flex flex-col items-center">
+            <span class="font-mono font-bold text-[10px] text-amber-400">P.06 [09:42]</span>
+            <span class="truncate w-full text-[11px]">最容易搞混的</span>
+          </a>
+          <a href="#slide-card-ep09-07" class="p-2 rounded-lg bg-yellow-950/60 border border-yellow-500/40 text-yellow-300 hover:bg-yellow-900/60 transition text-center flex flex-col items-center">
+            <span class="font-mono font-bold text-[10px] text-yellow-400">P.07 [13:41]</span>
+            <span class="truncate w-full text-[11px]">帶走三句話</span>
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 內容區 -->
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-20">
+
+    <!-- 單元 1 -->
+    <section id="section-1" class="space-y-6">
+      <div class="flex items-center space-x-3">
+        <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold">1</div>
+        <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">CNN 的四種核心層架構</h2>
+      </div>
+
+      <!-- 投影片 SLIDE-CARD-EP09-01 卡片 (藍紫框) -->
+      <div id="slide-card-ep09-01" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-indigo-500 bg-indigo-950/40 p-4 sm:p-5 transition-all duration-300 shadow-lg shadow-indigo-500/10 hover:shadow-indigo-500/20">
+        <div class="flex items-center justify-between pb-3 border-b border-indigo-900/60 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-indigo-500/20 text-indigo-300 border-indigo-400/40 flex items-center gap-1.5">
+              <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+              投影片 01
+            </span>
+            <span class="text-xs sm:text-sm font-bold text-slate-200">重點一：四種層（卷積層、激活層、池化層、全連接層）</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="scrollToTs('ts-0041')" class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-indigo-900/60 text-indigo-300 border border-indigo-700 hover:bg-indigo-800 transition cursor-pointer flex items-center gap-1" title="跳轉至時間軸">
+              <i data-lucide="clock" class="w-3 h-3"></i>
+              [00:00:41]
+            </button>
+            <button onclick="openLightbox('EP09/EP09-01.png', '重點一：四種層架構拆解', '[00:00:41]', 'ts-0041')" class="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-indigo-300 font-semibold transition px-2 py-1 rounded hover:bg-indigo-900/40 cursor-pointer" title="點擊全螢幕放大">
+              <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-indigo-900/40 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP09/EP09-01.png', '重點一：四種層架構拆解', '[00:00:41]', 'ts-0041')">
+          <img src="EP09/EP09-01.png" alt="重點一：四種層" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-950/0 group-hover/img:bg-slate-950/30 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/90 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow border border-indigo-500/50 flex items-center gap-1.5">
+              <i data-lucide="zoom-in" class="w-4 h-4 text-indigo-400"></i>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-900/80 p-3 rounded-xl border border-indigo-900/40">
+          <strong class="text-indigo-300">【四層架構速記比喻】</strong><br>
+          ① <b>卷積層 (Conv)</b>：像拿放大鏡一小塊一小塊看，滑動抓取邊緣、紋理等局部特徵；<br>
+          ② <b>激活層 (ReLU)</b>：像只留下有反應的訊號，加入非線性；<br>
+          ③ <b>池化層 (Pool)</b>：像把照片縮圖重點還在，降低尺寸且<b>完全零參數</b>；<br>
+          ④ <b>全連接層 (Dense)</b>：攤平後組合所有特徵做綜合判斷下結論，吃最多參數。
+        </div>
+      </div>
+
+
+      <!-- 核心原理藍框 -->
+      <div class="p-5 rounded-xl bg-indigo-950/40 border-l-4 border-indigo-500 border-slate-800 text-slate-200 space-y-3">
+        <div class="flex items-center gap-2 font-bold text-indigo-300 text-base">
+          <i data-lucide="boxes" class="w-5 h-5 text-indigo-400"></i>
+          典型 CNN 處理流程：局部特徵萃取到全域語意決策
+        </div>
+        <p class="text-sm leading-relaxed text-slate-300">
+          標準 CNN 通常由 <b>卷積層 (Conv)</b>、<b>激活層 (Activation)</b>、<b>池化層 (Pooling)</b> 循環堆疊，最後交由 <b>全連接層 (FC)</b> 完成分類或回歸預測。
+        </p>
+      </div>
+
+      <!-- 四層詳細說明卡片 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 卷積層 -->
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 relative hover:border-cyan-500/40 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs uppercase font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">Layer 01</span>
+            <i data-lucide="scan" class="w-5 h-5 text-cyan-400"></i>
+          </div>
+          <h3 class="text-xl font-bold text-white">卷積層 (Convolutional Layer)</h3>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            透過小型<b>濾波器 (Filter / Kernel)</b> 在輸入特徵圖上逐點滑動點積。淺層萃取垂直邊緣、橫向邊緣與顏色斑塊；中深層則逐步重組為紋理、物件局部輪廓。
+          </p>
+          <div class="text-xs text-slate-500 font-mono">
+            ★ 特點：每個濾波器的權重均透過反向傳播自動學習更新。
+          </div>
+        </div>
+
+        <!-- 激活層 -->
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 relative hover:border-cyan-500/40 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs uppercase font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">Layer 02</span>
+            <i data-lucide="zap" class="w-5 h-5 text-cyan-400"></i>
+          </div>
+          <h3 class="text-xl font-bold text-white">激活層 (Activation Layer)</h3>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            引入<b>非線性轉換</b>，最常用為 <b>ReLU</b>：$f(x) = \max(0, x)$。若無激活層，多層卷積相連本質上仍只是單純的線性矩陣乘法，無法擬合複雜視覺特徵。
+          </p>
+          <div class="text-xs text-slate-500 font-mono">
+            ★ 作用：篩選抑制負向弱訊號，保留高強度激發特徵。
+          </div>
+        </div>
+
+        <!-- 池化層 -->
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 relative hover:border-cyan-500/40 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs uppercase font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">Layer 03</span>
+            <i data-lucide="shrink" class="w-5 h-5 text-cyan-400"></i>
+          </div>
+          <h3 class="text-xl font-bold text-white">池化層 (Pooling Layer)</h3>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            縮小特徵圖尺寸、降低空間解析度。常見有<b>最大池化 (Max Pooling)</b>（取最強訊號）與<b>平均池化 (Average Pooling)</b>（平滑統計），提供輕度的<b>平移不變性 (Translation Invariance)</b>。
+          </p>
+          <div class="text-xs text-slate-500 font-mono">
+            ★ 重點：僅有固定的數學縮減規則，<b>完全沒有需要訓練的權重參數</b>。
+          </div>
+        </div>
+
+        <!-- 全連接層 -->
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 relative hover:border-cyan-500/40 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs uppercase font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">Layer 04</span>
+            <i data-lucide="network" class="w-5 h-5 text-cyan-400"></i>
+          </div>
+          <h3 class="text-xl font-bold text-white">全連接層 (Fully Connected Layer)</h3>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            先將三維特徵圖攤平成一維向量 (Flatten)，隨後與後續神經元全數相連。負責綜合整張圖像的所有抽象空間特徵，輸出類別機率（搭配 Softmax）或回歸值。
+          </p>
+          <div class="text-xs text-slate-500 font-mono">
+            ★ 痛點：參數量極大，佔據傳統模型 70%~80% 儲存空間。
+          </div>
+        </div>
+      </div>
+
+      <!-- 琥珀色考點提醒框 -->
+      <div class="p-5 rounded-xl bg-amber-950/30 border-l-4 border-amber-500 border-slate-800 text-slate-200">
+        <div class="flex items-center gap-2 font-bold text-amber-300 text-sm mb-1.5">
+          <i data-lucide="alert-octagon" class="w-4 h-4 text-amber-400"></i>
+          iPAS 考點高頻陷阱：池化層 (Pooling Layer) 的角色
+        </div>
+        <p class="text-sm text-slate-300 leading-relaxed">
+          考試題目問及：「醫療 X 光 CNN 影像辨識中，卷積後加入池化層的主要目的為何？」<br>
+          <strong class="text-amber-200">標準正解：</strong>池化層能<b>降低特徵圖空間維度</b>、減少後續參數量與防止過擬合，且<b>池化層本身無任何可學習參數 (Zero Trainable Parameters)</b>。不可誤選「增加特徵多樣性」或「增加非線性能力」。
+        </p>
+      </div>
+
+      <!-- 互動 SVG 1: 卷積與池化動態可視化沙盒 -->
+      <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+          <div>
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+              <i data-lucide="sparkles" class="w-5 h-5 text-cyan-400"></i>
+              互動沙盒 1：卷積與最大池化即時運算
+            </h3>
+            <p class="text-xs text-slate-400">點擊「單步計算」或「自動播放」，觀察 $3 \times 3$ 卷積核與 $2 \times 2$ Max Pooling 如何運作與連動。</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="convStepBtn" class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-xs font-semibold text-white rounded-lg transition">
+              單步滑動 (Step)
+            </button>
+            <button id="convPlayBtn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 rounded-lg border border-slate-700 transition">
+              自動播放
+            </button>
+            <button id="convResetBtn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-400 rounded-lg border border-slate-700 transition">
+              重設
+            </button>
+          </div>
+        </div>
+
+        <!-- 向量畫布與網格 -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          <!-- 5x5 輸入 -->
+          <div class="lg:col-span-5 flex flex-col items-center">
+            <span class="text-xs font-bold text-cyan-400 mb-2 font-mono">輸入特徵圖 Input (5×5)</span>
+            <div id="inputGrid" class="grid grid-cols-5 gap-1.5 p-3 bg-slate-950 rounded-xl border border-slate-800 shadow-inner">
+              <!-- 由 JS 動態繪製 25 格 -->
+            </div>
+            <div class="text-[11px] text-slate-500 mt-2 font-mono">青色邊框高亮處為當前 $3 \times 3$ 感受野</div>
+          </div>
+
+          <!-- 運算核心箭頭與 Kernel 矩陣 -->
+          <div class="lg:col-span-2 flex flex-col items-center justify-center space-y-3">
+            <span class="text-xs font-bold text-slate-400 font-mono">濾波器 Kernel (3×3)</span>
+            <div class="grid grid-cols-3 gap-1 p-2 bg-slate-950 rounded-lg border border-cyan-800/50 text-[10px] font-mono text-center text-cyan-300">
+              <span class="p-1 bg-cyan-950/60 rounded">1</span><span class="p-1 bg-cyan-950/60 rounded">0</span><span class="p-1 bg-cyan-950/60 rounded">-1</span>
+              <span class="p-1 bg-cyan-950/60 rounded">1</span><span class="p-1 bg-cyan-950/60 rounded">0</span><span class="p-1 bg-cyan-950/60 rounded">-1</span>
+              <span class="p-1 bg-cyan-950/60 rounded">1</span><span class="p-1 bg-cyan-950/60 rounded">0</span><span class="p-1 bg-cyan-950/60 rounded">-1</span>
+            </div>
+            <i data-lucide="arrow-right" class="w-6 h-6 text-cyan-400 hidden lg:block"></i>
+            <i data-lucide="arrow-down" class="w-6 h-6 text-cyan-400 lg:hidden"></i>
+            <div id="calcFormula" class="text-[11px] font-mono text-slate-400 text-center bg-slate-950 p-2 rounded border border-slate-800">
+              計算中...
+            </div>
+          </div>
+
+          <!-- 3x3 輸出 Feature Map & 2x2 Max Pool -->
+          <div class="lg:col-span-5 flex flex-col sm:flex-row items-center justify-around gap-4">
+            <div class="flex flex-col items-center">
+              <span class="text-xs font-bold text-indigo-400 mb-2 font-mono">卷積輸出 Feature Map (3×3)</span>
+              <div id="outputGrid" class="grid grid-cols-3 gap-2 p-3 bg-slate-950 rounded-xl border border-slate-800 shadow-inner">
+                <!-- 由 JS 動態繪製 9 格 -->
+              </div>
+            </div>
+
+            <div class="flex flex-col items-center">
+              <span class="text-xs font-bold text-emerald-400 mb-2 font-mono">Max Pool (2×2, S=1)</span>
+              <div id="poolGrid" class="grid grid-cols-2 gap-2 p-3 bg-slate-950 rounded-xl border border-slate-800 shadow-inner">
+                <!-- 由 JS 動態繪製 4 格 -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 單元 2 -->
+    <section id="section-2" class="space-y-6">
+      <div class="flex items-center space-x-3">
+        <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold">2</div>
+        <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">CNN 為什麼省？兩大核心奧義</h2>
+      </div>
+
+      <!-- 投影片 SLIDE-CARD-EP09-02 卡片 (翡翠綠框) -->
+      <div id="slide-card-ep09-02" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-emerald-500 bg-emerald-950/40 p-4 sm:p-5 transition-all duration-300 shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20">
+        <div class="flex items-center justify-between pb-3 border-b border-emerald-900/60 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-emerald-500/20 text-emerald-300 border-emerald-400/40 flex items-center gap-1.5">
+              <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+              投影片 02
+            </span>
+            <span class="text-xs sm:text-sm font-bold text-slate-200">重點二：CNN 為什麼省（局部感受野 vs 權重共享）</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="scrollToTs('ts-0241')" class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-emerald-900/60 text-emerald-300 border border-emerald-700 hover:bg-emerald-800 transition cursor-pointer flex items-center gap-1" title="跳轉至時間軸">
+              <i data-lucide="clock" class="w-3 h-3"></i>
+              [00:02:41]
+            </button>
+            <button onclick="openLightbox('EP09/EP09-02.png', '重點二：CNN 為什麼省', '[00:02:41]', 'ts-0241')" class="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-emerald-300 font-semibold transition px-2 py-1 rounded hover:bg-emerald-900/40 cursor-pointer" title="點擊全螢幕放大">
+              <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-emerald-900/40 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP09/EP09-02.png', '重點二：CNN 為什麼省', '[00:02:41]', 'ts-0241')">
+          <img src="EP09/EP09-02.png" alt="重點二：CNN 為什麼省" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-950/0 group-hover/img:bg-slate-950/30 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/90 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow border border-emerald-500/50 flex items-center gap-1.5">
+              <i data-lucide="zoom-in" class="w-4 h-4 text-emerald-400"></i>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-900/80 p-3 rounded-xl border border-emerald-900/40">
+          <strong class="text-emerald-300">【省運算雙核心機制】</strong><br>
+          • <b>局部感受野</b>：每個神經元只看一小塊，不用每個像素都連到每個神經元；<br>
+          • <b>權重共享</b>：同一個濾波器整張圖重複使用，參數大減；貓眼在左上、右下都認得：同一組 9 個權重滑過整張圖，都算出高分！
+        </div>
+      </div>
+
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 局部感受野 -->
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+          <div class="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+            <i data-lucide="eye" class="w-5 h-5"></i>
+          </div>
+          <h3 class="text-xl font-bold text-white">1. 局部感受野 (Local Receptive Field)</h3>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            傳統 MLP 要求每個神經元必須連結圖像上<b>每一顆像素</b>；然而視覺特徵（如貓耳朵、輪廓邊緣）只具有<b>空間局部相關性</b>。CNN 規定神經元只需觀察 $3 \times 3$ 或 $5 \times 5$ 的微小區域，斬斷了 99% 以上無意義的遠距互連。
+          </p>
+        </div>
+
+        <!-- 權重共享 -->
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+          <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+            <i data-lucide="copy-check" class="w-5 h-5"></i>
+          </div>
+          <h3 class="text-xl font-bold text-white">2. 權重共享 (Weight Sharing)</h3>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            相同的特徵偵測器（例如垂直邊緣濾波器）在整張圖片的不同位置都是通用的！CNN 讓<b>同一組濾波器權重在全圖滑動重複利用</b>，實現平移等價性（Translation Equivariance），參數量不會隨輸入圖片大小膨脹。
+          </p>
+        </div>
+      </div>
+
+      <!-- 翡翠綠公式框 -->
+      <div class="p-6 rounded-2xl bg-emerald-950/30 border-2 border-emerald-500/40 text-slate-200 space-y-4">
+        <div class="flex items-center gap-2 font-bold text-emerald-300 text-lg">
+          <i data-lucide="calculator" class="w-5 h-5 text-emerald-400"></i>
+          卷積層參數量計算必背公式（含偏置 Bias）
+        </div>
+        <div class="bg-slate-950 p-4 rounded-xl font-mono text-center text-emerald-300 text-base sm:text-lg border border-emerald-900">
+          $$\text{Parameters} = \Big( K_h \times K_w \times C_{in} + 1 \Big) \times N_{filters}$$
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-300">
+          <ul class="space-y-1.5 list-disc pl-5 text-slate-400">
+            <li>$K_h, K_w$：濾波器高度與寬度（例如 $3 \times 3$）</li>
+            <li>$C_{in}$：輸入通道數（RGB 圖為 3，前層特徵圖則為其 Filter 數）</li>
+          </ul>
+          <ul class="space-y-1.5 list-disc pl-5 text-slate-400">
+            <li>$+1$：每個濾波器對應的 1 個偏置項 (Bias)</li>
+            <li>$N_{filters}$：本層使用的濾波器個數（決定輸出通道數 $C_{out}$）</li>
+          </ul>
+        </div>
+        <div class="p-3 bg-emerald-900/20 rounded-lg text-xs text-emerald-200 border border-emerald-700/40">
+          <b>關鍵特性：</b>卷積層參數量與輸入圖像的高和寬（$H, W$）<b>完全無關</b>！即便將輸入圖片從 $224 \times 224$ 放大到 $1024 \times 1024$，卷積層的權重總數依然完全不變（僅滑動計算次數增加）。
+        </div>
+      </div>
+    </section>
+
+    <!-- 單元 3 -->
+    <section id="section-3" class="space-y-6">
+      <div class="flex items-center space-x-3">
+        <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold">3</div>
+        <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">參數量 (Params) vs 運算量 (FLOPs) 深度剖析</h2>
+      </div>
+
+      <!-- 投影片 SLIDE-CARD-EP09-03 卡片 (玫瑰紅框) -->
+      <div id="slide-card-ep09-03" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-rose-500 bg-rose-950/40 p-4 sm:p-5 transition-all duration-300 shadow-lg shadow-rose-500/10 hover:shadow-rose-500/20">
+        <div class="flex items-center justify-between pb-3 border-b border-rose-900/60 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-rose-500/20 text-rose-300 border-rose-400/40 flex items-center gap-1.5">
+              <i data-lucide="cpu" class="w-3.5 h-3.5"></i>
+              投影片 03
+            </span>
+            <span class="text-xs sm:text-sm font-bold text-slate-200">重點三：全連接吃參數、卷積吃運算（FLOPs vs 參數量對比）</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="scrollToTs('ts-0531')" class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-rose-900/60 text-rose-300 border border-rose-700 hover:bg-rose-800 transition cursor-pointer flex items-center gap-1" title="跳轉至時間軸">
+              <i data-lucide="clock" class="w-3 h-3"></i>
+              [00:05:31]
+            </button>
+            <button onclick="openLightbox('EP09/EP09-03.png', '重點三：全連接吃參數、卷積吃運算', '[00:05:31]', 'ts-0531')" class="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-rose-300 font-semibold transition px-2 py-1 rounded hover:bg-rose-900/40 cursor-pointer" title="點擊全螢幕放大">
+              <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-rose-900/40 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP09/EP09-03.png', '重點三：全連接吃參數、卷積吃運算', '[00:05:31]', 'ts-0531')">
+          <img src="EP09/EP09-03.png" alt="重點三：全連接吃參數、卷積吃運算" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-950/0 group-hover/img:bg-slate-950/30 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/90 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow border border-rose-500/50 flex items-center gap-1.5">
+              <i data-lucide="zoom-in" class="w-4 h-4 text-rose-400"></i>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-900/80 p-3 rounded-xl border border-rose-900/40">
+          <strong class="text-rose-300">【核心對比指標：FLOPs 浮點運算次數 vs 參數量】</strong><br>
+          • <b>卷積層</b>：參數量較少（權重共享），但運算量 FLOPs 最多（每個像素滑動位置都算一次）；<br>
+          • <b>全連接層</b>：參數量最多（每個輸入配每個神經元），運算量 FLOPs 較少（一次性矩陣乘法）；<br>
+          • <b>落地痛點</b>：VGG16 等傳統網路全連接層吃掉 74% 記憶體，邊緣端需用 GAP（全域平均池化）縮減。
+        </div>
+      </div>
+
+
+      <!-- 綠色口訣框 -->
+      <div class="p-5 rounded-xl bg-emerald-950/40 border-l-4 border-emerald-500 border-slate-800 text-slate-200">
+        <div class="text-emerald-300 font-bold text-lg mb-1 flex items-center gap-2">
+          <i data-lucide="bookmark-check" class="w-5 h-5 text-emerald-400"></i>
+          黃金口訣：「全連接吃參數，卷積吃運算」
+        </div>
+        <p class="text-sm text-slate-300 leading-relaxed">
+          <b>全連接層 (FC)</b>：參數極巨，主要消耗記憶體空間 (RAM / Flash)，決定模型檔案的大小。<br>
+          <b>卷積層 (Conv)</b>：參數小，但濾波器需在整張畫面上進行成千上萬次滑動乘加運算，主要消耗運算時間與計算單元 (FLOPs)，決定推論延遲與 FPS。
+        </p>
+      </div>
+
+      <!-- VGG16 案例拆解 -->
+      <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <i data-lucide="pie-chart" class="w-5 h-5 text-rose-400"></i>
+          實例震撼彈：經典 VGG-16 的參數黑洞
+        </h3>
+        <p class="text-sm text-slate-300 leading-relaxed">
+          VGG-16 總參數量高達 <b>1.38 億 (138M)</b>。但在卷積萃取完成後，特徵圖展開為 $7 \times 7 \times 512 = 25,088$ 維向量，接續第一層全連接層 (4096 神經元)：
+        </p>
+        <div class="p-3 bg-slate-950 rounded-xl font-mono text-center text-sm text-rose-300 border border-slate-800">
+          $\text{FC1 Params} = 25,088 \times 4,096 + 4,096 \approx \mathbf{102,764,544} \text{ (約 1.03 億個參數！)}$
+        </div>
+        <p class="text-xs text-slate-400">
+          光這單一一層就吃掉了整個網路超過 <b>74%</b> 的參數總量！這就是為什麼早期的模型難以直接燒錄到微控制器或手機端的原因。
+        </p>
+      </div>
+
+      <!-- 玫瑰色邊緣優化框 -->
+      <div class="p-6 rounded-2xl bg-rose-950/20 border-2 border-rose-500/40 text-slate-200 space-y-4">
+        <div class="flex items-center gap-2 font-bold text-rose-300 text-lg">
+          <i data-lucide="cpu" class="w-5 h-5 text-rose-400"></i>
+          邊緣裝置 (Edge AI) 部署的兩大診斷對策
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- 情境 1 -->
+          <div class="p-4 bg-slate-900/90 rounded-xl border border-rose-900/50 space-y-2">
+            <div class="text-sm font-bold text-rose-300 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+              情境 A：模型容量太大 / RAM 爆掉
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              <b>瓶頸所在：</b>全連接層參數量過載。<br>
+              <b>解法：</b>改用<b>全域平均池化 (Global Average Pooling, GAP)</b> 直接將特徵圖空間壓縮為 1 個數值取代 FC 層；並搭配<b>剪枝 (Pruning)</b> 與 <b>INT8 量化 (Quantization)</b>。
+            </p>
+          </div>
+
+          <!-- 情境 2 -->
+          <div class="p-4 bg-slate-900/90 rounded-xl border border-rose-900/50 space-y-2">
+            <div class="text-sm font-bold text-amber-300 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+              情境 B：畫面卡頓 / FPS 低 / 延遲高
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              <b>瓶頸所在：</b>卷積層 FLOPs 乘加運算次數過高。<br>
+              <b>解法：</b>採用 <b>MobileNet 的深度可分離卷積 (Depthwise Separable Conv)</b>，將標準卷積拆分為 Depthwise + Pointwise，運算量可驟降 8 至 9 倍！
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 單元 4 -->
+    <section id="section-4" class="space-y-6">
+      <div class="flex items-center space-x-3">
+        <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold">4</div>
+        <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">經典 CNN 架構演進與 ResNet 突破</h2>
+      </div>
+
+      <!-- 投影片 SLIDE-CARD-EP09-04 卡片 (紫色框) -->
+      <div id="slide-card-ep09-04" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-purple-500 bg-purple-950/40 p-4 sm:p-5 transition-all duration-300 shadow-lg shadow-purple-500/10 hover:shadow-purple-500/20">
+        <div class="flex items-center justify-between pb-3 border-b border-purple-900/60 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-purple-500/20 text-purple-300 border-purple-400/40 flex items-center gap-1.5">
+              <i data-lucide="award" class="w-3.5 h-3.5"></i>
+              投影片 04
+            </span>
+            <span class="text-xs sm:text-sm font-bold text-slate-200">重點四：一個架構一個招牌（AlexNet、VGG、GoogLeNet）</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="scrollToTs('ts-0825')" class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-purple-900/60 text-purple-300 border border-purple-700 hover:bg-purple-800 transition cursor-pointer flex items-center gap-1" title="跳轉至時間軸">
+              <i data-lucide="clock" class="w-3 h-3"></i>
+              [00:08:25]
+            </button>
+            <button onclick="openLightbox('EP09/EP09-04.png', '重點四：一個架構一個招牌', '[00:08:25]', 'ts-0825')" class="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-purple-300 font-semibold transition px-2 py-1 rounded hover:bg-purple-900/40 cursor-pointer" title="點擊全螢幕放大">
+              <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-purple-900/40 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP09/EP09-04.png', '重點四：一個架構一個招牌', '[00:08:25]', 'ts-0825')">
+          <img src="EP09/EP09-04.png" alt="重點四：一個架構一個招牌" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-950/0 group-hover/img:bg-slate-950/30 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/90 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow border border-purple-500/50 flex items-center gap-1.5">
+              <i data-lucide="zoom-in" class="w-4 h-4 text-purple-400"></i>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-900/80 p-3 rounded-xl border border-purple-900/40">
+          <strong class="text-purple-300">【三大經典開國招牌特徵】</strong><br>
+          • <b>AlexNet (2012)</b>：開國元老！ReLU、Dropout（訓練時隨機關閉神經元）、GPU 訓練開啟深度學習時代；<br>
+          • <b>VGG</b>：疊積木！一直堆疊 $3 	imes 3$ 小濾波器，架構簡單整齊；<br>
+          • <b>GoogLeNet</b>：多倍放大鏡！Inception 模組在同一層並行不同大小的濾波器，多尺度觀察。
+        </div>
+      </div>
+
+
+      <!-- 架構巡禮 -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
+          <span class="font-bold text-cyan-400">AlexNet (2012)</span>
+          <p class="text-slate-400">引入 ReLU、Dropout、雙 GPU 訓練，開啟深度學習時代</p>
+        </div>
+        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
+          <span class="font-bold text-cyan-400">VGG (2014)</span>
+          <p class="text-slate-400">模組化堆疊小型 $3 \times 3$ 卷積核，證明深度重要性</p>
+        </div>
+        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
+          <span class="font-bold text-cyan-400">GoogLeNet</span>
+          <p class="text-slate-400">Inception 多尺度濾波器平行運算，首次引入 1x1 降維</p>
+        </div>
+        <div class="p-3 bg-slate-900 rounded-xl border border-indigo-400/50 bg-indigo-950/20 space-y-1">
+          <span class="font-bold text-indigo-300">ResNet (2015)</span>
+          <p class="text-slate-300">殘差跳躍連接，突破百層訓練瓶頸，奪得 ImageNet 冠軍</p>
+        </div>
+        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
+          <span class="font-bold text-cyan-400">DenseNet</span>
+          <p class="text-slate-400">每層特徵圖與其後所有層全面密集串聯，極致特徵復用</p>
+        </div>
+        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
+          <span class="font-bold text-cyan-400">MobileNet</span>
+          <p class="text-slate-400">深度可分離卷積，專為行動與嵌入式設備打造輕量級骨幹</p>
+        </div>
+      </div>
+
+      <!-- 琥珀色觀念對比框 -->
+      <div class="p-5 rounded-xl bg-amber-950/30 border-l-4 border-amber-500 border-slate-800 text-slate-200">
+        <div class="flex items-center gap-2 font-bold text-amber-300 text-sm mb-1.5">
+          <i data-lucide="git-commit" class="w-4 h-4 text-amber-400"></i>
+          iPAS 必考辨析：網路退化 (Degradation) vs 過擬合 (Overfitting)
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-300 mt-2">
+          <div class="p-3 bg-slate-950 rounded-lg border border-slate-800">
+            <span class="font-bold text-amber-400">過擬合 (Overfitting)：</span><br>
+            訓練集表現極佳（訓練誤差極低），但測試集泛化能力差（測試誤差高）。
+          </div>
+          <div class="p-3 bg-slate-950 rounded-lg border border-slate-800">
+            <span class="font-bold text-rose-400">退化現象 (Degradation)：</span><br>
+            當網路持續加深（例如從 20 層加深至 56 層），<b>連訓練集上的誤差都變大</b>！這並非過擬合，而是深層網路難以最佳化。
+          </div>
+        </div>
+      </div>
+
+      <!-- 投影片 SLIDE-CARD-EP09-06 卡片 (琥珀橙框) -->
+      <div id="slide-card-ep09-06" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-amber-500 bg-amber-950/40 p-4 sm:p-5 transition-all duration-300 shadow-lg shadow-amber-500/10 hover:shadow-amber-500/20">
+        <div class="flex items-center justify-between pb-3 border-b border-amber-900/60 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-amber-500/20 text-amber-300 border-amber-400/40 flex items-center gap-1.5">
+              <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
+              投影片 06
+            </span>
+            <span class="text-xs sm:text-sm font-bold text-slate-200">高頻盲點：最容易搞混的三大對抗概念</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="scrollToTs('ts-0825')" class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-amber-900/60 text-amber-300 border border-amber-700 hover:bg-amber-800 transition cursor-pointer flex items-center gap-1" title="跳轉至時間軸">
+              <i data-lucide="clock" class="w-3 h-3"></i>
+              [00:09:42]
+            </button>
+            <button onclick="openLightbox('EP09/EP09-06.png', '最容易搞混的三大對抗概念', '[00:09:42]', 'ts-0825')" class="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-amber-300 font-semibold transition px-2 py-1 rounded hover:bg-amber-900/40 cursor-pointer" title="點擊全螢幕放大">
+              <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-amber-900/40 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP09/EP09-06.png', '最容易搞混的三大對抗概念', '[00:09:42]', 'ts-0825')">
+          <img src="EP09/EP09-06.png" alt="最容易搞混的" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-950/0 group-hover/img:bg-slate-950/30 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/90 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow border border-amber-500/50 flex items-center gap-1.5">
+              <i data-lucide="zoom-in" class="w-4 h-4 text-amber-400"></i>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-900/80 p-3 rounded-xl border border-amber-900/40">
+          <strong class="text-amber-300">【考試辨析必考陷阱】</strong><br>
+          • <b>退化 (Degradation)</b>：連訓練誤差都變大，深層難訓練 vs <b>過擬合 (Overfitting)</b>：訓練集好、驗證集差；<br>
+          • <b>特徵萃取</b>：全凍結骨幹，只訓練分類頭 vs <b>微調</b>：解凍深層一起訓練，搭配極小學習率；<br>
+          • <b>GoogLeNet</b>：同一層並行不同大小的濾波器 vs <b>ResNet</b>：殘差跳躍連接（$+1$ 梯度高速公路）。
+        </div>
+      </div>
+
+
+      <!-- ResNet 原理數學與殘差塊 -->
+      <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <h3 class="text-xl font-bold text-white flex items-center gap-2">
+          <i data-lucide="zap" class="w-5 h-5 text-indigo-400"></i>
+          殘差結構 (Residual Block)：恆等映射的奇蹟
+        </h3>
+        <p class="text-sm text-slate-300 leading-relaxed">
+          ResNet 不讓網路直接擬合底層映射 $\mathcal{H}(x)$，而是透過<b>跳躍連接 (Skip Connection)</b> 擬合殘差映射 $\mathcal{F}(x) = \mathcal{H}(x) - x$。最終輸出為：
+        </p>
+        <div class="p-3 bg-slate-950 rounded-xl font-mono text-center text-base text-cyan-300 border border-indigo-900">
+          $$\mathcal{H}(x) = \mathcal{F}(x) + x$$
+        </div>
+        <p class="text-xs text-slate-400 leading-relaxed">
+          <b>為什麼能防止退化？</b>若新增的額外卷積層對模型沒有幫助，最佳化演算法只要輕易將權重學為 0，即 $\mathcal{F}(x) = 0$，整體輸出就自動退回為 $\mathcal{H}(x) = x$（恆等映射），確保深層網路表現<b>絕不劣於淺層網路</b>。
+        </p>
+      </div>
+
+      <!-- 互動 SVG 2: ResNet 殘差捷徑 vs 普通平原網路梯度傳播 -->
+      <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+          <div>
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+              <i data-lucide="activity" class="w-5 h-5 text-cyan-400"></i>
+              互動沙盒 2：反向傳播「梯度高速公路」模擬
+            </h3>
+            <p class="text-xs text-slate-400">切換架構，觀察反向傳播時，梯度在平原網路中如何衰減，以及 ResNet 捷徑如何直通淺層。</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="togglePlainNetBtn" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white transition border border-slate-700">
+              普通深層平原網路 (Plain Net)
+            </button>
+            <button id="toggleResNetBtn" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 transition">
+              ResNet 殘差網路 (With Skip)
+            </button>
+          </div>
+        </div>
+
+        <!-- 向量圖形區 -->
+        <div class="w-full overflow-x-auto py-4">
+          <svg id="gradientSvg" viewBox="0 0 800 240" class="w-full min-w-[700px] h-60 bg-slate-950 rounded-xl border border-slate-800 shadow-inner">
+            <defs>
+              <linearGradient id="gradPath" x1="100%" y1="0%" x2="0%" y2="0%">
+                <stop offset="0%" stop-color="#38bdf8" />
+                <stop offset="100%" stop-color="#818cf8" />
+              </linearGradient>
+              <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#38bdf8" />
+              </marker>
+              <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#34d399" />
+              </marker>
+            </defs>
+
+            <!-- 節點群 -->
+            <g id="svgNodes">
+              <!-- 輸入 -->
+              <rect x="50" y="90" width="80" height="40" rx="8" fill="#1e293b" stroke="#475569" stroke-width="2"/>
+              <text x="90" y="115" fill="#e2e8f0" font-size="12" font-family="sans-serif" text-anchor="middle" font-weight="bold">輸入 x</text>
+
+              <!-- Conv 1 -->
+              <rect x="200" y="90" width="90" height="40" rx="8" fill="#0f172a" stroke="#0ea5e9" stroke-width="2"/>
+              <text x="245" y="115" fill="#38bdf8" font-size="12" font-family="sans-serif" text-anchor="middle">Conv 1</text>
+
+              <!-- Conv 2 -->
+              <rect x="360" y="90" width="90" height="40" rx="8" fill="#0f172a" stroke="#0ea5e9" stroke-width="2"/>
+              <text x="405" y="115" fill="#38bdf8" font-size="12" font-family="sans-serif" text-anchor="middle">Conv 2</text>
+
+              <!-- 加總節點 (+) -->
+              <circle id="addNode" cx="540" cy="110" r="18" fill="#312e81" stroke="#818cf8" stroke-width="2"/>
+              <text id="addNodeSign" x="540" y="116" fill="#ffffff" font-size="18" font-family="sans-serif" text-anchor="middle" font-weight="bold">+</text>
+
+              <!-- 激活 ReLU -->
+              <rect x="620" y="90" width="80" height="40" rx="8" fill="#1e1b4b" stroke="#a855f7" stroke-width="2"/>
+              <text x="660" y="115" fill="#c084fc" font-size="12" font-family="sans-serif" text-anchor="middle">ReLU / H(x)</text>
+            </g>
+
+            <!-- 前向傳播主線條 -->
+            <path d="M 130 110 L 200 110" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+            <path d="M 290 110 L 360 110" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+            <path d="M 450 110 L 522 110" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+            <path d="M 558 110 L 620 110" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+            <!-- 殘差跳躍線 (動態由 JS 切換) -->
+            <g id="skipConnectionGroup">
+              <path d="M 140 110 C 140 30, 540 30, 540 92" fill="none" stroke="#34d399" stroke-width="3" stroke-dasharray="6 3" class="flow-line" marker-end="url(#arrow-green)"/>
+              <text x="340" y="45" fill="#34d399" font-size="12" font-family="monospace" text-anchor="middle" font-weight="bold">恆等跳躍捷徑 Identity Shortcut (x)</text>
+            </g>
+
+            <!-- 反向傳播動態梯度波 -->
+            <g id="backpropGradients">
+              <!-- 主幹衰減漸變 -->
+              <path id="decayPath" d="M 620 125 L 140 125" fill="none" stroke="#f43f5e" stroke-width="2" stroke-dasharray="4 2"/>
+              <text id="gradientStatusText" x="400" y="210" fill="#38bdf8" font-size="13" font-family="sans-serif" text-anchor="middle" font-weight="bold">
+                梯度經由跳躍連接無損回傳：$\frac{\partial \mathcal{E}}{\partial x} = \frac{\partial \mathcal{E}}{\partial \mathcal{H}} \cdot (\frac{\partial \mathcal{F}}{\partial x} + 1)$，常數 1 提供高速公路！
+              </text>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- 單元 5 -->
+    <section id="section-5" class="space-y-6">
+      <div class="flex items-center space-x-3">
+        <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold">5</div>
+        <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">遷移學習 (Transfer Learning) 實務策略</h2>
+      </div>
+
+      <!-- 投影片 SLIDE-CARD-EP09-05 卡片 (青色框) -->
+      <div id="slide-card-ep09-05" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-cyan-500 bg-cyan-950/40 p-4 sm:p-5 transition-all duration-300 shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20">
+        <div class="flex items-center justify-between pb-3 border-b border-cyan-900/60 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-cyan-500/20 text-cyan-300 border-cyan-400/40 flex items-center gap-1.5">
+              <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+              投影片 05
+            </span>
+            <span class="text-xs sm:text-sm font-bold text-slate-200">重點五：遷移學習（ImageNet 借眼睛、換分類頭）</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="scrollToTs('ts-1131')" class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-cyan-900/60 text-cyan-300 border border-cyan-700 hover:bg-cyan-800 transition cursor-pointer flex items-center gap-1" title="跳轉至時間軸">
+              <i data-lucide="clock" class="w-3 h-3"></i>
+              [00:11:31]
+            </button>
+            <button onclick="openLightbox('EP09/EP09-05.png', '重點五：遷移學習實務', '[00:11:31]', 'ts-1131')" class="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-cyan-300 font-semibold transition px-2 py-1 rounded hover:bg-cyan-900/40 cursor-pointer" title="點擊全螢幕放大">
+              <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-cyan-900/40 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP09/EP09-05.png', '重點五：遷移學習實務', '[00:11:31]', 'ts-1131')">
+          <img src="EP09/EP09-05.png" alt="重點五：遷移學習" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-950/0 group-hover/img:bg-slate-950/30 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/90 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow border border-cyan-500/50 flex items-center gap-1.5">
+              <i data-lucide="zoom-in" class="w-4 h-4 text-cyan-400"></i>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-900/80 p-3 rounded-xl border border-cyan-900/40">
+          <strong class="text-cyan-300">【遷移學習實務解題】</strong><br>
+          • <b>做法</b>：拿別人在 ImageNet（上百萬張照片、分成 1000 類）預先訓練好的模型，換掉最後的分類頭（輸出哪一類的最後 1~2 層）；<br>
+          • <b>借用眼睛</b>：前面幾層早已學會看邊緣、紋理、形狀 $ightarrow$ 直接「借別人練好的眼睛」，小樣本任務必備！
+        </div>
+      </div>
+
+
+      <!-- 核心原理青色框 -->
+      <div class="p-5 rounded-xl bg-cyan-950/40 border-l-4 border-cyan-500 border-slate-800 text-slate-200 space-y-2">
+        <div class="flex items-center gap-2 font-bold text-cyan-300 text-base">
+          <i data-lucide="share-2" class="w-5 h-5 text-cyan-400"></i>
+          站在巨人的肩膀上：借用 ImageNet 練好的百萬雙眼睛
+        </div>
+        <p class="text-sm text-slate-300 leading-relaxed">
+          卷積網路的前幾層所學到的特徵多為通用的邊緣、弧線與斑塊。遷移學習利用在超大型資料集（如 ImageNet 1400 萬張圖）預先訓練好的骨幹權重，大幅降低自身專案對資料量與訓練時間的需求。
+        </p>
+      </div>
+
+      <!-- 兩大策略對比 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs px-2.5 py-1 rounded-full bg-blue-950 border border-blue-700 text-blue-300 font-bold">策略 A</span>
+            <i data-lucide="lock" class="w-5 h-5 text-blue-400"></i>
+          </div>
+          <h3 class="text-xl font-bold text-white">特徵提取 (Feature Extraction)</h3>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            <b>做法：</b>完全凍結 (Freeze) 所有預訓練卷積層，僅砍掉最後的全連接層，重新換上一組新分類頭（例如 2 類或 5 類）並僅訓練該新頭部。
+          </p>
+          <div class="text-xs text-slate-400 bg-slate-950 p-3 rounded-lg border border-slate-800">
+            <b>適用情境：</b>目標資料量少（小樣本）、且目標影像與 ImageNet 常見物體相似度高。
+          </div>
+        </div>
+
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-950 border border-emerald-700 text-emerald-300 font-bold">策略 B</span>
+            <i data-lucide="unlock" class="w-5 h-5 text-emerald-400"></i>
+          </div>
+          <h3 class="text-xl font-bold text-white">微調 (Fine-Tuning)</h3>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            <b>做法：</b>除了訓練新頭部外，同時解凍部分或全部的深層卷積層，並使用<b>極小的學習率（如 0.0001～0.00001）</b>協同更新。
+          </p>
+          <div class="text-xs text-slate-400 bg-slate-950 p-3 rounded-lg border border-slate-800">
+            <b>適用情境：</b>資料量充足、或目標影像領域與通用影像有一定差異；極小學習率是為了防止洗掉原有優秀特徵權重。
+          </div>
+        </div>
+      </div>
+
+      <!-- 互動沙盒 3: 遷移學習決策儀表板與視覺骨幹高亮 -->
+      <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
+        <div>
+          <h3 class="text-lg font-bold text-white flex items-center gap-2">
+            <i data-lucide="sliders" class="w-5 h-5 text-cyan-400"></i>
+            互動沙盒 3：遷移學習最佳策略動態決策模擬器
+          </h3>
+          <p class="text-xs text-slate-400">拖曳下方滑桿設定專案情境，動態觀察各卷積層的「凍結/解凍狀態」與推薦超參數策略。</p>
+        </div>
+
+        <!-- 雙滑桿操作 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 p-4 bg-slate-950 rounded-xl border border-slate-800">
+          <div class="space-y-2">
+            <div class="flex justify-between text-xs font-semibold">
+              <span class="text-slate-300">1. 資料集樣本數量</span>
+              <span id="dataSizeLabel" class="text-cyan-400 font-mono">少量 (約數百~2000張)</span>
+            </div>
+            <input id="dataSizeSlider" type="range" min="0" max="1" step="1" value="0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+            <div class="flex justify-between text-[10px] text-slate-500">
+              <span>少量樣本 (&lt; 3,000)</span>
+              <span>大量樣本 (&gt; 50,000)</span>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <div class="flex justify-between text-xs font-semibold">
+              <span class="text-slate-300">2. 任務領域相似度</span>
+              <span id="simLabel" class="text-cyan-400 font-mono">低相似 (如醫療切片/X光)</span>
+            </div>
+            <input id="simSlider" type="range" min="0" max="1" step="1" value="0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+            <div class="flex justify-between text-[10px] text-slate-500">
+              <span>極低 (專業顯微/工業探傷)</span>
+              <span>極高 (貓狗/日常物件)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 動態模型層可視化圖解 -->
+        <div class="space-y-3">
+          <span class="text-xs font-mono text-slate-400 font-bold block">模型網路層凍結/訓練狀態圖解：</span>
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center text-xs font-mono">
+            <!-- Conv1 -->
+            <div id="layer-c1" class="p-3 rounded-xl border border-blue-500/50 bg-blue-950/40 text-blue-300 transition-all flex flex-col items-center gap-1">
+              <i data-lucide="lock" class="w-4 h-4 text-blue-400"></i>
+              <span class="font-bold">Conv 1~2</span>
+              <span class="text-[10px] text-blue-400/80">淺層通用邊緣</span>
+            </div>
+            <!-- Conv2 -->
+            <div id="layer-c2" class="p-3 rounded-xl border border-blue-500/50 bg-blue-950/40 text-blue-300 transition-all flex flex-col items-center gap-1">
+              <i data-lucide="lock" class="w-4 h-4 text-blue-400"></i>
+              <span class="font-bold">Conv 3~4</span>
+              <span class="text-[10px] text-blue-400/80">中層紋理輪廓</span>
+            </div>
+            <!-- Conv3 -->
+            <div id="layer-c3" class="p-3 rounded-xl border border-blue-500/50 bg-blue-950/40 text-blue-300 transition-all flex flex-col items-center gap-1">
+              <i data-lucide="lock" class="w-4 h-4 text-blue-400"></i>
+              <span class="font-bold">Conv 5</span>
+              <span class="text-[10px] text-blue-400/80">深層語意部件</span>
+            </div>
+            <!-- GAP -->
+            <div class="p-3 rounded-xl border border-slate-700 bg-slate-950 text-slate-400 transition-all flex flex-col items-center gap-1">
+              <i data-lucide="shrink" class="w-4 h-4 text-slate-500"></i>
+              <span class="font-bold">GAP / Pool</span>
+              <span class="text-[10px] text-slate-500">降維無參數</span>
+            </div>
+            <!-- FC Head -->
+            <div class="p-3 rounded-xl border border-rose-500/60 bg-rose-950/40 text-rose-300 transition-all flex flex-col items-center gap-1">
+              <i data-lucide="sparkles" class="w-4 h-4 text-rose-400"></i>
+              <span class="font-bold">New FC Head</span>
+              <span class="text-[10px] text-rose-300">新任務分類頭</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 建議對策卡片 -->
+        <div id="transferAdviceCard" class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+          <!-- JS 內容注入 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 互動測驗單元 (iPAS 模擬) -->
+    <section id="section-quiz" class="space-y-6 pt-6 border-t border-slate-800">
+      <div class="flex items-center space-x-3">
+        <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold">
+          <i data-lucide="help-circle" class="w-5 h-5"></i>
+        </div>
+        <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">iPAS 認證考點實戰模擬測驗</h2>
+      </div>
+      <p class="text-sm text-slate-400">以下 3 題為影片所涵蓋之標準考古題型與陷阱變體，請點選答案進行驗證：</p>
+
+      <!-- 測驗題列表 -->
+      <div class="space-y-6" id="quizContainer">
+        <!-- 第 1 題 -->
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4" data-quiz="1">
+          <div class="flex items-center justify-between">
+            <span class="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">Q1・核心架構考點</span>
+          </div>
+          <p class="text-base font-semibold text-white leading-relaxed">
+            在設計卷積神經網路（CNN）分析醫療胸部 X 光時，工程師在多組卷積層後皆加入了「最大池化層 (Max Pooling Layer)」。請問加入池化層的最主要技術效益與目的為何？
+          </p>
+          <div class="space-y-2 text-sm">
+            <button onclick="checkAnswer(1, 0, this)" class="w-full text-left p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 transition">
+              (A) 增加卷積層的可學習參數量，提升模型擬合高解析度影像的能力
+            </button>
+            <button onclick="checkAnswer(1, 1, this)" class="w-full text-left p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 transition">
+              (B) 降低特徵圖的空間維度，藉此降低計算量與後續全連接層的參數負擔
+            </button>
+            <button onclick="checkAnswer(1, 2, this)" class="w-full text-left p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 transition">
+              (C) 提供連續非線性映射函數，完全取代 ReLU 激活函數之功能
+            </button>
+            <button onclick="checkAnswer(1, 3, this)" class="w-full text-left p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 transition">
+              (D) 將圖像由二維特徵強制轉化為單一純量概率值
+            </button>
+          </div>
+          <div id="quiz-feedback-1" class="hidden p-4 rounded-xl text-xs leading-relaxed"></div>
+        </div>
+
+        <!-- 第 2 題 -->
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4" data-quiz="2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">Q2・架構演進考點</span>
+          </div>
+          <p class="text-base font-semibold text-white leading-relaxed">
+            當深度卷積神經網路從 20 層加深到 56 層時，研發團隊發現模型在「訓練集 (Training Set)」上的誤差不減反增。此種現象並非傳統過擬合，而是網路退化 (Degradation)。請問下列哪一種架構設計最能有效解決此問題？
+          </p>
+          <div class="space-y-2 text-sm">
+            <button onclick="checkAnswer(2, 0, this)" class="w-full text-left p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 transition">
+              (A) AlexNet 的雙 GPU 分流平行運算機制
+            </button>
+            <button onclick="checkAnswer(2, 1, this)" class="w-full text-left p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 transition">
+              (B) ResNet 的殘差跳躍連接 (Skip Connection) 恆等映射
+            </button>
+            <button onclick="checkAnswer(2, 2, this)" class="w-full text-left p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 transition">
+              (C) VGG 的 $3 \times 3$ 連續小濾波器堆疊
+            </button>
+            <button onclick="checkAnswer(2, 3, this)" class="w-full text-left p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 transition">
+              (D) 增大每層全連接層的神經元數量至 8192
+            </button>
+          </div>
+          <div id="quiz-feedback-2" class="hidden p-4 rounded-xl text-xs leading-relaxed"></div>
+        </div>
+
+        <!-- 第 3 題 -->
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4" data-quiz="3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">Q3・遷移學習實戰考點</span>
+          </div>
+          <p class="text-base font-semibold text-white leading-relaxed">
+            某智慧醫療專案僅收集到 2,000 張罕見癌症病理切片影像。為了快速開發且防止嚴重過擬合，團隊決定採用已在大型 ImageNet 上預先訓練好的 ResNet-50。請問下列何者為當前最佳的訓練策略？
+          </p>
+          <div class="space-y-2 text-sm">
+            <button onclick="checkAnswer(3, 0, this)" class="w-full text-left p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 transition">
+              (A) 凍結 ResNet 全部卷積骨幹層，僅訓練隨機初始化的小型分類輸出頭
+            </button>
+            <button onclick="checkAnswer(3, 1, this)" class="w-full text-left p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 transition">
+              (B) 隨機重設所有權重，以極大學習率 (0.1) 從頭訓練所有 50 層
+            </button>
+            <button onclick="checkAnswer(3, 2, this)" class="w-full text-left p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 transition">
+              (C) 解凍所有層，並不使用任何預訓練權重，直接採用無監督對比學習
+            </button>
+            <button onclick="checkAnswer(3, 3, this)" class="w-full text-left p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 transition">
+              (D) 拔除池化層並將全連接層大幅堆疊為 5 層深層感知機
+            </button>
+          </div>
+          <div id="quiz-feedback-3" class="hidden p-4 rounded-xl text-xs leading-relaxed"></div>
+        </div>
+      </div>
+    </section>
+
+    
+      <!-- 投影片 SLIDE-CARD-EP09-07 卡片 (金黃框) -->
+      <div id="slide-card-ep09-07" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-yellow-500 bg-yellow-950/40 p-4 sm:p-5 transition-all duration-300 shadow-lg shadow-yellow-500/10 hover:shadow-yellow-500/20">
+        <div class="flex items-center justify-between pb-3 border-b border-yellow-900/60 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-yellow-500/20 text-yellow-300 border-yellow-400/40 flex items-center gap-1.5">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+              投影片 07
+            </span>
+            <span class="text-xs sm:text-sm font-bold text-slate-200">這集帶走三句話：臨考 30 秒快速口訣總整理</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="scrollToTs('ts-1341')" class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-yellow-900/60 text-yellow-300 border border-yellow-700 hover:bg-yellow-800 transition cursor-pointer flex items-center gap-1" title="跳轉至時間軸">
+              <i data-lucide="clock" class="w-3 h-3"></i>
+              [00:13:41]
+            </button>
+            <button onclick="openLightbox('EP09/EP09-07.png', '這集帶走三句話：臨考 30 秒快速口訣', '[00:13:41]', 'ts-1341')" class="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-yellow-300 font-semibold transition px-2 py-1 rounded hover:bg-yellow-900/40 cursor-pointer" title="點擊全螢幕放大">
+              <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-yellow-900/40 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP09/EP09-07.png', '這集帶走三句話：臨考 30 秒快速口訣', '[00:13:41]', 'ts-1341')">
+          <img src="EP09/EP09-07.png" alt="這集帶走三句話" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-950/0 group-hover/img:bg-slate-950/30 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/90 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow border border-yellow-500/50 flex items-center gap-1.5">
+              <i data-lucide="zoom-in" class="w-4 h-4 text-yellow-400"></i>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-900/80 p-3 rounded-xl border border-yellow-900/40">
+          <strong class="text-yellow-300">【全集精華帶走三句話】</strong><br>
+          ① <b>四種層</b>：放大鏡（Conv 抓局部）、留訊號（ReLU 非線性）、縮圖（Pool 降維零參數）、下結論（Dense 全連接）；<br>
+          ② <b>全連接吃參數，卷積吃運算</b>；<br>
+          ③ <b>層數一深練不動，用 ResNet 開捷徑</b>；<b>遷移學習：借別人練好的眼睛</b>！
+        </div>
+      </div>
+
+
+    <!-- 【新增核心】完整時間軸逐字稿單元 -->
+    <section id="section-transcript" class="space-y-8 pt-10 border-t-2 border-slate-800">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-teal-950/80 border border-teal-700/60 text-teal-300 mb-2">
+            <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+            <span>完整時間軸同步・圖文逐字稿</span>
+          </div>
+          <h2 class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight flex items-center gap-3">
+            <span>原影音時間軸完整逐字稿</span>
+            <span class="text-xs px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 font-mono font-normal">全片長 14:58</span>
+          </h2>
+          <p class="text-sm text-slate-400 mt-1">
+            依據原教學影片完整口播內容收錄，精確對齊時間標籤，融合 SVG 示意圖、概念重點高亮框與快速跳轉互動。
+          </p>
+        </div>
+
+        <!-- 複製逐字稿純文字按鈕 -->
+        <button id="copyTranscriptBtn" class="self-start md:self-auto flex items-center space-x-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-xl border border-slate-700 shadow transition active:scale-95">
+          <i data-lucide="copy" class="w-4 h-4 text-cyan-400"></i>
+          <span>複製全部逐字稿</span>
+        </button>
+      </div>
+
+      <!-- 逐字稿搜尋列與章節過濾標籤 -->
+      <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <div class="relative">
+          <i data-lucide="search" class="w-5 h-5 text-slate-500 absolute left-4 top-1/2 -translate-y-1/2"></i>
+          <input id="transcriptSearch" type="text" placeholder="搜尋逐字稿關鍵字（例如：池化、VGG、梯度消失、ResNet、微調、學習率）..." class="w-full pl-12 pr-10 py-3 bg-slate-950 rounded-xl border border-slate-800 focus:border-cyan-500 focus:outline-none text-sm text-slate-200 placeholder-slate-500 transition">
+          <button id="clearSearchBtn" class="hidden absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <!-- 分類過濾標籤列 -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs no-scrollbar" id="chapterFilterList">
+          <button data-cat="all" class="filter-tab px-3 py-1.5 rounded-lg bg-cyan-600 text-white font-medium whitespace-nowrap transition">全部章節 (All)</button>
+          <button data-cat="intro" class="filter-tab px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 whitespace-nowrap transition">片頭與考點引入</button>
+          <button data-cat="four-layers" class="filter-tab px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 whitespace-nowrap transition">重點一：CNN四種層</button>
+          <button data-cat="saving" class="filter-tab px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 whitespace-nowrap transition">重點二：為何省運算</button>
+          <button data-cat="params-flops" class="filter-tab px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 whitespace-nowrap transition">重點三：參數量與運算量</button>
+          <button data-cat="resnet" class="filter-tab px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 whitespace-nowrap transition">重點四：經典模型與ResNet</button>
+          <button data-cat="transfer" class="filter-tab px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 whitespace-nowrap transition">重點五：遷移學習實務</button>
+          <button data-cat="exam" class="filter-tab px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 whitespace-nowrap transition">考題解析與總結</button>
+        </div>
+      </div>
+
+      <!-- 垂直時間軸主軌道 -->
+      <div class="relative pl-6 sm:pl-8 border-l-2 border-slate-800 space-y-12" id="timelineTrack">
+
+        <!-- 段落 1: 開場與考題拋出 [00:00:00 - 00:00:40] -->
+        <article id="ts-0000" class="timeline-item relative group" data-category="intro" data-keywords="開場 考題 醫療 X光 池化層 預測">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-1.5 w-4 h-4 rounded-full bg-slate-900 border-2 border-cyan-400 group-hover:scale-125 transition-transform"></div>
+          
+          <div class="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+              <div class="flex items-center gap-2">
+                <span class="cursor-pointer select-none px-2.5 py-1 rounded bg-cyan-950 border border-cyan-800 text-cyan-400 font-mono text-xs font-bold hover:bg-cyan-900 transition flex items-center gap-1.5 time-tag" data-time="00:00:00">
+                  <i data-lucide="play-circle" class="w-3.5 h-3.5"></i>
+                  00:00:00 - 00:00:40
+                </span>
+                <span class="text-xs text-slate-400 font-medium">開場：卷積神經網路核心與考題預覽</span>
+              </div>
+              <span class="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-400">章節：導言</span>
+            </div>
+
+            <!-- 琥珀色重點框 -->
+            <div class="p-3.5 rounded-xl bg-amber-950/40 border-l-4 border-amber-500 text-xs text-amber-200">
+              <b>【考題切入】</b>「在設計 CNN 分析胸部 X 光時，為何要在卷積層後加入池化層？」本集將帶您徹底搞懂其深層運算機理。
+            </div>
+
+            <p class="text-sm text-slate-300 leading-relaxed text-content">
+              哈囉大家好，我是韋哥！歡迎回到「iPAS AI 應用規劃師」中級科目三系列課程。今天來到第九集（EP09），我們要探討深度學習在電腦視覺領域最具代表性的基石——<b>卷積神經網路（Convolutional Neural Network, CNN）</b>。在證照考試中，CNN 的出現頻率極高，不僅考四大基本層的功能，更常考參數量公式、ResNet 為何能克服退化，以及遷移學習在小樣本醫療影像上的微調策略。我們直接以 X 光醫療影像辨識的池化層考題切入，帶大家步步拆解！
+            </p>
+          </div>
+        </article>
+
+        <!-- 段落 2: CNN 四大核心層 [00:00:41 - 00:02:40] -->
+        <article id="ts-0041" class="timeline-item relative group" data-category="four-layers" data-keywords="卷積層 激活層 池化層 全連接層 最大池化 平均池化 參數 空間維度">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-1.5 w-4 h-4 rounded-full bg-slate-900 border-2 border-indigo-500 group-hover:scale-125 transition-transform"></div>
+
+          <div class="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+              <div class="flex items-center gap-2">
+                <span class="cursor-pointer select-none px-2.5 py-1 rounded bg-indigo-950 border border-indigo-800 text-indigo-300 font-mono text-xs font-bold hover:bg-indigo-900 transition flex items-center gap-1.5 time-tag" data-time="00:00:41">
+                  <i data-lucide="play-circle" class="w-3.5 h-3.5"></i>
+                  00:00:41 - 00:02:40
+                </span>
+                <span class="text-xs text-slate-400 font-medium">重點一：CNN 的四種核心層架構拆解</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[11px] px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">重點 1</span>
+                <button onclick="openLightbox('EP09/EP09-01.png', '重點一：四種層架構拆解', '[00:00:41]', 'ts-0041')" class="px-2 py-0.5 text-[11px] font-bold rounded bg-indigo-600/30 text-indigo-200 border border-indigo-500/50 hover:bg-indigo-600 transition flex items-center gap-1 cursor-pointer">
+                  <i data-lucide="image" class="w-3 h-3"></i>
+                  <span>投影片 01</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+              <div class="md:col-span-8 space-y-3">
+                <!-- 藍紫重點框 -->
+                <div class="p-3.5 rounded-xl bg-indigo-950/40 border-l-4 border-indigo-500 text-xs text-indigo-200">
+                  <b>【四層標準流程】</b>卷積層（局部特徵提取） $\rightarrow$ 激活層（ReLU非線性） $\rightarrow$ 池化層（降維下採樣，無參數） $\rightarrow$ 全連接層（綜合特徵輸出決策）。
+                </div>
+
+                <p class="text-sm text-slate-300 leading-relaxed text-content">
+                  CNN 是如何模擬生物視覺的呢？一張輸入圖片進入網路後，會依序通過四種層：<br>
+                  1. <b>卷積層 (Conv Layer) [00:00:41]</b>：利用滑動的小型 Filter（如 $3 \times 3$）與影像進行逐點有點乘積，前幾層捕捉線條、光暗斑塊與邊緣特徵。<br>
+                  2. <b>激活層 (Activation Layer) [00:00:50]</b>：通常接上 ReLU 函數，篩除負值並保留正向強刺激，賦予網路強大的非線性擬合能力。<br>
+                  3. <b>池化層 (Pooling Layer) [00:01:50]</b>：分為最大池化 (Max Pooling) 與平均池化 (Average Pooling)。最大池化取區塊最強訊號，最能保留邊緣紋理。<b>請切記：池化層僅是統計縮圖運算，它完全沒有任何需要學習的權重參數！</b>[00:02:07]<br>
+                  4. <b>全連接層 (FC Layer) [00:01:03]</b>：將末端的二維特徵圖攤平成一維陣列，進行全域特徵整合並交由 Softmax 輸出分類機率。
+                </p>
+              </div>
+
+              <!-- SVG 示意插圖：四層流向圖 -->
+              <div class="md:col-span-4 bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-col items-center">
+                <svg viewBox="0 0 200 130" class="w-full h-auto">
+                  <rect x="10" y="20" width="30" height="30" fill="#0284c7" rx="3"/>
+                  <text x="25" y="65" fill="#38bdf8" font-size="8" text-anchor="middle">Conv</text>
+                  <path d="M 45 35 L 60 35" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+                  <rect x="65" y="23" width="24" height="24" fill="#6366f1" rx="3"/>
+                  <text x="77" y="65" fill="#818cf8" font-size="8" text-anchor="middle">ReLU</text>
+                  <path d="M 94 35 L 110 35" stroke="#475569" stroke-width="1.5"/>
+
+                  <rect x="115" y="27" width="16" height="16" fill="#10b981" rx="3"/>
+                  <text x="123" y="65" fill="#34d399" font-size="8" text-anchor="middle">Pool</text>
+                  <path d="M 136 35 L 152 35" stroke="#475569" stroke-width="1.5"/>
+
+                  <rect x="157" y="10" width="10" height="50" fill="#f43f5e" rx="3"/>
+                  <text x="162" y="75" fill="#fb7185" font-size="8" text-anchor="middle">FC Flatten</text>
+
+                  <text x="100" y="110" fill="#94a3b8" font-size="9" text-anchor="middle">空間解析度遞減 ⤑ 語意抽象度提升</text>
+                </svg>
+                <span class="text-[10px] text-slate-500 font-mono mt-1">CNN 四大層標準數據流</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- 段落 3: 為什麼省？局部感受野與權重共享 [00:02:41 - 00:05:30] -->
+        <article id="ts-0241" class="timeline-item relative group" data-category="saving" data-keywords="局部感受野 權重共享 參數量 公式 輸入大小 Bias">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-1.5 w-4 h-4 rounded-full bg-slate-900 border-2 border-emerald-500 group-hover:scale-125 transition-transform"></div>
+
+          <div class="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+              <div class="flex items-center gap-2">
+                <span class="cursor-pointer select-none px-2.5 py-1 rounded bg-emerald-950 border border-emerald-800 text-emerald-300 font-mono text-xs font-bold hover:bg-emerald-900 transition flex items-center gap-1.5 time-tag" data-time="00:02:41">
+                  <i data-lucide="play-circle" class="w-3.5 h-3.5"></i>
+                  00:02:41 - 00:05:30
+                </span>
+                <span class="text-xs text-slate-400 font-medium">重點二：CNN 省運算與降參數的兩大秘密</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[11px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">重點 2</span>
+                <button onclick="openLightbox('EP09/EP09-02.png', '重點二：CNN 為什麼省', '[00:02:41]', 'ts-0241')" class="px-2 py-0.5 text-[11px] font-bold rounded bg-emerald-600/30 text-emerald-200 border border-emerald-500/50 hover:bg-emerald-600 transition flex items-center gap-1 cursor-pointer">
+                  <i data-lucide="image" class="w-3 h-3"></i>
+                  <span>投影片 02</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 翠綠色公式與口訣框 -->
+            <div class="p-4 rounded-xl bg-emerald-950/30 border-l-4 border-emerald-500 space-y-2">
+              <div class="text-xs font-bold text-emerald-300 flex items-center gap-2">
+                <i data-lucide="calculator" class="w-4 h-4"></i>
+                必考公式推導：卷積層參數量到底怎麼算？
+              </div>
+              <div class="bg-slate-950 p-2.5 rounded text-xs font-mono text-emerald-300 border border-emerald-900/60 text-center">
+                $\text{Params} = (K_h \times K_w \times C_{in} + 1) \times N_{filters}$
+              </div>
+              <p class="text-xs text-slate-300">
+                <b>關鍵破題點：</b>公式中完全找不到輸入圖片的寬與高（$H, W$）！圖片不管放大多少倍，卷積層的參數總量<b>永遠固定不變</b>。
+              </p>
+            </div>
+
+            <p class="text-sm text-slate-300 leading-relaxed text-content">
+              很多初學者會困惑：傳統全連接層（MLP）處理高解析度影像時動輒需要幾千萬條連線，CNN 是憑什麼大幅瘦身？答案就在兩個核心觀念：<br>
+              第一、<b>局部感受野 (Local Receptive Field) [00:03:07]</b>：視覺神經科學告訴我們，我們辨認一張臉，不需要同時把左上角的像素和右下角的像素拉一條神經連線。神經元只需要看 $3 \times 3$ 或 $5 \times 5$ 的局部鄰域即可。<br>
+              第二、<b>權重共享 (Weight Sharing) [00:03:15]</b>：同一個特徵濾波器（例如偵測垂直線的 Kernel）在整張特徵圖上由左至右、由上至下滑動共用。無論垂直線出現在左上角還是中央，同一組權重就能偵測出來。這帶來了「平移等價性」，更讓卷積參數量徹底與圖像尺寸脫鉤！
+            </p>
+          </div>
+        </article>
+
+        <!-- 段落 4: 參數量 vs 運算量 & 邊緣部署 [00:05:31 - 00:08:24] -->
+        <article id="ts-0531" class="timeline-item relative group" data-category="params-flops" data-keywords="運算量 FLOPs 參數量 VGG16 全連接層 全域平均池化 GAP 深度可分離卷積 剪枝 量化">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-1.5 w-4 h-4 rounded-full bg-slate-900 border-2 border-rose-500 group-hover:scale-125 transition-transform"></div>
+
+          <div class="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+              <div class="flex items-center gap-2">
+                <span class="cursor-pointer select-none px-2.5 py-1 rounded bg-rose-950 border border-rose-800 text-rose-300 font-mono text-xs font-bold hover:bg-rose-900 transition flex items-center gap-1.5 time-tag" data-time="00:05:31">
+                  <i data-lucide="play-circle" class="w-3.5 h-3.5"></i>
+                  00:05:31 - 00:08:24
+                </span>
+                <span class="text-xs text-slate-400 font-medium">重點三：全連接吃參數，卷積吃運算！邊緣優化策略</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[11px] px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800">重點 3</span>
+                <button onclick="openLightbox('EP09/EP09-03.png', '重點三：全連接吃參數、卷積吃運算', '[00:05:31]', 'ts-0531')" class="px-2 py-0.5 text-[11px] font-bold rounded bg-rose-600/30 text-rose-200 border border-rose-500/50 hover:bg-rose-600 transition flex items-center gap-1 cursor-pointer">
+                  <i data-lucide="image" class="w-3 h-3"></i>
+                  <span>投影片 03</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 玫瑰色邊緣優化框 -->
+            <div class="p-4 rounded-xl bg-rose-950/30 border-l-4 border-rose-500 space-y-2">
+              <div class="text-xs font-bold text-rose-300 flex items-center gap-2">
+                <i data-lucide="cpu" class="w-4 h-4 text-rose-400"></i>
+                【邊緣端落地對策】：記憶體容量不足 vs 推論延遲太長
+              </div>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                • <b>容量/RAM 爆表：</b>問題在全連接層！解法是用 <b>全域平均池化 (GAP)</b> 替換 FC，搭配權重剪枝與 INT8 量化。<br>
+                • <b>推論 FPS 偏低：</b>問題在卷積滑動乘加太密集！解法是將標準卷積換成 <b>深度可分離卷積 (Depthwise Separable Conv)</b>。
+              </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+              <div class="md:col-span-8 space-y-2">
+                <p class="text-sm text-slate-300 leading-relaxed text-content">
+                  請大家務必把這句話烙印在腦海中：<b>「全連接吃參數，卷積吃運算」[00:05:43]</b>！<br>
+                  以經典的 <b>VGG-16 [00:06:26]</b> 為例，它的總參數量約 1.38 億個。很多學員以為是卷積層太多造成的，但仔細一算，卷積完成後攤平成 25,088 維向量，光接上的第一層 FC-4096，就有 $25088 \times 4096 \approx 1.03$ 億個參數！光這一層就霸佔了全網路 74% 的容量！<br>
+                  反過來說，卷積層雖然參數少，但在 $224 \times 224$ 的畫面上滑動點積，乘加次數（FLOPs）高達數十億次，正是造成晶片發熱與推論延遲的主因。
+                </p>
+              </div>
+
+              <!-- SVG 示意插圖：GAP vs FC -->
+              <div class="md:col-span-4 bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-col items-center">
+                <svg viewBox="0 0 200 120" class="w-full h-auto">
+                  <rect x="15" y="15" width="40" height="40" fill="#0369a1" rx="4"/>
+                  <rect x="25" y="25" width="40" height="40" fill="#0284c7" rx="4"/>
+                  <rect x="35" y="35" width="40" height="40" fill="#38bdf8" rx="4"/>
+                  <text x="55" y="90" fill="#94a3b8" font-size="8" text-anchor="middle">7×7×512 Maps</text>
+
+                  <!-- 箭頭分叉 -->
+                  <path d="M 85 45 L 120 25" stroke="#f43f5e" stroke-width="1.5" marker-end="url(#arrow)"/>
+                  <path d="M 85 65 L 120 85" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+                  <text x="155" y="22" fill="#fb7185" font-size="8" text-anchor="middle" font-weight="bold">FC: 1 億參數</text>
+                  <text x="155" y="32" fill="#64748b" font-size="7" text-anchor="middle">(25088×4096)</text>
+
+                  <text x="155" y="82" fill="#34d399" font-size="8" text-anchor="middle" font-weight="bold">GAP: 0 參數！</text>
+                  <text x="155" y="92" fill="#64748b" font-size="7" text-anchor="middle">(空間平均壓縮)</text>
+                </svg>
+                <span class="text-[10px] text-slate-500 font-mono mt-1">FC 龐大參數 vs GAP 零參數壓縮</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- 段落 5: 經典 CNN 架構巡禮與 ResNet 突破 [00:08:25 - 00:11:30] -->
+        <article id="ts-0825" class="timeline-item relative group" data-category="resnet" data-keywords="AlexNet VGG GoogLeNet ResNet 退化 梯度消失 殘差 跳躍連接 恆等映射">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-1.5 w-4 h-4 rounded-full bg-slate-900 border-2 border-indigo-400 group-hover:scale-125 transition-transform"></div>
+
+          <div class="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+              <div class="flex items-center gap-2">
+                <span class="cursor-pointer select-none px-2.5 py-1 rounded bg-indigo-950 border border-indigo-800 text-indigo-300 font-mono text-xs font-bold hover:bg-indigo-900 transition flex items-center gap-1.5 time-tag" data-time="00:08:25">
+                  <i data-lucide="play-circle" class="w-3.5 h-3.5"></i>
+                  00:08:25 - 00:11:30
+                </span>
+                <span class="text-xs text-slate-400 font-medium">重點四：CNN 演進史與 ResNet 殘差救星</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[11px] px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">重點 4</span>
+                <button onclick="openLightbox('EP09/EP09-04.png', '重點四：一個架構一個招牌', '[00:08:25]', 'ts-0825')" class="px-2 py-0.5 text-[11px] font-bold rounded bg-purple-600/30 text-purple-200 border border-purple-500/50 hover:bg-purple-600 transition flex items-center gap-1 cursor-pointer">
+                  <i data-lucide="image" class="w-3 h-3"></i>
+                  <span>投影片 04</span>
+                </button>
+                <button onclick="openLightbox('EP09/EP09-06.png', '最容易搞混的三大對抗概念', '[00:09:42]', 'ts-0825')" class="px-2 py-0.5 text-[11px] font-bold rounded bg-amber-600/30 text-amber-200 border border-amber-500/50 hover:bg-amber-600 transition flex items-center gap-1 cursor-pointer">
+                  <i data-lucide="image" class="w-3 h-3"></i>
+                  <span>投影片 06</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 藍紫與琥珀色重點框 -->
+            <div class="p-4 rounded-xl bg-indigo-950/30 border-l-4 border-indigo-500 space-y-2">
+              <div class="text-xs font-bold text-indigo-300 flex items-center gap-2">
+                <i data-lucide="git-merge" class="w-4 h-4 text-indigo-400"></i>
+                何愷明 ResNet (2015) 核心突破公式：
+              </div>
+              <div class="bg-slate-950 p-2 rounded text-xs font-mono text-cyan-300 border border-indigo-900 text-center">
+                $\mathcal{H}(x) = \mathcal{F}(x) + x \implies \frac{\partial \mathcal{E}}{\partial x} = \frac{\partial \mathcal{E}}{\partial \mathcal{H}} \cdot \left(\frac{\partial \mathcal{F}}{\partial x} + 1\right)$
+              </div>
+              <p class="text-xs text-slate-300">
+                括號裡的「$+1$」就是<b>梯度高速公路</b>！反向傳播時，就算卷積項 $\frac{\partial \mathcal{F}}{\partial x}$ 衰減為 0，梯度仍能乘以 1 原封不動傳遞到前層，終結深層網路的梯度消失難題！
+              </p>
+            </div>
+
+            <p class="text-sm text-slate-300 leading-relaxed text-content">
+              我們回顧經典模型：2012 年 AlexNet 引爆深度學習熱潮 [00:08:30]；隨後 VGG 證明連續 $3 \times 3$ 卷積勝過大卷積 [00:08:45]；GoogLeNet 用 Inception 多尺度並行降低維度 [00:08:50]。<br>
+              然而，大家想把網路加深至 50 層甚至 100 層時，卻撞上了<b>「退化問題 (Degradation)」[00:09:42]</b>。注意！退化不是過擬合，退化是<b>深層網路連訓練集上的錯誤率都比淺層網路高</b>！這說明傳統網路深了之後根本難以最佳化訓練。<br>
+              ResNet 巧妙加入了跳躍連接 (Skip Connection) [00:09:34]，讓網路學習殘差 $\mathcal{F}(x)$。當深層無用時，演算法只要將權重歸零，輸出直接恆等退回輸入 $x$。這讓 ResNet 一舉突破百層障礙（如 ResNet-152），橫掃 2015 年視覺競賽！
+            </p>
+          </div>
+        </article>
+
+        <!-- 段落 6: 遷移學習實務指南 [00:11:31 - 00:13:40] -->
+        <article id="ts-1131" class="timeline-item relative group" data-category="transfer" data-keywords="遷移學習 預訓練 ImageNet 特徵提取 微調 學習率 凍結 解凍 骨幹">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-1.5 w-4 h-4 rounded-full bg-slate-900 border-2 border-cyan-500 group-hover:scale-125 transition-transform"></div>
+
+          <div class="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+              <div class="flex items-center gap-2">
+                <span class="cursor-pointer select-none px-2.5 py-1 rounded bg-cyan-950 border border-cyan-800 text-cyan-300 font-mono text-xs font-bold hover:bg-cyan-900 transition flex items-center gap-1.5 time-tag" data-time="00:11:31">
+                  <i data-lucide="play-circle" class="w-3.5 h-3.5"></i>
+                  00:11:31 - 00:13:40
+                </span>
+                <span class="text-xs text-slate-400 font-medium">重點五：遷移學習 (Transfer Learning) 策略指南</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[11px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">重點 5</span>
+                <button onclick="openLightbox('EP09/EP09-05.png', '重點五：遷移學習實務', '[00:11:31]', 'ts-1131')" class="px-2 py-0.5 text-[11px] font-bold rounded bg-cyan-600/30 text-cyan-200 border border-cyan-500/50 hover:bg-cyan-600 transition flex items-center gap-1 cursor-pointer">
+                  <i data-lucide="image" class="w-3 h-3"></i>
+                  <span>投影片 05</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 青色決策框 -->
+            <div class="p-4 rounded-xl bg-cyan-950/30 border-l-4 border-cyan-500 space-y-2">
+              <div class="text-xs font-bold text-cyan-300 flex items-center gap-2">
+                <i data-lucide="git-branch" class="w-4 h-4 text-cyan-400"></i>
+                遷移學習二選一黃金法則：
+              </div>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                1. <b>特徵提取 (Feature Extraction)：</b>凍結骨幹所有卷積層，僅訓練新分類頭。適用於「樣本少」的場景。<br>
+                2. <b>微調 (Fine-Tuning)：</b>解凍深層卷積層，配合極小學習率（如 $10^{-4} \sim 10^{-5}$）一起更新。適用於「樣本足夠多」或「領域差異大」的場景。
+              </p>
+            </div>
+
+            <p class="text-sm text-slate-300 leading-relaxed text-content">
+              在業界實務中，極少有人會隨機初始化權重從頭訓練一個 CNN。因為需要百萬張圖片與龐大算力。我們通常站在巨人肩膀上，使用在 ImageNet 上預先訓練好的權重，這就是<b>遷移學習 (Transfer Learning) [00:11:40]</b>。<br>
+              卷積網路的前幾層所學到的濾波器（如垂直邊緣、亮暗圓圈）在自然界所有圖片中都是相通的。我們保留這些前置特徵提取器，把最後原本辨識 1000 類貓狗的分類頭拔掉，換成我們專案的類別數（例如醫療辨識良性/惡性 2 類）。如果你的樣本很少，切記一定要<b>凍結 (Freeze)</b> 骨幹層 [00:12:08]，否則反向傳播的大幅度梯度會瞬間摧毀預訓練權重，造成災難性遺忘與嚴重過擬合！
+            </p>
+          </div>
+        </article>
+
+        <!-- 段落 7: 考題解析總結與破題 [00:13:41 - 00:14:58] -->
+        <article id="ts-1341" class="timeline-item relative group" data-category="exam" data-keywords="考題解析 總結 胸部X光 池化層 降維 複習 證照 結語">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-1.5 w-4 h-4 rounded-full bg-slate-900 border-2 border-amber-400 group-hover:scale-125 transition-transform"></div>
+
+          <div class="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+              <div class="flex items-center gap-2">
+                <span class="cursor-pointer select-none px-2.5 py-1 rounded bg-amber-950 border border-amber-800 text-amber-300 font-mono text-xs font-bold hover:bg-amber-900 transition flex items-center gap-1.5 time-tag" data-time="00:13:41">
+                  <i data-lucide="play-circle" class="w-3.5 h-3.5"></i>
+                  00:13:41 - 00:14:58
+                </span>
+                <span class="text-xs text-slate-400 font-medium">考題正式破題、全集精華總結與結語</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[11px] px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800">總結破題</span>
+                <button onclick="openLightbox('EP09/EP09-07.png', '這集帶走三句話：臨考 30 秒快速口訣', '[00:13:41]', 'ts-1341')" class="px-2 py-0.5 text-[11px] font-bold rounded bg-yellow-600/30 text-yellow-200 border border-yellow-500/50 hover:bg-yellow-600 transition flex items-center gap-1 cursor-pointer">
+                  <i data-lucide="image" class="w-3 h-3"></i>
+                  <span>投影片 07</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 琥珀考題總結框 -->
+            <div class="p-4 rounded-xl bg-amber-950/30 border-l-4 border-amber-500 space-y-2">
+              <div class="text-xs font-bold text-amber-300 flex items-center gap-2">
+                <i data-lucide="award" class="w-4 h-4 text-amber-400"></i>
+                iPAS 考題正解公布：
+              </div>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                回到最前面的 X 光影像考題：「卷積後加入池化層的主要效益為何？」<br>
+                標準答案毫無疑問選擇：<b>「降低特徵圖空間維度，以減少參數量與計算量」</b>！請特別注意，池化層本身既不具備可學習參數，也不能增加特徵維度。
+              </p>
+            </div>
+
+            <p class="text-sm text-slate-300 leading-relaxed text-content">
+              總結今天的五大精華：<br>
+              1. CNN 核心有 Conv、ReLU、Pooling 與 FC 四種層；<br>
+              2. 藉由「局部感受野」與「權重共享」，參數量與輸入大小無關；<br>
+              3. 「全連接吃參數，卷積吃運算」，邊緣部署用 GAP 縮減檔案、用深度可分離卷積提高速度；<br>
+              4. ResNet 用跳躍連接擬合殘差，以 $+1$ 的梯度高速公路終結深層退化；<br>
+              5. 遷移學習小樣本優先凍結骨幹特徵提取，大量樣本再配合小學習率進行微調。<br>
+              希望大家在考場上都能輕鬆拿下 CNN 的所有分數！我是韋哥，我們下集再見！
+            </p>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 頁尾 -->
+  <footer class="mt-20 border-t border-slate-800 py-10 bg-slate-950 text-center text-xs text-slate-500 space-y-2">
+    <p>EP09. 卷積神經網路｜帶你看懂 CNN 的四種層、ResNet 和遷移學習</p>
+    <p>依據最新人工智慧規劃與實務架構設計・支援離線互動與單檔本機執行</p>
+  </footer>
+
+  <!-- 原生 JavaScript 邏輯 -->
+  <script>
+    // 初始化 Lucide 圖標
+    lucide.createIcons();
+
+    /* ==========================================================================
+       互動沙盒 1：卷積與池化動態可視化計算
+       ========================================================================== */
+    const inputMatrix = [
+      [2, 0, 1, 3, 1],
+      [1, 3, 2, 0, 2],
+      [0, 1, 4, 1, 0],
+      [2, 2, 1, 3, 1],
+      [0, 1, 0, 2, 4]
+    ];
+    const kernel = [
+      [1,  0, -1],
+      [1,  0, -1],
+      [1,  0, -1]
+    ];
+
+    let currentStep = 0; // 0 ~ 8 (對應 3x3 輸出)
+    let autoInterval = null;
+
+    // 計算卷積結果 (3x3)
+    const convOutput = [];
+    for (let r = 0; r < 3; r++) {
+      convOutput[r] = [];
+      for (let c = 0; c < 3; c++) {
+        let sum = 0;
+        for (let kr = 0; kr < 3; kr++) {
+          for (let kc = 0; kc < 3; kc++) {
+            sum += inputMatrix[r + kr][c + kc] * kernel[kr][kc];
+          }
+        }
+        convOutput[r][c] = sum;
+      }
+    }
+
+    // 計算 2x2 Max Pooling (輸入為 convOutput 3x3 -> 輸出 2x2)
+    const poolOutput = [
+      [
+        Math.max(convOutput[0][0], convOutput[0][1], convOutput[1][0], convOutput[1][1]),
+        Math.max(convOutput[0][1], convOutput[0][2], convOutput[1][1], convOutput[1][2])
+      ],
+      [
+        Math.max(convOutput[1][0], convOutput[1][1], convOutput[2][0], convOutput[2][1]),
+        Math.max(convOutput[1][1], convOutput[1][2], convOutput[2][1], convOutput[2][2])
+      ]
+    ];
+
+    // 初始化渲染輸入特徵圖
+    const inputGridEl = document.getElementById('inputGrid');
+    const outputGridEl = document.getElementById('outputGrid');
+    const poolGridEl = document.getElementById('poolGrid');
+    const calcFormulaEl = document.getElementById('calcFormula');
+
+    function renderGrids() {
+      // 繪製輸入 5x5
+      inputGridEl.innerHTML = '';
+      for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 5; c++) {
+          const cell = document.createElement('div');
+          cell.id = `in-${r}-${c}`;
+          cell.className = 'w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg font-mono text-xs sm:text-sm font-semibold grid-cell bg-slate-900 border border-slate-800 text-slate-300';
+          cell.innerText = inputMatrix[r][c];
+          inputGridEl.appendChild(cell);
+        }
+      }
+
+      // 繪製輸出 3x3
+      outputGridEl.innerHTML = '';
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          const cell = document.createElement('div');
+          cell.id = `out-${r}-${c}`;
+          cell.className = 'w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-lg font-mono text-xs sm:text-sm font-bold grid-cell bg-slate-900 border border-slate-800 text-slate-400';
+          cell.innerText = convOutput[r][c];
+          outputGridEl.appendChild(cell);
+        }
+      }
+
+      // 繪製池化 2x2
+      poolGridEl.innerHTML = '';
+      for (let r = 0; r < 2; r++) {
+        for (let c = 0; c < 2; c++) {
+          const cell = document.createElement('div');
+          cell.id = `pool-${r}-${c}`;
+          cell.className = 'w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center rounded-lg font-mono text-sm sm:text-base font-extrabold grid-cell bg-slate-900 border border-slate-800 text-slate-400';
+          cell.innerText = poolOutput[r][c];
+          poolGridEl.appendChild(cell);
+        }
+      }
+    }
+
+    function updateConvStep(step) {
+      const outR = Math.floor(step / 3);
+      const outC = step % 3;
+
+      // 清除所有高亮
+      document.querySelectorAll('#inputGrid > div').forEach(el => {
+        el.className = 'w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg font-mono text-xs sm:text-sm font-semibold grid-cell bg-slate-900 border border-slate-800 text-slate-300';
+      });
+      document.querySelectorAll('#outputGrid > div').forEach(el => {
+        el.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-400', 'scale-110');
+        el.classList.add('bg-slate-900', 'text-slate-400', 'border-slate-800');
+      });
+
+      // 高亮輸入感受野 3x3
+      let calcTerms = [];
+      let total = 0;
+      for (let kr = 0; kr < 3; kr++) {
+        for (let kc = 0; kc < 3; kc++) {
+          const inR = outR + kr;
+          const inC = outC + kc;
+          const inCell = document.getElementById(`in-${inR}-${inC}`);
+          if (inCell) {
+            inCell.className = 'w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg font-mono text-xs sm:text-sm font-bold grid-cell bg-cyan-950 border-2 border-cyan-400 text-cyan-200 shadow-lg';
+          }
+          const val = inputMatrix[inR][inC];
+          const kVal = kernel[kr][kc];
+          if (kVal !== 0) {
+            calcTerms.push(`(${val}×${kVal})`);
+          }
+          total += val * kVal;
+        }
+      }
+
+      // 高亮輸出格子
+      const currentOutCell = document.getElementById(`out-${outR}-${outC}`);
+      if (currentOutCell) {
+        currentOutCell.classList.remove('bg-slate-900', 'text-slate-400', 'border-slate-800');
+        currentOutCell.classList.add('bg-indigo-600', 'text-white', 'border-indigo-400', 'scale-110', 'glow-purple');
+      }
+
+      calcFormulaEl.innerHTML = `位置 (${outR},${outC})：<br><span class="text-cyan-300">${calcTerms.slice(0, 4).join('+')}...</span> = <b class="text-white">${total}</b>`;
+    }
+
+    renderGrids();
+    updateConvStep(0);
+
+    document.getElementById('convStepBtn').addEventListener('click', () => {
+      currentStep = (currentStep + 1) % 9;
+      updateConvStep(currentStep);
+    });
+
+    const convPlayBtn = document.getElementById('convPlayBtn');
+    convPlayBtn.addEventListener('click', () => {
+      if (autoInterval) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+        convPlayBtn.innerText = '自動播放';
+        convPlayBtn.classList.replace('bg-rose-600', 'bg-slate-800');
+      } else {
+        convPlayBtn.innerText = '暫停播放';
+        convPlayBtn.classList.replace('bg-slate-800', 'bg-rose-600');
+        autoInterval = setInterval(() => {
+          currentStep = (currentStep + 1) % 9;
+          updateConvStep(currentStep);
+        }, 1200);
+      }
+    });
+
+    document.getElementById('convResetBtn').addEventListener('click', () => {
+      if (autoInterval) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+        convPlayBtn.innerText = '自動播放';
+        convPlayBtn.classList.replace('bg-rose-600', 'bg-slate-800');
+      }
+      currentStep = 0;
+      updateConvStep(0);
+    });
+
+    /* ==========================================================================
+       互動沙盒 2：ResNet 殘差捷徑 vs 普通平原網路梯度傳播
+       ========================================================================== */
+    const togglePlainNetBtn = document.getElementById('togglePlainNetBtn');
+    const toggleResNetBtn = document.getElementById('toggleResNetBtn');
+    const skipGroup = document.getElementById('skipConnectionGroup');
+    const addNode = document.getElementById('addNode');
+    const addNodeSign = document.getElementById('addNodeSign');
+    const statusText = document.getElementById('gradientStatusText');
+    const decayPath = document.getElementById('decayPath');
+
+    togglePlainNetBtn.addEventListener('click', () => {
+      // 切換至普通網路樣式
+      togglePlainNetBtn.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 text-white shadow-lg transition';
+      toggleResNetBtn.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white transition border border-slate-700';
+
+      skipGroup.style.display = 'none';
+      addNode.setAttribute('fill', '#1e293b');
+      addNode.setAttribute('stroke', '#475569');
+      addNodeSign.textContent = '>';
+      decayPath.setAttribute('stroke', '#f43f5e');
+      decayPath.setAttribute('stroke-width', '1');
+      statusText.innerHTML = '<span class="text-rose-400">【平原網路 Plain Net】無 Skip 捷徑！反向傳播時，連續矩陣微積分連乘導致淺層梯度指數級衰減至 0（梯度消失），產生退化現象。</span>';
+    });
+
+    toggleResNetBtn.addEventListener('click', () => {
+      // 切換至 ResNet 樣式
+      toggleResNetBtn.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-lg transition';
+      togglePlainNetBtn.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white transition border border-slate-700';
+
+      skipGroup.style.display = 'block';
+      addNode.setAttribute('fill', '#312e81');
+      addNode.setAttribute('stroke', '#818cf8');
+      addNodeSign.textContent = '+';
+      decayPath.setAttribute('stroke', '#38bdf8');
+      decayPath.setAttribute('stroke-width', '2');
+      statusText.innerHTML = '梯度經由跳躍連接無損回傳：<span class="text-emerald-300 font-mono">∂E/∂x = ∂E/∂H · (∂F/∂x + 1)</span>，常數 1 提供高速公路，深層亦不衰減！';
+    });
+
+    /* ==========================================================================
+       互動沙盒 3：遷移學習最佳策略動態決策模擬器
+       ========================================================================== */
+    const dataSlider = document.getElementById('dataSizeSlider');
+    const simSlider = document.getElementById('simSlider');
+    const dataSizeLabel = document.getElementById('dataSizeLabel');
+    const simLabel = document.getElementById('simLabel');
+    const layerC1 = document.getElementById('layer-c1');
+    const layerC2 = document.getElementById('layer-c2');
+    const layerC3 = document.getElementById('layer-c3');
+    const adviceCard = document.getElementById('transferAdviceCard');
+
+    function updateTransferDecision() {
+      const isBigData = dataSlider.value === '1';
+      const isHighSim = simSlider.value === '1';
+
+      dataSizeLabel.innerText = isBigData ? '大量 (> 50,000 張)' : '少量 (約數百~2000張)';
+      simLabel.innerText = isHighSim ? '高相似 (日常物件/車輛/寵物)' : '低相似 (醫療病理切片/衛星空照)';
+
+      // 預設樣式
+      const frozenClass = 'p-3 rounded-xl border border-blue-500/50 bg-blue-950/40 text-blue-300 transition-all flex flex-col items-center gap-1';
+      const fineTuneClass = 'p-3 rounded-xl border-2 border-emerald-500 bg-emerald-950/50 text-emerald-300 transition-all flex flex-col items-center gap-1 glow-cyan';
+      const retrainClass = 'p-3 rounded-xl border-2 border-amber-500 bg-amber-950/50 text-amber-300 transition-all flex flex-col items-center gap-1';
+
+      if (!isBigData && isHighSim) {
+        // Quadrant 1: 少量資料 + 高相似度 -> 特徵提取 (凍結全部骨幹)
+        layerC1.className = frozenClass;
+        layerC2.className = frozenClass;
+        layerC3.className = frozenClass;
+        layerC1.querySelector('i').setAttribute('data-lucide', 'lock');
+        layerC2.querySelector('i').setAttribute('data-lucide', 'lock');
+        layerC3.querySelector('i').setAttribute('data-lucide', 'lock');
+
+        adviceCard.innerHTML = `
+          <div class="flex items-center gap-2 text-cyan-300 font-bold text-sm">
+            <i data-lucide="check-circle" class="w-4 h-4 text-cyan-400"></i>
+            最佳推薦策略：特徵提取 (Feature Extraction)
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            <b>操作指引：</b>凍結骨幹的所有卷積層權重不進行更新，僅拔掉末端 FC 層並換上新分類頭。因為樣本極少，若解凍卷積層會極易引發過擬合！<br>
+            <span class="text-cyan-400 font-mono">建議學習率：1e-3 (僅針對新分類頭)</span>
+          </p>
+        `;
+      } else if (!isBigData && !isHighSim) {
+        // Quadrant 2: 少量資料 + 低相似度 (例如 2000 張罕見醫療切片)
+        layerC1.className = frozenClass;
+        layerC2.className = frozenClass;
+        layerC3.className = fineTuneClass;
+        layerC1.querySelector('i').setAttribute('data-lucide', 'lock');
+        layerC2.querySelector('i').setAttribute('data-lucide', 'lock');
+        layerC3.querySelector('i').setAttribute('data-lucide', 'unlock');
+
+        adviceCard.innerHTML = `
+          <div class="flex items-center gap-2 text-amber-300 font-bold text-sm">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400"></i>
+            高難度情境：小樣本醫療切片 / 工業探傷（iPAS 經典考題！）
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            <b>操作指引：</b>因為樣本少，絕對不可貿然全解凍（會摧毀預訓練權重）。建議先凍結所有層僅訓練新分類頭；若有過擬合風險，可僅解凍最深層 (Conv5) 搭配極低學習率進行局部微調，並大幅強化 Data Augmentation。<br>
+            <span class="text-amber-400 font-mono">建議微調學習率：1e-5 ~ 1e-4</span>
+          </p>
+        `;
+      } else if (isBigData && isHighSim) {
+        // Quadrant 3: 大量資料 + 高相似度
+        layerC1.className = frozenClass;
+        layerC2.className = fineTuneClass;
+        layerC3.className = fineTuneClass;
+        layerC1.querySelector('i').setAttribute('data-lucide', 'lock');
+        layerC2.querySelector('i').setAttribute('data-lucide', 'unlock');
+        layerC3.querySelector('i').setAttribute('data-lucide', 'unlock');
+
+        adviceCard.innerHTML = `
+          <div class="flex items-center gap-2 text-emerald-300 font-bold text-sm">
+            <i data-lucide="zap" class="w-4 h-4 text-emerald-400"></i>
+            最佳推薦策略：深層微調 (Deep Fine-Tuning)
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            <b>操作指引：</b>保留淺層通用特徵 (Conv 1~2)，解凍中深層 (Conv 3~5) 與新分類頭協同訓練，充分釋放巨量數據潛能。<br>
+            <span class="text-emerald-400 font-mono">建議微調學習率：1e-4</span>
+          </p>
+        `;
+      } else {
+        // Quadrant 4: 大量資料 + 低相似度
+        layerC1.className = fineTuneClass;
+        layerC2.className = fineTuneClass;
+        layerC3.className = fineTuneClass;
+        layerC1.querySelector('i').setAttribute('data-lucide', 'unlock');
+        layerC2.querySelector('i').setAttribute('data-lucide', 'unlock');
+        layerC3.querySelector('i').setAttribute('data-lucide', 'unlock');
+
+        adviceCard.innerHTML = `
+          <div class="flex items-center gap-2 text-indigo-300 font-bold text-sm">
+            <i data-lucide="refresh-cw" class="w-4 h-4 text-indigo-400"></i>
+            最佳推薦策略：全模型解凍微調 / 領域重訓
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            <b>操作指引：</b>雖然領域差異巨大，但因為手頭擁有海量樣本，可將預訓練權重作為極佳的初始值 (Warm Start)，全網路解凍訓練。<br>
+            <span class="text-indigo-400 font-mono">建議微調學習率：1e-4，預熱 warmup 後線性衰減</span>
+          </p>
+        `;
+      }
+      lucide.createIcons();
+    }
+
+    dataSlider.addEventListener('input', updateTransferDecision);
+    simSlider.addEventListener('input', updateTransferDecision);
+    updateTransferDecision();
+
+    /* ==========================================================================
+       測驗邏輯
+       ========================================================================== */
+    const correctAnswers = {
+      1: {
+        index: 1,
+        explain: '正確！最大池化 (Max Pooling) 的核心目的就是降低特徵圖的空間解析度（維度），進而降低後續運算量並抑制過擬合，且池化層無任何可學習參數。'
+      },
+      2: {
+        index: 1,
+        explain: '正確！深層網路連訓練誤差都不減反增屬於「網路退化 (Degradation)」，何愷明等人提出的 ResNet 透過 Skip Connection 殘差恆等映射成功解決了此一瓶頸。'
+      },
+      3: {
+        index: 0,
+        explain: '正確！醫療切片樣本僅有 2,000 張（典型小樣本），若從頭訓練或全面解凍會迅速導致嚴重過擬合。標準做法是凍結卷積骨幹特徵提取器，僅訓練新分類頭。'
+      }
+    };
+
+    function checkAnswer(quizId, userChoice, btnElement) {
+      const parent = btnElement.closest('[data-quiz]');
+      const buttons = parent.querySelectorAll('button');
+      const feedback = document.getElementById(`quiz-feedback-${quizId}`);
+      const correctIndex = correctAnswers[quizId].index;
+
+      // 禁用所有按鈕
+      buttons.forEach(b => b.disabled = true);
+
+      if (userChoice === correctIndex) {
+        btnElement.classList.remove('bg-slate-950', 'border-slate-800');
+        btnElement.classList.add('bg-emerald-950/80', 'border-emerald-500', 'text-emerald-200');
+        feedback.className = 'p-4 rounded-xl text-xs leading-relaxed bg-emerald-950/50 border border-emerald-500/50 text-emerald-200';
+        feedback.innerHTML = `<b>🎉 正確解答！</b><br>${correctAnswers[quizId].explain}`;
+      } else {
+        btnElement.classList.remove('bg-slate-950', 'border-slate-800');
+        btnElement.classList.add('bg-rose-950/80', 'border-rose-500', 'text-rose-200');
+        // 高亮正確者
+        buttons[correctIndex].classList.remove('bg-slate-950', 'border-slate-800');
+        buttons[correctIndex].classList.add('bg-emerald-950/40', 'border-emerald-500', 'text-emerald-200');
+
+        feedback.className = 'p-4 rounded-xl text-xs leading-relaxed bg-rose-950/50 border border-rose-500/50 text-rose-200';
+        feedback.innerHTML = `<b>❌ 答錯了！</b><br>${correctAnswers[quizId].explain}`;
+      }
+      feedback.classList.remove('hidden');
+    }
+
+    /* 下載本教材功能 */
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      const htmlContent = document.documentElement.outerHTML;
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'EP09. 卷積神經網路｜帶你看懂 CNN 的四種層、ResNet 和遷移學習.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    /* ==========================================================================
+       【新增功能】時間軸逐字稿即時搜尋、章節過濾、複製與跳轉
+       ========================================================================== */
+    const searchInput = document.getElementById('transcriptSearch');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    const timelineItems = document.querySelectorAll('.timeline-item');
+    const filterTabs = document.querySelectorAll('.filter-tab');
+    const copyTranscriptBtn = document.getElementById('copyTranscriptBtn');
+
+    
+    /* ==========================================================================
+       【投影片全螢幕燈箱 Lightbox 與時間軸平滑跳轉】
+       ========================================================================== */
+    let currentLightboxTimelineId = null;
+
+    function openLightbox(src, title, badge, timelineId) {
+      const modal = document.getElementById('imageLightbox');
+      const card = document.getElementById('lightboxCard');
+      const img = document.getElementById('lightboxImage');
+      const titleEl = document.getElementById('lightboxTitle');
+      const badgeEl = document.getElementById('lightboxBadge');
+      
+      img.src = src;
+      titleEl.textContent = title;
+      badgeEl.textContent = badge;
+      currentLightboxTimelineId = timelineId;
+      
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        card.classList.remove('scale-95');
+        card.classList.add('scale-100');
+      }, 10);
+    }
+
+    function closeLightbox() {
+      const modal = document.getElementById('imageLightbox');
+      const card = document.getElementById('lightboxCard');
+      modal.classList.add('opacity-0');
+      card.classList.remove('scale-100');
+      card.classList.add('scale-95');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+      }, 200);
+    }
+
+    function closeLightboxOnBackdrop(e) {
+      if (e.target.id === 'imageLightbox') {
+        closeLightbox();
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeLightbox();
+    });
+
+    function jumpFromLightboxToTimeline() {
+      closeLightbox();
+      if (currentLightboxTimelineId) {
+        setTimeout(() => {
+          scrollToTs(currentLightboxTimelineId);
+        }, 250);
+      }
+    }
+
+    function scrollToTs(timelineId) {
+      const el = document.getElementById(timelineId);
+      if (el) {
+        // 如果目前處於過濾狀態，先切換為全顯示
+        const activeTab = document.querySelector('.filter-tab.bg-cyan-600');
+        if (activeTab && activeTab.getAttribute('data-cat') !== 'all') {
+          const allTab = document.querySelector('.filter-tab[data-cat="all"]');
+          if (allTab) allTab.click();
+        }
+        
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const targetCard = el.querySelector('div');
+        if (targetCard) {
+          targetCard.classList.add('ring-2', 'ring-cyan-400', 'glow-cyan');
+          setTimeout(() => {
+            targetCard.classList.remove('ring-2', 'ring-cyan-400', 'glow-cyan');
+          }, 1800);
+        }
+      }
+    }
+
+    // 1. 章節按鈕過濾
+    filterTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        filterTabs.forEach(t => {
+          t.classList.remove('bg-cyan-600', 'text-white');
+          t.classList.add('bg-slate-800', 'text-slate-300');
+        });
+        tab.classList.add('bg-cyan-600', 'text-white');
+        tab.classList.remove('bg-slate-800', 'text-slate-300');
+
+        const category = tab.getAttribute('data-cat');
+        applyFilters(category, searchInput.value.trim().toLowerCase());
+      });
+    });
+
+    // 2. 即時關鍵字搜尋
+    searchInput.addEventListener('input', () => {
+      const query = searchInput.value.trim().toLowerCase();
+      clearSearchBtn.classList.toggle('hidden', query === '');
+      const activeTab = document.querySelector('.filter-tab.bg-cyan-600');
+      const currentCat = activeTab ? activeTab.getAttribute('data-cat') : 'all';
+      applyFilters(currentCat, query);
+    });
+
+    clearSearchBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      clearSearchBtn.classList.add('hidden');
+      const activeTab = document.querySelector('.filter-tab.bg-cyan-600');
+      const currentCat = activeTab ? activeTab.getAttribute('data-cat') : 'all';
+      applyFilters(currentCat, '');
+    });
+
+    function applyFilters(category, query) {
+      timelineItems.forEach(item => {
+        const itemCat = item.getAttribute('data-category');
+        const itemKeywords = (item.getAttribute('data-keywords') || '').toLowerCase();
+        const itemText = item.querySelector('.text-content').innerText.toLowerCase();
+
+        const matchCat = (category === 'all' || itemCat === category);
+        const matchQuery = !query || itemKeywords.includes(query) || itemText.includes(query);
+
+        if (matchCat && matchQuery) {
+          item.style.display = 'block';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    }
+
+    // 3. 點選時間標籤時產生平滑閃爍互動效果
+    document.querySelectorAll('.time-tag').forEach(tag => {
+      tag.addEventListener('click', () => {
+        const card = tag.closest('.timeline-item').querySelector('div');
+        card.classList.add('ring-2', 'ring-cyan-400', 'glow-cyan');
+        setTimeout(() => {
+          card.classList.remove('ring-2', 'ring-cyan-400', 'glow-cyan');
+        }, 1200);
+      });
+    });
+
+    // 4. 一鍵複製整篇逐字稿純文字
+    copyTranscriptBtn.addEventListener('click', () => {
+      let fullText = '【EP09. 卷積神經網路｜CNN四種層、ResNet與遷移學習 完整逐字稿】\n\n';
+      timelineItems.forEach(item => {
+        const time = item.querySelector('.time-tag').innerText.trim();
+        const content = item.querySelector('.text-content').innerText.trim();
+        fullText += `[${time}]\n${content}\n\n`;
+      });
+
+      // 遵循 iframe 複製原則
+      const textarea = document.createElement('textarea');
+      textarea.value = fullText;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+
+      const origHtml = copyTranscriptBtn.innerHTML;
+      copyTranscriptBtn.innerHTML = '<i data-lucide="check" class="w-4 h-4 text-emerald-400"></i><span class="text-emerald-400 font-bold">複製成功！</span>';
+      lucide.createIcons();
+      setTimeout(() => {
+        copyTranscriptBtn.innerHTML = origHtml;
+        lucide.createIcons();
+      }, 2000);
+    });
+  </script>
+
+  <!-- 全螢幕燈箱 Lightbox Modal (支援深色主題與跳轉時間軸) -->
+  <div id="imageLightbox" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md hidden flex items-center justify-center p-3 sm:p-6 transition-all duration-300 opacity-0" onclick="closeLightboxOnBackdrop(event)">
+    <div class="relative max-w-5xl w-full max-h-[92vh] flex flex-col bg-slate-900 rounded-2xl shadow-2xl border border-slate-700 overflow-hidden transform scale-95 transition-transform duration-300" id="lightboxCard">
+      <!-- 燈箱頂部列 -->
+      <div class="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-slate-800 bg-slate-950">
+        <div class="flex items-center gap-2 overflow-hidden">
+          <span id="lightboxBadge" class="px-2.5 py-0.5 text-xs font-mono font-bold rounded-lg bg-cyan-950 text-cyan-300 border border-cyan-800">
+            [00:00:00]
+          </span>
+          <h4 id="lightboxTitle" class="text-sm sm:text-base font-bold text-white truncate">
+            投影片標題
+          </h4>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="lightboxTimelineBtn" onclick="jumpFromLightboxToTimeline()" class="px-3 py-1 text-xs font-semibold rounded-lg bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-700 transition flex items-center gap-1.5 cursor-pointer">
+            <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+            <span>跳轉時間軸</span>
+          </button>
+          <button onclick="closeLightbox()" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer" title="關閉 (Esc)">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+      <!-- 圖片本體容器 -->
+      <div class="relative flex-1 bg-slate-950 flex items-center justify-center overflow-auto p-2 sm:p-4 min-h-[300px]">
+        <img id="lightboxImage" src="" alt="放大投影片" class="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl border border-slate-800">
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

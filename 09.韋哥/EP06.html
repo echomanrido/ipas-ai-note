@@ -1,0 +1,2291 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EP06 集成學習｜帶你看懂 Bagging、Boosting 和 XGBoost</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & Noto Sans TC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    .dark ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.4);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(100, 116, 139, 0.7);
+    }
+    .callout-purple {
+      border-left: 4px solid #9333ea;
+      background: linear-gradient(to right, rgba(243, 232, 255, 0.7), transparent);
+    }
+    .dark .callout-purple {
+      background: linear-gradient(to right, rgba(88, 28, 135, 0.25), transparent);
+    }
+    .callout-amber {
+      border-left: 4px solid #f59e0b;
+      background: linear-gradient(to right, rgba(254, 243, 199, 0.7), transparent);
+    }
+    .dark .callout-amber {
+      background: linear-gradient(to right, rgba(120, 53, 15, 0.25), transparent);
+    }
+    .callout-emerald {
+      border-left: 4px solid #10b981;
+      background: linear-gradient(to right, rgba(209, 250, 229, 0.7), transparent);
+    }
+    .dark .callout-emerald {
+      background: linear-gradient(to right, rgba(6, 78, 59, 0.25), transparent);
+    }
+    .callout-blue {
+      border-left: 4px solid #3b82f6;
+      background: linear-gradient(to right, rgba(219, 234, 254, 0.7), transparent);
+    }
+    .dark .callout-blue {
+      background: linear-gradient(to right, rgba(30, 58, 138, 0.25), transparent);
+    }
+    .callout-rose {
+      border-left: 4px solid #f43f5e;
+      background: linear-gradient(to right, rgba(255, 228, 230, 0.7), transparent);
+    }
+    .dark .callout-rose {
+      background: linear-gradient(to right, rgba(136, 19, 55, 0.25), transparent);
+    }
+  </style>
+  <!-- KaTeX for Math Expressions -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200 font-sans antialiased">
+
+  <!-- 頂部導航列 (Sticky Header) -->
+  <header class="sticky top-0 z-50 backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 transition-colors">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white font-bold shadow-md shadow-blue-500/20">
+          AI
+        </span>
+        <div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400 block leading-tight">iPAS 中級科目三</span>
+          <h1 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">EP06 集成學習｜帶你看懂 Bagging、Boosting 和 XGBoost</h1>
+        </div>
+      </div>
+      
+      <!-- 快速導覽按鈕群 -->
+      <nav class="hidden md:flex items-center space-x-1 lg:space-x-2 text-sm font-medium">
+        <a href="#section-bias-variance" class="px-2.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition">偏差與變異</a>
+        <a href="#section-bagging" class="px-2.5 py-1.5 rounded-lg text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition">Bagging & 隨機森林</a>
+        <a href="#section-boosting" class="px-2.5 py-1.5 rounded-lg text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition">Boosting & 殘差</a>
+        <a href="#section-xgboost" class="px-2.5 py-1.5 rounded-lg text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition">XGBoost vs LightGBM</a>
+        <a href="#section-quiz" class="px-2.5 py-1.5 rounded-lg text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition">考題挑戰</a>
+        <a href="#section-transcript" class="px-2.5 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition flex items-center gap-1 font-semibold">
+          <i data-lucide="video" class="w-3.5 h-3.5"></i> 影音逐字稿
+        </a>
+      </nav>
+
+      <!-- 深色模式切換與分享 -->
+      <div class="flex items-center space-x-2">
+        <button id="themeToggleBtn" aria-label="切換主題" class="p-2 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
+          <i data-lucide="sun" class="w-5 h-5 hidden dark:block text-amber-400"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero 英雄區塊 -->
+  <section class="relative overflow-hidden pt-10 pb-14 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-b from-blue-50/50 via-white to-transparent dark:from-slate-900/50 dark:via-slate-950 dark:to-slate-950">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 text-center">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800 mb-4">
+        <i data-lucide="award" class="w-3.5 h-3.5"></i>
+        重點精華對照：iPAS AI 應用規劃師核心考科
+      </div>
+      <h2 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+        <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-purple-600 to-amber-500">EP06 集成學習｜帶你看懂 Bagging、Boosting 和 XGBoost</span>
+      </h2>
+      <p class="mt-4 text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-3xl mx-auto leading-relaxed">
+        集成學習（Ensemble Learning）如同「三個臭皮匠，勝過一個諸葛亮」。將多個弱學習器（Weak Learners）組合成強學習器，是現代 Kaggle 比賽與工業界表格資料（Tabular Data）預測的制霸利器。
+      </p>
+
+      <!-- 核心速記標籤 -->
+      <div class="mt-6 flex flex-wrap justify-center gap-3">
+        <span class="inline-flex items-center px-3 py-1 rounded-md text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">
+          <i data-lucide="users" class="w-3.5 h-3.5 mr-1.5"></i> Bagging：平行訓練、多數決、降低變異
+        </span>
+        <span class="inline-flex items-center px-3 py-1 rounded-md text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300">
+          <i data-lucide="trending-up" class="w-3.5 h-3.5 mr-1.5"></i> Boosting：串行接力、專攻殘差、降低偏差
+        </span>
+        <span class="inline-flex items-center px-3 py-1 rounded-md text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300">
+          <i data-lucide="zap" class="w-3.5 h-3.5 mr-1.5"></i> XGBoost：二階導數 + 結構懲罰正則化
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 主內容容器 -->
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
+
+    <!-- 1. 偏差 (Bias) vs 變異 (Variance) 靶心圖互動 -->
+    
+      <!-- 投影片 SLIDE-CARD-EP06-01 卡片 -->
+      <div id="slide-card-ep06-01" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-indigo-500 bg-indigo-50/40 dark:bg-indigo-950/20 p-4 sm:p-5 transition-all duration-300 shadow-md shadow-indigo-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 EP06-01
+            </span>
+            <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">第七章：集成學習 全貌架構地圖</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTimelineItem('timeline-item-0')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer" title="跳轉至時間軸">
+              [00:00:00]
+            </button>
+            <button onclick="openLightbox('EP06/EP06-01.png', '第七章：集成學習 全貌架構地圖', '[00:00:00]', 'timeline-item-0')" class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80 dark:hover:bg-slate-800" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP06/EP06-01.png', '第七章：集成學習 全貌架構地圖', '[00:00:00]', 'timeline-item-0')">
+          <img src="EP06/EP06-01.png" alt="第七章：集成學習 全貌架構地圖" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-white/85 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+          <strong>【開篇核心全貌】</strong> 集成學習核心概念：把多個弱學習器（如淺決策樹）組合成強學習器。主要分為「Bagging（平行）」與「Boosting（接力）」兩大流派。必考重點：XGBoost 相比 GBDT 增加了「正規化懲罰（樹長太複雜就扣分）」，隨機森林必考雙重隨機性。
+        </div>
+      </div>
+
+    <section id="section-bias-variance" class="scroll-mt-20">
+      <div class="flex items-center space-x-3 mb-6">
+        <span class="p-2 rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400">
+          <i data-lucide="target" class="w-6 h-6"></i>
+        </span>
+        <div>
+          <h3 class="text-2xl font-bold text-slate-900 dark:text-white">重點一：偏差 (Bias) 與 變異 (Variance) 的取捨</h3>
+          <p class="text-sm text-slate-500 dark:text-slate-400">理解集成學習兩大架構前，必須先掌握的誤差核心本質</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <!-- 文字解說 -->
+        <div class="lg:col-span-6 space-y-4">
+          <div class="p-4 rounded-xl callout-blue">
+            <h4 class="font-bold text-blue-900 dark:text-blue-300 flex items-center gap-2">
+              <i data-lucide="info" class="w-4 h-4"></i> 模型的總誤差 (Total Error) 構成
+            </h4>
+            <p class="mt-1 text-sm text-slate-700 dark:text-slate-300 font-mono">
+              總誤差 = 偏差平方 (Bias²) + 變異 (Variance) + 不可避免之雜訊 (Noise)
+            </p>
+          </div>
+
+          <div class="space-y-3">
+            <div class="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
+              <span class="font-bold text-red-600 dark:text-red-400">高偏差 (High Bias / 欠擬合 Underfitting)</span>
+              <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                模型太笨或過度簡化，抓不到資料真實趨勢。預測始終偏離真實目標（打不中紅心）。<br>
+                <span class="text-xs font-semibold text-amber-700 dark:text-amber-400">👉 解方：使用 Boosting 逐步強化、降低偏差。</span>
+              </p>
+            </div>
+
+            <div class="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
+              <span class="font-bold text-indigo-600 dark:text-indigo-400">高變異 (High Variance / 過擬合 Overfitting)</span>
+              <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                模型過於敏感複雜，把雜訊當特徵。換一份訓練資料預測結果就天翻地覆（散佈極度發散）。<br>
+                <span class="text-xs font-semibold text-purple-700 dark:text-purple-400">👉 解方：使用 Bagging (如隨機森林) 取平均、抑制震盪。</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="flex gap-2 pt-2">
+            <button onclick="setTargetState('low-bias-low-var')" id="btn-ideal" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 transition">理想狀態 (低偏差+低變異)</button>
+            <button onclick="setTargetState('high-bias-low-var')" id="btn-high-bias" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 transition">高偏差 (欠擬合)</button>
+            <button onclick="setTargetState('low-bias-high-var')" id="btn-high-var" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 transition">高變異 (過擬合)</button>
+          </div>
+        </div>
+
+        <!-- 靶心動態 SVG -->
+        <div class="lg:col-span-6 flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-200 dark:border-slate-800">
+          <span class="text-xs font-medium text-slate-500 mb-2">🎯 靶心視覺化：預測點分佈模擬</span>
+          <svg id="targetSvg" class="w-64 h-64 sm:w-72 sm:h-72" viewBox="0 0 300 300">
+            <!-- 靶盤圓圈 -->
+            <circle cx="150" cy="150" r="140" fill="#fee2e2" stroke="#fca5a5" stroke-width="2"/>
+            <circle cx="150" cy="150" r="105" fill="#fef3c7" stroke="#fcd34d" stroke-width="2"/>
+            <circle cx="150" cy="150" r="70" fill="#dbeafe" stroke="#93c5fd" stroke-width="2"/>
+            <circle cx="150" cy="150" r="35" fill="#dc2626" stroke="#b91c1c" stroke-width="2"/>
+            <circle cx="150" cy="150" r="8" fill="#ffffff"/>
+            
+            <!-- 十字準星線 -->
+            <line x1="150" y1="10" x2="150" y2="290" stroke="#cbd5e1" stroke-dasharray="3 3"/>
+            <line x1="10" y1="150" x2="290" y2="150" stroke="#cbd5e1" stroke-dasharray="3 3"/>
+            
+            <!-- 擊中點群 (由 JavaScript 動態更新位置) -->
+            <g id="shotGroup" class="transition-all duration-500 ease-out"></g>
+          </svg>
+          <div id="targetStatusText" class="mt-3 text-xs font-semibold text-slate-600 dark:text-slate-400 text-center">
+            當前：理想狀態 (準確集中於靶心)
+          </div>
+        </div>
+      </div>
+    
+      <!-- 重點一 核心投影片圖解系列 -->
+      <div class="mt-8 space-y-6">
+        
+      <!-- 投影片 SLIDE-CARD-EP06-02 卡片 -->
+      <div id="slide-card-ep06-02" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-sky-500 bg-sky-50/40 dark:bg-sky-950/20 p-4 sm:p-5 transition-all duration-300 shadow-md shadow-sky-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 EP06-02
+            </span>
+            <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">重點一：先記兩個詞｜偏差與變異</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTimelineItem('timeline-item-1')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer" title="跳轉至時間軸">
+              [00:00:44]
+            </button>
+            <button onclick="openLightbox('EP06/EP06-02.png', '重點一：先記兩個詞｜偏差與變異', '[00:00:44]', 'timeline-item-1')" class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80 dark:hover:bg-slate-800" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP06/EP06-02.png', '重點一：先記兩個詞｜偏差與變異', '[00:00:44]', 'timeline-item-1')">
+          <img src="EP06/EP06-02.png" alt="重點一：先記兩個詞｜偏差與變異" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-white/85 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+          <strong>【偏差與變異定義】</strong> 偏差（Bias）：模型太簡單，一直偏向同一邊（欠擬合）；變異（Variance）：模型太敏感，換一份資料預測結果就大變（過擬合）。注意：此處的變異指的是模型對訓練資料的敏感度，與統計中 $R^2$ 描述「資料散得多開」是完全不同的概念。
+        </div>
+      </div>
+
+        
+      <!-- 投影片 SLIDE-CARD-EP06-03 卡片 -->
+      <div id="slide-card-ep06-03" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-blue-500 bg-blue-50/40 dark:bg-blue-950/20 p-4 sm:p-5 transition-all duration-300 shadow-md shadow-blue-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 EP06-03
+            </span>
+            <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">兩條路線：Bagging 平行 vs Boosting 接力</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTimelineItem('timeline-item-1')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer" title="跳轉至時間軸">
+              [00:01:10]
+            </button>
+            <button onclick="openLightbox('EP06/EP06-03.png', '兩條路線：Bagging 平行 vs Boosting 接力', '[00:01:10]', 'timeline-item-1')" class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80 dark:hover:bg-slate-800" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP06/EP06-03.png', '兩條路線：Bagging 平行 vs Boosting 接力', '[00:01:10]', 'timeline-item-1')">
+          <img src="EP06/EP06-03.png" alt="兩條路線：Bagging 平行 vs Boosting 接力" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-white/85 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+          <strong>【兩大流派對比】</strong> Bagging（平行民主投票）：抽子樣本獨立訓練各樹，分類投票、迴歸平均，主要任務為降低變異（代表：隨機森林）；Boosting（循序錯題接力）：依序訓練，後一棵樹專修前一棵樹的錯誤，輸出加權相加，主要任務為降低偏差（代表：GBDT、XGBoost、LightGBM）。
+        </div>
+      </div>
+
+        
+      <!-- 投影片 SLIDE-CARD-EP06-04 卡片 -->
+      <div id="slide-card-ep06-04" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-teal-500 bg-teal-50/40 dark:bg-teal-950/20 p-4 sm:p-5 transition-all duration-300 shadow-md shadow-teal-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 EP06-04
+            </span>
+            <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">核心機制：為什麼一個降變異、一個降偏差？</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTimelineItem('timeline-item-1')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer" title="跳轉至時間軸">
+              [00:01:50]
+            </button>
+            <button onclick="openLightbox('EP06/EP06-04.png', '核心機制：為什麼一個降變異、一個降偏差？', '[00:01:50]', 'timeline-item-1')" class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80 dark:hover:bg-slate-800" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP06/EP06-04.png', '核心機制：為什麼一個降變異、一個降偏差？', '[00:01:50]', 'timeline-item-1')">
+          <img src="EP06/EP06-04.png" alt="核心機制：為什麼一個降變異、一個降偏差？" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-white/85 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+          <strong>【數學直覺解析】</strong> Bagging 降變異：每棵樹稍微過擬合，但因為子樣本不同使得錯誤發生在不同維度，平均投票後正負誤差相互抵銷；Boosting 降偏差：採用偏差大、表現普通的弱模型（淺決策樹），後續每棵樹專攻殘差，疊加逼近複雜非線性函數。
+        </div>
+      </div>
+
+        
+      <!-- 投影片 SLIDE-CARD-EP06-05 卡片 -->
+      <div id="slide-card-ep06-05" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20 p-4 sm:p-5 transition-all duration-300 shadow-md shadow-emerald-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 EP06-05
+            </span>
+            <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">學校版生活比喻：改作文 vs 補救教學</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTimelineItem('timeline-item-1')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer" title="跳轉至時間軸">
+              [00:02:30]
+            </button>
+            <button onclick="openLightbox('EP06/EP06-05.png', '學校版生活比喻：改作文 vs 補救教學', '[00:02:30]', 'timeline-item-1')" class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80 dark:hover:bg-slate-800" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP06/EP06-05.png', '學校版生活比喻：改作文 vs 補救教學', '[00:02:30]', 'timeline-item-1')">
+          <img src="EP06/EP06-05.png" alt="學校版生活比喻：改作文 vs 補救教學" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-white/85 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+          <strong>【生活直覺速記】</strong> 學校版比喻：Bagging 就像多位老師各自批改同一篇作文再取平均分，個人的嚴苛或寬鬆互相抵銷；Boosting 就像補救教學接力賽，第一位老師教完後，第二位老師專門針對沒學會的題型補課，下一位專教前一位沒教會的。
+        </div>
+      </div>
+
+      </div>
+</section>
+
+    <!-- 2. Bagging 與 隨機森林 (Random Forest) -->
+    <section id="section-bagging" class="scroll-mt-20">
+      <div class="flex items-center space-x-3 mb-6">
+        <span class="p-2 rounded-lg bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400">
+          <i data-lucide="layers" class="w-6 h-6"></i>
+        </span>
+        <div>
+          <h3 class="text-2xl font-bold text-slate-900 dark:text-white">重點二：Bagging 與 隨機森林 (Random Forest)</h3>
+          <p class="text-sm text-slate-500 dark:text-slate-400">平行民主投票：藉由隨機抽樣讓多個過擬合弱樹互相抵消誤差</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 核心原理卡片 -->
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 mb-3">
+              <i data-lucide="shuffle" class="w-3.5 h-3.5"></i>
+              雙重隨機機制（Double Randomization）
+            </div>
+            <h4 class="text-lg font-bold text-slate-900 dark:text-white mb-2">隨機森林為什麼不容易過擬合？</h4>
+            <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+              如果只訓練單棵深層決策樹，極易因死記雜訊而過擬合。隨機森林引入兩重隨機，讓每棵樹具備多樣性（Diversity）：
+            </p>
+
+            <ul class="space-y-3 text-sm">
+              <li class="flex items-start gap-2.5">
+                <span class="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</span>
+                <div>
+                  <strong class="text-slate-800 dark:text-slate-200">隨機抽樣本 (Bootstrap Aggregation)：</strong>
+                  <p class="text-slate-500 dark:text-slate-400 text-xs mt-0.5">採「有放回抽樣」（Bootstrap），約有 63.2% 樣本被抽中，剩下 36.8% 未被抽中者稱為 OOB (Out-of-Bag) 袋外資料，可直接拿來做自驗證！</p>
+                </div>
+              </li>
+              <li class="flex items-start gap-2.5">
+                <span class="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</span>
+                <div>
+                  <strong class="text-slate-800 dark:text-slate-200">隨機挑特徵 (Feature Subsampling)：</strong>
+                  <p class="text-slate-500 dark:text-slate-400 text-xs mt-0.5">每個分叉節點只隨機挑選一部份特徵（例如 $k = \sqrt{D}$），避免單一強特徵主導整座森林，讓不同特徵都有發揮空間。</p>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <div class="mt-6 p-4 rounded-xl callout-purple text-xs text-purple-900 dark:text-purple-300">
+            <span class="font-bold">生活生動比喻：</span> 就像 100 位老師各自獨立批改一篇作文，每位老師審查角度不同、各自有偏見，但將 100 人的評分平均起來，偏誤就被抵消得乾乾淨淨！
+          </div>
+        </div>
+
+        <!-- 特徵重要性與黑箱限制 -->
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 mb-3">
+              <i data-lucide="bar-chart-3" class="w-3.5 h-3.5"></i>
+              特徵重要性 (Feature Importance) & 解釋性
+            </div>
+            <h4 class="text-lg font-bold text-slate-900 dark:text-white mb-2">如何衡量特徵影響力？</h4>
+            <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+              隨機森林在每次節點切分時，計算該特徵讓資料的<strong>「不純度降低量」</strong>（如 Gini 不純度減少量或熵增益）。在所有樹中的降低量累加平均越高，該特徵越重要。
+            </p>
+
+            <!-- 模擬特徵重要性長條圖 -->
+            <div class="space-y-2.5 mb-4">
+              <div>
+                <div class="flex justify-between text-xs font-medium mb-1">
+                  <span>年齡 (Age)</span>
+                  <span class="text-purple-600 dark:text-purple-400 font-bold">42%</span>
+                </div>
+                <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div class="bg-purple-600 h-2 rounded-full" style="width: 42%"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between text-xs font-medium mb-1">
+                  <span>過往理賠次數 (Claims History)</span>
+                  <span class="text-purple-600 dark:text-purple-400 font-bold">35%</span>
+                </div>
+                <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div class="bg-purple-500 h-2 rounded-full" style="width: 35%"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between text-xs font-medium mb-1">
+                  <span>車輛里程數 (Mileage)</span>
+                  <span class="text-purple-600 dark:text-purple-400 font-bold">15%</span>
+                </div>
+                <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div class="bg-purple-400 h-2 rounded-full" style="width: 15%"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between text-xs font-medium mb-1">
+                  <span>車輛顏色 (Car Color)</span>
+                  <span class="text-slate-400 font-bold">8%</span>
+                </div>
+                <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div class="bg-slate-400 h-2 rounded-full" style="width: 8%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-3.5 rounded-xl border border-rose-200 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20 text-xs">
+            <span class="font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1.5 mb-1">
+              <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> 缺點與實務局限（考點）
+            </span>
+            <p class="text-slate-600 dark:text-slate-400">
+              隨機森林雖然不需特徵標準化，但其如同<strong>黑箱（Black-box）</strong>，無法輸出單一易讀的判斷規則；若要解釋單一筆保險顧客為何被拒保，需外接 <strong>SHAP (Shapley Additive Explanations)</strong> 分析。
+            </p>
+          </div>
+        </div>
+      </div>
+    
+      <!-- 重點二 隨機森林投影片圖解系列 -->
+      <div class="mt-8 space-y-6">
+        
+      <!-- 投影片 SLIDE-CARD-EP06-06 卡片 -->
+      <div id="slide-card-ep06-06" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-amber-500 bg-amber-50/40 dark:bg-amber-950/20 p-4 sm:p-5 transition-all duration-300 shadow-md shadow-amber-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 EP06-06
+            </span>
+            <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">重點二：隨機森林的兩個隨機機制</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTimelineItem('timeline-item-2')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer" title="跳轉至時間軸">
+              [00:03:03]
+            </button>
+            <button onclick="openLightbox('EP06/EP06-06.png', '重點二：隨機森林的兩個隨機機制', '[00:03:03]', 'timeline-item-2')" class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80 dark:hover:bg-slate-800" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP06/EP06-06.png', '重點二：隨機森林的兩個隨機機制', '[00:03:03]', 'timeline-item-2')">
+          <img src="EP06/EP06-06.png" alt="重點二：隨機森林的兩個隨機機制" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-white/85 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+          <strong>【雙重隨機性考點】</strong> 隨機抽樣本（Bootstrap）：有放回抽樣，約 36.8% 樣本為 OOB（袋外資料）；隨機抽特徵：每次節點分裂只看隨機挑出的特徵子集。若不隨機抽特徵，遇到單一超強特徵時每棵樹都會先選它，導致所有樹長得很像而失去集成多樣性！
+        </div>
+      </div>
+
+        
+      <!-- 投影片 SLIDE-CARD-EP06-07 卡片 -->
+      <div id="slide-card-ep06-07" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-orange-500 bg-orange-50/40 dark:bg-orange-950/20 p-4 sm:p-5 transition-all duration-300 shadow-md shadow-orange-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 EP06-07
+            </span>
+            <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">學校版生活比喻：評審團的多樣性</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTimelineItem('timeline-item-2')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer" title="跳轉至時間軸">
+              [00:04:15]
+            </button>
+            <button onclick="openLightbox('EP06/EP06-07.png', '學校版生活比喻：評審團的多樣性', '[00:04:15]', 'timeline-item-2')" class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80 dark:hover:bg-slate-800" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP06/EP06-07.png', '學校版生活比喻：評審團的多樣性', '[00:04:15]', 'timeline-item-2')">
+          <img src="EP06/EP06-07.png" alt="學校版生活比喻：評審團的多樣性" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-white/85 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+          <strong>【評審團多樣性比喻】</strong> 每位評審只拿到部分學生名單、部分評分項目，各自獨立打分後再投票。如果每位評審都只看成績這一項指標，大家的評分結果一模一樣，投票就失去了互補抗雜訊的實質意義。
+        </div>
+      </div>
+
+      </div>
+</section>
+
+    <!-- 3. Boosting 與 梯度提升 (GBDT) 殘差逼近模擬器 -->
+    <section id="section-boosting" class="scroll-mt-20">
+      <div class="flex items-center space-x-3 mb-6">
+        <span class="p-2 rounded-lg bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400">
+          <i data-lucide="trending-up" class="w-6 h-6"></i>
+        </span>
+        <div>
+          <h3 class="text-2xl font-bold text-slate-900 dark:text-white">重點三：梯度提升 (Gradient Boosting) 與殘差迭代</h3>
+          <p class="text-sm text-slate-500 dark:text-slate-400">串行補救教學：每一棵樹都在訂正上一棒留下來的「殘差 (Residual)」</p>
+        </div>
+      </div>
+
+      <!-- 模擬器操作主面板 -->
+      <div class="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+        
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
+          <div>
+            <h4 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="sliders" class="w-5 h-5 text-amber-500"></i>
+              真實房價逼近互動模擬器
+            </h4>
+            <p class="text-sm text-slate-500 dark:text-slate-400">
+              真實房價目標：<span class="font-bold text-emerald-600 dark:text-emerald-400">100 萬元</span>｜初始基準預測：<span class="font-bold text-blue-600">80 萬元</span>
+            </p>
+          </div>
+
+          <div class="flex items-center gap-4 bg-slate-50 dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
+            <div>
+              <span class="text-xs text-slate-400 block">當前最終預測值</span>
+              <span id="currentPredValue" class="text-xl font-black text-amber-600 dark:text-amber-400">-- 萬</span>
+            </div>
+            <div class="h-8 w-px bg-slate-300 dark:bg-slate-700"></div>
+            <div>
+              <span class="text-xs text-slate-400 block">剩餘未解殘差</span>
+              <span id="currentResidualValue" class="text-xl font-black text-rose-500">-- 萬</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 參數拉桿 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-amber-50/40 dark:bg-amber-950/20 p-4 sm:p-5 rounded-xl border border-amber-200/60 dark:border-amber-900/40">
+          <div>
+            <div class="flex justify-between items-center text-sm font-semibold mb-2">
+              <label for="sliderTrees" class="flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
+                <i data-lucide="git-commit" class="w-4 h-4 text-amber-600"></i>
+                弱樹迭代棵數 (Number of Trees):
+              </label>
+              <span id="treeCountDisplay" class="px-2 py-0.5 rounded bg-amber-500 text-white font-mono text-xs">5 棵</span>
+            </div>
+            <input type="range" id="sliderTrees" min="1" max="15" value="5" class="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500">
+            <span class="text-xs text-slate-500 mt-1 block">越多棵樹能把殘差修得越小，但若無正則化容易過擬合雜訊。</span>
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center text-sm font-semibold mb-2">
+              <label for="sliderLr" class="flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
+                <i data-lucide="zap" class="w-4 h-4 text-amber-600"></i>
+                學習率 / 步長 (Learning Rate $\eta$):
+              </label>
+              <span id="lrDisplay" class="px-2 py-0.5 rounded bg-amber-500 text-white font-mono text-xs">0.3</span>
+            </div>
+            <input type="range" id="sliderLr" min="0.05" max="0.9" step="0.05" value="0.3" class="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500">
+            <span class="text-xs text-slate-500 mt-1 block">小步慢爬可避免被單一棵樹的雜訊拉偏，為 GBDT 防過擬合核心手法。</span>
+          </div>
+        </div>
+
+        <!-- 視覺化圖表與步驟流水帳 -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- 殘差折線逼近圖 (SVG) -->
+          <div class="lg:col-span-7 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">📈 預測值逐步逼近 100 萬目標軌跡</span>
+            <div class="w-full h-56 flex items-center justify-center">
+              <svg id="convergenceChart" class="w-full h-full" viewBox="0 0 500 220">
+                <!-- 由 JS 繪製圖表軸線與逼近折線 -->
+              </svg>
+            </div>
+          </div>
+
+          <!-- 逐步迭代歷程表格 -->
+          <div class="lg:col-span-5 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
+            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">📋 歷程解構（各樹擬合殘差）</span>
+            <div class="overflow-y-auto max-h-48 text-xs font-mono space-y-1.5 pr-1" id="iterHistoryList">
+              <!-- JS 動態插入 -->
+            </div>
+            <div class="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-500">
+              💡 公式：$F_{m}(x) = F_{m-1}(x) + \eta \cdot h_m(x)$<br>
+              負梯度方向在 MSE 損失下恰好等於真實值與預測值的差額 $(y - \hat{y})$。
+            </div>
+          </div>
+        </div>
+
+        <!-- 防過擬合四重奏 -->
+        <div class="p-4 rounded-xl callout-amber text-xs space-y-1">
+          <h5 class="font-bold text-amber-900 dark:text-amber-300 text-sm">🛡️ Boosting 過擬合防禦四重奏（考點密碼）：</h5>
+          <p class="text-slate-700 dark:text-slate-300">
+            1. <strong>早停機制 (Early Stopping)：</strong> 監控驗證集誤差，當多個輪次不再進步時立即終止，避免樹過多學到雜訊。<br>
+            2. <strong>降低學習率 (Shrinkage)：</strong> 與更多樹搭配（步子小、更穩健）。<br>
+            3. <strong>樹深度剪枝 (Max Depth)：</strong> GBDT 的弱樹通常只需深度 3~6，限制模型容量。<br>
+            4. <strong>子樣本採樣 (Subsample)：</strong> 每棵樹隨機抽 70%~80% 樣本訓練（Stochastic Gradient Boosting）。
+          </p>
+        </div>
+      </div>
+    
+      <!-- 重點三 梯度提升投影片圖解系列 -->
+      <div class="mt-8 space-y-6">
+        
+      <!-- 投影片 SLIDE-CARD-EP06-08 卡片 -->
+      <div id="slide-card-ep06-08" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-violet-500 bg-violet-50/40 dark:bg-violet-950/20 p-4 sm:p-5 transition-all duration-300 shadow-md shadow-violet-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 EP06-08
+            </span>
+            <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">重點三：梯度提升一棵一棵修殘差</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTimelineItem('timeline-item-3')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer" title="跳轉至時間軸">
+              [00:05:17]
+            </button>
+            <button onclick="openLightbox('EP06/EP06-08.png', '重點三：梯度提升一棵一棵修殘差', '[00:05:17]', 'timeline-item-3')" class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80 dark:hover:bg-slate-800" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP06/EP06-08.png', '重點三：梯度提升一棵一棵修殘差', '[00:05:17]', 'timeline-item-3')">
+          <img src="EP06/EP06-08.png" alt="重點三：梯度提升一棵一棵修殘差" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-white/85 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+          <strong>【梯度提升本質】</strong> 殘差（Residual）即「真實值減去當前預測值」，下一棵樹專門學殘差。當採用均方誤差（MSE）為損失函數時，負梯度方向恰好就是殘差方向；因此擬合殘差就像沿著損失函數的負梯度方向穩步下山。
+        </div>
+      </div>
+
+        
+      <!-- 投影片 SLIDE-CARD-EP06-09 卡片 -->
+      <div id="slide-card-ep06-09" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-purple-500 bg-purple-50/40 dark:bg-purple-950/20 p-4 sm:p-5 transition-all duration-300 shadow-md shadow-purple-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 EP06-09
+            </span>
+            <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">計算示範：用殘差逼近 100 萬與學習率</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTimelineItem('timeline-item-3')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer" title="跳轉至時間軸">
+              [00:06:20]
+            </button>
+            <button onclick="openLightbox('EP06/EP06-09.png', '計算示範：用殘差逼近 100 萬與學習率', '[00:06:20]', 'timeline-item-3')" class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80 dark:hover:bg-slate-800" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP06/EP06-09.png', '計算示範：用殘差逼近 100 萬與學習率', '[00:06:20]', 'timeline-item-3')">
+          <img src="EP06/EP06-09.png" alt="計算示範：用殘差逼近 100 萬與學習率" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-white/85 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+          <strong>【數值推演與學習率】</strong> 目標 100 萬：第 1 棵預測 80 萬（差 20 萬）；第 2 棵學殘差 20 萬補回 15 萬（累計 95 萬，剩 5 萬）；第 3 棵再補回 4 萬。學習率（Learning Rate）：每棵樹的貢獻乘以縮放係數（如 0.1），每步只修一點，避免單步跨度過大被雜訊帶偏。
+        </div>
+      </div>
+
+      </div>
+</section>
+
+    <!-- 4. XGBoost vs LightGBM (核心改進與生長模式) -->
+    <section id="section-xgboost" class="scroll-mt-20">
+      <div class="flex items-center space-x-3 mb-6">
+        <span class="p-2 rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400">
+          <i data-lucide="zap" class="w-6 h-6"></i>
+        </span>
+        <div>
+          <h3 class="text-2xl font-bold text-slate-900 dark:text-white">重點四：XGBoost 與 LightGBM 現代進化論</h3>
+          <p class="text-sm text-slate-500 dark:text-slate-400">工業界與競賽常勝軍：演算法層面的顛覆式改進</p>
+        </div>
+      </div>
+
+      <!-- 生長模式互動比較卡 -->
+      <div class="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm mb-8">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <div>
+            <h4 class="text-lg font-bold text-slate-900 dark:text-white">樹的生長模式比較：Level-wise vs Leaf-wise</h4>
+            <p class="text-sm text-slate-500 dark:text-slate-400">點擊按鈕一步一步看兩種決策樹如何向下展開分裂</p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="growTreeStep()" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white font-semibold text-xs hover:bg-emerald-700 transition flex items-center gap-1.5 shadow-sm">
+              <i data-lucide="play" class="w-3.5 h-3.5"></i> 執行下一步生長
+            </button>
+            <button onclick="resetTreeGrowth()" class="px-3.5 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-300 transition flex items-center gap-1.5">
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> 重置
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- XGBoost: Level-wise -->
+          <div class="p-5 rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/20 dark:bg-emerald-950/10">
+            <div class="flex justify-between items-center mb-2">
+              <span class="font-bold text-emerald-800 dark:text-emerald-300 text-sm">XGBoost：Level-wise (層級生長)</span>
+              <span class="text-xs px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-mono">對稱平衡</span>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">
+              同一層的所有節點都分裂完畢，才會進到下一層。較不易過擬合，但對增益極低的葉子也會強行分裂，浪費算力。
+            </p>
+            <div class="h-48 bg-white dark:bg-slate-950 rounded-lg p-2 flex items-center justify-center border border-slate-200 dark:border-slate-800">
+              <svg id="levelWiseSvg" class="w-full h-full" viewBox="0 0 240 160"></svg>
+            </div>
+          </div>
+
+          <!-- LightGBM: Leaf-wise -->
+          <div class="p-5 rounded-xl border border-teal-200 dark:border-teal-900/50 bg-teal-50/20 dark:bg-teal-950/10">
+            <div class="flex justify-between items-center mb-2">
+              <span class="font-bold text-teal-800 dark:text-teal-300 text-sm">LightGBM：Leaf-wise (葉子生長)</span>
+              <span class="text-xs px-2 py-0.5 rounded bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200 font-mono">增益最大優先</span>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">
+              每次只找當前分裂增益（Gain）最大的一片葉子向下深挖，極端高效！但資料量太小時容易長得過深導致過擬合（需設 max_depth）。
+            </p>
+            <div class="h-48 bg-white dark:bg-slate-950 rounded-lg p-2 flex items-center justify-center border border-slate-200 dark:border-slate-800">
+              <svg id="leafWiseSvg" class="w-full h-full" viewBox="0 0 240 160"></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- XGBoost 四大核心技術創新矩陣 -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3">
+              <span class="font-bold text-sm">2nd</span>
+            </div>
+            <h5 class="font-bold text-slate-900 dark:text-white text-base mb-1">二階泰勒展開</h5>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              傳統 GBDT 僅使用一階導數（梯度）；XGBoost 引入一階梯度 $g_i$ 與二階海森矩陣 $h_i$ 精確預估最優葉權重與分裂步長。
+            </p>
+          </div>
+          <span class="mt-4 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">更精確的損失下降路徑</span>
+        </div>
+
+        <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3">
+              <i data-lucide="shield" class="w-4 h-4"></i>
+            </div>
+            <h5 class="font-bold text-slate-900 dark:text-white text-base mb-1">正則化懲罰項 (L1/L2)</h5>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              在目標函數直接加入對「葉節點數量 $T$」與「葉權重大小 $w$」的懲罰：$\gamma T + \frac{1}{2}\lambda \sum w_j^2$，天生具備防過擬合能力！
+            </p>
+          </div>
+          <span class="mt-4 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">★ iPAS 必考高頻題目</span>
+        </div>
+
+        <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3">
+              <i data-lucide="cpu" class="w-4 h-4"></i>
+            </div>
+            <h5 class="font-bold text-slate-900 dark:text-white text-base mb-1">特徵分裂並行化</h5>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              雖然「樹與樹之間必須串行（依賴前一棵的殘差）」，但在「尋找同一節點的最佳特徵分割點」時，可以多執行緒並行計算！
+            </p>
+          </div>
+          <span class="mt-4 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">不可誤解為樹與樹並行</span>
+        </div>
+
+        <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3">
+              <i data-lucide="help-circle" class="w-4 h-4"></i>
+            </div>
+            <h5 class="font-bold text-slate-900 dark:text-white text-base mb-1">自動處理缺失值 (Sparsity)</h5>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              訓練時會自動測試把空值分到左子樹或右子樹，哪邊增益大就定為預設分流方向，省去手動補值的煩惱。
+            </p>
+          </div>
+          <span class="mt-4 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">工程實務免補值省心特性</span>
+        </div>
+
+      </div>
+    
+      <!-- 重點四 XGBoost & LightGBM 投影片圖解系列 -->
+      <div class="mt-8 space-y-6">
+        
+      <!-- 投影片 SLIDE-CARD-EP06-10 卡片 -->
+      <div id="slide-card-ep06-10" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-cyan-500 bg-cyan-50/40 dark:bg-cyan-950/20 p-4 sm:p-5 transition-all duration-300 shadow-md shadow-cyan-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 EP06-10
+            </span>
+            <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">重點四：XGBoost 與 LightGBM 生長模式比較</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTimelineItem('timeline-item-4')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer" title="跳轉至時間軸">
+              [00:07:30]
+            </button>
+            <button onclick="openLightbox('EP06/EP06-10.png', '重點四：XGBoost 與 LightGBM 生長模式比較', '[00:07:30]', 'timeline-item-4')" class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80 dark:hover:bg-slate-800" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP06/EP06-10.png', '重點四：XGBoost 與 LightGBM 生長模式比較', '[00:07:30]', 'timeline-item-4')">
+          <img src="EP06/EP06-10.png" alt="重點四：XGBoost 與 LightGBM 生長模式比較" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-white/85 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+          <strong>【樹生長模式對比】</strong> XGBoost 採用 Level-wise（層級式生長）：一層一層生長，像蓋大樓整層蓋完才蓋下一層，樹型結構平衡；LightGBM 採用 Leaf-wise（葉子式生長）：哪片葉子切下去的分裂增益（損失降幅）最大就往下長，像挖礦哪裡礦多往哪挖深，運算極快。
+        </div>
+      </div>
+
+        
+      <!-- 投影片 SLIDE-CARD-EP06-11 卡片 -->
+      <div id="slide-card-ep06-11" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-rose-500 bg-rose-50/40 dark:bg-rose-950/20 p-4 sm:p-5 transition-all duration-300 shadow-md shadow-rose-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 EP06-11
+            </span>
+            <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">防過擬合與弱點：正則化懲罰與深度限制</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTimelineItem('timeline-item-4')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer" title="跳轉至時間軸">
+              [00:08:20]
+            </button>
+            <button onclick="openLightbox('EP06/EP06-11.png', '防過擬合與弱點：正則化懲罰與深度限制', '[00:08:20]', 'timeline-item-4')" class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80 dark:hover:bg-slate-800" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP06/EP06-11.png', '防過擬合與弱點：正則化懲罰與深度限制', '[00:08:20]', 'timeline-item-4')">
+          <img src="EP06/EP06-11.png" alt="防過擬合與弱點：正則化懲罰與深度限制" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-white/85 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+          <strong>【防過擬合與工程考點】</strong> XGBoost 目標函數 = 預測損失 + 樹複雜度懲罰項（葉節點數與葉權重），樹長太複雜就扣分！且可自動學習缺失值的最佳分支路徑；LightGBM 在資料量小或無限制時容易長出傾斜深樹而過擬合，實戰中務必限制 max_depth！
+        </div>
+      </div>
+
+        
+      <!-- 投影片 SLIDE-CARD-EP06-12 卡片 -->
+      <div id="slide-card-ep06-12" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-fuchsia-500 bg-fuchsia-50/40 dark:bg-fuchsia-950/20 p-4 sm:p-5 transition-all duration-300 shadow-md shadow-fuchsia-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-300 border-fuchsia-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 EP06-12
+            </span>
+            <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">學校版生活比喻：升年級 (Level-wise) vs 深入一班 (Leaf-wise)</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTimelineItem('timeline-item-4')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer" title="跳轉至時間軸">
+              [00:08:50]
+            </button>
+            <button onclick="openLightbox('EP06/EP06-12.png', '學校版生活比喻：升年級 (Level-wise) vs 深入一班 (Leaf-wise)', '[00:08:50]', 'timeline-item-4')" class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80 dark:hover:bg-slate-800" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP06/EP06-12.png', '學校版生活比喻：升年級 (Level-wise) vs 深入一班 (Leaf-wise)', '[00:08:50]', 'timeline-item-4')">
+          <img src="EP06/EP06-12.png" alt="學校版生活比喻：升年級 (Level-wise) vs 深入一班 (Leaf-wise)" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-white/85 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+          <strong>【生長模式生活比喻】</strong> XGBoost 就像一個年級整個升級完，才換下一個年級（結構平衡）；LightGBM 就像哪一班問題最大，就先往那一班深入處理。學生少時如果只鑽某一班就會失衡（過擬合），因此必須限制深入深度。
+        </div>
+      </div>
+
+      </div>
+</section>
+
+    <!-- 5. 比較一覽表與 iPAS 考古試題實戰 -->
+    <section id="section-quiz" class="scroll-mt-20">
+      <div class="flex items-center space-x-3 mb-6">
+        <span class="p-2 rounded-lg bg-rose-100 text-rose-600 dark:bg-rose-900/50 dark:text-rose-400">
+          <i data-lucide="check-square" class="w-6 h-6"></i>
+        </span>
+        <div>
+          <h3 class="text-2xl font-bold text-slate-900 dark:text-white">重點五：四強綜合對比與 iPAS 實戰模擬試題</h3>
+          <p class="text-sm text-slate-500 dark:text-slate-400">考前總複習：表格速記與高頻考點直擊</p>
+        </div>
+      </div>
+
+      <!-- 四大模型速查比較表 -->
+      <div class="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 mb-8 bg-white dark:bg-slate-900 shadow-sm">
+        <table class="w-full text-left text-xs sm:text-sm">
+          <thead class="bg-slate-100 dark:bg-slate-800/70 text-slate-700 dark:text-slate-200 font-bold border-b border-slate-200 dark:border-slate-700">
+            <tr>
+              <th class="p-3 sm:p-4">演算法模型</th>
+              <th class="p-3 sm:p-4">架構本質</th>
+              <th class="p-3 sm:p-4">主要目標</th>
+              <th class="p-3 sm:p-4">基學習器關係</th>
+              <th class="p-3 sm:p-4">核心優勢與關鍵特性</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 dark:divide-slate-800 text-slate-600 dark:text-slate-300">
+            <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+              <td class="p-3 sm:p-4 font-bold text-purple-700 dark:text-purple-400">隨機森林 (Random Forest)</td>
+              <td class="p-3 sm:p-4"><span class="px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300 text-xs">Bagging</span></td>
+              <td class="p-3 sm:p-4 font-medium text-emerald-600 dark:text-emerald-400">降低變異 (Variance)</td>
+              <td class="p-3 sm:p-4">獨立平行訓練、深度較深</td>
+              <td class="p-3 sm:p-4">雙重隨機（樣本+特徵）、OOB 自評估、特徵重要性分析</td>
+            </tr>
+            <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+              <td class="p-3 sm:p-4 font-bold text-amber-700 dark:text-amber-400">梯度提升樹 (GBDT)</td>
+              <td class="p-3 sm:p-4"><span class="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 text-xs">Boosting</span></td>
+              <td class="p-3 sm:p-4 font-medium text-blue-600 dark:text-blue-400">降低偏差 (Bias)</td>
+              <td class="p-3 sm:p-4">依序串行、擬合前一棒殘差</td>
+              <td class="p-3 sm:p-4">利用損失函數的一階負梯度，精確擬合複雜非線性表格資料</td>
+            </tr>
+            <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+              <td class="p-3 sm:p-4 font-bold text-emerald-700 dark:text-emerald-400">XGBoost</td>
+              <td class="p-3 sm:p-4"><span class="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs">Boosting</span></td>
+              <td class="p-3 sm:p-4 font-medium text-blue-600 dark:text-blue-400">降低偏差 + 防過擬合</td>
+              <td class="p-3 sm:p-4">串行訓練，同一樹特徵可並行</td>
+              <td class="p-3 sm:p-4">二階泰勒展開、目標函數正則化懲罰、自動處理空值、Level-wise 生長</td>
+            </tr>
+            <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+              <td class="p-3 sm:p-4 font-bold text-teal-700 dark:text-teal-400">LightGBM</td>
+              <td class="p-3 sm:p-4"><span class="px-2 py-0.5 rounded bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-300 text-xs">Boosting</span></td>
+              <td class="p-3 sm:p-4 font-medium text-blue-600 dark:text-blue-400">極速降低偏差</td>
+              <td class="p-3 sm:p-4">串行訓練、Leaf-wise 生長</td>
+              <td class="p-3 sm:p-4">直方圖演算法 (Histogram) 離散化連續特徵、記憶體消耗極低、速度超快</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 互動測驗題目 -->
+      <div class="space-y-6">
+        <h4 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <i data-lucide="help-circle" class="w-5 h-5 text-rose-500"></i>
+          iPAS 考題情境模擬挑戰
+        </h4>
+
+        <!-- 題目 1 (逐字稿原題) -->
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm" id="quiz-card-1">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">考題 1</span>
+            <span class="text-xs text-slate-400">演算法改進概念</span>
+          </div>
+          <p class="font-semibold text-slate-800 dark:text-slate-200 text-sm sm:text-base leading-relaxed mb-4">
+            傳統梯度提升決策樹（GBDT）在面對高維度與稀疏資料時常面臨過擬合與運算耗時的問題。與傳統 GBDT 相比，下列哪一項最能反映 XGBoost 所做的關鍵改進？
+          </p>
+          <div class="space-y-2.5 text-sm" id="q1-options">
+            <button onclick="checkAnswer(1, 'A')" class="w-full text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/40 dark:hover:bg-slate-800 transition flex items-center gap-3">
+              <span class="w-6 h-6 rounded-full border border-slate-300 dark:border-slate-600 flex items-center justify-center font-mono text-xs font-bold">A</span>
+              <span>改採用隨機森林作為基學習器，並利用 Bagging 機制進行平行計算</span>
+            </button>
+            <button onclick="checkAnswer(1, 'B')" class="w-full text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/40 dark:hover:bg-slate-800 transition flex items-center gap-3">
+              <span class="w-6 h-6 rounded-full border border-slate-300 dark:border-slate-600 flex items-center justify-center font-mono text-xs font-bold">B</span>
+              <span>在目標函數中引入正則化以抑制過擬合，並支援缺失值自動處理與並行特徵分裂</span>
+            </button>
+            <button onclick="checkAnswer(1, 'C')" class="w-full text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/40 dark:hover:bg-slate-800 transition flex items-center gap-3">
+              <span class="w-6 h-6 rounded-full border border-slate-300 dark:border-slate-600 flex items-center justify-center font-mono text-xs font-bold">C</span>
+              <span>使用完全獨立的深度神經網路進行殘差擬合，取消決策樹結構</span>
+            </button>
+            <button onclick="checkAnswer(1, 'D')" class="w-full text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/40 dark:hover:bg-slate-800 transition flex items-center gap-3">
+              <span class="w-6 h-6 rounded-full border border-slate-300 dark:border-slate-600 flex items-center justify-center font-mono text-xs font-bold">D</span>
+              <span>取消了早停機制 (Early Stopping)，改採全部弱樹強制訓練至滿層</span>
+            </button>
+          </div>
+          <!-- 詳解隱藏區 -->
+          <div id="q1-explanation" class="hidden mt-4 p-4 rounded-xl callout-emerald text-xs text-slate-700 dark:text-slate-300">
+            <span class="font-bold text-emerald-800 dark:text-emerald-300 text-sm block mb-1">✅ 答案：(B) 正確！</span>
+            <strong>解題剖析：</strong><br>
+            • XGBoost 依舊是 Boosting 決策樹，並非改用神經網路或隨機森林（排除 A 與 C）。<br>
+            • XGBoost 的「並行化」是指<strong>在同一棵樹中尋找多個特徵的最佳切分點時並行</strong>，樹與樹之間仍然是串行的！<br>
+            • 它在損失函數中加入葉節點數與葉權重的正則化懲罰項，並內建稀疏缺失值自動分流路線，這正是解答關鍵。
+          </div>
+        </div>
+
+        <!-- 題目 2 (偏差變異應用) -->
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm" id="quiz-card-2">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">考題 2</span>
+            <span class="text-xs text-slate-400">架構決策判斷</span>
+          </div>
+          <p class="font-semibold text-slate-800 dark:text-slate-200 text-sm sm:text-base leading-relaxed mb-4">
+            某 AI 工程師在訓練單一深層決策樹模型時，發現模型在訓練集上的準確率達到 99%，但驗證集準確率僅有 62%，呈現顯著的高變異（High Variance / 過擬合）。根據集成學習原理，他此時最應優先嘗試採用下列何種演算法架構來緩解此問題？
+          </p>
+          <div class="space-y-2.5 text-sm" id="q2-options">
+            <button onclick="checkAnswer(2, 'A')" class="w-full text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/40 dark:hover:bg-slate-800 transition flex items-center gap-3">
+              <span class="w-6 h-6 rounded-full border border-slate-300 dark:border-slate-600 flex items-center justify-center font-mono text-xs font-bold">A</span>
+              <span>隨機森林 (Random Forest / Bagging 架構)</span>
+            </button>
+            <button onclick="checkAnswer(2, 'B')" class="w-full text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/40 dark:hover:bg-slate-800 transition flex items-center gap-3">
+              <span class="w-6 h-6 rounded-full border border-slate-300 dark:border-slate-600 flex items-center justify-center font-mono text-xs font-bold">B</span>
+              <span>加大學習率的 GBDT 模型</span>
+            </button>
+            <button onclick="checkAnswer(2, 'C')" class="w-full text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/40 dark:hover:bg-slate-800 transition flex items-center gap-3">
+              <span class="w-6 h-6 rounded-full border border-slate-300 dark:border-slate-600 flex items-center justify-center font-mono text-xs font-bold">C</span>
+              <span>增加單一決策樹的深度至無限制</span>
+            </button>
+            <button onclick="checkAnswer(2, 'D')" class="w-full text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/40 dark:hover:bg-slate-800 transition flex items-center gap-3">
+              <span class="w-6 h-6 rounded-full border border-slate-300 dark:border-slate-600 flex items-center justify-center font-mono text-xs font-bold">D</span>
+              <span>關閉早停機制訓練 1000 棵樹的 Boosting 模型</span>
+            </button>
+          </div>
+          <!-- 詳解隱藏區 -->
+          <div id="q2-explanation" class="hidden mt-4 p-4 rounded-xl callout-emerald text-xs text-slate-700 dark:text-slate-300">
+            <span class="font-bold text-emerald-800 dark:text-emerald-300 text-sm block mb-1">✅ 答案：(A) 正確！</span>
+            <strong>解題剖析：</strong><br>
+            • 題目明確指出模型處於「高變異（過擬合）」狀態。<br>
+            • <strong>Bagging 架構（如隨機森林）的核心目的正是「降低變異（Variance）」</strong>，藉由自助抽樣的多棵獨立樹取平均，能有效撫平單一樹的過度波動。<br>
+            • 選項 B、C、D 都會加劇過擬合，不可選。
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 快速口訣小卡 -->
+      <div class="mt-8 p-6 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg space-y-3">
+        <h4 class="text-base sm:text-lg font-bold flex items-center gap-2">
+          <i data-lucide="bookmark" class="w-5 h-5"></i>
+          考場 30 秒記憶口訣
+        </h4>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
+          <div class="bg-white/10 p-3 rounded-xl backdrop-blur-sm">
+            <div class="font-bold text-amber-300 mb-1">1. 架構口訣</div>
+            Bagging 民主投票<strong>降變異</strong>；Boosting 訂正錯題<strong>降偏差</strong>。
+          </div>
+          <div class="bg-white/10 p-3 rounded-xl backdrop-blur-sm">
+            <div class="font-bold text-amber-300 mb-1">2. 森林兩隨機</div>
+            隨機抽<strong>樣本</strong>（Bootstrap）、隨機挑<strong>特徵</strong>，杜絕獨裁樹。
+          </div>
+          <div class="bg-white/10 p-3 rounded-xl backdrop-blur-sm">
+            <div class="font-bold text-amber-300 mb-1">3. XGB 三件套</div>
+            <strong>二階導數</strong>算步長、<strong>正則懲罰</strong>防過擬、<strong>特徵並行</strong>省時間。
+          </div>
+        </div>
+      </div>
+    
+      <!-- 重點五 綜合考題與總結口訣投影片 -->
+      <div class="mt-8 space-y-6">
+        
+      <!-- 投影片 SLIDE-CARD-EP06-13 卡片 -->
+      <div id="slide-card-ep06-13" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-pink-500 bg-pink-50/40 dark:bg-pink-950/20 p-4 sm:p-5 transition-all duration-300 shadow-md shadow-pink-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-pink-500/15 text-pink-700 dark:text-pink-300 border-pink-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 EP06-13
+            </span>
+            <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">最容易搞混的三大對比總整理</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTimelineItem('timeline-item-5')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer" title="跳轉至時間軸">
+              [00:09:19]
+            </button>
+            <button onclick="openLightbox('EP06/EP06-13.png', '最容易搞混的三大對比總整理', '[00:09:19]', 'timeline-item-5')" class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80 dark:hover:bg-slate-800" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP06/EP06-13.png', '最容易搞混的三大對比總整理', '[00:09:19]', 'timeline-item-5')">
+          <img src="EP06/EP06-13.png" alt="最容易搞混的三大對比總整理" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-white/85 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+          <strong>【考前三大高頻混淆點】</strong> 三大對比：① Bagging 平行降低變異 vs Boosting 串聯降低偏差；② XGBoost Level-wise 一層層長 vs LightGBM Leaf-wise 找最大增益長；③ 特徵重要性（整體全域維度） vs SHAP（單一樣本正負邊際貢獻）。
+        </div>
+      </div>
+
+        
+      <!-- 投影片 SLIDE-CARD-EP06-14 卡片 -->
+      <div id="slide-card-ep06-14" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-amber-400 bg-amber-50/50 dark:bg-amber-950/20 p-4 sm:p-5 transition-all duration-300 shadow-md shadow-amber-400/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-amber-400/20 text-amber-800 dark:text-amber-200 border-amber-500/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 EP06-14
+            </span>
+            <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">這集帶走三句話：臨考 30 秒快速口訣總整理</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTimelineItem('timeline-item-6')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer" title="跳轉至時間軸">
+              [00:11:15]
+            </button>
+            <button onclick="openLightbox('EP06/EP06-14.png', '這集帶走三句話：臨考 30 秒快速口訣總整理', '[00:11:15]', 'timeline-item-6')" class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80 dark:hover:bg-slate-800" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP06/EP06-14.png', '這集帶走三句話：臨考 30 秒快速口訣總整理', '[00:11:15]', 'timeline-item-6')">
+          <img src="EP06/EP06-14.png" alt="這集帶走三句話：臨考 30 秒快速口訣總整理" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-white/85 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+          <strong>【30 秒終極口訣】</strong> ① Bagging 像民主投票降變異；Boosting 像訂正錯題本降偏差。<br>② 隨機森林靠「抽樣本 + 挑特徵」雙重隨機，讓每棵樹長得不一樣。<br>③ XGBoost 比 GBDT 多了目標函數正規化懲罰項，歷屆考題每回必考！
+        </div>
+      </div>
+
+      </div>
+</section>
+
+    <!-- 6. 互動式影片時間軸逐字稿模組 (Timeline & Full Transcript) -->
+    <section id="section-transcript" class="scroll-mt-20 pt-8 border-t border-slate-200 dark:border-slate-800">
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+        <div class="flex items-center space-x-3">
+          <span class="p-2.5 rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400 shadow-sm">
+            <i data-lucide="video" class="w-6 h-6"></i>
+          </span>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-2xl font-bold text-slate-900 dark:text-white">影片時間軸逐字稿與精讀導覽</h3>
+              <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">EP06 專屬</span>
+            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">對照 YouTube 影音精準時間戳，支援逐字稿展開、語意高亮與即時關鍵字過濾</p>
+          </div>
+        </div>
+
+        <!-- 外部原始影片快速連結 -->
+        <a href="https://www.youtube.com/watch?v=LxVAiFKSUzM" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-700 text-white shadow-sm transition">
+          <i data-lucide="external-link" class="w-3.5 h-3.5"></i> 開啟 YouTube 原片
+        </a>
+      </div>
+
+      <!-- 時間軸控制與搜尋列 -->
+      <div class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm mb-8 space-y-4">
+        <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+          <!-- 搜尋關鍵字 -->
+          <div class="relative flex-1">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="text" id="transcriptSearchInput" placeholder="搜尋逐字稿關鍵字（例：殘差、正則化、二階、隨機抽樣、直方圖）..." class="w-full pl-9 pr-4 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+
+          <!-- 模式與開合按鈕群 -->
+          <div class="flex items-center gap-2">
+            <button id="toggleAllBtn" onclick="toggleAllTranscripts()" class="px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition flex items-center gap-1.5">
+              <i data-lucide="chevrons-down" class="w-3.5 h-3.5"></i> 全部展開逐字稿
+            </button>
+            <div class="inline-flex rounded-xl p-0.5 border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-xs">
+              <button id="viewSummaryBtn" onclick="setTranscriptMode('summary')" class="px-2.5 py-1.5 rounded-lg font-semibold bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm transition">精簡重點</button>
+              <button id="viewFullBtn" onclick="setTranscriptMode('full')" class="px-2.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">全文閱讀</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 常用關鍵字快速標籤 -->
+        <div class="flex items-center gap-1.5 flex-wrap text-xs pt-1 border-t border-slate-100 dark:border-slate-800">
+          <span class="text-slate-400 flex items-center gap-1"><i data-lucide="tag" class="w-3 h-3"></i> 推薦快搜：</span>
+          <button onclick="quickFilter('降低變異')" class="px-2 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 hover:opacity-80">#降低變異</button>
+          <button onclick="quickFilter('降低偏差')" class="px-2 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 hover:opacity-80">#降低偏差</button>
+          <button onclick="quickFilter('殘差')" class="px-2 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 hover:opacity-80">#殘差</button>
+          <button onclick="quickFilter('正則化')" class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 hover:opacity-80">#正則化</button>
+          <button onclick="quickFilter('二階')" class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 hover:opacity-80">#二階導數</button>
+          <button onclick="quickFilter('Leaf-wise')" class="px-2 py-0.5 rounded bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 hover:opacity-80">#Leaf-wise</button>
+          <button onclick="quickFilter('考題')" class="px-2 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 hover:opacity-80">#考題詳解</button>
+          <button onclick="quickFilter('')" class="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:opacity-80">清除</button>
+        </div>
+      </div>
+
+      <!-- 垂直時間軸容器 -->
+      <div class="relative pl-4 sm:pl-8 border-l-2 border-indigo-200 dark:border-indigo-900/60 space-y-8" id="timelineList">
+
+        <!-- 節點 1: 開場試題挑戰與章節全貌導覽 -->
+        <div id="timeline-item-0" class="relative timeline-item" data-keywords="開場 試題 考題 傳統 GBDT XGBoost 集成學習 弱模型 強模型 科目三">
+          <!-- 時間軸錨點球 -->
+          <div class="absolute -left-[25px] sm:-left-[41px] top-4 w-5 h-5 rounded-full border-4 border-white dark:border-slate-900 bg-blue-600 shadow-sm flex items-center justify-center"></div>
+          
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm hover:shadow-md transition">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 font-mono text-xs font-bold">
+                  <i data-lucide="clock" class="w-3.5 h-3.5"></i> 00:00:00
+                </span>
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">開篇引導</span>
+              </div>
+              <a href="https://www.youtube.com/watch?v=LxVAiFKSUzM&t=0s" target="_blank" rel="noopener noreferrer" class="text-xs font-medium text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1">
+                <span>00:00 跳轉原片</span>
+                <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+              </a>
+            </div>
+
+            <h4 class="text-lg font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+              <span>開場試題挑戰與章節全貌導覽</span>
+            </h4>
+            <div class="flex items-center gap-1.5 flex-wrap my-2.5">
+              <span class="text-xs text-slate-400">對應投影片：</span>
+              <button onclick="scrollToSlide('slide-card-ep06-01')" class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition cursor-pointer">📷 EP06-01 全貌架構</button>
+            </div>
+
+            <!-- 重點摘要外框 (Summary) -->
+            <div class="summary-box space-y-2 mb-3">
+              <div class="p-3.5 rounded-xl callout-blue text-xs text-slate-700 dark:text-slate-300">
+                <strong class="text-blue-900 dark:text-blue-300 block mb-1">🎯 核心議題：</strong>
+                傳統梯度提升決策樹（GBDT）在處理高維稀疏特徵時容易過擬合且訓練耗時，XGBoost 最關鍵的改進點在哪裡？答案將於第四重點揭曉。<br>
+                本集聚焦「集成學習」（Ensemble Learning）：將多個弱學習器（Weak Learners）組合成強學習器（Strong Learner），劃分為 <strong>Bagging</strong> 與 <strong>Boosting</strong> 兩大陣營。
+              </div>
+            </div>
+
+            <!-- 完整逐字稿收合區塊 -->
+            <div class="full-transcript-box hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-normal space-y-2">
+              <p class="font-medium text-slate-800 dark:text-slate-200">【完整對白逐字紀錄】</p>
+              <p>「各位學員好，歡迎收看 iPAS AI 應用規劃師中級科目三系列影片 EP06。在開始今天的主題之前，先帶大家看一題歷屆常見的經典考題：『傳統梯度提升決策樹（GBDT）與 XGBoost 相比，最能反映 XGBoost 改進的特點是什麼？』</p>
+              <p>如果你現在還不能立即說出答案，不用擔心，看完今天的四個重點，你不但能秒選出正確答案，還能完全搞懂集成學習的底層邏輯。集成學習本質上就是把多個弱模型組合成一個強模型，在工業界與競賽中最主流的架構分為 Bagging 與 Boosting 兩大流派，涵蓋隨機森林、GBDT、XGBoost 以及 LightGBM。我們馬上進入重點一。」</p>
+            </div>
+
+            <button onclick="toggleSingleTranscript(this)" class="mt-2 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+              <span>展開完整逐字稿</span>
+              <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 節點 2: 重點一 Bagging vs Boosting 本質解析 -->
+        <div id="timeline-item-1" class="relative timeline-item" data-keywords="Bagging Boosting 偏差 變異 降低偏差 降低變異 隨機森林 投票 平均 弱學習器 欠擬合 過擬合">
+          <div class="absolute -left-[25px] sm:-left-[41px] top-4 w-5 h-5 rounded-full border-4 border-white dark:border-slate-900 bg-purple-600 shadow-sm flex items-center justify-center"></div>
+
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm hover:shadow-md transition">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-mono text-xs font-bold">
+                  <i data-lucide="clock" class="w-3.5 h-3.5"></i> 00:00:44
+                </span>
+                <span class="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">重點一</span>
+              </div>
+              <a href="https://www.youtube.com/watch?v=LxVAiFKSUzM&t=44s" target="_blank" rel="noopener noreferrer" class="text-xs font-medium text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 flex items-center gap-1">
+                <span>00:44 跳轉原片</span>
+                <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+              </a>
+            </div>
+
+            <h4 class="text-lg font-bold text-slate-900 dark:text-white mb-2">重點一：Bagging 與 Boosting 的本質差異（偏差 vs 變異）</h4>
+            <div class="flex items-center gap-1.5 flex-wrap my-2.5">
+              <span class="text-xs text-slate-400">對應投影片：</span>
+              <button onclick="scrollToSlide('slide-card-ep06-02')" class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition cursor-pointer">📷 EP06-02 偏差與變異</button> <button onclick="scrollToSlide('slide-card-ep06-03')" class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition cursor-pointer">📷 EP06-03 兩條路線</button> <button onclick="scrollToSlide('slide-card-ep06-04')" class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition cursor-pointer">📷 EP06-04 降變異 vs 降偏差</button> <button onclick="scrollToSlide('slide-card-ep06-05')" class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition cursor-pointer">📷 EP06-05 學校版比喻</button>
+            </div>
+
+            <div class="summary-box space-y-3 mb-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="p-3.5 rounded-xl callout-purple text-xs">
+                  <span class="font-bold text-purple-900 dark:text-purple-300 flex items-center gap-1 mb-1">
+                    <i data-lucide="users" class="w-3.5 h-3.5"></i> Bagging（平行民主投票）
+                  </span>
+                  <p class="text-slate-600 dark:text-slate-300 leading-relaxed">
+                    • <strong>主要任務：降低變異（Variance）</strong><br>
+                    • 特點：基學習器彼此獨立平行訓練，最後分類採投票、迴歸採平均。<br>
+                    • 生動比喻：多位名師獨立批改同一篇文章取平均成績，消弭個人偏見。
+                  </p>
+                </div>
+
+                <div class="p-3.5 rounded-xl callout-amber text-xs">
+                  <span class="font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1 mb-1">
+                    <i data-lucide="trending-up" class="w-3.5 h-3.5"></i> Boosting（串行接力訂正）
+                  </span>
+                  <p class="text-slate-600 dark:text-slate-300 leading-relaxed">
+                    • <strong>主要任務：降低偏差（Bias）</strong><br>
+                    • 特點：弱模型依序串行生成，專攻前一棒留下的殘差錯誤。<br>
+                    • 生動比喻：名師接力補救教學，下一位老師針對學生上一題不會的錯題深入輔導。
+                  </p>
+                </div>
+              </div>
+
+              <!-- 迷你對比 SVG 插圖 -->
+              <div class="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-around text-[11px] text-slate-500">
+                <div class="flex items-center gap-2">
+                  <svg class="w-8 h-8" viewBox="0 0 32 32">
+                    <rect x="2" y="4" width="8" height="6" rx="2" fill="#9333ea"/>
+                    <rect x="2" y="13" width="8" height="6" rx="2" fill="#9333ea"/>
+                    <rect x="2" y="22" width="8" height="6" rx="2" fill="#9333ea"/>
+                    <path d="M14 7 H22 M14 16 H22 M14 25 H22 M22 7 V25 M22 16 H28" stroke="#a855f7" stroke-width="2" fill="none"/>
+                  </svg>
+                  <span><strong>Bagging:</strong> 平行無關聯 ➔ 統合平均</span>
+                </div>
+                <div class="h-6 w-px bg-slate-200 dark:bg-slate-800"></div>
+                <div class="flex items-center gap-2">
+                  <svg class="w-16 h-8" viewBox="0 0 64 32">
+                    <rect x="2" y="10" width="12" height="12" rx="2" fill="#f59e0b"/>
+                    <path d="M16 16 H24" stroke="#d97706" stroke-width="2"/>
+                    <rect x="26" y="10" width="12" height="12" rx="2" fill="#f59e0b"/>
+                    <path d="M40 16 H48" stroke="#d97706" stroke-width="2"/>
+                    <rect x="50" y="10" width="12" height="12" rx="2" fill="#f59e0b"/>
+                  </svg>
+                  <span><strong>Boosting:</strong> 依序串接殘差 ➔ 權重疊加</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 逐字稿 -->
+            <div class="full-transcript-box hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-normal space-y-2">
+              <p class="font-medium text-slate-800 dark:text-slate-200">【完整對白逐字紀錄】</p>
+              <p>「重點一：我們要先釐清機器學習誤差的兩大元兇——偏差（Bias）與變異（Variance）。什麼是偏差？就是你的模型假設太粗糙、太死板，呈現欠擬合（Underfitting），不管餵給它什麼資料，它的預測始終偏向一邊，打不中紅心。那什麼是變異？就是模型太敏感、過度複雜，發生過擬合（Overfitting），在訓練集很神，但只要換了一份資料，預測結果就劇烈震盪。</p>
+              <p>Bagging（代表演算法就是隨機森林 Random Forest）的核心思想是平行化。它抽取多份子樣本各自獨立訓練出多棵決策樹，最後透過民主投票或者算術平均把結果整合起來。因為每一棵樹過擬合的地方都不一樣，平均之後，變異就被大幅撫平，因此它的關鍵效果是『降低變異』。</p>
+              <p>而 Boosting（代表是 GBDT、XGBoost、LightGBM）則是串行接力賽。第一棵樹先做基礎預測，算出來的殘差交給第二棵樹專門去補強，每一棵樹都是很淺的弱學習器，透過層層迭代，最終將大家的輸出加權相加，把原本抓不到的複雜規律抓出來，所以它的關鍵效果是『降低偏差』。考題如果問你資料高變異該怎麼辦？選 Bagging；問你模型偏差太高欠擬合該怎麼辦？選 Boosting。」</p>
+            </div>
+
+            <button onclick="toggleSingleTranscript(this)" class="mt-2 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1">
+              <span>展開完整逐字稿</span>
+              <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 節點 3: 重點二 隨機森林 (雙重隨機與特徵重要性) -->
+        <div id="timeline-item-2" class="relative timeline-item" data-keywords="隨機森林 Random Forest Bootstrap 雙重隨機 特徵重要性 不純度 Gini 熵 黑箱 SHAP 保險理賠">
+          <div class="absolute -left-[25px] sm:-left-[41px] top-4 w-5 h-5 rounded-full border-4 border-white dark:border-slate-900 bg-purple-600 shadow-sm flex items-center justify-center"></div>
+
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm hover:shadow-md transition">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-mono text-xs font-bold">
+                  <i data-lucide="clock" class="w-3.5 h-3.5"></i> 00:03:03
+                </span>
+                <span class="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">重點二</span>
+              </div>
+              <a href="https://www.youtube.com/watch?v=LxVAiFKSUzM&t=183s" target="_blank" rel="noopener noreferrer" class="text-xs font-medium text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 flex items-center gap-1">
+                <span>03:03 跳轉原片</span>
+                <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+              </a>
+            </div>
+
+            <h4 class="text-lg font-bold text-slate-900 dark:text-white mb-2">重點二：隨機森林（雙重隨機機制與特徵重要性）</h4>
+            <div class="flex items-center gap-1.5 flex-wrap my-2.5">
+              <span class="text-xs text-slate-400">對應投影片：</span>
+              <button onclick="scrollToSlide('slide-card-ep06-06')" class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition cursor-pointer">📷 EP06-06 兩個隨機</button> <button onclick="scrollToSlide('slide-card-ep06-07')" class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition cursor-pointer">📷 EP06-07 學校評審團</button>
+            </div>
+
+            <div class="summary-box space-y-3 mb-3">
+              <div class="p-3.5 rounded-xl callout-purple text-xs space-y-2">
+                <span class="font-bold text-purple-900 dark:text-purple-300 block">🎲 隨機森林的兩大隨機法寶：</span>
+                <p class="text-slate-600 dark:text-slate-300">
+                  1. <strong>隨機抽樣本</strong>：採用 Bootstrap（有放回抽樣），約 36.8% 樣本為 OOB（袋外樣本），自然提供無需 cross-validation 的無偏驗證。<br>
+                  2. <strong>隨機挑特徵</strong>：節點分裂時只挑選隨機子集合特徵，防止單一強特徵主導整棵樹。
+                </p>
+                <div class="pt-2 border-t border-purple-200/60 dark:border-purple-800/40 text-slate-500">
+                  <strong>特徵重要性（Feature Importance）</strong>：計算每個特徵在整座森林中帶來的平均「不純度減少量」（Mean Decrease in Impurity）。缺點是黑箱模型，單筆預測原因需搭配 <strong>SHAP</strong> 解釋。
+                </div>
+              </div>
+            </div>
+
+            <!-- 逐字稿 -->
+            <div class="full-transcript-box hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-normal space-y-2">
+              <p class="font-medium text-slate-800 dark:text-slate-200">【完整對白逐字紀錄】</p>
+              <p>「重點二，我們來細看隨機森林（Random Forest）。如果隨機森林只是把一群一模一樣的決策樹放在一起平均，那一點用都沒有，因為它們犯的錯會一模一樣。隨機森林之所以強大，關鍵在於『雙重隨機機制』。</p>
+              <p>第一重是『隨機抽樣本』：每一棵樹在訓練時，都是透過 Bootstrap 自助抽樣法，也就是有放回地隨機抽出和原資料集一樣大小的子集。大約會有三分之二的資料被抽中，剩下大約 36.8% 沒被抽到的資料被稱為 OOB（Out-of-Bag 袋外資料），我們甚至可以直接拿 OOB 來評估每棵樹的泛化能力，省去切分驗證集的麻煩。</p>
+              <p>第二重是『隨機挑特徵』：決策樹在決定節點要用哪個特徵來切分時，並不是評估所有特徵，而是每次只隨機挑選一部分特徵（例如特徵總數開根號）。這樣做是為了避免少數幾個極強的特徵在每一棵樹的樹根都出現，造成樹與樹之間高度正相關。</p>
+              <p>隨機森林還有個附帶的好處，就是可以計算『特徵重要性』。它會統計所有樹在分裂時，某個特徵平均幫我們降低了多少 Gini 不純度或熵。不過大家在考試與實務要注意隨機森林的局限：它是一個黑箱，沒辦法像單一決策樹那樣畫出清楚的 if-else 規則。如果今天在保險核保系統中，你要告訴客戶他為什麼被拒保，光靠隨機森林是不夠的，必須外掛 SHAP 這種解釋性工具來剖析單筆預測的歸因。」</p>
+            </div>
+
+            <button onclick="toggleSingleTranscript(this)" class="mt-2 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1">
+              <span>展開完整逐字稿</span>
+              <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 節點 4: 重點三 梯度提升 GBDT (殘差與防過擬合) -->
+        <div id="timeline-item-3" class="relative timeline-item" data-keywords="梯度提升 GBDT 殘差 負梯度 房價 學習率 早停 Early Stopping 過擬合 調參">
+          <div class="absolute -left-[25px] sm:-left-[41px] top-4 w-5 h-5 rounded-full border-4 border-white dark:border-slate-900 bg-amber-500 shadow-sm flex items-center justify-center"></div>
+
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm hover:shadow-md transition">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-mono text-xs font-bold">
+                  <i data-lucide="clock" class="w-3.5 h-3.5"></i> 00:05:17
+                </span>
+                <span class="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">重點三</span>
+              </div>
+              <a href="https://www.youtube.com/watch?v=LxVAiFKSUzM&t=317s" target="_blank" rel="noopener noreferrer" class="text-xs font-medium text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 flex items-center gap-1">
+                <span>05:17 跳轉原片</span>
+                <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+              </a>
+            </div>
+
+            <h4 class="text-lg font-bold text-slate-900 dark:text-white mb-2">重點三：梯度提升（Gradient Boosting）殘差下山與過擬合對策</h4>
+            <div class="flex items-center gap-1.5 flex-wrap my-2.5">
+              <span class="text-xs text-slate-400">對應投影片：</span>
+              <button onclick="scrollToSlide('slide-card-ep06-08')" class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition cursor-pointer">📷 EP06-08 梯度修殘差</button> <button onclick="scrollToSlide('slide-card-ep06-09')" class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition cursor-pointer">📷 EP06-09 殘差逼近100萬</button>
+            </div>
+
+            <div class="summary-box space-y-3 mb-3">
+              <div class="p-3.5 rounded-xl callout-amber text-xs space-y-1.5">
+                <span class="font-bold text-amber-900 dark:text-amber-300 block">📉 演算法本質與數值演練：</span>
+                <p class="text-slate-600 dark:text-slate-300">
+                  以均方誤差為損失函數時，負梯度恰好就是真實值減去當前預測值的「殘差（Residual）」。下一棵樹不預測真實標籤，而是專門預測這筆殘差。<br>
+                  • 房價真實值 100 萬，第一棵樹預測 80 萬（殘差 20 萬）；第二棵樹擬合 20 萬但乘以學習率 $\eta = 0.1$，僅更新 2 萬，預測變成 82 萬。
+                </p>
+                <div class="pt-2 border-t border-amber-200/60 dark:border-amber-800/40 text-slate-700 dark:text-slate-300 font-semibold">
+                  🛑 過擬合解方四大支柱：① 啟用早停機制（Early Stopping） ② 調低學習率 ③ 限制樹深（3~6層） ④ 子樣本隨機抽樣。
+                </div>
+              </div>
+            </div>
+
+            <!-- 逐字稿 -->
+            <div class="full-transcript-box hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-normal space-y-2">
+              <p class="font-medium text-slate-800 dark:text-slate-200">【完整對白逐字紀錄】</p>
+              <p>「重點三：梯度提升（Gradient Boosting）。到底什麼是梯度提升？簡單來說就是『殘差學習』。我們先訓練第一棵非常淺的樹，它做出的預測跟真實值之間一定會有落差，這個落差在數學上就叫做殘差（Residual）。如果我們的損失函數是 MSE 均方誤差，殘差的方向剛好就是損失函數下降最快的負梯度方向。</p>
+              <p>舉個具體的房價數字例子：假設一間房子的真實售價是 100 萬，第一棵樹預測出來是 80 萬，此時殘差就是 +20 萬。接下來，第二棵樹的訓練目標不是預測 100 萬，而是專門去預測這個 20 萬的殘差！但是第二棵樹即使預測出 20 萬，我們也不會直接加上去，而是會乘上一個『學習率（Learning Rate）』，比如 0.1。這樣第二棵樹只幫我們往目標邁進了 2 萬，累計預測值來到 82 萬。為什麼要這麼慢？因為小步前進可以避免模型被某一棵樹剛好學到的雜訊一口氣帶偏。</p>
+              <p>但也正因為 Boosting 是一直盯著殘差訂正，樹如果疊加太多（比如衝到 300 棵、500 棵），到最後它會連訓練集裡面的雜訊都強行背下來，導致驗證集分數慘跌，這就是嚴重的過擬合。考題常問怎麼解決 GBDT 的過擬合？最重要的解法就是『早停機制（Early Stopping）』，監控驗證集的誤差，一旦連續幾輪沒有改善就強行剎車；此外還可以降低學習率、縮小樹的深度（例如只設 3 到 6 層），或者每棵樹只抽 80% 的子樣本來訓練。」</p>
+            </div>
+
+            <button onclick="toggleSingleTranscript(this)" class="mt-2 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1">
+              <span>展開完整逐字稿</span>
+              <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 節點 5: 重點四 XGBoost vs LightGBM (演算法大改進) -->
+        <div id="timeline-item-4" class="relative timeline-item" data-keywords="XGBoost LightGBM Level-wise Leaf-wise 二階導數 二階泰勒 正則化 懲罰項 直方圖 缺失值 並行">
+          <div class="absolute -left-[25px] sm:-left-[41px] top-4 w-5 h-5 rounded-full border-4 border-white dark:border-slate-900 bg-emerald-600 shadow-sm flex items-center justify-center"></div>
+
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm hover:shadow-md transition">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-mono text-xs font-bold">
+                  <i data-lucide="clock" class="w-3.5 h-3.5"></i> 00:07:30
+                </span>
+                <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">重點四</span>
+              </div>
+              <a href="https://www.youtube.com/watch?v=LxVAiFKSUzM&t=450s" target="_blank" rel="noopener noreferrer" class="text-xs font-medium text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-1">
+                <span>07:30 跳轉原片</span>
+                <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+              </a>
+            </div>
+
+            <h4 class="text-lg font-bold text-slate-900 dark:text-white mb-2">重點四：XGBoost 與 LightGBM 的技術革新與生長模式</h4>
+            <div class="flex items-center gap-1.5 flex-wrap my-2.5">
+              <span class="text-xs text-slate-400">對應投影片：</span>
+              <button onclick="scrollToSlide('slide-card-ep06-10')" class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition cursor-pointer">📷 EP06-10 樹生長模式</button> <button onclick="scrollToSlide('slide-card-ep06-11')" class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition cursor-pointer">📷 EP06-11 防過擬合與弱點</button> <button onclick="scrollToSlide('slide-card-ep06-12')" class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition cursor-pointer">📷 EP06-12 升年級與深入一班</button>
+            </div>
+
+            <div class="summary-box space-y-3 mb-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div class="p-3.5 rounded-xl callout-emerald">
+                  <strong class="text-emerald-900 dark:text-emerald-300 block mb-1">🌲 XGBoost 關鍵改進：</strong>
+                  • <strong>二階泰勒展開</strong>：使用二階導數精確算出最優葉權重與分裂。<br>
+                  • <strong>目標函數正則化</strong>：懲罰葉數量與葉權重，內建防過擬合。<br>
+                  • <strong>並行特徵分裂</strong>：同一樹的分裂點預排序並行計算。<br>
+                  • <strong>Level-wise 生長</strong>：層次對稱擴展。
+                </div>
+
+                <div class="p-3.5 rounded-xl callout-blue">
+                  <strong class="text-blue-900 dark:text-blue-300 block mb-1">⚡ LightGBM 極速優勢：</strong>
+                  • <strong>Leaf-wise 生長</strong>：每次只挑當前增益最大的葉子深入分裂，收斂飛快。<br>
+                  • <strong>直方圖演算法 (Histogram)</strong>：把連續特徵切成多個桶位，記憶體消耗極低，超適合百萬級大數據。
+                </div>
+              </div>
+            </div>
+
+            <!-- 逐字稿 -->
+            <div class="full-transcript-box hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-normal space-y-2">
+              <p class="font-medium text-slate-800 dark:text-slate-200">【完整對白逐字紀錄】</p>
+              <p>「重點四，來到今天最核心的考點：XGBoost 與 LightGBM 到底是怎麼把傳統 GBDT 改進到極致的？</p>
+              <p>首先看樹的生長模式。XGBoost 預設採用的是 Level-wise（按層生長），它必須把同一層的所有節點通通分裂完畢，才會進到下一層，長出來的樹是對稱平衡的，比較不容易過擬合，缺點是對一些沒什麼資訊增益的節點也會盲目分裂。而微軟推出的 LightGBM 則採用 Leaf-wise（按葉生長），它每次在所有葉子節點中，只找出分裂增益最大的那片葉子向下深挖，所以它的計算速度極快、誤差下降非常迅猛，但要注意在小樣本集上如果不限制 max_depth，它很容易過度生長導致過擬合。</p>
+              <p>再來是演算法數學上的突破。傳統 GBDT 只有用到一階梯度，而 XGBoost 率先在目標函數中引入了『二階泰勒展開（二階導數）』，讓演算法能更準確地找到梯度的曲率與最優更新步長。更重要的是，XGBoost 在目標函數裡直接加上了正則化懲罰項（包含葉節點數量的 L1 懲罰與葉權重的 L2 懲罰），這讓它具備天然的防過擬合能力！</p>
+              <p>最後是工程層面：XGBoost 支援自動處理特徵缺失值，會自動探索空值擺在左邊好還是右邊好；並且支援特徵並行化。這裡大家務必小心考試陷阱：XGBoost 的並行化指的是『在同一個節點尋找不同特徵的最佳分裂點時可以多執行緒並行』，而不是多棵樹一起並行！樹與樹之間依然必須乖乖排隊串行訓練。」</p>
+            </div>
+
+            <button onclick="toggleSingleTranscript(this)" class="mt-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1">
+              <span>展開完整逐字稿</span>
+              <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 節點 6: 歷屆考題精闢解析與防坑指南 -->
+        <div id="timeline-item-5" class="relative timeline-item" data-keywords="考題 歷屆 解析 考古題 陷阱 答案 正則化 神經網路 並行化 樹的複雜度">
+          <div class="absolute -left-[25px] sm:-left-[41px] top-4 w-5 h-5 rounded-full border-4 border-white dark:border-slate-900 bg-rose-600 shadow-sm flex items-center justify-center"></div>
+
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm hover:shadow-md transition">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-mono text-xs font-bold">
+                  <i data-lucide="clock" class="w-3.5 h-3.5"></i> 00:09:19
+                </span>
+                <span class="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">真題解析</span>
+              </div>
+              <a href="https://www.youtube.com/watch?v=LxVAiFKSUzM&t=559s" target="_blank" rel="noopener noreferrer" class="text-xs font-medium text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 flex items-center gap-1">
+                <span>09:19 跳轉原片</span>
+                <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+              </a>
+            </div>
+
+            <h4 class="text-lg font-bold text-slate-900 dark:text-white mb-2">歷屆考題深度剖析與防坑指南</h4>
+            <div class="flex items-center gap-1.5 flex-wrap my-2.5">
+              <span class="text-xs text-slate-400">對應投影片：</span>
+              <button onclick="scrollToSlide('slide-card-ep06-13')" class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition cursor-pointer">📷 EP06-13 最容易搞混對比</button>
+            </div>
+
+            <div class="summary-box space-y-3 mb-3">
+              <div class="p-3.5 rounded-xl callout-rose text-xs space-y-2">
+                <span class="font-bold text-rose-900 dark:text-rose-300 block">📝 揭曉開場試題：</span>
+                <p class="text-slate-600 dark:text-slate-300">
+                  正確解答為：<strong>「在目標函數中引入正則化抑制過擬合，並支援缺失值自動處理與並行特徵分裂」</strong>。
+                </p>
+                <div class="p-2.5 rounded-lg bg-white/70 dark:bg-slate-800/80 border border-rose-200 dark:border-rose-900 text-slate-700 dark:text-slate-300">
+                  ⚠️ <strong>常見兩大誘答陷阱：</strong><br>
+                  • <strong>陷阱 1</strong>：「改用神經網路擬合殘差」❌（錯！XGBoost 基底依然是決策樹）。<br>
+                  • <strong>陷阱 2</strong>：「多棵樹平行生成訓練」❌（錯！Boosting 的核心哲學是依賴前一棵樹的殘差，因此樹之間絕對無法平行）。
+                </div>
+              </div>
+            </div>
+
+            <!-- 逐字稿 -->
+            <div class="full-transcript-box hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-normal space-y-2">
+              <p class="font-medium text-slate-800 dark:text-slate-200">【完整對白逐字紀錄】</p>
+              <p>「回到影片開頭跟大家提出的那道歷屆考題。現在大家回頭看四個選項，答案是不是呼之欲出了？正確答案就是：『在目標函數中引入正則化以抑制過擬合，並支援缺失值自動處理與並行化訓練』。</p>
+              <p>我們來檢視出題老師最喜歡設的兩個誘答陷阱：第一，選項如果寫『改採用深度神經網路作為基學習器』，這是錯的，XGBoost 的核心學習器依然是 CART 決策樹；第二個大陷阱是『並行化』的定義，很多考生一看到並行化就以為是多棵樹同時訓練，請牢記：Boosting 的定義就是第 N 棵樹必須等第 N-1 棵樹算出殘差後才能開工，樹與樹之間存在嚴格的時間相依性，不可能平行！XGBoost 的並行是指單一棵樹在搜尋所有特徵最佳切分點時的多線程並行。</p>
+              <p>另外在近代考題中，也很常問到：『XGBoost 與傳統 GBDT 相比，在目標函數中額外加入了什麼以提升泛化能力？』答案請毫不猶豫選擇『樹的複雜度懲罰項（正則化項）』。」</p>
+            </div>
+
+            <button onclick="toggleSingleTranscript(this)" class="mt-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1">
+              <span>展開完整逐字稿</span>
+              <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 節點 7: 口訣總結與下集預告 -->
+        <div id="timeline-item-6" class="relative timeline-item" data-keywords="口訣 總結 複習 Bagging Boosting XGBoost 降變異 降偏差 下集 預告">
+          <div class="absolute -left-[25px] sm:-left-[41px] top-4 w-5 h-5 rounded-full border-4 border-white dark:border-slate-900 bg-indigo-600 shadow-sm flex items-center justify-center"></div>
+
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm hover:shadow-md transition">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 font-mono text-xs font-bold">
+                  <i data-lucide="clock" class="w-3.5 h-3.5"></i> 00:11:15
+                </span>
+                <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">總結收尾</span>
+              </div>
+              <a href="https://www.youtube.com/watch?v=LxVAiFKSUzM&t=675s" target="_blank" rel="noopener noreferrer" class="text-xs font-medium text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1">
+                <span>11:15 跳轉原片</span>
+                <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+              </a>
+            </div>
+
+            <h4 class="text-lg font-bold text-slate-900 dark:text-white mb-2">結尾：30 秒快速口訣總整理</h4>
+            <div class="flex items-center gap-1.5 flex-wrap my-2.5">
+              <span class="text-xs text-slate-400">對應投影片：</span>
+              <button onclick="scrollToSlide('slide-card-ep06-14')" class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition cursor-pointer">📷 EP06-14 帶走三句話口訣</button>
+            </div>
+
+            <div class="summary-box space-y-2 mb-3">
+              <div class="p-3.5 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/40 border border-indigo-200 dark:border-indigo-800 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                <strong>💡 臨考三句訣：</strong><br>
+                ① Bagging 民主投票<strong>降變異</strong>；Boosting 訂正錯題<strong>降偏差</strong>。<br>
+                ② 隨機森林靠<strong>「抽樣本 + 挑特徵」</strong>雙重隨機杜絕獨裁樹。<br>
+                ③ XGBoost 超越 GBDT 關鍵：<strong>二階導數算步長、目標正則防過擬、特徵切分並行化</strong>。
+              </div>
+            </div>
+
+            <!-- 逐字稿 -->
+            <div class="full-transcript-box hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-normal space-y-2">
+              <p class="font-medium text-slate-800 dark:text-slate-200">【完整對白逐字紀錄】</p>
+              <p>「最後，我們用 30 秒把今天所有的精華濃縮成三句考前口訣：第一句，『Bagging 民主投票降變異；Boosting 訂正錯題降偏差』；第二句，『隨機森林靠雙重隨機：隨機抽樣本加隨機挑特徵』；第三句，『XGBoost 關鍵三件套：二階導數更精準、正則懲罰防過擬、特徵並行省時間』。</p>
+              <p>把這三句口訣刻在腦海裡，科目三集成學習的題目分數你就能穩穩拿滿。下一集我們將會進入深度學習與非監督式學習的核心考點。感謝大家收看，我們下期影片見！」</p>
+            </div>
+
+            <button onclick="toggleSingleTranscript(this)" class="mt-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1">
+              <span>展開完整逐字稿</span>
+              <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+      </div>
+      
+      <!-- 查無搜尋結果提示 -->
+      <div id="noSearchResult" class="hidden text-center py-12 text-slate-400">
+        <i data-lucide="file-question" class="w-10 h-10 mx-auto mb-2 opacity-50"></i>
+        <p class="text-sm font-medium">找不到符合該關鍵字的逐字稿段落，請嘗試更換搜尋詞</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 頁腳 -->
+  <footer class="mt-16 py-8 border-t border-slate-200 dark:border-slate-800 text-center text-xs text-slate-400 dark:text-slate-500">
+    <p>iPAS AI 應用規劃師 中級科目三：機器學習與集成模型教學互動講義</p>
+    <p class="mt-1">由 AI 輔助規劃製作，遵循 iPAS 規範與評測標準</p>
+  </footer>
+
+  <!-- 互動腳本邏輯 -->
+  <script>
+    // 初始化 Lucide 圖標
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      initTargetPlot();
+      updateBoostingSim();
+      initTreeGrowth();
+      initTranscriptControls();
+    });
+
+    // 1. 深色模式切換
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    themeToggleBtn.addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+      // 切換後重新重繪圖表以適應顏色
+      updateBoostingSim();
+    });
+
+    // ==========================================
+    // 2. 偏差 vs 變異 靶心圖互動
+    // ==========================================
+    const shotGroup = document.getElementById('shotGroup');
+    const targetStatusText = document.getElementById('targetStatusText');
+
+    function createShot(cx, cy, color = "#ef4444") {
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("cx", cx);
+      circle.setAttribute("cy", cy);
+      circle.setAttribute("r", "4.5");
+      circle.setAttribute("fill", color);
+      circle.setAttribute("stroke", "#ffffff");
+      circle.setAttribute("stroke-width", "1.5");
+      circle.setAttribute("class", "transition-all duration-700 ease-in-out");
+      return circle;
+    }
+
+    function setTargetState(type) {
+      shotGroup.innerHTML = '';
+      
+      const btnIdeal = document.getElementById('btn-ideal');
+      const btnHighBias = document.getElementById('btn-high-bias');
+      const btnHighVar = document.getElementById('btn-high-var');
+
+      [btnIdeal, btnHighBias, btnHighVar].forEach(btn => {
+        btn.classList.remove('bg-emerald-600', 'bg-purple-600', 'bg-amber-600', 'text-white');
+        btn.classList.add('bg-slate-200', 'dark:bg-slate-800', 'text-slate-700', 'dark:text-slate-300');
+      });
+
+      if (type === 'low-bias-low-var') {
+        // 低偏差 + 低變異：緊密集中在紅心 (150, 150)
+        btnIdeal.classList.add('bg-emerald-600', 'text-white');
+        targetStatusText.textContent = '當前：理想狀態（低偏差 + 低變異）— 既準確又集中';
+        const points = [
+          [148, 152], [152, 149], [150, 153], [146, 148], [154, 151],
+          [149, 147], [151, 154], [147, 151], [153, 146], [150, 150]
+        ];
+        points.forEach(([x, y]) => shotGroup.appendChild(createShot(x, y, '#10b981')));
+      } else if (type === 'high-bias-low-var') {
+        // 高偏差 + 低變異：集中，但偏離中心一大段 (例如右上角 220, 80)
+        btnHighBias.classList.add('bg-amber-600', 'text-white');
+        targetStatusText.textContent = '當前：高偏差 + 低變異（欠擬合）— 穩定地打偏同一處';
+        const points = [
+          [215, 82], [222, 79], [218, 86], [212, 77], [225, 84],
+          [220, 80], [217, 75], [224, 88], [214, 84], [219, 78]
+        ];
+        points.forEach(([x, y]) => shotGroup.appendChild(createShot(x, y, '#f59e0b')));
+      } else if (type === 'low-bias-high-var') {
+        // 低偏差 + 高變異：以靶心為平均中心，但劇烈擴散發散
+        btnHighVar.classList.add('bg-purple-600', 'text-white');
+        targetStatusText.textContent = '當前：低偏差 + 高變異（過擬合）— 平均在中心但散佈範圍極大';
+        const points = [
+          [90, 80], [210, 200], [160, 60], [130, 240], [70, 170],
+          [230, 120], [170, 220], [110, 130], [200, 70], [150, 160]
+        ];
+        points.forEach(([x, y]) => shotGroup.appendChild(createShot(x, y, '#a855f7')));
+      }
+    }
+
+    function initTargetPlot() {
+      setTargetState('low-bias-low-var');
+    }
+
+    // ==========================================
+    // 3. Boosting 房價殘差逐步逼近模擬器
+    // ==========================================
+    const sliderTrees = document.getElementById('sliderTrees');
+    const sliderLr = document.getElementById('sliderLr');
+    const treeCountDisplay = document.getElementById('treeCountDisplay');
+    const lrDisplay = document.getElementById('lrDisplay');
+    const currentPredValue = document.getElementById('currentPredValue');
+    const currentResidualValue = document.getElementById('currentResidualValue');
+    const iterHistoryList = document.getElementById('iterHistoryList');
+    const convergenceChart = document.getElementById('convergenceChart');
+
+    sliderTrees.addEventListener('input', updateBoostingSim);
+    sliderLr.addEventListener('input', updateBoostingSim);
+
+    function updateBoostingSim() {
+      const numTrees = parseInt(sliderTrees.value);
+      const lr = parseFloat(sliderLr.value);
+
+      treeCountDisplay.textContent = `${numTrees} 棵`;
+      lrDisplay.textContent = lr.toFixed(2);
+
+      const targetPrice = 100.0;
+      let currentEstimate = 80.0; // 基準預測 F_0
+      
+      const history = [{
+        step: 0,
+        pred: currentEstimate,
+        residual: targetPrice - currentEstimate,
+        delta: 0
+      }];
+
+      for (let i = 1; i <= numTrees; i++) {
+        const residual = targetPrice - currentEstimate;
+        // 弱樹擬合該殘差，步長受學習率 lr 縮減
+        const stepAdjustment = residual * lr;
+        currentEstimate += stepAdjustment;
+        history.push({
+          step: i,
+          pred: currentEstimate,
+          residual: targetPrice - currentEstimate,
+          delta: stepAdjustment
+        });
+      }
+
+      currentPredValue.textContent = `${currentEstimate.toFixed(1)} 萬`;
+      const finalRes = (targetPrice - currentEstimate);
+      currentResidualValue.textContent = `${finalRes.toFixed(1)} 萬`;
+
+      // 渲染歷程列表
+      iterHistoryList.innerHTML = history.map((item, idx) => {
+        if (idx === 0) {
+          return `<div class="p-1.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300">
+            [F₀ 基準] 初始房價預測 = ${item.pred.toFixed(1)} 萬 (殘差: +${item.residual.toFixed(1)}萬)
+          </div>`;
+        }
+        return `<div class="p-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex justify-between">
+          <span>樹 ${item.step}: 擬合殘差 +${item.delta.toFixed(2)} 萬</span>
+          <span class="font-bold text-amber-600 dark:text-amber-400">累計: ${item.pred.toFixed(2)} 萬</span>
+        </div>`;
+      }).join('');
+
+      // 繪製 SVG 曲線
+      renderChart(history, targetPrice);
+    }
+
+    function renderChart(history, target) {
+      const width = 500;
+      const height = 220;
+      const padLeft = 45;
+      const padRight = 30;
+      const padTop = 25;
+      const padBottom = 30;
+
+      const chartW = width - padLeft - padRight;
+      const chartH = height - padTop - padBottom;
+
+      const maxSteps = 15;
+      const minVal = 75;
+      const maxVal = 105;
+
+      const getX = (step) => padLeft + (step / maxSteps) * chartW;
+      const getY = (val) => padTop + chartH - ((val - minVal) / (maxVal - minVal)) * chartH;
+
+      const isDark = document.documentElement.classList.contains('dark');
+      const gridColor = isDark ? '#334155' : '#e2e8f0';
+      const textColor = isDark ? '#94a3b8' : '#64748b';
+
+      let svgHtml = `
+        <!-- 背景與刻度線 -->
+        <line x1="${padLeft}" y1="${getY(100)}" x2="${width - padRight}" y2="${getY(100)}" stroke="#10b981" stroke-width="2" stroke-dasharray="4 4"/>
+        <text x="${width - padRight + 5}" y="${getY(100) + 4}" fill="#10b981" font-size="11" font-weight="bold">目標 100萬</text>
+
+        <line x1="${padLeft}" y1="${getY(80)}" x2="${width - padRight}" y2="${getY(80)}" stroke="${gridColor}" stroke-width="1"/>
+        <text x="${padLeft - 38}" y="${getY(80) + 4}" fill="${textColor}" font-size="10">80萬</text>
+        <text x="${padLeft - 38}" y="${getY(100) + 4}" fill="${textColor}" font-size="10">100萬</text>
+
+        <!-- 軸線 -->
+        <line x1="${padLeft}" y1="${height - padBottom}" x2="${width - padRight}" y2="${height - padBottom}" stroke="${textColor}" stroke-width="1.5"/>
+        <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${height - padBottom}" stroke="${textColor}" stroke-width="1.5"/>
+      `;
+
+      // 繪製逼近折線
+      let pointsStr = "";
+      history.forEach((h, idx) => {
+        const x = getX(h.step);
+        const y = getY(h.pred);
+        pointsStr += `${x},${y} `;
+        svgHtml += `
+          <circle cx="${x}" cy="${y}" r="4" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5"/>
+          <text x="${x}" y="${height - padBottom + 16}" fill="${textColor}" font-size="10" text-anchor="middle">${h.step}</text>
+        `;
+      });
+
+      svgHtml = `<polyline fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" points="${pointsStr.trim()}"/>` + svgHtml;
+      convergenceChart.innerHTML = svgHtml;
+    }
+
+    // ==========================================
+    // 4. Level-wise vs Leaf-wise 生長模式動畫
+    // ==========================================
+    let currentTreeStep = 1;
+
+    function renderLevelWise(step) {
+      const svg = document.getElementById('levelWiseSvg');
+      // step 1: Root only
+      // step 2: Root -> L1 (2 nodes)
+      // step 3: L1 -> L2 (4 nodes, full level)
+      let nodes = [
+        { id: 0, x: 120, y: 25, active: true, text: '根節點' }
+      ];
+
+      let edges = [];
+
+      if (step >= 2) {
+        nodes.push({ id: 1, x: 60, y: 75, active: true, text: 'L1-左' });
+        nodes.push({ id: 2, x: 180, y: 75, active: true, text: 'L1-右' });
+        edges.push({ x1: 120, y1: 25, x2: 60, y2: 75 });
+        edges.push({ x1: 120, y1: 25, x2: 180, y2: 75 });
+      }
+
+      if (step >= 3) {
+        nodes.push({ id: 3, x: 30, y: 130, active: true, text: 'L2' });
+        nodes.push({ id: 4, x: 90, y: 130, active: true, text: 'L2' });
+        nodes.push({ id: 5, x: 150, y: 130, active: true, text: 'L2' });
+        nodes.push({ id: 6, x: 210, y: 130, active: true, text: 'L2' });
+        edges.push({ x1: 60, y1: 75, x2: 30, y2: 130 });
+        edges.push({ x1: 60, y1: 75, x2: 90, y2: 130 });
+        edges.push({ x1: 180, y1: 75, x2: 150, y2: 130 });
+        edges.push({ x1: 180, y1: 75, x2: 210, y2: 130 });
+      }
+
+      svg.innerHTML = buildTreeSvgHtml(edges, nodes, '#10b981');
+    }
+
+    function renderLeafWise(step) {
+      const svg = document.getElementById('leafWiseSvg');
+      // Leaf-wise 永遠朝單側最大增益生長（非對稱）
+      let nodes = [
+        { id: 0, x: 120, y: 25, active: true, text: '根節點' }
+      ];
+      let edges = [];
+
+      if (step >= 2) {
+        nodes.push({ id: 1, x: 60, y: 75, active: false, text: '低增益' });
+        nodes.push({ id: 2, x: 180, y: 75, active: true, text: '高增益★' });
+        edges.push({ x1: 120, y1: 25, x2: 60, y2: 75 });
+        edges.push({ x1: 120, y1: 25, x2: 180, y2: 75 });
+      }
+
+      if (step >= 3) {
+        // 只分裂右側高增益節點，左側不分裂！
+        nodes.push({ id: 3, x: 140, y: 130, active: true, text: '葉子' });
+        nodes.push({ id: 4, x: 210, y: 130, active: true, text: '高增益★' });
+        edges.push({ x1: 180, y1: 75, x2: 140, y2: 130 });
+        edges.push({ x1: 180, y1: 75, x2: 210, y2: 130 });
+      }
+
+      svg.innerHTML = buildTreeSvgHtml(edges, nodes, '#0d9488');
+    }
+
+    function buildTreeSvgHtml(edges, nodes, activeColor) {
+      let html = '';
+      edges.forEach(e => {
+        html += `<line x1="${e.x1}" y1="${e.y1}" x2="${e.x2}" y2="${e.y2}" stroke="#94a3b8" stroke-width="2"/>`;
+      });
+      nodes.forEach(n => {
+        const fill = n.active ? activeColor : '#64748b';
+        html += `
+          <circle cx="${n.x}" cy="${n.y}" r="16" fill="${fill}" stroke="#ffffff" stroke-width="2"/>
+          <text x="${n.x}" y="${n.y + 4}" fill="#ffffff" font-size="9" font-weight="bold" text-anchor="middle">${n.text}</text>
+        `;
+      });
+      return html;
+    }
+
+    function growTreeStep() {
+      currentTreeStep = (currentTreeStep % 3) + 1;
+      renderLevelWise(currentTreeStep);
+      renderLeafWise(currentTreeStep);
+    }
+
+    function resetTreeGrowth() {
+      currentTreeStep = 1;
+      renderLevelWise(currentTreeStep);
+      renderLeafWise(currentTreeStep);
+    }
+
+    function initTreeGrowth() {
+      renderLevelWise(1);
+      renderLeafWise(1);
+    }
+
+    // ==========================================
+    // 5. 隨堂測驗判斷與詳解展示
+    // ==========================================
+    function checkAnswer(questionNum, userChoice) {
+      const explanation = document.getElementById(`quiz-explanation-${questionNum}`) || document.getElementById(`q${questionNum}-explanation`);
+      const optionsContainer = document.getElementById(`q${questionNum}-options`);
+      const buttons = optionsContainer.querySelectorAll('button');
+
+      const correctAnswers = { 1: 'B', 2: 'A' };
+      const isCorrect = userChoice === correctAnswers[questionNum];
+
+      buttons.forEach(btn => {
+        btn.classList.remove('border-emerald-500', 'bg-emerald-50', 'border-rose-500', 'bg-rose-50', 'dark:bg-emerald-950/40', 'dark:bg-rose-950/40');
+      });
+
+      // 標註用戶點選的按鈕
+      event.currentTarget.classList.add(
+        isCorrect ? 'border-emerald-500' : 'border-rose-500',
+        isCorrect ? 'bg-emerald-50' : 'bg-rose-50',
+        isCorrect ? 'dark:bg-emerald-950/40' : 'dark:bg-rose-950/40'
+      );
+
+      explanation.classList.remove('hidden');
+    }
+
+    // ==========================================
+    // 6. 影片時間軸逐字稿互動邏輯
+    // ==========================================
+    let isAllExpanded = false;
+
+    function initTranscriptControls() {
+      const searchInput = document.getElementById('transcriptSearchInput');
+      searchInput.addEventListener('input', (e) => {
+        filterTimeline(e.target.value.trim());
+      });
+    }
+
+    // 單張卡片逐字稿展開/收合
+    function toggleSingleTranscript(btn) {
+      const parent = btn.closest('.timeline-item');
+      const fullBox = parent.querySelector('.full-transcript-box');
+      const isHidden = fullBox.classList.contains('hidden');
+
+      if (isHidden) {
+        fullBox.classList.remove('hidden');
+        btn.querySelector('span').textContent = '收合逐字稿';
+        btn.querySelector('i').setAttribute('data-lucide', 'chevron-up');
+      } else {
+        fullBox.classList.add('hidden');
+        btn.querySelector('span').textContent = '展開完整逐字稿';
+        btn.querySelector('i').setAttribute('data-lucide', 'chevron-down');
+      }
+      lucide.createIcons();
+    }
+
+    // 全部展開 / 全部收合
+    function toggleAllTranscripts() {
+      isAllExpanded = !isAllExpanded;
+      const allFullBoxes = document.querySelectorAll('.full-transcript-box');
+      const allButtons = document.querySelectorAll('.timeline-item button[onclick="toggleSingleTranscript(this)"]');
+      const toggleAllBtn = document.getElementById('toggleAllBtn');
+
+      allFullBoxes.forEach(box => {
+        if (isAllExpanded) {
+          box.classList.remove('hidden');
+        } else {
+          box.classList.add('hidden');
+        }
+      });
+
+      allButtons.forEach(btn => {
+        btn.querySelector('span').textContent = isAllExpanded ? '收合逐字稿' : '展開完整逐字稿';
+        btn.querySelector('i').setAttribute('data-lucide', isAllExpanded ? 'chevron-up' : 'chevron-down');
+      });
+
+      toggleAllBtn.innerHTML = isAllExpanded 
+        ? `<i data-lucide="chevrons-up" class="w-3.5 h-3.5"></i> 全部收合逐字稿`
+        : `<i data-lucide="chevrons-down" class="w-3.5 h-3.5"></i> 全部展開逐字稿`;
+
+      lucide.createIcons();
+    }
+
+    // 模式切換：精簡重點模式 vs 全文閱讀模式
+    function setTranscriptMode(mode) {
+      const summaryBoxes = document.querySelectorAll('.summary-box');
+      const fullBoxes = document.querySelectorAll('.full-transcript-box');
+      const singleButtons = document.querySelectorAll('.timeline-item button[onclick="toggleSingleTranscript(this)"]');
+      const btnSummary = document.getElementById('viewSummaryBtn');
+      const btnFull = document.getElementById('viewFullBtn');
+
+      if (mode === 'summary') {
+        btnSummary.className = 'px-2.5 py-1.5 rounded-lg font-semibold bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm transition';
+        btnFull.className = 'px-2.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition';
+        summaryBoxes.forEach(b => b.classList.remove('hidden'));
+        fullBoxes.forEach(b => b.classList.add('hidden'));
+        singleButtons.forEach(b => b.classList.remove('hidden'));
+        isAllExpanded = false;
+      } else {
+        btnFull.className = 'px-2.5 py-1.5 rounded-lg font-semibold bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm transition';
+        btnSummary.className = 'px-2.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition';
+        fullBoxes.forEach(b => b.classList.remove('hidden'));
+        singleButtons.forEach(b => b.classList.add('hidden'));
+        isAllExpanded = true;
+      }
+      lucide.createIcons();
+    }
+
+    // 關鍵字即時篩選
+    function filterTimeline(keyword) {
+      const items = document.querySelectorAll('.timeline-item');
+      let visibleCount = 0;
+      const lowerKey = keyword.toLowerCase();
+
+      items.forEach(item => {
+        const textContent = item.textContent.toLowerCase();
+        const keywords = item.getAttribute('data-keywords') ? item.getAttribute('data-keywords').toLowerCase() : '';
+
+        if (!keyword || textContent.includes(lowerKey) || keywords.includes(lowerKey)) {
+          item.classList.remove('hidden');
+          visibleCount++;
+        } else {
+          item.classList.add('hidden');
+        }
+      });
+
+      const noResult = document.getElementById('noSearchResult');
+      if (visibleCount === 0) {
+        noResult.classList.remove('hidden');
+      } else {
+        noResult.classList.add('hidden');
+      }
+    }
+
+    // 快速點擊標籤填入並搜尋
+    function quickFilter(word) {
+      const searchInput = document.getElementById('transcriptSearchInput');
+      searchInput.value = word;
+      filterTimeline(word);
+    }
+  
+    // ==========================================
+    // Lightbox & 平滑滾動互動
+    // ==========================================
+    let currentLightboxTimelineId = null;
+
+    function openLightbox(src, title, badge, timelineId) {
+      const modal = document.getElementById('imageLightbox');
+      const card = document.getElementById('lightboxCard');
+      const img = document.getElementById('lightboxImage');
+      const titleEl = document.getElementById('lightboxTitle');
+      const badgeEl = document.getElementById('lightboxBadge');
+      
+      img.src = src;
+      titleEl.textContent = title;
+      badgeEl.textContent = badge;
+      currentLightboxTimelineId = timelineId;
+      
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        card.classList.remove('scale-95');
+        card.classList.add('scale-100');
+      }, 10);
+    }
+
+    function closeLightbox() {
+      const modal = document.getElementById('imageLightbox');
+      const card = document.getElementById('lightboxCard');
+      modal.classList.add('opacity-0');
+      card.classList.remove('scale-100');
+      card.classList.add('scale-95');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+      }, 200);
+    }
+
+    function closeLightboxOnBackdrop(e) {
+      if (e.target.id === 'imageLightbox') {
+        closeLightbox();
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeLightbox();
+    });
+
+    function jumpFromLightboxToTimeline() {
+      closeLightbox();
+      if (currentLightboxTimelineId) {
+        setTimeout(() => {
+          scrollToTimelineItem(currentLightboxTimelineId);
+        }, 250);
+      }
+    }
+
+    function scrollToTimelineItem(itemId) {
+      const el = document.getElementById(itemId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-4', 'ring-indigo-500', 'ring-offset-2');
+        setTimeout(() => {
+          el.classList.remove('ring-4', 'ring-indigo-500', 'ring-offset-2');
+        }, 2200);
+      }
+    }
+
+    function scrollToSlide(slideId) {
+      const el = document.getElementById(slideId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-4', 'ring-indigo-500', 'ring-offset-2');
+        setTimeout(() => {
+          el.classList.remove('ring-4', 'ring-indigo-500', 'ring-offset-2');
+        }, 2200);
+      }
+    }
+
+    // 安全渲染 KaTeX 數學公式
+    function initKaTeX() {
+      if (window.renderMathInElement) {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      } else {
+        setTimeout(initKaTeX, 60);
+      }
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initKaTeX);
+    } else {
+      initKaTeX();
+    }
+</script>
+
+  <!-- 全螢幕燈箱 Lightbox Modal -->
+  <div id="imageLightbox" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md hidden flex items-center justify-center p-3 sm:p-6 transition-all duration-300 opacity-0" onclick="closeLightboxOnBackdrop(event)">
+    <div class="relative max-w-5xl w-full max-h-[92vh] flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform scale-95 transition-transform duration-300" id="lightboxCard">
+      <!-- 燈箱頂部列 -->
+      <div class="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50">
+        <div class="flex items-center gap-2 overflow-hidden">
+          <span id="lightboxBadge" class="px-2.5 py-0.5 text-xs font-mono font-bold rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
+            [00:00:00]
+          </span>
+          <h4 id="lightboxTitle" class="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
+            投影片標題
+          </h4>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="lightboxTimelineBtn" onclick="jumpFromLightboxToTimeline()" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 transition flex items-center gap-1 cursor-pointer">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span>跳轉時間軸</span>
+          </button>
+          <button onclick="closeLightbox()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer" title="關閉 (Esc)">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+      <!-- 圖片本體容器 -->
+      <div class="relative flex-1 bg-slate-950 flex items-center justify-center overflow-auto p-2 sm:p-4 min-h-[300px]">
+        <img id="lightboxImage" src="" alt="放大投影片" class="max-w-full max-h-[75vh] object-contain rounded-lg shadow-lg">
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

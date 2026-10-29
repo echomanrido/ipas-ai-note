@@ -1,0 +1,2159 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EP07. 非監督式演算法｜帶你看懂分群、降維、關聯規則和異常偵測</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+    }
+    .gradient-header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    }
+    .card-hover {
+      transition: all 0.25s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.08);
+    }
+    .custom-scroll::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+  </style>
+  <!-- KaTeX for Math Expressions -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen">
+
+  <!-- Top Sticky Navigation Bar -->
+  <header class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span class="inline-flex items-center justify-center p-2 bg-indigo-600 rounded-xl text-white shadow-md shadow-indigo-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        </span>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-tight">EP07. 非監督式演算法｜帶你看懂分群、降維、關聯規則和異常偵測</h1>
+          <p class="text-xs text-indigo-600 font-medium">iPAS AI 應用規劃師 中級科目三 核心教材</p>
+        </div>
+      </div>
+      <nav class="hidden md:flex space-x-1">
+        <a href="#overview" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition">總覽</a>
+        <a href="#kmeans" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition">K-Means</a>
+        <a href="#dbscan" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition">DBSCAN</a>
+        <a href="#reduction" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition">降維三法</a>
+        <a href="#association" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition">關聯規則</a>
+        <a href="#anomaly" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition">異常偵測</a>
+        <a href="#quiz" class="px-3 py-1.5 text-xs font-bold rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition">速記檢測</a>
+        <a href="#transcript-timeline" class="px-3 py-1.5 text-xs font-bold rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition flex items-center space-x-1">
+          <span>⏱️ 時間軸逐字稿</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+    <!-- Hero / Title Section -->
+    <section class="gradient-header rounded-3xl p-6 sm:p-10 text-white shadow-xl relative overflow-hidden">
+      <div class="relative z-10 max-w-3xl">
+        <div class="inline-flex items-center space-x-2 bg-indigo-500/30 border border-indigo-400/30 px-3 py-1 rounded-full text-indigo-200 text-xs font-semibold mb-4">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>無標籤資料（Unlabeled Data）探勘必備</span>
+        </div>
+        <h2 class="text-2xl sm:text-4xl font-extrabold tracking-tight mb-4">EP07. 非監督式演算法｜帶你看懂分群、降維、關聯規則和異常偵測</h2>
+        <p class="text-slate-300 text-sm sm:text-base leading-relaxed mb-6">
+          考試遇到情境題老是猶豫該選 DBSCAN 還是 K-Means？不知道 PCA 為什麼可以當特徵但 t-SNE 只能用來視覺化？本講義以直觀互動模擬、彩色重點框與實戰考題全景拆解！
+        </p>
+        <div class="flex flex-wrap gap-2 text-xs font-medium">
+          <span class="px-3 py-1.5 rounded-lg bg-white/10 border border-white/10 text-white">4 大分類工具</span>
+          <span class="px-3 py-1.5 rounded-lg bg-white/10 border border-white/10 text-white">5 個高頻核心重點</span>
+          <span class="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">考題全中解密</span>
+        </div>
+      </div>
+      <!-- Background Abstract Geometry SVG -->
+      <div class="absolute -right-16 -bottom-16 w-80 h-80 opacity-20 pointer-events-none">
+        <svg viewBox="0 0 200 200" class="w-full h-full fill-current text-indigo-400">
+          <circle cx="100" cy="100" r="80" stroke="currentColor" stroke-width="2" fill="none" stroke-dasharray="8 6"/>
+          <circle cx="60" cy="70" r="20" fill="currentColor"/>
+          <circle cx="140" cy="120" r="30" fill="currentColor"/>
+          <path d="M40,160 Q100,20 160,160" stroke="currentColor" stroke-width="3" fill="none"/>
+        </svg>
+      </div>
+    </section>
+
+    <!-- Color Guide Legend -->
+    <section class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+      <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">🎨 講義彩框速查指南</h3>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div class="flex items-center space-x-2 p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 font-medium">
+          <div class="w-3.5 h-3.5 rounded bg-blue-500 flex-shrink-0"></div>
+          <span>藍框：核心定義與機制</span>
+        </div>
+        <div class="flex items-center space-x-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 font-medium">
+          <div class="w-3.5 h-3.5 rounded bg-rose-500 flex-shrink-0"></div>
+          <span>紅框：演算法限制與陷阱</span>
+        </div>
+        <div class="flex items-center space-x-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-medium">
+          <div class="w-3.5 h-3.5 rounded bg-amber-500 flex-shrink-0"></div>
+          <span>黃框：生活化比喻記憶法</span>
+        </div>
+        <div class="flex items-center space-x-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 font-medium">
+          <div class="w-3.5 h-3.5 rounded bg-emerald-500 flex-shrink-0"></div>
+          <span>綠框：iPAS 歷屆考題與實戰</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== Section 1: K-Means ==================== -->
+    <section 
+      <!-- 投影片 SLIDE-CARD-EP07-01 卡片 -->
+      <div id="slide-card-ep07-01" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-indigo-500 bg-indigo-50/40  p-4 sm:p-5 transition-all duration-300 shadow-md shadow-indigo-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-indigo-500/15 text-indigo-700 border-indigo-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 01
+            </span>
+            <span class="text-xs font-semibold text-slate-700">第八章：非監督式演算法 全貌架構與四大工具</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTs('ts-0000')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 transition cursor-pointer" title="跳轉至時間軸">
+              [00:00:28]
+            </button>
+            <button onclick="openLightbox('EP07/EP07-01.png', '第八章：非監督式演算法 全貌架構與四大工具', '[00:00:28]', 'ts-0000')" class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP07/EP07-01.png', '第八章：非監督式演算法 全貌架構與四大工具', '[00:00:28]', 'ts-0000')">
+          <img src="EP07/EP07-01.png" alt="第八章：非監督式演算法 全貌架構與四大工具" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 leading-relaxed bg-white/90 p-3 rounded-xl border border-slate-100 shadow-sm">
+          <strong>【全貌架構地圖】</strong> 沒有標籤時能用的四類工具：分群、降維、關聯規則、異常偵測。高頻考點直擊：K-Means 的限制（115-15）、DBSCAN 雜訊點判定（114-4）、t-SNE 與 PCA 核心對比（115-6）。
+        </div>
+      </div>
+
+    <section  class="space-y-6">
+      <div class="flex items-center space-x-3 border-b border-slate-200 pb-3">
+        <div class="p-2 bg-blue-600 rounded-xl text-white font-bold text-sm">01</div>
+        <div>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900">K-Means 分群演算法</h2>
+          <p class="text-xs sm:text-sm text-slate-500">以質心（Centroid）為核心的劃分式分群法</p>
+        </div>
+      </div>
+
+      <!-- Core Box -->
+      <div class="p-5 rounded-2xl bg-blue-50 border-l-4 border-blue-600 text-blue-950 space-y-3">
+        <div class="flex items-center space-x-2 font-bold text-base text-blue-900">
+          <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z"/>
+          </svg>
+          <span>K-Means 標準四步驟運作循環</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs sm:text-sm pt-1">
+          <div class="bg-white p-3 rounded-xl shadow-xs border border-blue-100">
+            <span class="font-bold text-blue-600 block mb-1">Step 1. 隨機初態</span>
+            隨機在資料中指定 <strong>$K$ 個點</strong> 作為初始群聚中心（Centroid）。
+          </div>
+          <div class="bg-white p-3 rounded-xl shadow-xs border border-blue-100">
+            <span class="font-bold text-blue-600 block mb-1">Step 2. 距離歸類</span>
+            計算每個樣本點至各中心的<strong>歐式距離</strong>，就近歸入最近的群。
+          </div>
+          <div class="bg-white p-3 rounded-xl shadow-xs border border-blue-100">
+            <span class="font-bold text-blue-600 block mb-1">Step 3. 質心重算</span>
+            以各群內所有點座標的<strong>平均值（Mean）</strong>重新計算為新的中心。
+          </div>
+          <div class="bg-white p-3 rounded-xl shadow-xs border border-blue-100">
+            <span class="font-bold text-blue-600 block mb-1">Step 4. 收斂判定</span>
+            重複 2、3 步，直到中心<strong>不再移動</strong>（或達到最大迭代次數）。
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive SVG Simulator for K-Means -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h4 class="font-bold text-slate-800 text-sm sm:text-base flex items-center space-x-2">
+              <span>🎯 互動實驗室：K-Means 迭代過程模擬</span>
+            </h4>
+            <p class="text-xs text-slate-500">點擊按鈕，觀察兩位隊長（中心點）如何一步步走向群聚正中心</p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button id="kmeans-step-btn" onclick="stepKMeans()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center space-x-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+              <span id="kmeans-btn-text">執行下一步</span>
+            </button>
+            <button onclick="resetKMeans()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition">
+              重設
+            </button>
+          </div>
+        </div>
+
+        <div class="w-full bg-slate-900 rounded-2xl p-4 flex flex-col items-center">
+          <svg id="kmeans-svg" viewBox="0 0 500 260" class="w-full max-w-xl h-auto select-none"></svg>
+          <div id="kmeans-status" class="mt-3 text-xs font-mono text-indigo-300 bg-slate-800 px-4 py-1.5 rounded-full border border-slate-700">
+            狀態：初始隨機中心點 (Step 1)
+          </div>
+        </div>
+      </div>
+
+      <!-- Two Columns: Metaphor vs Restrictions -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Metaphor (Yellow) -->
+        <div class="p-5 rounded-2xl bg-amber-50 border-l-4 border-amber-500 text-amber-950 space-y-2">
+          <div class="flex items-center space-x-2 font-bold text-amber-900">
+            <span class="text-lg">🏃‍♂️</span>
+            <span>校園比喻：運動會分隊</span>
+          </div>
+          <p class="text-xs sm:text-sm leading-relaxed text-amber-900/90">
+            老師必須<strong>先決定分成幾隊（預先指定 K）</strong>。隨便指派 K 個小隊長站在操場，學生立刻<strong>站到離自己最近的隊長旁</strong>；接著隊長移到自己隊伍的正中央。如果有個調皮學生<strong>獨自跑到操場最角落（離群值）</strong>，隊長就會被硬生生往外拉偏一大截！
+          </p>
+        </div>
+
+        <!-- Restrictions (Red) -->
+        <div class="p-5 rounded-2xl bg-rose-50 border-l-4 border-rose-600 text-rose-950 space-y-2">
+          <div class="flex items-center space-x-2 font-bold text-rose-900">
+            <span class="text-lg">⚠️</span>
+            <span>考試必考：K-Means 五大關鍵致命限制</span>
+          </div>
+          <ul class="text-xs sm:text-sm space-y-1 list-disc list-inside text-rose-900/90">
+            <li><strong>需預先指定 K</strong>：一開始就必須決定要分幾群。</li>
+            <li><strong>對初始中心極端敏感</strong>：隨機起點可能陷入局部最佳解（Local Optimum），<strong>不保證全域最佳</strong>。</li>
+            <li><strong>極怕離群值（Outliers）</strong>：平均值容易被極端值拉偏。</li>
+            <li><strong>怕特徵尺度（Scale）不一致</strong>：因依賴歐式距離，數值大的欄位會霸占距離，<strong>必須先做特徵縮放</strong>。</li>
+            <li><strong>只能分凸形（Convex）或球形群</strong>：完全無法處理<strong>半月型、環形</strong>等複雜幾何拓撲。</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Elbow Method Card -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-6">
+        <div class="w-full md:w-1/2">
+          <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider block mb-1">K 值的黃金準則</span>
+          <h4 class="text-base sm:text-lg font-bold text-slate-800 mb-2">手肘法（Elbow Method）與輪廓係數</h4>
+          <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            計算群內誤差平方和（SSE）。當 K 增加時，誤差一定會縮小。我們尋找<strong>「誤差急遽下降後突然變平緩的轉折點（手肘處）」</strong>，此時再多增加群數對誤差改善有限，即為最適的 K 值。
+          </p>
+        </div>
+        <div class="w-full md:w-1/2 bg-slate-50 p-4 rounded-xl border border-slate-100 flex justify-center">
+          <svg viewBox="0 0 300 150" class="w-full max-w-xs h-auto">
+            <!-- Axis -->
+            <line x1="40" y1="20" x2="40" y2="130" stroke="#94a3b8" stroke-width="2"/>
+            <line x1="40" y1="130" x2="280" y2="130" stroke="#94a3b8" stroke-width="2"/>
+            <text x="35" y="15" font-size="10" fill="#64748b" text-anchor="end">SSE</text>
+            <text x="270" y="145" font-size="10" fill="#64748b">群數 K</text>
+            <!-- Curve -->
+            <path d="M50,30 Q90,110 120,112 L180,118 L260,122" fill="none" stroke="#6366f1" stroke-width="3"/>
+            <!-- Points -->
+            <circle cx="50" cy="30" r="4" fill="#6366f1"/>
+            <circle cx="85" cy="85" r="4" fill="#6366f1"/>
+            <circle cx="120" cy="112" r="6" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+            <circle cx="180" cy="118" r="4" fill="#6366f1"/>
+            <circle cx="260" cy="122" r="4" fill="#6366f1"/>
+            <!-- Label for elbow -->
+            <line x1="120" y1="112" x2="160" y2="70" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="3,3"/>
+            <rect x="150" y="52" width="105" height="24" rx="6" fill="#fee2e2"/>
+            <text x="202" y="68" font-size="11" font-weight="bold" fill="#b91c1c" text-anchor="middle">最佳 K（拐點手肘）</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== Section 2: DBSCAN & Hierarchical ==================== -->
+    <section id="dbscan" class="space-y-6">
+      <div class="flex items-center space-x-3 border-b border-slate-200 pb-3">
+        <div class="p-2 bg-emerald-600 rounded-xl text-white font-bold text-sm">02</div>
+        <div>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900">階層式分群 vs. DBSCAN（密度分群）</h2>
+          <p class="text-xs sm:text-sm text-slate-500">免預設群數、可自動濾除離群雜訊的現代分群法</p>
+        </div>
+      </div>
+
+      <!-- Quick Comparison Table -->
+      <div class="overflow-x-auto bg-white rounded-2xl border border-slate-200 shadow-sm custom-scroll">
+        <table class="w-full text-left text-xs sm:text-sm">
+          <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+            <tr>
+              <th class="p-3.5">演算法</th>
+              <th class="p-3.5">需要先給 K 嗎？</th>
+              <th class="p-3.5">幾何形狀容忍度</th>
+              <th class="p-3.5">雜訊/離群值處理</th>
+              <th class="p-3.5">核心弱點</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr class="hover:bg-slate-50/80">
+              <td class="p-3.5 font-bold text-blue-600">K-Means</td>
+              <td class="p-3.5 text-rose-600 font-bold">必須指定</td>
+              <td class="p-3.5">僅限球形、凸形</td>
+              <td class="p-3.5 text-slate-500">無（容易被拉偏）</td>
+              <td class="p-3.5 text-slate-600">受初始點影響、怕非凸形</td>
+            </tr>
+            <tr class="hover:bg-slate-50/80">
+              <td class="p-3.5 font-bold text-purple-600">階層式 (Hierarchical)</td>
+              <td class="p-3.5 text-emerald-600 font-bold">不需預設</td>
+              <td class="p-3.5">取決於連結方式</td>
+              <td class="p-3.5 text-slate-500">視剪枝門檻而定</td>
+              <td class="p-3.5 text-slate-600">計算複雜度 $O(N^2)$、<strong>合併後無法反悔</strong></td>
+            </tr>
+            <tr class="hover:bg-slate-50/80 bg-emerald-50/30">
+              <td class="p-3.5 font-bold text-emerald-700">DBSCAN</td>
+              <td class="p-3.5 text-emerald-600 font-bold">不需預設</td>
+              <td class="p-3.5 font-bold text-emerald-700">任意形狀（如河道帶狀）</td>
+              <td class="p-3.5 font-bold text-emerald-700">自動識別標註雜訊點</td>
+              <td class="p-3.5 text-slate-600"><strong>密度不均勻時表現差</strong>、參數敏感</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Interactive DBSCAN Concept Simulator -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div>
+          <h4 class="font-bold text-slate-800 text-sm sm:text-base flex items-center space-x-2">
+            <span>🔬 DBSCAN 三大點分類互動探針</span>
+          </h4>
+          <p class="text-xs text-slate-500">規則：半徑 $\varepsilon=35$ 內，若點數 $\ge 3$（含自己）則為核心點；不夠但在核心半徑內為邊界點；都不是則為雜訊點</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <button onclick="highlightDBSCAN('core')" class="p-3 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-left transition flex items-center space-x-3">
+            <span class="w-4 h-4 rounded-full bg-blue-600 flex-shrink-0 shadow-sm"></span>
+            <div>
+              <div class="font-bold text-xs sm:text-sm text-blue-900">核心點 (Core Point)</div>
+              <div class="text-[11px] text-blue-700">夜市攤販：半徑內聚集足夠多人</div>
+            </div>
+          </button>
+          <button onclick="highlightDBSCAN('border')" class="p-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-left transition flex items-center space-x-3">
+            <span class="w-4 h-4 rounded-full bg-amber-500 flex-shrink-0 shadow-sm"></span>
+            <div>
+              <div class="font-bold text-xs sm:text-sm text-amber-900">邊界點 (Border Point)</div>
+              <div class="text-[11px] text-amber-700">排隊客人：自己人不夠但靠著攤販</div>
+            </div>
+          </button>
+          <button onclick="highlightDBSCAN('noise')" class="p-3 rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-left transition flex items-center space-x-3">
+            <span class="w-4 h-4 rounded-full bg-slate-400 flex-shrink-0 shadow-sm"></span>
+            <div>
+              <div class="font-bold text-xs sm:text-sm text-slate-900">雜訊點 (Noise Point)</div>
+              <div class="text-[11px] text-slate-600">落單路人：形單影隻、孤立在邊緣</div>
+            </div>
+          </button>
+        </div>
+
+        <div class="w-full bg-slate-900 rounded-2xl p-4 flex flex-col items-center">
+          <svg id="dbscan-svg" viewBox="0 0 500 240" class="w-full max-w-xl h-auto select-none"></svg>
+          <div id="dbscan-info" class="mt-3 text-xs text-slate-300 font-mono">點擊上方按鈕觀看不同節點在密度拓撲中的角色！</div>
+        </div>
+      </div>
+
+      <!-- Real Exam Scenario Card (Green) -->
+      <div class="p-5 rounded-2xl bg-emerald-50 border-l-4 border-emerald-600 text-emerald-950 space-y-2">
+        <div class="flex items-center space-x-2 font-bold text-emerald-900">
+          <span class="text-lg">🚲</span>
+          <span>iPAS 實戰考題情境：共享單車站點最佳化</span>
+        </div>
+        <p class="text-xs sm:text-sm leading-relaxed text-emerald-900/90">
+          <strong>情境題目</strong>：市府欲分析自行車站點的 GPS 空間群集。站點沿著<strong>蜿蜒河道呈長條不規則帶狀分佈</strong>，另有零星偏遠山區站點。請問應選 K-Means 還是 DBSCAN？<br>
+          <span class="font-bold text-emerald-800">👉 答案必選 DBSCAN！</span> 因為 K-Means 只能找凸形球體，會暴力把河道切成數段，且偏遠站點會將中心向外拉扯；DBSCAN 能順著「密度可達性（Density Reachability）」串連長條河道，並將偏遠站點標示為雜訊。
+        </p>
+      </div>
+    
+      <!-- Section 2 DBSCAN & 階層式 投影片圖解系列 -->
+      <div class="mt-8 space-y-6">
+        
+      <!-- 投影片 SLIDE-CARD-EP07-06 卡片 -->
+      <div id="slide-card-ep07-06" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-violet-500 bg-violet-50/40  p-4 sm:p-5 transition-all duration-300 shadow-md shadow-violet-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-violet-500/15 text-violet-700 border-violet-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 06
+            </span>
+            <span class="text-xs font-semibold text-slate-700">重點二：階層式分群 vs DBSCAN</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTs('ts-0313')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 transition cursor-pointer" title="跳轉至時間軸">
+              [00:03:13]
+            </button>
+            <button onclick="openLightbox('EP07/EP07-06.png', '重點二：階層式分群 vs DBSCAN', '[00:03:13]', 'ts-0313')" class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP07/EP07-06.png', '重點二：階層式分群 vs DBSCAN', '[00:03:13]', 'ts-0313')">
+          <img src="EP07/EP07-06.png" alt="重點二：階層式分群 vs DBSCAN" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 leading-relaxed bg-white/90 p-3 rounded-xl border border-slate-100 shadow-sm">
+          <strong>【無須預設群數演算法】</strong> 兩者皆「不用預先指定群數」！階層式：由下而上合併（凝聚）或由上而下拆開（分裂），樹狀圖如家族譜（缺點：計算量大且合併不可逆）；DBSCAN：基於密度，人潮擁擠處連成一群，落單路人自動歸為雜訊。
+        </div>
+      </div>
+
+        
+      <!-- 投影片 SLIDE-CARD-EP07-07 卡片 -->
+      <div id="slide-card-ep07-07" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-amber-500 bg-amber-50/40  p-4 sm:p-5 transition-all duration-300 shadow-md shadow-amber-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-amber-500/15 text-amber-700 border-amber-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 07
+            </span>
+            <span class="text-xs font-semibold text-slate-700">重點二：DBSCAN 兩大參數與三種點定義</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTs('ts-0313')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 transition cursor-pointer" title="跳轉至時間軸">
+              [00:03:36]
+            </button>
+            <button onclick="openLightbox('EP07/EP07-07.png', '重點二：DBSCAN 兩大參數與三種點定義', '[00:03:36]', 'ts-0313')" class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP07/EP07-07.png', '重點二：DBSCAN 兩大參數與三種點定義', '[00:03:36]', 'ts-0313')">
+          <img src="EP07/EP07-07.png" alt="重點二：DBSCAN 兩大參數與三種點定義" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 leading-relaxed bg-white/90 p-3 rounded-xl border border-slate-100 shadow-sm">
+          <strong>【參數與三類樣本點】</strong> 兩參數：鄰域半徑 $\varepsilon$（Eps）、最小樣本數 $\text{MinPts}$。三種點：① 核心點（半徑內點數 $\ge \text{MinPts}$，像攤販）；② 邊界點（點數不足但在核心點鄰域內，像排隊客人）；③ 雜訊點（點數不足且不在任何核心點領域內，像路過路人）。
+        </div>
+      </div>
+
+        
+      <!-- 投影片 SLIDE-CARD-EP07-08 卡片 -->
+      <div id="slide-card-ep07-08" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-orange-500 bg-orange-50/40  p-4 sm:p-5 transition-all duration-300 shadow-md shadow-orange-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-orange-500/15 text-orange-700 border-orange-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 08
+            </span>
+            <span class="text-xs font-semibold text-slate-700">學校版生活比喻：下課的人群</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTs('ts-0313')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 transition cursor-pointer" title="跳轉至時間軸">
+              [00:04:10]
+            </button>
+            <button onclick="openLightbox('EP07/EP07-08.png', '學校版生活比喻：下課的人群', '[00:04:10]', 'ts-0313')" class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP07/EP07-08.png', '學校版生活比喻：下課的人群', '[00:04:10]', 'ts-0313')">
+          <img src="EP07/EP07-08.png" alt="學校版生活比喻：下課的人群" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 leading-relaxed bg-white/90 p-3 rounded-xl border border-slate-100 shadow-sm">
+          <strong>【直覺速記比喻】</strong> 下課時學生擠在一起就是一群：被圍在正中間的是核心點；人群邊緣的是邊界點；獨自走在走廊的是雜訊點。河道帶狀站點、半導體晶圓弧形瑕疵等任意幾何形狀分群，首選 DBSCAN！
+        </div>
+      </div>
+
+      </div>
+</section>
+
+    <!-- ==================== Section 3: Dimensionality Reduction ==================== -->
+    <section id="reduction" class="space-y-6">
+      <div class="flex items-center space-x-3 border-b border-slate-200 pb-3">
+        <div class="p-2 bg-purple-600 rounded-xl text-white font-bold text-sm">03</div>
+        <div>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900">降維三法（PCA、t-SNE、UMAP）</h2>
+          <p class="text-xs sm:text-sm text-slate-500">高維特徵壓縮、視覺化與建模輸入的關鍵取捨</p>
+        </div>
+      </div>
+
+      <!-- 3-Way Card Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- PCA -->
+        <div class="card-hover bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div class="space-y-3">
+            <div class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
+              線性 Linear
+            </div>
+            <h3 class="text-lg font-bold text-slate-900">PCA 主成分分析</h3>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              尋找資料<strong>「變異數最大（全域散開最多）」</strong>的直角投影軸向量。
+            </p>
+            <div class="p-3 bg-indigo-50/60 rounded-xl text-xs space-y-1">
+              <div class="font-bold text-indigo-900">特點優勢：</div>
+              <p class="text-indigo-800">具有確定性投影公式，能對未來新資料進行<strong>外推（Transform）</strong>。</p>
+            </div>
+            <div class="p-3 bg-rose-50/60 rounded-xl text-xs space-y-1">
+              <div class="font-bold text-rose-900">適用時機：</div>
+              <p class="text-rose-800"><strong>作為機器學習模型的特徵輸入前處理</strong>。</p>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400">
+            比喻：把五科成績濃縮成文理兩大主成分總分，方便日後評選獎學金。
+          </div>
+        </div>
+
+        <!-- t-SNE -->
+        <div class="card-hover bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div class="space-y-3">
+            <div class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-pink-100 text-pink-800">
+              非線性 Non-Linear
+            </div>
+            <h3 class="text-lg font-bold text-slate-900">t-SNE</h3>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              以機率分佈衡量相似度，嚴格保留<strong>「局部鄰近關係（Local Structure）」</strong>。
+            </p>
+            <div class="p-3 bg-pink-50/60 rounded-xl text-xs space-y-1">
+              <div class="font-bold text-pink-900">核心弱點：</div>
+              <p class="text-pink-800">遠距離比例不真實；且<strong>無法投影新進資料</strong>，每次隨機跑圖不同。</p>
+            </div>
+            <div class="p-3 bg-rose-50/60 rounded-xl text-xs space-y-1">
+              <div class="font-bold text-rose-900">適用時機：</div>
+              <p class="text-rose-800"><strong>僅限 2D/3D 人工視覺化群集觀察</strong>（千萬不可餵入模型）。</p>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400">
+            比喻：畫出「誰和誰最麻吉」的班級關係圖，但新轉學生無法直接套用。
+          </div>
+        </div>
+
+        <!-- UMAP -->
+        <div class="card-hover bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div class="space-y-3">
+            <div class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800">
+              非線性現代霸主
+            </div>
+            <h3 class="text-lg font-bold text-slate-900">UMAP</h3>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              基於黎曼幾何與代數拓撲，<strong>同時兼顧局部鄰近與全域宏觀結構</strong>。
+            </p>
+            <div class="p-3 bg-purple-50/60 rounded-xl text-xs space-y-1">
+              <div class="font-bold text-purple-900">對比 t-SNE：</div>
+              <p class="text-purple-800">運算速度更快、支援更大量級，且<strong>支援增量學習（新資料可投影）</strong>。</p>
+            </div>
+            <div class="p-3 bg-rose-50/60 rounded-xl text-xs space-y-1">
+              <div class="font-bold text-rose-900">唯一門檻：</div>
+              <p class="text-rose-800">底層數學推導較深奧，需調校鄰居參數。</p>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400">
+            現代主流：兼具 t-SNE 的群集分明感與 PCA 的投影延展性。
+          </div>
+        </div>
+      </div>
+
+      <!-- Decision Matrix Highlight (Rose) -->
+      <div class="p-5 rounded-2xl bg-rose-50 border-l-4 border-rose-600 text-rose-950 space-y-2">
+        <div class="flex items-center space-x-2 font-bold text-rose-900">
+          <span class="text-lg">⚡</span>
+          <span>iPAS 必考題：降維工具黃金選擇準則</span>
+        </div>
+        <div class="text-xs sm:text-sm space-y-2 text-rose-900/90">
+          <p>🔹 <strong>情境 A</strong>：工程師要將 200 個半導體製程特徵降維，後續要<strong>餵給 XGBoost 分類器</strong>進行線上預測 $\implies$ <strong>必選 PCA</strong>（模型推論時每一筆新晶圓特徵都必須被相同公式投影！）。</p>
+          <p>🔹 <strong>情境 B</strong>：資料科學家把 512 維度的詞向量（Word Embedding）在簡報中<strong>降到二維畫散佈圖給主管看語意分群</strong> $\implies$ <strong>必選 t-SNE 或 UMAP</strong>。</p>
+        </div>
+      </div>
+    
+      <!-- Section 3 降維三法 投影片圖解系列 -->
+      <div class="mt-8 space-y-6">
+        
+      <!-- 投影片 SLIDE-CARD-EP07-09 卡片 -->
+      <div id="slide-card-ep07-09" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-cyan-500 bg-cyan-50/40  p-4 sm:p-5 transition-all duration-300 shadow-md shadow-cyan-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-cyan-500/15 text-cyan-700 border-cyan-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 09
+            </span>
+            <span class="text-xs font-semibold text-slate-700">重點三：PCA 與 t-SNE 核心對比</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTs('ts-0529')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 transition cursor-pointer" title="跳轉至時間軸">
+              [00:05:29]
+            </button>
+            <button onclick="openLightbox('EP07/EP07-09.png', '重點三：PCA 與 t-SNE 核心對比', '[00:05:29]', 'ts-0529')" class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP07/EP07-09.png', '重點三：PCA 與 t-SNE 核心對比', '[00:05:29]', 'ts-0529')">
+          <img src="EP07/EP07-09.png" alt="重點三：PCA 與 t-SNE 核心對比" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 leading-relaxed bg-white/90 p-3 rounded-xl border border-slate-100 shadow-sm">
+          <strong>【線性降維 vs 非線性視覺化】</strong> PCA：線性投影，保留全局最大變異（散得最開的方向），適合降維後當作後續模型輸入特徵；t-SNE：非線性降維，保留局部鄰近關係，只適合 2D/3D 視覺化觀察群集，不適合餵入下游模型。
+        </div>
+      </div>
+
+        
+      <!-- 投影片 SLIDE-CARD-EP07-10 卡片 -->
+      <div id="slide-card-ep07-10" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-teal-500 bg-teal-50/40  p-4 sm:p-5 transition-all duration-300 shadow-md shadow-teal-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-teal-500/15 text-teal-700 border-teal-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 10
+            </span>
+            <span class="text-xs font-semibold text-slate-700">第三種降維利器：UMAP 現代革命</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTs('ts-0529')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 transition cursor-pointer" title="跳轉至時間軸">
+              [00:06:40]
+            </button>
+            <button onclick="openLightbox('EP07/EP07-10.png', '第三種降維利器：UMAP 現代革命', '[00:06:40]', 'ts-0529')" class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP07/EP07-10.png', '第三種降維利器：UMAP 現代革命', '[00:06:40]', 'ts-0529')">
+          <img src="EP07/EP07-10.png" alt="第三種降維利器：UMAP 現代革命" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 leading-relaxed bg-white/90 p-3 rounded-xl border border-slate-100 shadow-sm">
+          <strong>【UMAP 核心優勢】</strong> 非線性流形學習，同時兼顧局部鄰近與全域拓撲結構；運算速度顯著優於 t-SNE、可擴展至超大規模資料集；且支援「增量投影」（新資料可直接映射至已建好的低維空間，無需全量重算）。
+        </div>
+      </div>
+
+        
+      <!-- 投影片 SLIDE-CARD-EP07-11 卡片 -->
+      <div id="slide-card-ep07-11" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-purple-500 bg-purple-50/40  p-4 sm:p-5 transition-all duration-300 shadow-md shadow-purple-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-purple-500/15 text-purple-700 border-purple-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 11
+            </span>
+            <span class="text-xs font-semibold text-slate-700">深入解析：t-SNE 為什麼只拿來看？</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTs('ts-0529')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 transition cursor-pointer" title="跳轉至時間軸">
+              [00:07:15]
+            </button>
+            <button onclick="openLightbox('EP07/EP07-11.png', '深入解析：t-SNE 為什麼只拿來看？', '[00:07:15]', 'ts-0529')" class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP07/EP07-11.png', '深入解析：t-SNE 為什麼只拿來看？', '[00:07:15]', 'ts-0529')">
+          <img src="EP07/EP07-11.png" alt="深入解析：t-SNE 為什麼只拿來看？" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 leading-relaxed bg-white/90 p-3 rounded-xl border border-slate-100 shadow-sm">
+          <strong>【t-SNE 無法外推本質】</strong> ① 坐標是對特定資料批次最佳化迭代生成，無投影轉換矩陣；② 隨機初始化使每次運行結果不同；③ 困惑度（Perplexity）超參數對圖形影響巨大。比喻：PCA 如五科濃縮成兩科總分算獎學金；t-SNE 如班級地圖，轉學生放不上去。
+        </div>
+      </div>
+
+      </div>
+</section>
+
+    <!-- ==================== Section 4: Association Rules ==================== -->
+    <section id="association" class="space-y-6">
+      <div class="flex items-center space-x-3 border-b border-slate-200 pb-3">
+        <div class="p-2 bg-amber-500 rounded-xl text-white font-bold text-sm">04</div>
+        <div>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900">關聯規則分析（購物籃分析）</h2>
+          <p class="text-xs sm:text-sm text-slate-500">掌握三大指標（支持度、信賴度、提升度）與 Apriori / FP-Growth</p>
+        </div>
+      </div>
+
+      <!-- 3 Metrics Formulas and Interactive Calculator -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between">
+          <h3 class="text-base font-bold text-slate-900">🧮 關聯指標即時計算實驗室</h3>
+          <span class="text-xs text-slate-400">輸入交易數據，系統即時算出關聯強度</span>
+        </div>
+
+        <!-- Formula Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-900">
+            <span class="text-xs font-bold block text-blue-600 mb-1">1. 支持度 Support (A & B)</span>
+            <div class="font-mono text-sm font-bold my-1">P(A ∩ B) = 雙買筆數 / 總交易數</div>
+            <p class="text-[11px] text-blue-700">代表該組合在全店出現的普及程度</p>
+          </div>
+          <div class="p-4 rounded-xl bg-purple-50 border border-purple-200 text-purple-900">
+            <span class="text-xs font-bold block text-purple-600 mb-1">2. 信賴度 Confidence (A → B)</span>
+            <div class="font-mono text-sm font-bold my-1">P(B | A) = 雙買筆數 / 買 A 筆數</div>
+            <p class="text-[11px] text-purple-700">買了 A 的顧客中，也有買 B 的機率</p>
+          </div>
+          <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900">
+            <span class="text-xs font-bold block text-emerald-600 mb-1">3. 提升度 Lift (A → B)</span>
+            <div class="font-mono text-sm font-bold my-1">Confidence / P(B)</div>
+            <p class="text-[11px] text-emerald-700">&gt;1 為正相關；=1 為獨立；&lt;1 為負相關</p>
+          </div>
+        </div>
+
+        <!-- Interactive Inputs -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">總交易數 (Total)</label>
+            <input type="number" id="calc-total" value="1000" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold" oninput="calculateRules()">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">買商品 A (如洋芋片)</label>
+            <input type="number" id="calc-a" value="200" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold" oninput="calculateRules()">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">買商品 B (如汽水)</label>
+            <input type="number" id="calc-b" value="250" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold" oninput="calculateRules()">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">同時買 A 與 B</label>
+            <input type="number" id="calc-ab" value="100" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold" oninput="calculateRules()">
+          </div>
+        </div>
+
+        <!-- Calculated Output Dashboard -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="p-3 bg-white border border-slate-200 rounded-xl text-center">
+            <span class="text-xs text-slate-500 block">支持度 (Support)</span>
+            <span id="res-supp" class="text-xl font-extrabold text-blue-600">0.100 (10%)</span>
+          </div>
+          <div class="p-3 bg-white border border-slate-200 rounded-xl text-center">
+            <span class="text-xs text-slate-500 block">信賴度 (Confidence A→B)</span>
+            <span id="res-conf" class="text-xl font-extrabold text-purple-600">0.500 (50%)</span>
+          </div>
+          <div class="p-3 bg-white border border-slate-200 rounded-xl text-center">
+            <span class="text-xs text-slate-500 block">提升度 (Lift)</span>
+            <span id="res-lift" class="text-xl font-extrabold text-emerald-600">2.00 (正相關 🚀)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Apriori vs FP-Growth Comparison -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-2">
+          <div class="flex items-center space-x-2 font-bold text-slate-900">
+            <span class="p-1.5 bg-slate-100 rounded-lg text-slate-700 text-xs">傳統</span>
+            <span>Apriori 演算法（先驗法）</span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            核心採用<strong>反單調性（Apriori Property）</strong>進行剪枝：若某組合不頻繁，其所有超集（更長組合）必然不頻繁。
+          </p>
+          <div class="p-3 bg-rose-50 text-rose-800 rounded-xl text-xs">
+            <strong>❌ 致命缺點</strong>：每擴充一層候選集就必須<strong>全表重新掃描一次資料庫</strong>，遇到巨量資料（如數億筆）時運算速度極度緩慢。
+          </div>
+        </div>
+
+        <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-2">
+          <div class="flex items-center space-x-2 font-bold text-emerald-700">
+            <span class="p-1.5 bg-emerald-100 rounded-lg text-emerald-800 text-xs">現代高效</span>
+            <span>FP-Growth 演算法（頻繁模式樹）</span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            透過壓縮前綴樹（FP-Tree）將資料庫直接鎖定在記憶體樹狀節點中，不需生成龐大的候選集組合。
+          </p>
+          <div class="p-3 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-medium">
+            <strong>⭐ 核心優勢</strong>：<strong>「全過程僅需掃描資料庫 2 次！」</strong>第一次數頻率，第二次掛入樹枝，巨量交易資料時速度完勝 Apriori。
+          </div>
+        </div>
+      </div>
+
+      <!-- Supermarket Scenario Trap (Yellow) -->
+      <div class="p-5 rounded-2xl bg-amber-50 border-l-4 border-amber-500 text-amber-950 space-y-2">
+        <div class="flex items-center space-x-2 font-bold text-amber-900">
+          <span class="text-lg">🛒</span>
+          <span>生活考題陷阱：為什麼只看信賴度會被騙？</span>
+        </div>
+        <p class="text-xs sm:text-sm leading-relaxed text-amber-900/90">
+          福利社數據顯示：「買麵包的人有 80% 也會買牛奶（Confidence = 0.8）」，看起來似乎是一對黃金搭檔？<br>
+          <strong>但一查全校發現：本來就有 75% 的人不管買什麼都會買牛奶！</strong><br>
+          此時提升度 $\text{Lift} = 0.8 / 0.75 \approx 1.07$（幾乎等於 1）。代表買麵包根本沒有促使大家買更多牛奶，純粹因為牛奶本身就是暢銷商品。只有<strong>「啤酒 $\to$ 尿布（Lift = 2.5）」</strong>這類提升度顯著大於 1 的規則，才具備真實的商品擺放行銷價值！
+        </p>
+      </div>
+    
+      <!-- Section 4 關聯規則 投影片圖解系列 -->
+      <div class="mt-8 space-y-6">
+        
+      <!-- 投影片 SLIDE-CARD-EP07-12 卡片 -->
+      <div id="slide-card-ep07-12" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-fuchsia-500 bg-fuchsia-50/40  p-4 sm:p-5 transition-all duration-300 shadow-md shadow-fuchsia-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-fuchsia-500/15 text-fuchsia-700 border-fuchsia-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 12
+            </span>
+            <span class="text-xs font-semibold text-slate-700">重點四：關聯規則三大指標 (Support / Confidence / Lift)</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTs('ts-0758')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 transition cursor-pointer" title="跳轉至時間軸">
+              [00:07:58]
+            </button>
+            <button onclick="openLightbox('EP07/EP07-12.png', '重點四：關聯規則三大指標 (Support / Confidence / Lift)', '[00:07:58]', 'ts-0758')" class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP07/EP07-12.png', '重點四：關聯規則三大指標 (Support / Confidence / Lift)', '[00:07:58]', 'ts-0758')">
+          <img src="EP07/EP07-12.png" alt="重點四：關聯規則三大指標 (Support / Confidence / Lift)" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 leading-relaxed bg-white/90 p-3 rounded-xl border border-slate-100 shadow-sm">
+          <strong>【購物籃三指標公式】</strong> 支持度 Support：$P(A \cap B)$，同時購買 A 與 B 的交易佔比；信賴度 Confidence：$P(B|A)$，買 A 的人中有多少也買 B；提升度 Lift：$\frac{\text{Confidence}}{P(B)}$，買 A 帶動買 B 的比例比平常高出多少倍。
+        </div>
+      </div>
+
+        
+      <!-- 投影片 SLIDE-CARD-EP07-13 卡片 -->
+      <div id="slide-card-ep07-13" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-pink-500 bg-pink-50/40  p-4 sm:p-5 transition-all duration-300 shadow-md shadow-pink-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-pink-500/15 text-pink-700 border-pink-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 13
+            </span>
+            <span class="text-xs font-semibold text-slate-700">避坑指南：為什麼不能只看信賴度？一定要看提升度！</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTs('ts-0758')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 transition cursor-pointer" title="跳轉至時間軸">
+              [00:09:00]
+            </button>
+            <button onclick="openLightbox('EP07/EP07-13.png', '避坑指南：為什麼不能只看信賴度？一定要看提升度！', '[00:09:00]', 'ts-0758')" class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP07/EP07-13.png', '避坑指南：為什麼不能只看信賴度？一定要看提升度！', '[00:09:00]', 'ts-0758')">
+          <img src="EP07/EP07-13.png" alt="避坑指南：為什麼不能只看信賴度？一定要看提升度！" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 leading-relaxed bg-white/90 p-3 rounded-xl border border-slate-100 shadow-sm">
+          <strong>【熱賣品假象與提升度判讀】</strong> 買麵包者有 80% 買牛奶，但若全校本來就有 75% 買牛奶，Lift $= 0.8 / 0.75 \approx 1.07$（接近 1，實質獨立！）。判讀：Lift $>1$ 正相關、$=1$ 獨立、$<1$ 負相關。注意：Lift $>1$ 僅代表正相關，不代表因果關係！
+        </div>
+      </div>
+
+      </div>
+</section>
+
+    <!-- ==================== Section 5: Anomaly Detection ==================== -->
+    <section id="anomaly" class="space-y-6">
+      <div class="flex items-center space-x-3 border-b border-slate-200 pb-3">
+        <div class="p-2 bg-rose-600 rounded-xl text-white font-bold text-sm">05</div>
+        <div>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900">異常偵測（Anomaly Detection）</h2>
+          <p class="text-xs sm:text-sm text-slate-500">孤立森林、One-Class SVM 與自編碼器（Autoencoder）</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Isolation Forest -->
+        <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-slate-900 text-base">🌲 孤立森林 (Isolation Forest)</h3>
+            <span class="text-xs bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full font-bold">切越快越怪</span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            透過隨機選取特徵與隨機切點建構二元樹。正常樣本擠在一起需要切很多刀；而孤立在邊緣的<strong>異常樣本只要少數幾刀（路徑長度 Path Length 越短）</strong>就會被單獨分離！
+          </p>
+          <div class="p-3 bg-indigo-50/70 rounded-xl text-xs space-y-1">
+            <span class="font-bold text-indigo-900">核心優點：</span>
+            <p class="text-indigo-800">運算極快、<strong>不需計算幾何距離</strong>、能輕鬆應對<strong>高維度且千萬筆等級</strong>的超大資料集。</p>
+          </div>
+        </div>
+
+        <!-- One-Class SVM -->
+        <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-slate-900 text-base">🛡️ One-Class SVM</h3>
+            <span class="text-xs bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full font-bold">只認自家人</span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            訓練時<strong>只使用正常的正樣本</strong>在特徵空間中畫出一道緊緻的超球體邊界（Boundary）。推論時只要新連線落在邊界之外，一律視為異常入侵。
+          </p>
+          <div class="p-3 bg-amber-50/70 rounded-xl text-xs space-y-1">
+            <span class="font-bold text-amber-900">核心場景：</span>
+            <p class="text-amber-800">適用於<strong>極度缺乏異常樣本（如資安極罕見未知駭客攻擊）</strong>的場景；缺點是面對千萬筆資料運算耗時。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Autoencoder Deep Learning note -->
+      <div class="p-4 rounded-xl bg-purple-50 border border-purple-200 text-purple-950 text-xs sm:text-sm flex items-start space-x-3">
+        <span class="text-xl">🤖</span>
+        <div>
+          <span class="font-bold block text-purple-900">深度學習擴充：自編碼器（Autoencoder）異常偵測</span>
+          神經網路在訓練階段只看過正常的影像或訊號（壓縮 Encoder 再還原 Decoder）。當遇到瑕疵或異常訊號時，神經網路無法有效還原，導致<strong>重建誤差（Reconstruction Error）特別巨大</strong>，以此標定異常！
+        </div>
+      </div>
+    
+      <!-- Section 5 異常偵測 投影片圖解 -->
+      <div class="mt-8 space-y-6">
+        
+      <!-- 投影片 SLIDE-CARD-EP07-14 卡片 -->
+      <div id="slide-card-ep07-14" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-lime-500 bg-lime-50/40  p-4 sm:p-5 transition-all duration-300 shadow-md shadow-lime-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-lime-500/15 text-lime-800 border-lime-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 14
+            </span>
+            <span class="text-xs font-semibold text-slate-700">重點五：異常偵測兩大主力（孤立森林 vs One-Class SVM）</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTs('ts-1050')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 transition cursor-pointer" title="跳轉至時間軸">
+              [00:10:50]
+            </button>
+            <button onclick="openLightbox('EP07/EP07-14.png', '重點五：異常偵測兩大主力（孤立森林 vs One-Class SVM）', '[00:10:50]', 'ts-1050')" class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP07/EP07-14.png', '重點五：異常偵測兩大主力（孤立森林 vs One-Class SVM）', '[00:10:50]', 'ts-1050')">
+          <img src="EP07/EP07-14.png" alt="重點五：異常偵測兩大主力（孤立森林 vs One-Class SVM）" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 leading-relaxed bg-white/90 p-3 rounded-xl border border-slate-100 shadow-sm">
+          <strong>【異常偵測方法對比】</strong> 孤立森林（Isolation Forest）：隨機切特徵維度，異常點分佈稀疏，切極少刀（路徑短）就被孤立，極快、適合超大規模高維資料；One-Class SVM：只以正常資料畫出包覆超平面（圈外視為可疑），適合異常極難收集場景，但大資料較慢且參數敏感。
+        </div>
+      </div>
+
+      </div>
+</section>
+
+    <!-- ==================== Section 6: Real Exam Arena & Summary ==================== -->
+    <section id="quiz" class="space-y-6">
+      <div class="flex items-center space-x-3 border-b border-slate-200 pb-3">
+        <div class="p-2 bg-emerald-600 rounded-xl text-white font-bold text-sm">06</div>
+        <div>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900">iPAS 實戰模擬考場 & 口訣速記</h2>
+          <p class="text-xs sm:text-sm text-slate-500">檢驗你的觀念是否已經融會貫通！</p>
+        </div>
+      </div>
+
+      <!-- Interactive Quiz Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Question 1 -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md">模擬題 1</span>
+            <span class="text-xs text-slate-400">分群演算法比較</span>
+          </div>
+          <h4 class="text-sm sm:text-base font-bold text-slate-800">
+            某半導體廠欲對晶圓瑕疵分佈進行分群，瑕疵在晶圓邊緣呈現「弧形環狀」分佈，且偶爾有單顆落塵雜點。請問首選演算法為何？
+          </h4>
+          <div class="space-y-2 pt-2">
+            <button onclick="checkAnswer(1, 'A')" class="q1-btn w-full p-2.5 text-left text-xs sm:text-sm rounded-xl border border-slate-200 hover:bg-slate-50 transition">
+              A. K-Means（設定 K=3）
+            </button>
+            <button onclick="checkAnswer(1, 'B')" class="q1-btn w-full p-2.5 text-left text-xs sm:text-sm rounded-xl border border-slate-200 hover:bg-slate-50 transition">
+              B. DBSCAN
+            </button>
+            <button onclick="checkAnswer(1, 'C')" class="q1-btn w-full p-2.5 text-left text-xs sm:text-sm rounded-xl border border-slate-200 hover:bg-slate-50 transition">
+              C. 線性 PCA 投影
+            </button>
+          </div>
+          <div id="q1-feedback" class="hidden p-3 rounded-xl text-xs font-medium"></div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md">模擬題 2</span>
+            <span class="text-xs text-slate-400">異常偵測取捨</span>
+          </div>
+          <h4 class="text-sm sm:text-base font-bold text-slate-800">
+            銀行信用卡中心每天有超過 3,000 萬筆交易紀錄（含 60 個欄位特徵，無人工標籤），系統需在幾分鐘內找出可疑盜刷。請問該選哪種模型？
+          </h4>
+          <div class="space-y-2 pt-2">
+            <button onclick="checkAnswer(2, 'A')" class="q2-btn w-full p-2.5 text-left text-xs sm:text-sm rounded-xl border border-slate-200 hover:bg-slate-50 transition">
+              A. 孤立森林 (Isolation Forest)
+            </button>
+            <button onclick="checkAnswer(2, 'B')" class="q2-btn w-full p-2.5 text-left text-xs sm:text-sm rounded-xl border border-slate-200 hover:bg-slate-50 transition">
+              B. One-Class SVM
+            </button>
+            <button onclick="checkAnswer(2, 'C')" class="q2-btn w-full p-2.5 text-left text-xs sm:text-sm rounded-xl border border-slate-200 hover:bg-slate-50 transition">
+              C. 階層式分群法 (Hierarchical)
+            </button>
+          </div>
+          <div id="q2-feedback" class="hidden p-3 rounded-xl text-xs font-medium"></div>
+        </div>
+      </div>
+
+      <!-- Golden Mantra Card -->
+      <div class="p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-xl space-y-4">
+        <h3 class="text-lg font-bold text-indigo-300 flex items-center space-x-2">
+          <span>🧠 考前 30 秒快速回想三句話</span>
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs sm:text-sm">
+          <div class="p-3.5 rounded-xl bg-white/10 border border-white/10">
+            <strong class="text-amber-400 block mb-1">分群兩大對決</strong>
+            K-Means 選隊長需給 K、怕離群與非凸群；DBSCAN 看密度如夜市，能抓任意形狀與過濾雜訊。
+          </div>
+          <div class="p-3.5 rounded-xl bg-white/10 border border-white/10">
+            <strong class="text-blue-400 block mb-1">降維核心定位</strong>
+            PCA 是線性、有固定投影方向可外推給模型；t-SNE 非線性、專注局部，只能拿來看圖。
+          </div>
+          <div class="p-3.5 rounded-xl bg-white/10 border border-white/10">
+            <strong class="text-emerald-400 block mb-1">規則與異常速記</strong>
+            關聯提升度大於 1 才算真正相關；巨量關聯選 FP-Growth；千萬級異常偵測首選孤立森林。
+          </div>
+        </div>
+      </div>
+    
+      <!-- Section 6 總結考點與口訣 投影片圖解系列 -->
+      <div class="mt-8 space-y-6">
+        
+      <!-- 投影片 SLIDE-CARD-EP07-15 卡片 -->
+      <div id="slide-card-ep07-15" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-red-500 bg-red-50/40  p-4 sm:p-5 transition-all duration-300 shadow-md shadow-red-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-red-500/15 text-red-700 border-red-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 15
+            </span>
+            <span class="text-xs font-semibold text-slate-700">最容易搞混的五大非監督式演算法對抗</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTs('ts-1233')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 transition cursor-pointer" title="跳轉至時間軸">
+              [00:12:33]
+            </button>
+            <button onclick="openLightbox('EP07/EP07-15.png', '最容易搞混的五大非監督式演算法對抗', '[00:12:33]', 'ts-1233')" class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP07/EP07-15.png', '最容易搞混的五大非監督式演算法對抗', '[00:12:33]', 'ts-1233')">
+          <img src="EP07/EP07-15.png" alt="最容易搞混的五大非監督式演算法對抗" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 leading-relaxed bg-white/90 p-3 rounded-xl border border-slate-100 shadow-sm">
+          <strong>【考前終極五大對抗】</strong> ① K-means（需給K/球形凸形/怕離群）vs DBSCAN（不需K/任意幾何/標記雜訊）；② PCA（線性/可當輸入）vs t-SNE（非線性/僅視覺化）；③ Apriori（多次掃描）vs FP-Growth（FP樹僅掃兩次）；④ 信賴度 vs 提升度；⑤ 孤立森林（切越快越怪）vs One-Class SVM（學正常邊界）。
+        </div>
+      </div>
+
+        
+      <!-- 投影片 SLIDE-CARD-EP07-16 卡片 -->
+      <div id="slide-card-ep07-16" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-amber-400 bg-amber-50/50  p-4 sm:p-5 transition-all duration-300 shadow-md shadow-amber-400/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-amber-400/20 text-amber-800 border-amber-500/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 16
+            </span>
+            <span class="text-xs font-semibold text-slate-700">這集帶走三句話：考前 30 秒極速口訣</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTs('ts-1233')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 transition cursor-pointer" title="跳轉至時間軸">
+              [00:13:00]
+            </button>
+            <button onclick="openLightbox('EP07/EP07-16.png', '這集帶走三句話：考前 30 秒極速口訣', '[00:13:00]', 'ts-1233')" class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP07/EP07-16.png', '這集帶走三句話：考前 30 秒極速口訣', '[00:13:00]', 'ts-1233')">
+          <img src="EP07/EP07-16.png" alt="這集帶走三句話：考前 30 秒極速口訣" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 leading-relaxed bg-white/90 p-3 rounded-xl border border-slate-100 shadow-sm">
+          <strong>【30 秒精華口訣】</strong> ① K-means：選隊長、站隊、移中心、重複；要先給 K、怕離群值、怕非凸。<br>② DBSCAN：看密度如夜市人潮，落單路人是雜訊，抗任意形狀。<br>③ 降維口訣：PCA 能餵模型，t-SNE 只能拿來看，UMAP 兼顧兩者速度快！
+        </div>
+      </div>
+
+      </div>
+</section>
+
+    <!-- ==================== Section 7: Timestamped Interactive Transcript Timeline ==================== -->
+    <section id="transcript-timeline" class="space-y-8 pt-6 border-t-2 border-dashed border-slate-300">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+        <div class="flex items-center space-x-3">
+          <div class="p-2.5 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-2xl text-white font-bold text-sm shadow-md shadow-indigo-100">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <h2 class="text-xl sm:text-2xl font-bold text-slate-900">影片時間軸逐字稿研讀館</h2>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800">13:26 原音全景還原</span>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-500">依授課節奏將原文字幕校訂分段，結合彩色重點註解與即時互動跳轉</p>
+          </div>
+        </div>
+
+        <!-- Timeline Search / Jump Toolbar -->
+        <div class="flex flex-wrap items-center gap-1.5 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-xs">
+          <button onclick="scrollToTs('ts-0000')" class="px-2.5 py-1 text-xs font-medium rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition">00:00 開場考題</button>
+          <button onclick="scrollToTs('ts-0056')" class="px-2.5 py-1 text-xs font-medium rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition">00:56 K-Means</button>
+          <button onclick="scrollToTs('ts-0313')" class="px-2.5 py-1 text-xs font-medium rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition">03:13 DBSCAN</button>
+          <button onclick="scrollToTs('ts-0529')" class="px-2.5 py-1 text-xs font-medium rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition">05:29 降維三法</button>
+          <button onclick="scrollToTs('ts-0758')" class="px-2.5 py-1 text-xs font-medium rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition">07:58 關聯規則</button>
+          <button onclick="scrollToTs('ts-1050')" class="px-2.5 py-1 text-xs font-medium rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition">10:50 異常偵測</button>
+          <button onclick="scrollToTs('ts-1233')" class="px-2.5 py-1 text-xs font-medium rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition font-bold">12:33 核心總結</button>
+        </div>
+      </div>
+
+      <!-- Main Timeline Flow Container -->
+      <div class="relative pl-6 sm:pl-10 space-y-8 before:absolute before:left-3 sm:before:left-5 before:top-3 before:bottom-3 before:w-0.5 before:bg-gradient-to-b before:from-indigo-500 before:via-purple-400 before:to-slate-300">
+
+        <!-- Timeline Node 1: Intro & Question -->
+        <article id="ts-0000" class="relative group scroll-mt-24">
+          <div class="absolute -left-[1.85rem] sm:-left-[2.35rem] top-1.5 w-6 h-6 rounded-full bg-indigo-600 border-4 border-white shadow-md flex items-center justify-center">
+            <span class="w-2 h-2 rounded-full bg-white"></span>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div class="flex items-center space-x-2">
+                <span class="font-mono text-xs font-extrabold px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  00:00 - 00:55
+                </span>
+                <h3 class="font-bold text-slate-900 text-sm sm:text-base">開場試題震撼彈：K-Means 限制與四大工具大綱</h3>
+              </div>
+              <span class="text-xs text-slate-400">主題引言 · 題型剖析</span>
+            </div>
+
+            <!-- Authentic Transcript Paragraph with Timestamps -->
+            <div class="space-y-2 text-xs sm:text-sm text-slate-700 font-sans leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:00]</span> 先問你一題：資料科學家用 K-Means 分群，K 設定為 5，發現部分群集呈現半月型，資料中有少數離群值，每次執行結果也略有不同。哪個說法最能描述 K-Means 的限制？
+              </p>
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:00:12]</span> 第一、需先指定 K，以歐式距離為基礎，難處理非凸群，對初始化與離群值敏感；第二、最多只能處理十維；第三、無法處理任何非球型群集；第四、保證找到全域最佳。先停下來想一下，答案在重點一的最後揭曉。
+              </p>
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:00:28]</span> 這是第八章非監督式演算法，沒有標籤的時候能用的四類工具：分群、降維、關聯規則、異常偵測。這章有五個重點，分群佔前兩個（K-Means、階層式與 DBSCAN），再來是降維三法、關聯規則、異常偵測。兩回公告試題考過三題：K-Means 的限制、DBSCAN 的雜訊點、還有 t-SNE 和 PCA 怎麼選。
+              </p>
+            </div>
+
+            <!-- Color Highlight Cards inside Timeline -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div class="p-3 bg-blue-50 border-l-4 border-blue-500 rounded-xl text-blue-950">
+                <strong class="font-bold text-blue-900 block mb-0.5">🔵 講義核心綱要</strong>
+                非監督式機器學習（Unsupervised Learning）專門處理「無標籤（Unlabeled）資料」，從中萃取空間聚類、流形特徵、品項伴隨與反常訊號。
+              </div>
+              <div class="p-3 bg-emerald-50 border-l-4 border-emerald-500 rounded-xl text-emerald-950">
+                <strong class="font-bold text-emerald-900 block mb-0.5">🟢 官方出題風向標</strong>
+                已公告試題直接鎖定 K-Means 假設前提、DBSCAN 雜訊過濾條件與 PCA/t-SNE 模型用途抉擇，為科目三必修重鎮。
+              </div>
+            <!-- 投影片快速跳轉 Pills -->
+            <div class="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-100">
+              <span class="text-xs font-medium text-slate-400">對應投影片：</span>
+              <button onclick="scrollToSlide('slide-card-ep07-01')" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 hover:border-indigo-200 transition cursor-pointer">📷 EP07-01 全貌架構</button>
+            </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Timeline Node 2: K-Means Detailed Execution -->
+        <article id="ts-0056" class="relative group scroll-mt-24">
+          <div class="absolute -left-[1.85rem] sm:-left-[2.35rem] top-1.5 w-6 h-6 rounded-full bg-blue-600 border-4 border-white shadow-md flex items-center justify-center">
+            <span class="w-2 h-2 rounded-full bg-white"></span>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div class="flex items-center space-x-2">
+                <span class="font-mono text-xs font-extrabold px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
+                  00:56 - 03:12
+                </span>
+                <h3 class="font-bold text-slate-900 text-sm sm:text-base">重點一：K-Means 迭代循環、五大限制與手肘法解密</h3>
+              </div>
+              <span class="text-xs text-blue-600 font-semibold">核心概念 · 考題解析</span>
+            </div>
+
+            <!-- Authentic Transcript Paragraph with Timestamps -->
+            <div class="space-y-2 text-xs sm:text-sm text-slate-700 font-sans leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:00:56]</span> 重點一：K-Means。K 是要分成幾群，它分四步：第一步、隨機 K 個點當中心，像隨便指派 K 個小隊長；第二步、每個點歸到最近的中心，大家站到最近的隊長旁邊；第三步、每群重新算平均當新的中心，隊長走到自己隊伍的正中央；第四步、重複第二、三步，直到中心不再移動，也就是沒人想換隊。
+              </p>
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:01:20]</span> K-Means 有幾個限制要記：要預先指定 K，因為第一步就要知道有幾個隊長；對初始化敏感，起點隨機，每次結果可能不同，也不保證找到全域最佳；怕離群值，中心是平均值，一個極端點就把中心拉走；怕尺度不一，它靠距離分群，單位大的特徵會霸占距離，要先做特徵縮放；只能分球形或凸形（Convex）的群，它看的是誰離中心近，半月型、環形分不好。
+              </p>
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:01:50]</span> 全域最佳是所有可能分法裡最好的那一種，K-Means 每一步只往比現在好一點的方向調，可能停在還不錯但不是最好的分法。歐式距離就是兩點之間的直線距離；凸形群是群裡任兩點連一條線都還在群裡面（例如圓形、橢圓形），半月形兩個尖端的連線會跑到群外面，就不是凸形。
+              </p>
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:02:10]</span> K 怎麼選？用手肘法和輪廓係數。手肘法先算群內誤差（SSE），也就是每個點到自己中心距離的平方加總。把 K=1, 2, 3 的群內誤差畫成曲線，K 越大誤差越小，找出下降突然變平緩的轉折點就選那個 K，再多分群也沒多大改善。學校版的比喻是運動會分隊，一定要先決定分幾隊，跑到操場角落的一位學生也會把隊長拉過去。
+              </p>
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:02:40]</span> 回到開場那一題（與 115 年第 15 題同類型）：答案是第一個！對照情境：「半月型」對應「難處理非凸」；「離群值」對應「怕離群值」；「每次結果不同」對應「對初始化敏感」。選項二「最多只能處理十維」沒這規定；選項三「無法處理任何非球型群」講得太絕對（橢圓形仍可）；選項四「保證最佳」是錯的，它不保證全域最佳。
+              </p>
+            </div>
+
+            <!-- Interactive Inline SVG: Convex vs Non-Convex Visualization -->
+            <div class="bg-slate-900 rounded-xl p-4 text-white space-y-2">
+              <div class="flex items-center justify-between text-xs font-bold text-slate-300">
+                <span>幾何直觀：凸形（Convex）vs. 非凸（Non-Convex 半月形）連線測試</span>
+                <span class="text-indigo-400 font-mono">連線超出群邊界即非凸！</span>
+              </div>
+              <div class="flex justify-center">
+                <svg viewBox="0 0 460 120" class="w-full max-w-md h-auto">
+                  <!-- Convex Circle -->
+                  <circle cx="80" cy="60" r="45" fill="#3b82f6" fill-opacity="0.25" stroke="#3b82f6" stroke-width="2"/>
+                  <circle cx="60" cy="45" r="4" fill="#60a5fa"/>
+                  <circle cx="105" cy="75" r="4" fill="#60a5fa"/>
+                  <line x1="60" y1="45" x2="105" y2="75" stroke="#93c5fd" stroke-width="2"/>
+                  <text x="80" y="115" font-size="10" fill="#93c5fd" text-anchor="middle" font-weight="bold">凸形：線段完全在群內（K-Means OK）</text>
+
+                  <!-- Non-Convex Crescent -->
+                  <path d="M 330 20 A 45 45 0 0 0 330 100 A 30 30 0 0 1 330 20 Z" fill="#ef4444" fill-opacity="0.25" stroke="#ef4444" stroke-width="2"/>
+                  <circle cx="330" cy="25" r="4" fill="#f87171"/>
+                  <circle cx="330" cy="95" r="4" fill="#f87171"/>
+                  <line x1="330" y1="25" x2="330" y2="95" stroke="#fca5a5" stroke-width="2" stroke-dasharray="3,3"/>
+                  <circle cx="330" cy="60" r="3" fill="#fbbf24"/>
+                  <text x="345" y="63" font-size="9" fill="#fcd34d">連線穿過群外！</text>
+                  <text x="330" y="115" font-size="10" fill="#fca5a5" text-anchor="middle" font-weight="bold">非凸半月形：穿出群體（K-Means 失靈）</text>
+                </svg>
+              </div>
+            <!-- 投影片快速跳轉 Pills -->
+            <div class="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-100">
+              <span class="text-xs font-medium text-slate-400">對應投影片：</span>
+              <button onclick="scrollToSlide('slide-card-ep07-02')" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 hover:border-indigo-200 transition cursor-pointer">📷 EP07-02 K-Means四步</button> <button onclick="scrollToSlide('slide-card-ep07-03')" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 hover:border-indigo-200 transition cursor-pointer">📷 EP07-03 五大限制</button> <button onclick="scrollToSlide('slide-card-ep07-04')" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 hover:border-indigo-200 transition cursor-pointer">📷 EP07-04 三個詞</button> <button onclick="scrollToSlide('slide-card-ep07-05')" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 hover:border-indigo-200 transition cursor-pointer">📷 EP07-05 手肘法</button>
+            </div>
+            </div>
+
+            <!-- Highlight Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div class="p-3 bg-amber-50 border-l-4 border-amber-500 rounded-xl text-amber-950">
+                <strong class="font-bold text-amber-900 block mb-0.5">🟡 校園比喻：運動會分隊</strong>
+                校長先說分 3 隊（K=3），學生看誰近就黏上去；但只要角落有一位調皮同學，隊長中心點就會被拉歪。
+              </div>
+              <div class="p-3 bg-rose-50 border-l-4 border-rose-500 rounded-xl text-rose-950">
+                <strong class="font-bold text-rose-900 block mb-0.5">🔴 陷阱速查：局部最佳（Local Optimum）</strong>
+                K-Means 只保證目標函數單調遞減並收斂，但絕不保證收斂於全域最佳值（Global Optimum）。
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Timeline Node 3: Hierarchical & DBSCAN -->
+        <article id="ts-0313" class="relative group scroll-mt-24">
+          <div class="absolute -left-[1.85rem] sm:-left-[2.35rem] top-1.5 w-6 h-6 rounded-full bg-emerald-600 border-4 border-white shadow-md flex items-center justify-center">
+            <span class="w-2 h-2 rounded-full bg-white"></span>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div class="flex items-center space-x-2">
+                <span class="font-mono text-xs font-extrabold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  03:13 - 05:28
+                </span>
+                <h3 class="font-bold text-slate-900 text-sm sm:text-base">重點二：階層式與 DBSCAN 密度分群法（免預設 K、抗雜訊）</h3>
+              </div>
+              <span class="text-xs text-emerald-600 font-semibold">夜市人潮 · 共享單車考題</span>
+            </div>
+
+            <!-- Authentic Transcript Paragraph with Timestamps -->
+            <div class="space-y-2 text-xs sm:text-sm text-slate-700 font-sans leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:03:13]</span> 重點二：階層式分群與 DBSCAN。兩個都不用先給群數。階層式是由下而上合併或由上而下拆開，畫成樹狀圖像家族譜；弱點是計算量大，且合併後就不能反悔。DBSCAN 看密度，人擠人的地方連成一群，像夜市人潮，落單的路人是雜訊；弱點是對兩大參數很敏感，且密度不均勻時表現差。
+              </p>
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:03:36]</span> DBSCAN 有兩個參數：$\varepsilon$（Eps）是領域半徑，看自己周圍多遠；$\text{MinPts}$ 是領域內至少要幾個點才算熱鬧。半徑內的點數 $\ge \text{MinPts}$ 就是核心點；自己點數不夠，但落在某個核心點的領域裡，是邊界點；點數不夠且不在任何核心點領域內的，就是雜訊點（114 年第 4 題考的就是這個！）。好記法是：核心點是攤販，邊界點是排隊客人，雜訊點是路過不停的人。
+              </p>
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:04:10]</span> 從一個核心點出發，一路經過其他核心點的領域能連到的點都算同一群，這叫「密度可達（Density Reachable）」。DBSCAN 能找出任意形狀的群，還會自動把雜訊標出來。為什麼密度不均時表現差？因為整份資料只用一組 Eps 和 MinPts，擁擠區域配合半徑，稀疏區域全變雜訊；配合稀疏區域，擁擠的多個群又會黏在一起！
+              </p>
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:04:54]</span> 來看一個考題場景：市府要分析共享單車站點的 GPS 群集，站點沿著河道呈不規則帶狀分佈，另有一些零散的偏遠站點，該用 K-Means 還是 DBSCAN？答案是 DBSCAN！因為它能找出帶狀這種任意形狀的群，還會把偏遠站點標成雜訊；K-Means 不適合，因為帶狀不是球形，它只會照誰離中心近把長條切成好幾段，偏遠站點還會把中心拉偏。
+              </p>
+            </div>
+
+            <!-- Highlight Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div class="p-3 bg-emerald-50 border-l-4 border-emerald-500 rounded-xl text-emerald-950">
+                <strong class="font-bold text-emerald-900 block mb-0.5">🟢 iPAS 實戰考題連結</strong>
+                114 年度第 4 題：「點不滿足 MinPts 且落在核心鄰域外為何者？」答案必為<strong>雜訊點（Noise）</strong>。
+              </div>
+              <div class="p-3 bg-amber-50 border-l-4 border-amber-500 rounded-xl text-amber-950">
+                <strong class="font-bold text-amber-900 block mb-0.5">🟡 人潮比喻速記</strong>
+                核心點＝熱門攤販；邊界點＝排隊客人；雜訊點＝落單路過行人。
+              </div>
+            <!-- 投影片快速跳轉 Pills -->
+            <div class="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-100">
+              <span class="text-xs font-medium text-slate-400">對應投影片：</span>
+              <button onclick="scrollToSlide('slide-card-ep07-06')" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 hover:border-indigo-200 transition cursor-pointer">📷 EP07-06 階層式與DBSCAN</button> <button onclick="scrollToSlide('slide-card-ep07-07')" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 hover:border-indigo-200 transition cursor-pointer">📷 EP07-07 參數與三種點</button> <button onclick="scrollToSlide('slide-card-ep07-08')" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 hover:border-indigo-200 transition cursor-pointer">📷 EP07-08 下課人群比喻</button>
+            </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Timeline Node 4: Dimensionality Reduction -->
+        <article id="ts-0529" class="relative group scroll-mt-24">
+          <div class="absolute -left-[1.85rem] sm:-left-[2.35rem] top-1.5 w-6 h-6 rounded-full bg-purple-600 border-4 border-white shadow-md flex items-center justify-center">
+            <span class="w-2 h-2 rounded-full bg-white"></span>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div class="flex items-center space-x-2">
+                <span class="font-mono text-xs font-extrabold px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 border border-purple-200">
+                  05:29 - 07:57
+                </span>
+                <h3 class="font-bold text-slate-900 text-sm sm:text-base">重點三：降維三法（PCA、t-SNE、UMAP）定位與外推性</h3>
+              </div>
+              <span class="text-xs text-purple-600 font-semibold">特徵輸入 vs 視覺化</span>
+            </div>
+
+            <!-- Authentic Transcript Paragraph with Timestamps -->
+            <div class="space-y-2 text-xs sm:text-sm text-slate-700 font-sans leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:05:29]</span> 重點三：降維三法。PCA 是線性方法，保留全域最大變異（也就是整份資料散開最多的方向），適合降維後當模型輸入；它不適合非線性的流形結構（例如彎成曲面或捲起來的瑞士捲）。t-SNE 是非線性，保留局部鄰近關係，適合畫成 2D/3D 看群集，不適合當模型輸入！局部鄰近關係是指原本靠很近的點畫出來也靠很近，但原本離很遠的兩群畫出來的距離不保證真實。
+              </p>
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:06:01]</span> UMAP 也是非線性，局部和全域都顧，同樣用來視覺化，它比 t-SNE 快、能處理更大資料量，還支援「增量學習（新資料可直接投影上去，不用整批重算）」。弱點是理論比較深奧。
+              </p>
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:06:18]</span> t-SNE 為什麼只能拿來看？因為它的坐標是對這一批資料最佳化出來的，常用套件裡的 t-SNE 沒有把新資料投影過去的方法（每次跑結果也不同）。t-SNE 有個設定叫「困惑度（Perplexity）」，大約是每個點要顧及多少鄰居，設不同值畫出來的圖差異很大。前處理是資料送進模型前先做的轉換，上線後每一筆新資料都要能做同樣的轉換，t-SNE 做不到，所以不能當前處理！
+              </p>
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:06:56]</span> 場景題：資料科學家要把 512 維詞嵌入（Word Embedding，10 萬筆）畫出來看群集；另一位工程師要把 200 個製程特徵降維後餵給 XGBoost 分類器。兩人各該用誰？前者用 t-SNE（看哪些詞在一起）；後者用 PCA（降維結果餵給模型，上線後新資料必須套用同一套固定投影方向）。
+              </p>
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:07:36]</span> 請注意三個正確性質，干擾選項常講反：1. t-SNE 不保留全域線性結構，只顧局部；2. PCA 是線性方法；3. t-SNE 不能對新資料外推（Out-of-sample Extension）。115 年第 6 題考的就是這個觀念！
+              </p>
+            </div>
+
+            <!-- Highlight Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div class="p-3 bg-rose-50 border-l-4 border-rose-500 rounded-xl text-rose-950">
+                <strong class="font-bold text-rose-900 block mb-0.5">🔴 考試高頻雷區（必背）</strong>
+                看到題目問「降維後當作下游分類/迴歸模型之輸入特徵」，<strong>答案選 PCA（不可選 t-SNE）</strong>！
+              </div>
+              <div class="p-3 bg-amber-50 border-l-4 border-amber-500 rounded-xl text-amber-950">
+                <strong class="font-bold text-amber-900 block mb-0.5">🟡 學校比喻：成績單 vs 麻吉地圖</strong>
+                PCA＝濃縮五科算出文理兩大科總分，日後轉學生來還能照套公式；t-SNE＝班上誰跟誰要好的地圖，轉學生沒法直接放。
+              </div>
+            <!-- 投影片快速跳轉 Pills -->
+            <div class="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-100">
+              <span class="text-xs font-medium text-slate-400">對應投影片：</span>
+              <button onclick="scrollToSlide('slide-card-ep07-09')" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 hover:border-indigo-200 transition cursor-pointer">📷 EP07-09 PCA與t-SNE</button> <button onclick="scrollToSlide('slide-card-ep07-10')" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 hover:border-indigo-200 transition cursor-pointer">📷 EP07-10 UMAP</button> <button onclick="scrollToSlide('slide-card-ep07-11')" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 hover:border-indigo-200 transition cursor-pointer">📷 EP07-11 為何t-SNE只拿來看</button>
+            </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Timeline Node 5: Association Rules -->
+        <article id="ts-0758" class="relative group scroll-mt-24">
+          <div class="absolute -left-[1.85rem] sm:-left-[2.35rem] top-1.5 w-6 h-6 rounded-full bg-amber-500 border-4 border-white shadow-md flex items-center justify-center">
+            <span class="w-2 h-2 rounded-full bg-white"></span>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div class="flex items-center space-x-2">
+                <span class="font-mono text-xs font-extrabold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">
+                  07:58 - 10:49
+                </span>
+                <h3 class="font-bold text-slate-900 text-sm sm:text-base">重點四：關聯規則三大指標與 Apriori / FP-Growth</h3>
+              </div>
+              <span class="text-xs text-amber-600 font-semibold">支持度 · 信賴度 · 提升度 · 掃描次數</span>
+            </div>
+
+            <!-- Authentic Transcript Paragraph with Timestamps -->
+            <div class="space-y-2 text-xs sm:text-sm text-slate-700 font-sans leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:07:58]</span> 重點四：關聯規則看三個指標。支持度（Support）是同時買 A 和 B 的交易佔全體多少；信賴度（Confidence）是買了 A 的人有多少也買 B；提升度（Lift）是信賴度再除以買 B 的比例，看買 A 的人買 B 的比例比平常高多少。提升度 &gt; 1 是正相關，= 1 是獨立，&lt; 1 是負相關（提升度大於 1 也不代表因果）。
+              </p>
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:08:20]</span> 為什麼一定要看提升度？牛奶本來人人就都買，買麵包的人也買牛奶這條規則信賴度很高，可能只是因為牛奶本身就熱賣！提升度才能看出買麵包的人是不是真的比平常更常買牛奶。學校比喻：福利社買麵包的人有 80% 也買牛奶（Confidence = 0.8），但全校本來就有 75% 的人買牛奶，0.8 / 0.75 提升度只有 1.07，買麵包的人買牛奶幾乎和大家平常一樣！
+              </p>
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:08:50]</span> 找一起買的商品組合有兩個演算法：Apriori 反覆產生候選組合，再刪掉不可能頻繁的組合（剪枝）。它靠的性質是「不頻繁組合的超集（Superset）一定不頻繁」，缺點是每多一層組合就要重新掃描一次資料庫，巨量資料時要掃很多次。FP-Growth 建一顆頻繁模式樹（FP-Tree）只掃描兩次資料庫！第一次數每個商品出現次數，第二次依序掛到樹上，整份資料壓縮在樹裡，直接在樹上找頻繁組合。
+              </p>
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:09:45]</span> 來算一次：1000 筆交易中買洋芋片 200 筆、買汽水 250 筆、兩樣都買 100 筆。支持度 = 100 / 1000 = 0.1 (10%)；買洋芋片就買汽水的信賴度 = 100 / 200 = 0.5 (50%)；提升度 = 0.5 / (250 / 1000) = 0.5 / 0.25 = 2.0（正相關）。
+              </p>
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:10:07]</span> 場景題：超市分析出兩條規則：「買啤酒就買尿布（Conf=0.3, Lift=2.5）」與「買麵包就買牛奶（Conf=0.8, Lift=1.0）」，交易紀錄有上億筆，哪一條才是真關聯？又該用哪個演算法？答案是：啤酒與尿布是真關聯（Lift=2.5，代表機率提高為 2.5 倍）；資料上億筆要用 FP-Growth（只掃資料庫兩次，Apriori 掃描次數過多跑不動）。
+              </p>
+            </div>
+
+            <!-- Highlight Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div class="p-3 bg-blue-50 border-l-4 border-blue-500 rounded-xl text-blue-950">
+                <strong class="font-bold text-blue-900 block mb-0.5">🔵 核心秒殺考點：掃描次數</strong>
+                <strong>Apriori</strong>：多次掃描資料庫（$k$ 層掃 $k$ 次）$\leftrightarrow$ <strong>FP-Growth</strong>：<strong>嚴格只掃描 2 次資料庫</strong>。
+              </div>
+              <div class="p-3 bg-emerald-50 border-l-4 border-emerald-500 rounded-xl text-emerald-950">
+                <strong class="font-bold text-emerald-900 block mb-0.5">🟢 提升度金律</strong>
+                $\text{Lift} \le 1.0$ 的規則就算信賴度高達 99% 也毫無行銷擺放價值！
+              </div>
+            <!-- 投影片快速跳轉 Pills -->
+            <div class="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-100">
+              <span class="text-xs font-medium text-slate-400">對應投影片：</span>
+              <button onclick="scrollToSlide('slide-card-ep07-12')" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 hover:border-indigo-200 transition cursor-pointer">📷 EP07-12 關聯規則三指標</button> <button onclick="scrollToSlide('slide-card-ep07-13')" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 hover:border-indigo-200 transition cursor-pointer">📷 EP07-13 提升度避坑</button>
+            </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Timeline Node 6: Anomaly Detection -->
+        <article id="ts-1050" class="relative group scroll-mt-24">
+          <div class="absolute -left-[1.85rem] sm:-left-[2.35rem] top-1.5 w-6 h-6 rounded-full bg-rose-600 border-4 border-white shadow-md flex items-center justify-center">
+            <span class="w-2 h-2 rounded-full bg-white"></span>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div class="flex items-center space-x-2">
+                <span class="font-mono text-xs font-extrabold px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">
+                  10:50 - 12:32
+                </span>
+                <h3 class="font-bold text-slate-900 text-sm sm:text-base">重點五：異常偵測（孤立森林 vs. One-Class SVM vs. Autoencoder）</h3>
+              </div>
+              <span class="text-xs text-rose-600 font-semibold">切越快越怪 · 正常邊界</span>
+            </div>
+
+            <!-- Authentic Transcript Paragraph with Timestamps -->
+            <div class="space-y-2 text-xs sm:text-sm text-slate-700 font-sans leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:10:50]</span> 重點五：異常偵測。孤立森林（Isolation Forest）隨機切資料，越快被單獨切出來的越可疑，像切蛋糕角落那一塊一刀就分出來；它速度快，適合高維度巨量資料，不用算距離；弱點是異常點若貼近正常群時抓不到。One-Class SVM 只用正常資料畫出一個包住它們的邊界，像只認得自家人、外人都可疑；它在異常樣本很難收集時好用，弱點是參數敏感且大資料時很慢。
+              </p>
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:11:15]</span> 孤立森林看「路徑長度（Path Length）」，也就是從第一刀開始切到這個點被單獨分出來總共切了幾刀。路徑越短，異常分數越高！為什麼路徑短就可以？正常點擠在人群裡要切很多刀才分得開；異常點孤零零在外面，幾刀就分出來。它很快，因為每一刀只是隨機挑一個特徵、隨機挑一個切點，不必兩兩比對資料之間的距離。深度學習的自編碼器（Autoencoder）也能做異常偵測：模型只學過正常資料，碰到異常資料就還原不好，重建誤差特別大！
+              </p>
+              <p>
+                <span class="font-mono text-indigo-600 font-semibold">[00:11:50]</span> 最後兩題情境比較：第一、信用卡公司每天上千萬筆交易（50 個特徵、無標籤），要快速標出可疑交易 $\rightarrow$ 用<strong>孤立森林</strong>（快、適合高維大資料、不需算距離；One-Class SVM 面對千萬筆跑不完）。第二、資安團隊只有大量正常連線紀錄，攻擊樣本幾乎收集不到，要畫出正常行為邊界 $\rightarrow$ 用 <strong>One-Class SVM</strong>（只用正常資料訓練並畫邊界）。限制是：如果異常點長得很像正常點混在一起，兩種方法都容易漏抓。
+              </p>
+            </div>
+
+            <!-- Highlight Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div class="p-3 bg-rose-50 border-l-4 border-rose-500 rounded-xl text-rose-950">
+                <strong class="font-bold text-rose-900 block mb-0.5">🔴 孤立森林關鍵口訣</strong>
+                「切越快、路徑越短、越異常（越怪）！」因不需算成對幾何距離，專門通殺上千萬筆巨量資料。
+              </div>
+              <div class="p-3 bg-blue-50 border-l-4 border-blue-500 rounded-xl text-blue-950">
+                <strong class="font-bold text-blue-900 block mb-0.5">🔵 One-Class SVM 適用題眼</strong>
+                題目出現「極度缺乏異常樣本、只有正常日誌、欲建立正常保護邊界」$\implies$ 首選 One-Class SVM。
+              </div>
+            <!-- 投影片快速跳轉 Pills -->
+            <div class="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-100">
+              <span class="text-xs font-medium text-slate-400">對應投影片：</span>
+              <button onclick="scrollToSlide('slide-card-ep07-14')" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 hover:border-indigo-200 transition cursor-pointer">📷 EP07-14 異常偵測二法</button>
+            </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Timeline Node 7: Summary & Wrap-up -->
+        <article id="ts-1233" class="relative group scroll-mt-24">
+          <div class="absolute -left-[1.85rem] sm:-left-[2.35rem] top-1.5 w-6 h-6 rounded-full bg-slate-900 border-4 border-white shadow-md flex items-center justify-center">
+            <span class="w-2 h-2 rounded-full bg-white"></span>
+          </div>
+
+          <div class="bg-gradient-to-br from-slate-900 to-indigo-950 text-white p-5 rounded-2xl shadow-lg space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
+              <div class="flex items-center space-x-2">
+                <span class="font-mono text-xs font-extrabold px-2.5 py-1 rounded-lg bg-white/10 text-indigo-300 border border-white/20">
+                  12:33 - 13:26
+                </span>
+                <h3 class="font-bold text-white text-sm sm:text-base">全集收尾：容易搞混的觀念對比與三句口訣精華</h3>
+              </div>
+              <span class="text-xs text-amber-300 font-semibold">快速複盤</span>
+            </div>
+
+            <!-- Authentic Transcript Paragraph with Timestamps -->
+            <div class="space-y-2 text-xs sm:text-sm text-slate-300 font-sans leading-relaxed bg-white/5 p-4 rounded-xl border border-white/10">
+              <p>
+                <span class="font-mono text-amber-400 font-semibold">[00:12:33]</span> 最後分辨最容易搞混的點：K-Means 只能分球形或凸形群、怕離群值；DBSCAN 不用給 K、能分任意形狀、會標記雜訊；PCA 是線性、可以當下游模型輸入；t-SNE 是非線性、只能拿來看圖視覺化；Apriori 產生候選集要掃描資料庫很多次；FP-Growth 建 FP-Tree 只掃描兩次；信賴度是買 A 的人買 B 的比例，提升度再除以買 B 的比例看有沒有真相關；孤立森林是「切越快越怪」；One-Class SVM 是「只學正常的邊界」。
+              </p>
+              <p>
+                <span class="font-mono text-amber-400 font-semibold">[00:13:08]</span> 請帶走三句話：第一、K-Means 選隊長、站隊伍、移中心、重複，要先給 K、怕離群值；第二、DBSCAN 看密度像夜市人潮，落單路人是雜訊；第三、PCA 能餵模型，t-SNE 只能看圖！下一集是第九章神經網路基本功。
+              </p>
+            </div>
+
+            <!-- Final Compact Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div class="p-3 bg-white/10 rounded-xl border border-white/10 text-slate-200">
+                <strong class="text-amber-300 block mb-1">分群篇</strong>
+                凸形怕離群用 K-Means；任意形狀過濾雜訊選 DBSCAN。
+              </div>
+              <div class="p-3 bg-white/10 rounded-xl border border-white/10 text-slate-200">
+                <strong class="text-blue-300 block mb-1">降維篇</strong>
+                給模型特徵用 PCA；畫 2D 散佈圖人工探勘用 t-SNE / UMAP。
+              </div>
+              <div class="p-3 bg-white/10 rounded-xl border border-white/10 text-slate-200">
+                <strong class="text-emerald-300 block mb-1">規則與異常篇</strong>
+                提升度 &gt; 1 才有實益；掃描兩次 FP-Growth；切越快越怪孤立森林。
+              </div>
+            <!-- 投影片快速跳轉 Pills -->
+            <div class="flex items-center gap-1.5 flex-wrap pt-2 border-t border-white/10">
+              <span class="text-xs font-medium text-slate-300">對應投影片：</span>
+              <button onclick="scrollToSlide('slide-card-ep07-15')" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white/15 hover:bg-white/25 text-white border border-white/20 transition cursor-pointer">📷 EP07-15 五大容易搞混</button> <button onclick="scrollToSlide('slide-card-ep07-16')" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white/15 hover:bg-white/25 text-white border border-white/20 transition cursor-pointer">📷 EP07-16 帶走三句話</button>
+            </div>
+            </div>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="mt-16 bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500">
+    EP07. 非監督式演算法｜帶你看懂分群、降維、關聯規則和異常偵測 · iPAS AI 應用規劃師中級科目三
+  </footer>
+
+  <!-- Interactive JavaScript Logic -->
+  <script>
+    /* ========================================================
+       1. K-Means Simulation Logic
+       ======================================================== */
+    const kmeansData = [
+      // Cluster A around (120, 100)
+      {x: 100, y: 80}, {x: 130, y: 70}, {x: 110, y: 120}, {x: 140, y: 110}, {x: 80, y: 95}, {x: 125, y: 135},
+      // Cluster B around (360, 150)
+      {x: 340, y: 130}, {x: 380, y: 140}, {x: 350, y: 170}, {x: 390, y: 165}, {x: 320, y: 155}, {x: 370, y: 190},
+      // Outlier
+      {x: 470, y: 40}
+    ];
+
+    let centroids = [
+      {x: 150, y: 220, color: '#38bdf8'}, // Centroid 1
+      {x: 280, y: 50, color: '#f43f5e'}   // Centroid 2
+    ];
+
+    let kmeansStep = 0; // 0: init, 1: assigned, 2: updated centroid
+    const kmeansSvg = document.getElementById('kmeans-svg');
+    const kmeansStatus = document.getElementById('kmeans-status');
+    const kmeansBtnText = document.getElementById('kmeans-btn-text');
+
+    function renderKMeans() {
+      kmeansSvg.innerHTML = '';
+
+      // Draw Grid / Background dots
+      for(let x=20; x<500; x+=40){
+        for(let y=20; y<260; y+=40){
+          const gridDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          gridDot.setAttribute('cx', x);
+          gridDot.setAttribute('cy', y);
+          gridDot.setAttribute('r', '1');
+          gridDot.setAttribute('fill', '#334155');
+          kmeansSvg.appendChild(gridDot);
+        }
+      }
+
+      // Draw points
+      kmeansData.forEach((pt, idx) => {
+        let ptColor = '#94a3b8'; // Default unassigned
+        if (kmeansStep >= 1) {
+          // Calculate closest centroid
+          const d0 = Math.hypot(pt.x - centroids[0].x, pt.y - centroids[0].y);
+          const d1 = Math.hypot(pt.x - centroids[1].x, pt.y - centroids[1].y);
+          ptColor = d0 < d1 ? centroids[0].color : centroids[1].color;
+
+          // Optional connecting lines
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.setAttribute('x1', pt.x);
+          line.setAttribute('y1', pt.y);
+          const target = d0 < d1 ? centroids[0] : centroids[1];
+          line.setAttribute('x2', target.x);
+          line.setAttribute('y2', target.y);
+          line.setAttribute('stroke', ptColor);
+          line.setAttribute('stroke-width', '1');
+          line.setAttribute('stroke-opacity', '0.25');
+          line.setAttribute('stroke-dasharray', '2,2');
+          kmeansSvg.appendChild(line);
+        }
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', pt.x);
+        circle.setAttribute('cy', pt.y);
+        circle.setAttribute('r', idx === 12 ? '7' : '5'); // Outlier highlighted
+        circle.setAttribute('fill', ptColor);
+        circle.setAttribute('stroke', idx === 12 ? '#fbbf24' : '#fff');
+        circle.setAttribute('stroke-width', '1.5');
+        kmeansSvg.appendChild(circle);
+
+        if (idx === 12) {
+          const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          text.setAttribute('x', pt.x - 20);
+          text.setAttribute('y', pt.y - 10);
+          text.setAttribute('fill', '#fbbf24');
+          text.setAttribute('font-size', '10');
+          text.setAttribute('font-weight', 'bold');
+          text.textContent = '離群值 (把紅隊長拉偏)';
+          kmeansSvg.appendChild(text);
+        }
+      });
+
+      // Draw Centroids
+      centroids.forEach((c, idx) => {
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+        // Outer glow
+        const glow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        glow.setAttribute('cx', c.x);
+        glow.setAttribute('cy', c.y);
+        glow.setAttribute('r', '16');
+        glow.setAttribute('fill', c.color);
+        glow.setAttribute('fill-opacity', '0.25');
+        g.appendChild(glow);
+
+        // Core star / marker
+        const core = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        core.setAttribute('x', c.x - 7);
+        core.setAttribute('y', c.y - 7);
+        core.setAttribute('width', '14');
+        core.setAttribute('height', '14');
+        core.setAttribute('transform', `rotate(45 ${c.x} ${c.y})`);
+        core.setAttribute('fill', c.color);
+        core.setAttribute('stroke', '#ffffff');
+        core.setAttribute('stroke-width', '2');
+        g.appendChild(core);
+
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', c.x + 12);
+        label.setAttribute('y', c.y + 4);
+        label.setAttribute('fill', '#f8fafc');
+        label.setAttribute('font-size', '11');
+        label.setAttribute('font-weight', 'bold');
+        label.textContent = `中心 ${idx+1}`;
+        g.appendChild(label);
+
+        kmeansSvg.appendChild(g);
+      });
+    }
+
+    function stepKMeans() {
+      if (kmeansStep === 0) {
+        kmeansStep = 1;
+        kmeansStatus.textContent = '狀態：Step 2 - 依歐式距離分配點至最近隊長身旁';
+        kmeansBtnText.textContent = '重新計算新中心 (Step 3)';
+      } else if (kmeansStep === 1) {
+        // Move centroids to mean of their clusters
+        let c0Pts = [], c1Pts = [];
+        kmeansData.forEach(pt => {
+          const d0 = Math.hypot(pt.x - centroids[0].x, pt.y - centroids[0].y);
+          const d1 = Math.hypot(pt.x - centroids[1].x, pt.y - centroids[1].y);
+          if (d0 < d1) c0Pts.push(pt); else c1Pts.push(pt);
+        });
+
+        if (c0Pts.length) {
+          centroids[0].x = Math.round(c0Pts.reduce((acc, p) => acc + p.x, 0) / c0Pts.length);
+          centroids[0].y = Math.round(c0Pts.reduce((acc, p) => acc + p.y, 0) / c0Pts.length);
+        }
+        if (c1Pts.length) {
+          centroids[1].x = Math.round(c1Pts.reduce((acc, p) => acc + p.x, 0) / c1Pts.length);
+          centroids[1].y = Math.round(c1Pts.reduce((acc, p) => acc + p.y, 0) / c1Pts.length);
+        }
+
+        kmeansStep = 2;
+        kmeansStatus.textContent = '狀態：Step 3 - 中心移至平均值！收斂完成！';
+        kmeansBtnText.textContent = '重新開始';
+      } else {
+        resetKMeans();
+      }
+      renderKMeans();
+    }
+
+    function resetKMeans() {
+      centroids = [
+        {x: 150, y: 220, color: '#38bdf8'},
+        {x: 280, y: 50, color: '#f43f5e'}
+      ];
+      kmeansStep = 0;
+      kmeansStatus.textContent = '狀態：初始隨機中心點 (Step 1)';
+      kmeansBtnText.textContent = '執行下一步 (Step 2)';
+      renderKMeans();
+    }
+
+    /* ========================================================
+       2. DBSCAN Simulation Logic
+       ======================================================== */
+    const dbscanSvg = document.getElementById('dbscan-svg');
+    const dbscanInfo = document.getElementById('dbscan-info');
+    const epsRadius = 45;
+
+    // Point definitions with known cluster topology
+    const dbscanPoints = [
+      // Core cluster group
+      {x: 120, y: 120, type: 'core', name: '核心點 A'},
+      {x: 140, y: 105, type: 'core', name: '核心點 B'},
+      {x: 155, y: 135, type: 'core', name: '核心點 C'},
+      {x: 110, y: 145, type: 'core', name: '核心點 D'},
+      // Border points
+      {x: 80, y: 110, type: 'border', name: '邊界點 1'},
+      {x: 180, y: 160, type: 'border', name: '邊界點 2'},
+      // Noise points
+      {x: 350, y: 60, type: 'noise', name: '雜訊點 X'},
+      {x: 430, y: 180, type: 'noise', name: '雜訊點 Y'}
+    ];
+
+    function renderDBSCAN(highlightType = null) {
+      dbscanSvg.innerHTML = '';
+
+      // Draw epsilon circle for active items
+      dbscanPoints.forEach(pt => {
+        if (highlightType === 'core' && pt.type === 'core') {
+          const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          circle.setAttribute('cx', pt.x);
+          circle.setAttribute('cy', pt.y);
+          circle.setAttribute('r', epsRadius);
+          circle.setAttribute('fill', '#3b82f6');
+          circle.setAttribute('fill-opacity', '0.12');
+          circle.setAttribute('stroke', '#3b82f6');
+          circle.setAttribute('stroke-dasharray', '3,3');
+          dbscanSvg.appendChild(circle);
+        }
+      });
+
+      // Draw Points
+      dbscanPoints.forEach(pt => {
+        let fill = '#94a3b8';
+        let r = 6;
+        let stroke = '#ffffff';
+
+        if (pt.type === 'core') fill = '#3b82f6';
+        if (pt.type === 'border') fill = '#f59e0b';
+        if (pt.type === 'noise') fill = '#64748b';
+
+        // Check if dim
+        let opacity = '1';
+        if (highlightType && pt.type !== highlightType) {
+          opacity = '0.25';
+        }
+
+        const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        c.setAttribute('cx', pt.x);
+        c.setAttribute('cy', pt.y);
+        c.setAttribute('r', r);
+        c.setAttribute('fill', fill);
+        c.setAttribute('stroke', stroke);
+        c.setAttribute('stroke-width', '1.5');
+        c.setAttribute('opacity', opacity);
+        dbscanSvg.appendChild(c);
+
+        // Text label
+        const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        txt.setAttribute('x', pt.x + 9);
+        txt.setAttribute('y', pt.y + 4);
+        txt.setAttribute('fill', pt.type === 'noise' ? '#cbd5e1' : '#ffffff');
+        txt.setAttribute('font-size', '10');
+        txt.setAttribute('opacity', opacity);
+        txt.textContent = pt.name;
+        dbscanSvg.appendChild(txt);
+      });
+    }
+
+    function highlightDBSCAN(type) {
+      renderDBSCAN(type);
+      if (type === 'core') {
+        dbscanInfo.innerHTML = '<span class="text-blue-400 font-bold">核心點（Core）</span>：半徑 ε 內包含至少 MinPts 個鄰居點，為群聚擴展的主要泉源。';
+      } else if (type === 'border') {
+        dbscanInfo.innerHTML = '<span class="text-amber-400 font-bold">邊界點（Border）</span>：本身領域內點數不夠，但落在某核心點的半徑範圍內，屬群聚邊陲。';
+      } else if (type === 'noise') {
+        dbscanInfo.innerHTML = '<span class="text-slate-400 font-bold">雜訊點（Noise）</span>：既不是核心點，也不在任何核心點的領域內，直接被 DBSCAN 自動剔除。';
+      }
+    }
+
+    /* ========================================================
+       3. Association Rules Calculator
+       ======================================================== */
+    function calculateRules() {
+      const total = parseFloat(document.getElementById('calc-total').value) || 1;
+      const countA = parseFloat(document.getElementById('calc-a').value) || 0;
+      const countB = parseFloat(document.getElementById('calc-b').value) || 0;
+      const countAB = parseFloat(document.getElementById('calc-ab').value) || 0;
+
+      const support = countAB / total;
+      const confidence = countA > 0 ? (countAB / countA) : 0;
+      const probB = countB / total;
+      const lift = probB > 0 ? (confidence / probB) : 0;
+
+      document.getElementById('res-supp').textContent = `${support.toFixed(3)} (${(support*100).toFixed(1)}%)`;
+      document.getElementById('res-conf').textContent = `${confidence.toFixed(3)} (${(confidence*100).toFixed(1)}%)`;
+
+      let liftNote = '';
+      if (lift > 1.05) liftNote = '正相關 🚀';
+      else if (lift >= 0.95) liftNote = '相互獨立 ⚖️';
+      else liftNote = '負相關/排斥 ⚠️';
+
+      document.getElementById('res-lift').textContent = `${lift.toFixed(2)} (${liftNote})`;
+    }
+
+    /* ========================================================
+       4. Real Exam Quiz Checker
+       ======================================================== */
+    function checkAnswer(qNum, choice) {
+      if (qNum === 1) {
+        const feedback = document.getElementById('q1-feedback');
+        feedback.classList.remove('hidden');
+        if (choice === 'B') {
+          feedback.className = 'p-3 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200';
+          feedback.innerHTML = '🎉 答對了！DBSCAN 能完美辨識「弧形、非凸型」群聚，並且能自動將落塵點標記為雜訊（Noise）。K-Means 則無法處理非凸形。';
+        } else {
+          feedback.className = 'p-3 rounded-xl text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200';
+          feedback.innerHTML = '❌ 答錯囉！提示：晶圓邊緣為弧形環狀（非球形/非凸形），且有落塵雜訊，K-Means 極度怕離群值且只能處理凸形，首選應為 DBSCAN。';
+        }
+      } else if (qNum === 2) {
+        const feedback = document.getElementById('q2-feedback');
+        feedback.classList.remove('hidden');
+        if (choice === 'A') {
+          feedback.className = 'p-3 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200';
+          feedback.innerHTML = '🎉 答對了！孤立森林（Isolation Forest）運算複雜度低、無需計算幾何距離，專門為「巨量維度與千萬級大資料」而生！One-Class SVM 處理千萬筆會跑不動。';
+        } else {
+          feedback.className = 'p-3 rounded-xl text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200';
+          feedback.innerHTML = '❌ 答錯囉！題目關鍵字是「每天 3,000 萬筆」。One-Class SVM 計算量大、面對千萬級交易紀錄耗時過長，應選擇高效率的「孤立森林」。';
+        }
+      }
+    }
+
+    // Initialize all renders on load
+    window.onload = function() {
+      renderKMeans();
+      renderDBSCAN();
+      calculateRules();
+    };
+
+    // Smooth Scroll Helper for Timeline Nodes
+    function scrollToTs(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Add a temporary glow animation
+        el.classList.add('ring-2', 'ring-indigo-500', 'ring-offset-2');
+        setTimeout(() => {
+          el.classList.remove('ring-2', 'ring-indigo-500', 'ring-offset-2');
+        }, 1800);
+      }
+    }
+  
+    // ==========================================
+    // Lightbox & 平滑滾動互動
+    // ==========================================
+    let currentLightboxTimelineId = null;
+
+    function openLightbox(src, title, badge, timelineId) {
+      const modal = document.getElementById('imageLightbox');
+      const card = document.getElementById('lightboxCard');
+      const img = document.getElementById('lightboxImage');
+      const titleEl = document.getElementById('lightboxTitle');
+      const badgeEl = document.getElementById('lightboxBadge');
+      
+      img.src = src;
+      titleEl.textContent = title;
+      badgeEl.textContent = badge;
+      currentLightboxTimelineId = timelineId;
+      
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        card.classList.remove('scale-95');
+        card.classList.add('scale-100');
+      }, 10);
+    }
+
+    function closeLightbox() {
+      const modal = document.getElementById('imageLightbox');
+      const card = document.getElementById('lightboxCard');
+      modal.classList.add('opacity-0');
+      card.classList.remove('scale-100');
+      card.classList.add('scale-95');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+      }, 200);
+    }
+
+    function closeLightboxOnBackdrop(e) {
+      if (e.target.id === 'imageLightbox') {
+        closeLightbox();
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeLightbox();
+    });
+
+    function jumpFromLightboxToTimeline() {
+      closeLightbox();
+      if (currentLightboxTimelineId) {
+        setTimeout(() => {
+          scrollToTs(currentLightboxTimelineId);
+        }, 250);
+      }
+    }
+
+    function scrollToSlide(slideId) {
+      const el = document.getElementById(slideId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-4', 'ring-indigo-500', 'ring-offset-2');
+        setTimeout(() => {
+          el.classList.remove('ring-4', 'ring-indigo-500', 'ring-offset-2');
+        }, 2200);
+      }
+    }
+
+    // 安全渲染 KaTeX 數學公式
+    function initKaTeX() {
+      if (window.renderMathInElement) {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      } else {
+        setTimeout(initKaTeX, 60);
+      }
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initKaTeX);
+    } else {
+      initKaTeX();
+    }
+</script>
+
+  <!-- 全螢幕燈箱 Lightbox Modal -->
+  <div id="imageLightbox" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md hidden flex items-center justify-center p-3 sm:p-6 transition-all duration-300 opacity-0" onclick="closeLightboxOnBackdrop(event)">
+    <div class="relative max-w-5xl w-full max-h-[92vh] flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden transform scale-95 transition-transform duration-300" id="lightboxCard">
+      <!-- 燈箱頂部列 -->
+      <div class="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-slate-200 bg-slate-50">
+        <div class="flex items-center gap-2 overflow-hidden">
+          <span id="lightboxBadge" class="px-2.5 py-0.5 text-xs font-mono font-bold rounded-lg bg-indigo-100 text-indigo-700">
+            [00:00:00]
+          </span>
+          <h4 id="lightboxTitle" class="text-sm sm:text-base font-bold text-slate-900 truncate">
+            投影片標題
+          </h4>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="lightboxTimelineBtn" onclick="jumpFromLightboxToTimeline()" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition flex items-center gap-1 cursor-pointer">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span>跳轉時間軸</span>
+          </button>
+          <button onclick="closeLightbox()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer" title="關閉 (Esc)">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+      <!-- 圖片本體容器 -->
+      <div class="relative flex-1 bg-slate-950 flex items-center justify-center overflow-auto p-2 sm:p-4 min-h-[300px]">
+        <img id="lightboxImage" src="" alt="放大投影片" class="max-w-full max-h-[75vh] object-contain rounded-lg shadow-lg">
+      </div>
+    </div>
+  </div>
+
+</body>
+</html
+      <!-- Section 1 K-Means 投影片圖解系列 -->
+      <div class="mt-8 space-y-6">
+        
+      <!-- 投影片 SLIDE-CARD-EP07-02 卡片 -->
+      <div id="slide-card-ep07-02" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-sky-500 bg-sky-50/40  p-4 sm:p-5 transition-all duration-300 shadow-md shadow-sky-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-sky-500/15 text-sky-700 border-sky-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 02
+            </span>
+            <span class="text-xs font-semibold text-slate-700">重點一：K-means 四步演算法流程</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTs('ts-0056')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 transition cursor-pointer" title="跳轉至時間軸">
+              [00:00:56]
+            </button>
+            <button onclick="openLightbox('EP07/EP07-02.png', '重點一：K-means 四步演算法流程', '[00:00:56]', 'ts-0056')" class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP07/EP07-02.png', '重點一：K-means 四步演算法流程', '[00:00:56]', 'ts-0056')">
+          <img src="EP07/EP07-02.png" alt="重點一：K-means 四步演算法流程" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 leading-relaxed bg-white/90 p-3 rounded-xl border border-slate-100 shadow-sm">
+          <strong>【核心四步流程】</strong> ① 隨機選 K 個點當中心（指派隊長）；② 每個點歸到最近的中心（隊員站隊）；③ 每群重新算平均當新中心（隊長走到正中間）；④ 重複步驟 2 與 3，直到質心不再移動。
+        </div>
+      </div>
+
+        
+      <!-- 投影片 SLIDE-CARD-EP07-03 卡片 -->
+      <div id="slide-card-ep07-03" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-rose-500 bg-rose-50/40  p-4 sm:p-5 transition-all duration-300 shadow-md shadow-rose-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-rose-500/15 text-rose-700 border-rose-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 03
+            </span>
+            <span class="text-xs font-semibold text-slate-700">重點一：K-means 的五大致命限制</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTs('ts-0056')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 transition cursor-pointer" title="跳轉至時間軸">
+              [00:01:20]
+            </button>
+            <button onclick="openLightbox('EP07/EP07-03.png', '重點一：K-means 的五大致命限制', '[00:01:20]', 'ts-0056')" class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP07/EP07-03.png', '重點一：K-means 的五大致命限制', '[00:01:20]', 'ts-0056')">
+          <img src="EP07/EP07-03.png" alt="重點一：K-means 的五大致命限制" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 leading-relaxed bg-white/90 p-3 rounded-xl border border-slate-100 shadow-sm">
+          <strong>【五大限制與考點】</strong> ① 需預先指定 K；② 對隨機初始化敏感（可能陷入局部最佳）；③ 怕離群值（平均值極易被極端點拉偏）；④ 怕尺度不一（基於歐氏距離，必須先做特徵縮放）；⑤ 只能分球形或凸形群（半月形、環形無法正確切分）。
+        </div>
+      </div>
+
+        
+      <!-- 投影片 SLIDE-CARD-EP07-04 卡片 -->
+      <div id="slide-card-ep07-04" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-blue-500 bg-blue-50/40  p-4 sm:p-5 transition-all duration-300 shadow-md shadow-blue-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-blue-500/15 text-blue-700 border-blue-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 04
+            </span>
+            <span class="text-xs font-semibold text-slate-700">觀念突破：全域最佳、歐氏距離、凸形群</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTs('ts-0056')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 transition cursor-pointer" title="跳轉至時間軸">
+              [00:01:50]
+            </button>
+            <button onclick="openLightbox('EP07/EP07-04.png', '觀念突破：全域最佳、歐氏距離、凸形群', '[00:01:50]', 'ts-0056')" class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP07/EP07-04.png', '觀念突破：全域最佳、歐氏距離、凸形群', '[00:01:50]', 'ts-0056')">
+          <img src="EP07/EP07-04.png" alt="觀念突破：全域最佳、歐氏距離、凸形群" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 leading-relaxed bg-white/90 p-3 rounded-xl border border-slate-100 shadow-sm">
+          <strong>【三大術語剖析】</strong> 全域最佳：所有分法中最好的一種，K-Means 只找局部改善；歐氏距離：兩點間直線距離；凸形群：群內任兩點連線皆在群內（如橢圓）；半月形尖端連線會跑出群外，屬於非凸形群，K-Means 無法正確處理。
+        </div>
+      </div>
+
+        
+      <!-- 投影片 SLIDE-CARD-EP07-05 卡片 -->
+      <div id="slide-card-ep07-05" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-emerald-500 bg-emerald-50/40  p-4 sm:p-5 transition-all duration-300 shadow-md shadow-emerald-500/10 hover:shadow-lg">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-emerald-500/15 text-emerald-700 border-emerald-400/40 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              投影片 05
+            </span>
+            <span class="text-xs font-semibold text-slate-700">群數選擇：手肘法 (SSE) 與輪廓係數</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="scrollToTs('ts-0056')" class="px-2 py-0.5 text-xs font-mono font-bold rounded-lg bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 transition cursor-pointer" title="跳轉至時間軸">
+              [00:02:10]
+            </button>
+            <button onclick="openLightbox('EP07/EP07-05.png', '群數選擇：手肘法 (SSE) 與輪廓係數', '[00:02:10]', 'ts-0056')" class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 font-semibold transition px-2 py-0.5 rounded hover:bg-white/80" title="點擊放大">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-slate-200/50 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP07/EP07-05.png', '群數選擇：手肘法 (SSE) 與輪廓係數', '[00:02:10]', 'ts-0056')">
+          <img src="EP07/EP07-05.png" alt="群數選擇：手肘法 (SSE) 與輪廓係數" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-900/0 group-hover/img:bg-slate-900/20 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-700 leading-relaxed bg-white/90 p-3 rounded-xl border border-slate-100 shadow-sm">
+          <strong>【最佳 K 挑選法則】</strong> 手肘法：計算群內誤差平方和（SSE），畫出 K=1,2,3... 曲線，挑選下降突然變平緩的轉折點；輪廓係數：同時衡量群內緊密度與群間分離度（範圍 -1 到 +1，越接近 1 越好）。運動會比喻：先定隊數，操場角落學生會拉偏隊長。
+        </div>
+      </div>
+
+      </div>
+>
