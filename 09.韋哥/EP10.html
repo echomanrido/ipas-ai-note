@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EP10: RNN 與 Transformer｜帶你看懂 RNN、LSTM、自注意力和 Transformer。</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700;900&family=Fira+Code:wght@400;600&display=swap');
+    body {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+    }
+    .code-font {
+      font-family: 'Fira Code', monospace;
+    }
+    /* SVG 動畫與互動過渡效果 */
+    .interactive-node {
+      transition: all 0.25s ease;
+      cursor: pointer;
+    }
+    .interactive-node:hover {
+      filter: drop-shadow(0 4px 10px rgba(59, 130, 246, 0.4));
+      transform: scale(1.03);
+      transform-origin: center;
+    }
+    .flow-line {
+      stroke-dasharray: 6;
+      animation: dash 1.5s linear infinite;
+    }
+    @keyframes dash {
+      to {
+        stroke-dashoffset: -12;
+      }
+    }
+    html {
+      scroll-behavior: smooth;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- 頂部導航列 -->
+  <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span class="p-2 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-400 text-white shadow-lg shadow-indigo-500/20">
+          <i data-lucide="cpu" class="w-5 h-5"></i>
+        </span>
+        <div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-indigo-400 block">iPAS AI 應用規劃師 中級科目三</span>
+          <h1 class="text-sm sm:text-base font-bold text-white truncate max-w-xs sm:max-w-md md:max-w-lg">
+            EP10：RNN 與 Transformer 深度解析
+          </h1>
+        </div>
+      </div>
+      <nav class="hidden md:flex items-center space-x-1 text-sm font-medium text-slate-300">
+        <a href="#sec-overview" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition">導讀</a>
+        <a href="#sec-rnn" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition">RNN</a>
+        <a href="#sec-lstm" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition">LSTM/GRU</a>
+        <a href="#sec-attention" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition">自注意力</a>
+        <a href="#sec-parts" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition">核心組件</a>
+        <a href="#sec-bert-gpt" class="px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition">BERT/GPT</a>
+        <a href="#sec-exam" class="px-3 py-1.5 rounded-lg bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/50 transition">歷屆真題</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 主內容容器 -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
+
+    <!-- 標頭簡介 Hero Section -->
+    <section id="sec-overview" class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800 via-slate-900 to-indigo-950/60 p-8 sm:p-12 border border-slate-700/60 shadow-2xl">
+      <div class="absolute -right-20 -bottom-20 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -left-20 -top-20 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="max-w-3xl space-y-4">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> 第 11 章核心精華教材
+        </div>
+        <h2 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white leading-tight">
+          RNN 與 Transformer<br>
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-indigo-400 to-purple-400">
+            從序列循環到全域自注意力的技術演進
+          </span>
+        </h2>
+        <p class="text-slate-300 text-base sm:text-lg leading-relaxed pt-2">
+          專門處理「<strong class="text-cyan-300">有順序的資料</strong>」（文字、語音、時間序列）。深入拆解遞迴神經網路（RNN）、門控機制（LSTM/GRU）、Transformer 架構中 QKV 矩陣運算以及 BERT 與 GPT 的本質差異，助您穩拿 iPAS 中級證照核心觀念。
+        </p>
+
+        
+      <!-- 8 大精華投影片快速索引導覽列 (不同顏色框標記・支援全螢幕放大與時間軸跳轉) -->
+      <div class="mt-8 p-4 sm:p-5 rounded-2xl bg-slate-800/90 border border-slate-700/80 shadow-xl text-left">
+        <div class="flex items-center justify-between text-xs font-bold text-slate-200 mb-3">
+          <span class="flex items-center gap-2">
+            <i data-lucide="presentation" class="w-4 h-4 text-cyan-400"></i>
+            <span>EP10 原片教學投影片快速導覽（共 8 張・不同顏色框標記・支援全螢幕放大與時間軸連動）：</span>
+          </span>
+          <span class="text-[11px] text-slate-400 font-mono">點擊卡片跳轉</span>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 pt-1 text-xs font-medium">
+          <a href="#slide-card-ep10-01" onclick="scrollToSlide('slide-card-ep10-01')" class="p-2 rounded-xl bg-teal-950/60 hover:bg-teal-900/60 border border-teal-500/40 text-teal-300 transition text-center flex flex-col items-center group">
+            <span class="font-mono font-bold text-[10px] text-teal-400 group-hover:scale-105 transition-transform">[00:00] P.01</span>
+            <span class="truncate w-full text-[11px] mt-0.5">架構全貌地圖</span>
+          </a>
+          <a href="#slide-card-ep10-02" onclick="scrollToSlide('slide-card-ep10-02')" class="p-2 rounded-xl bg-indigo-950/60 hover:bg-indigo-900/60 border border-indigo-500/40 text-indigo-300 transition text-center flex flex-col items-center group">
+            <span class="font-mono font-bold text-[10px] text-indigo-400 group-hover:scale-105 transition-transform">[00:46] P.02</span>
+            <span class="truncate w-full text-[11px] mt-0.5">RNN 讀書筆記</span>
+          </a>
+          <a href="#slide-card-ep10-03" onclick="scrollToSlide('slide-card-ep10-03')" class="p-2 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-500/40 text-emerald-300 transition text-center flex flex-col items-center group">
+            <span class="font-mono font-bold text-[10px] text-emerald-400 group-hover:scale-105 transition-transform">[02:31] P.03</span>
+            <span class="truncate w-full text-[11px] mt-0.5">LSTM 與 GRU</span>
+          </a>
+          <a href="#slide-card-ep10-04" onclick="scrollToSlide('slide-card-ep10-04')" class="p-2 rounded-xl bg-sky-950/60 hover:bg-sky-900/60 border border-sky-500/40 text-sky-300 transition text-center flex flex-col items-center group">
+            <span class="font-mono font-bold text-[10px] text-sky-400 group-hover:scale-105 transition-transform">[04:46] P.04</span>
+            <span class="truncate w-full text-[11px] mt-0.5">自注意力機制</span>
+          </a>
+          <a href="#slide-card-ep10-05" onclick="scrollToSlide('slide-card-ep10-05')" class="p-2 rounded-xl bg-purple-950/60 hover:bg-purple-900/60 border border-purple-500/40 text-purple-300 transition text-center flex flex-col items-center group">
+            <span class="font-mono font-bold text-[10px] text-purple-400 group-hover:scale-105 transition-transform">[07:01] P.05</span>
+            <span class="truncate w-full text-[11px] mt-0.5">關鍵其他零件</span>
+          </a>
+          <a href="#slide-card-ep10-06" onclick="scrollToSlide('slide-card-ep10-06')" class="p-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 border border-rose-500/40 text-rose-300 transition text-center flex flex-col items-center group">
+            <span class="font-mono font-bold text-[10px] text-rose-400 group-hover:scale-105 transition-transform">[09:16] P.06</span>
+            <span class="truncate w-full text-[11px] mt-0.5">編碼與解碼器</span>
+          </a>
+          <a href="#slide-card-ep10-07" onclick="scrollToSlide('slide-card-ep10-07')" class="p-2 rounded-xl bg-amber-950/60 hover:bg-amber-900/60 border border-amber-500/40 text-amber-300 transition text-center flex flex-col items-center group">
+            <span class="font-mono font-bold text-[10px] text-amber-400 group-hover:scale-105 transition-transform">[11:01] P.07</span>
+            <span class="truncate w-full text-[11px] mt-0.5">最容易搞混的</span>
+          </a>
+          <a href="#slide-card-ep10-08" onclick="scrollToSlide('slide-card-ep10-08')" class="p-2 rounded-xl bg-yellow-950/60 hover:bg-yellow-900/60 border border-yellow-500/40 text-yellow-300 transition text-center flex flex-col items-center group">
+            <span class="font-mono font-bold text-[10px] text-yellow-400 group-hover:scale-105 transition-transform">[12:31] P.08</span>
+            <span class="truncate w-full text-[11px] mt-0.5">帶走三句話</span>
+          </a>
+        </div>
+      </div>
+
+
+        
+      <!-- 投影片 SLIDE-CARD-EP10-01 卡片 (青綠框 Teal) -->
+      <div id="slide-card-ep10-01" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-teal-500 bg-teal-950/40 p-4 sm:p-5 transition-all duration-300 shadow-lg shadow-teal-500/10 hover:shadow-teal-500/20">
+        <div class="flex items-center justify-between pb-3 border-b border-teal-900/60 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-teal-500/20 text-teal-300 border-teal-400/40 flex items-center gap-1.5">
+              <i data-lucide="map" class="w-3.5 h-3.5"></i>
+              投影片 01
+            </span>
+            <span class="text-xs sm:text-sm font-bold text-slate-100">第十一章：RNN 與 Transformer 全貌架構與五大主題地圖</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="scrollToSection('sec-overview')" class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-teal-900/60 text-teal-300 border border-teal-700 hover:bg-teal-800 transition cursor-pointer flex items-center gap-1" title="對照章節引言">
+              <i data-lucide="clock" class="w-3 h-3"></i>
+              [00:00:00]
+            </button>
+            <button onclick="openLightbox('EP10/EP10_01.png', '第十一章：RNN 與 Transformer 全貌架構', '[00:00:00]', 'sec-overview')" class="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-teal-300 font-semibold transition px-2 py-1 rounded hover:bg-teal-900/40 cursor-pointer" title="點擊全螢幕放大">
+              <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-teal-900/40 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP10/EP10_01.png', '第十一章：RNN 與 Transformer 全貌架構', '[00:00:00]', 'sec-overview')">
+          <img src="EP10/EP10_01.png" alt="第十一章：RNN 與 Transformer 全貌架構" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-950/0 group-hover/img:bg-slate-950/30 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/90 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow border border-teal-500/50 flex items-center gap-1.5">
+              <i data-lucide="zoom-in" class="w-4 h-4 text-teal-400"></i>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-900/80 p-3 rounded-xl border border-teal-900/40">
+          <strong class="text-teal-300">【全貌架構速記】</strong> 處理<strong>有順序的資料</strong>（文字、語音、時間序列）：<br>
+          一、<b>RNN</b> 遞迴循環基礎；二、<b>LSTM 與 GRU</b> 門控解救長期記憶；三、<b>自注意力 (Self-Attention)</b> 突破序列長度與平行化；四、<b>Transformer 其他關鍵零件</b>（多頭、位置編碼、殘差、層正規化）；五、<b>編碼器／解碼器與 BERT、GPT</b> 雙雄實戰對決。
+        </div>
+      </div>
+
+
+        <!-- 3 句快速帶走重點金句卡 -->
+        <div class="pt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="p-4 rounded-2xl bg-slate-800/80 border border-amber-500/30 shadow-md">
+            <div class="flex items-center gap-2 text-amber-400 font-bold text-sm mb-1">
+              <i data-lucide="book-open" class="w-4 h-4"></i> 金句 1：RNN vs LSTM
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              RNN 邊讀邊做筆記但會淡掉；LSTM/GRU 則是有開關、會選擇要記什麼的智慧筆記本。
+            </p>
+          </div>
+          <div class="p-4 rounded-2xl bg-slate-800/80 border border-cyan-500/30 shadow-md">
+            <div class="flex items-center gap-2 text-cyan-400 font-bold text-sm mb-1">
+              <i data-lucide="users" class="w-4 h-4"></i> 金句 2：Transformer 互動
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              全班同時互看：<strong>Q 提問</strong>、<strong>K 亮名牌</strong>、<strong>V 給真內容</strong>，運算全平行化！
+            </p>
+          </div>
+          <div class="p-4 rounded-2xl bg-slate-800/80 border border-emerald-500/30 shadow-md">
+            <div class="flex items-center gap-2 text-emerald-400 font-bold text-sm mb-1">
+              <i data-lucide="compass" class="w-4 h-4"></i> 金句 3：雙雄定位
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              <strong>BERT 讀</strong>（雙向編碼擅長語意理解），<strong>GPT 寫</strong>（單向自回歸擅長文字生成）。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 重點一：RNN 遞迴神經網路 -->
+    <section id="sec-rnn" class="space-y-6">
+      <div class="flex items-center gap-3 border-b border-slate-800 pb-4">
+        <span class="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-lg border border-blue-500/30">
+          01
+        </span>
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-indigo-950 text-indigo-300 border border-indigo-800">[00:00:46]</span>
+          <h3 class="text-2xl font-bold text-white">重點一：RNN 遞迴神經網路（Recurrent Neural Network）</h3>
+        </div>
+        <button onclick="scrollToSlide('slide-card-ep10-02')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-indigo-600/30 text-indigo-200 border border-indigo-500/50 hover:bg-indigo-600 transition flex items-center gap-1 cursor-pointer">
+          <i data-lucide="image" class="w-3.5 h-3.5"></i>
+          <span>投影片 02</span>
+        </button>
+      </div>
+
+      <!-- 投影片 SLIDE-CARD-EP10-02 卡片 (藍紫框 Indigo) -->
+      <div id="slide-card-ep10-02" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-indigo-500 bg-indigo-950/40 p-4 sm:p-5 transition-all duration-300 shadow-lg shadow-indigo-500/10 hover:shadow-indigo-500/20">
+        <div class="flex items-center justify-between pb-3 border-b border-indigo-900/60 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-indigo-500/20 text-indigo-300 border-indigo-400/40 flex items-center gap-1.5">
+              <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+              投影片 02
+            </span>
+            <span class="text-xs sm:text-sm font-bold text-slate-100">重點一：RNN 一邊讀一邊做筆記（遞迴與隱藏狀態）</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="scrollToSection('sec-rnn')" class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-indigo-900/60 text-indigo-300 border border-indigo-700 hover:bg-indigo-800 transition cursor-pointer flex items-center gap-1" title="跳轉至 RNN 章節">
+              <i data-lucide="clock" class="w-3 h-3"></i>
+              [00:00:46]
+            </button>
+            <button onclick="openLightbox('EP10/EP10_02.png', '重點一：RNN 一邊讀一邊做筆記', '[00:00:46]', 'sec-rnn')" class="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-indigo-300 font-semibold transition px-2 py-1 rounded hover:bg-indigo-900/40 cursor-pointer" title="點擊全螢幕放大">
+              <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-indigo-900/40 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP10/EP10_02.png', '重點一：RNN 一邊讀一邊做筆記', '[00:00:46]', 'sec-rnn')">
+          <img src="EP10/EP10_02.png" alt="重點一：RNN 一邊讀一邊做筆記" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-950/0 group-hover/img:bg-slate-950/30 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/90 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow border border-indigo-500/50 flex items-center gap-1.5">
+              <i data-lucide="zoom-in" class="w-4 h-4 text-indigo-400"></i>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-900/80 p-3 rounded-xl border border-indigo-900/40">
+          <strong class="text-indigo-300">【RNN 核心機制圖解】</strong><br>
+          • <b>做法</b>：目前的筆記 ＋ 新進來的字 $
+→$ 產生新的筆記；<br>
+          • <b>隱藏狀態 ($h_t$)</b>：這份筆記傳遞給下一步 $
+→$ 記得前面讀過什麼；讀到「很」時，筆記中已有「我」「今天」的上下文！<br>
+          • <b>致命傷</b>：時間序列一拉長，連乘效應導致前面的字記憶淡掉（梯度消失）。
+        </div>
+      </div>
+
+          <p class="text-sm text-slate-400">序列處理的起點：隱藏狀態與時間步</p>
+        </div>
+      </div>
+
+      <!-- 核心原理剖析區 -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div class="lg:col-span-7 space-y-4">
+          <!-- 概念卡片 -->
+          <div class="p-5 rounded-2xl bg-slate-800/70 border border-slate-700/70 shadow">
+            <h4 class="text-base font-semibold text-blue-300 mb-2 flex items-center gap-2">
+              <i data-lucide="layers" class="w-4 h-4"></i> 隱藏狀態（Hidden State）與傳紙條機制
+            </h4>
+            <p class="text-slate-300 text-sm leading-relaxed mb-3">
+              RNN 每讀一個字，就把<strong>「目前的筆記（$h_{t-1}$）」</strong>和<strong>「新的字（$x_t$）」</strong>結合，計算出新的筆記（$h_t$），並傳給下一個時間步。
+            </p>
+            <div class="p-3.5 rounded-xl bg-blue-950/40 border border-blue-800/40 text-blue-200 text-xs leading-relaxed">
+              <strong class="text-blue-300">語境案例：</strong>當輸入「我 今天 很 開心」，讀到「很」時，隱藏狀態筆記已混合了「我」與「今天」的上下文記憶。
+            </div>
+          </div>
+
+          <!-- 關鍵技術特徵 顏色框標記 -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- 藍色框：權重共享 -->
+            <div class="p-4 rounded-xl bg-blue-900/20 border-l-4 border-blue-500 text-slate-200 space-y-1 shadow-sm">
+              <div class="font-bold text-blue-400 text-sm flex items-center gap-1.5">
+                <i data-lucide="share-2" class="w-4 h-4"></i> 權重共享（Weight Sharing）
+              </div>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                每一個時間步使用<strong>同一套權重矩陣</strong>。因此模型可以處理任意長度的句子，句子每增加一個字，僅是同一套權重多循環運算一次。
+              </p>
+            </div>
+            <!-- 紫色框：BPTT 訓練 -->
+            <div class="p-4 rounded-xl bg-purple-900/20 border-l-4 border-purple-500 text-slate-200 space-y-1 shadow-sm">
+              <div class="font-bold text-purple-400 text-sm flex items-center gap-1.5">
+                <i data-lucide="arrow-left-right" class="w-4 h-4"></i> BPTT 時間反向傳播
+              </div>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Backpropagation Through Time。將序列按時間軸攤開成極深的深層網路。一個 500 字的長篇序列攤開後如同 500 層神經網絡進行反向傳播。
+              </p>
+            </div>
+          </div>
+
+          <!-- 紅色警示框：RNN 兩大致命致命傷 -->
+          <div class="p-5 rounded-2xl bg-rose-950/25 border border-rose-500/40 shadow">
+            <h4 class="text-sm font-bold text-rose-400 flex items-center gap-2 mb-2">
+              <i data-lucide="alert-triangle" class="w-4 h-4"></i> RNN 的兩大致命缺點（考試高頻考點）
+            </h4>
+            <div class="space-y-2 text-xs sm:text-sm text-slate-300">
+              <div class="flex items-start gap-2">
+                <span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono text-xs mt-0.5">1</span>
+                <div>
+                  <strong class="text-rose-200">長期依賴問題（Long-term Dependency）：</strong>
+                  序列一旦過長，連乘導致<strong>梯度消失（Gradient Vanishing）</strong>。前面的資訊傳到後面就模糊淡掉了（如傳到第 40 個人，第 1 句早忘光）。
+                </div>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono text-xs mt-0.5">2</span>
+                <div>
+                  <strong class="text-rose-200">無法平行運算（Sequential Computation）：</strong>
+                  必須等第 9 個字算完，第 10 個字才能開始計算，運算效率低落，難以發揮現代 GPU 平行加速優勢。
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 互動 SVG：RNN 展開示意圖 -->
+        <div class="lg:col-span-5 bg-slate-800/80 rounded-2xl p-5 border border-slate-700 shadow-xl flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-center mb-3">
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">互動架構圖解</span>
+              <span class="text-xs bg-blue-500/20 text-blue-300 px-2.5 py-0.5 rounded-full border border-blue-500/30">點擊節點檢視運算</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">點擊下方序列中的時間步（Time Step），觀察隱藏狀態傳遞：</p>
+            
+            <div class="w-full bg-slate-900/90 rounded-xl p-3 border border-slate-800 flex justify-center">
+              <svg viewBox="0 0 420 180" class="w-full h-auto max-w-md">
+                <!-- 箭頭定義 -->
+                <defs>
+                  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#64748b" />
+                  </marker>
+                  <marker id="arrow-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#3b82f6" />
+                  </marker>
+                </defs>
+
+                <!-- 循環模式 (左側) -->
+                <g class="interactive-node" onclick="showRnnDetail('folded')">
+                  <rect x="25" y="60" width="60" height="50" rx="10" fill="#1e293b" stroke="#3b82f6" stroke-width="2"/>
+                  <text x="55" y="90" text-anchor="middle" fill="#93c5fd" font-size="12" font-weight="bold">RNN</text>
+                  <!-- 循環箭頭 -->
+                  <path d="M 40 60 C 25 35, 85 35, 70 60" fill="none" stroke="#60a5fa" stroke-width="2" marker-end="url(#arrow-blue)"/>
+                  <text x="55" y="28" text-anchor="middle" fill="#94a3b8" font-size="10">W_h (共享)</text>
+                  <line x1="55" y1="145" x2="55" y2="110" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+                  <text x="55" y="160" text-anchor="middle" fill="#cbd5e1" font-size="11">x_t</text>
+                </g>
+
+                <text x="105" y="90" fill="#64748b" font-size="14" font-weight="bold">=</text>
+
+                <!-- 展開模式 (右側) -->
+                <!-- t-1 -->
+                <g class="interactive-node" onclick="showRnnDetail('t1')">
+                  <rect x="130" y="60" width="55" height="50" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1.5" id="rnn-box-t1"/>
+                  <text x="157" y="85" text-anchor="middle" fill="#cbd5e1" font-size="10">時間步 t-1</text>
+                  <text x="157" y="100" text-anchor="middle" fill="#93c5fd" font-weight="bold" font-size="11">h_{t-1}</text>
+                  <line x1="157" y1="145" x2="157" y2="110" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+                  <text x="157" y="160" text-anchor="middle" fill="#cbd5e1" font-size="10">"我"</text>
+                </g>
+
+                <!-- 傳遞線 1 -->
+                <line x1="185" y1="85" x2="225" y2="85" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow-blue)" class="flow-line"/>
+
+                <!-- t -->
+                <g class="interactive-node" onclick="showRnnDetail('t2')">
+                  <rect x="225" y="60" width="55" height="50" rx="8" fill="#1e293b" stroke="#3b82f6" stroke-width="2" id="rnn-box-t2"/>
+                  <text x="252" y="85" text-anchor="middle" fill="#cbd5e1" font-size="10">時間步 t</text>
+                  <text x="252" y="100" text-anchor="middle" fill="#60a5fa" font-weight="bold" font-size="11">h_t</text>
+                  <line x1="252" y1="145" x2="252" y2="110" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+                  <text x="252" y="160" text-anchor="middle" fill="#cbd5e1" font-size="10">"今天"</text>
+                </g>
+
+                <!-- 傳遞線 2 -->
+                <line x1="280" y1="85" x2="320" y2="85" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow-blue)" class="flow-line"/>
+
+                <!-- t+1 -->
+                <g class="interactive-node" onclick="showRnnDetail('t3')">
+                  <rect x="320" y="60" width="55" height="50" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1.5" id="rnn-box-t3"/>
+                  <text x="347" y="85" text-anchor="middle" fill="#cbd5e1" font-size="10">時間步 t+1</text>
+                  <text x="347" y="100" text-anchor="middle" fill="#93c5fd" font-weight="bold" font-size="11">h_{t+1}</text>
+                  <line x1="347" y1="145" x2="347" y2="110" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+                  <text x="347" y="160" text-anchor="middle" fill="#cbd5e1" font-size="10">"很開心"</text>
+                </g>
+              </svg>
+            </div>
+          </div>
+
+          <!-- 互動動態說明框 -->
+          <div id="rnn-info-panel" class="mt-3 p-3 rounded-xl bg-slate-900 border border-slate-700/80 text-xs text-slate-300">
+            <span class="text-blue-400 font-semibold">當前焦點：</span>
+            <span>點擊上方節點，了解各時間步隱藏狀態如何傳遞。</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 重點二：LSTM 與 GRU 門控機制 -->
+    <section id="sec-lstm" class="space-y-6">
+      <div class="flex items-center gap-3 border-b border-slate-800 pb-4">
+        <span class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-lg border border-amber-500/30">
+          02
+        </span>
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-800">[00:02:31]</span>
+          <h3 class="text-2xl font-bold text-white">重點二：長短期記憶網路（LSTM）與 GRU</h3>
+        </div>
+        <button onclick="scrollToSlide('slide-card-ep10-03')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-600/30 text-emerald-200 border border-emerald-500/50 hover:bg-emerald-600 transition flex items-center gap-1 cursor-pointer">
+          <i data-lucide="image" class="w-3.5 h-3.5"></i>
+          <span>投影片 03</span>
+        </button>
+      </div>
+
+      <!-- 投影片 SLIDE-CARD-EP10-03 卡片 (翡翠綠框 Emerald) -->
+      <div id="slide-card-ep10-03" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-emerald-500 bg-emerald-950/40 p-4 sm:p-5 transition-all duration-300 shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20">
+        <div class="flex items-center justify-between pb-3 border-b border-emerald-900/60 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-emerald-500/20 text-emerald-300 border-emerald-400/40 flex items-center gap-1.5">
+              <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+              投影片 03
+            </span>
+            <span class="text-xs sm:text-sm font-bold text-slate-100">重點二：LSTM 與 GRU（三門入忘出，兩門更重）</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="scrollToSection('sec-lstm')" class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-emerald-900/60 text-emerald-300 border border-emerald-700 hover:bg-emerald-800 transition cursor-pointer flex items-center gap-1" title="跳轉至 LSTM 章節">
+              <i data-lucide="clock" class="w-3 h-3"></i>
+              [00:02:31]
+            </button>
+            <button onclick="openLightbox('EP10/EP10_03.png', '重點二：LSTM 與 GRU', '[00:02:31]', 'sec-lstm')" class="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-emerald-300 font-semibold transition px-2 py-1 rounded hover:bg-emerald-900/40 cursor-pointer" title="點擊全螢幕放大">
+              <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-emerald-900/40 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP10/EP10_03.png', '重點二：LSTM 與 GRU', '[00:02:31]', 'sec-lstm')">
+          <img src="EP10/EP10_03.png" alt="重點二：LSTM 與 GRU" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-950/0 group-hover/img:bg-slate-950/30 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/90 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow border border-emerald-500/50 flex items-center gap-1.5">
+              <i data-lucide="zoom-in" class="w-4 h-4 text-emerald-400"></i>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-900/80 p-3 rounded-xl border border-emerald-900/40">
+          <strong class="text-emerald-300">【LSTM 與 GRU 門控速記口訣】</strong><br>
+          • <b>LSTM</b>：輸入門、遺忘門、輸出門 ＋ 細胞狀態輸送帶（三個開關的筆記本：寫進去？擦掉？拿出來用？）；<br>
+          • <b>GRU</b>：更新門、重置門（簡化版，少一個狀態與一個門，參數量更少、訓練更快，效果相當）；<br>
+          • <b>臨考必背口訣</b>：<span class="text-emerald-400 font-bold">「LSTM 三門入忘出，GRU 兩門更重」</span>！
+        </div>
+      </div>
+
+          <p class="text-sm text-slate-400">解決梯度消失的王牌：細胞狀態輸送帶與門控設計</p>
+        </div>
+      </div>
+
+      <!-- 核心口訣記憶牌 -->
+      <div class="p-4 rounded-2xl bg-gradient-to-r from-amber-900/30 via-slate-800 to-indigo-950/40 border border-amber-500/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <span class="p-3 bg-amber-500/20 rounded-xl text-amber-300">
+            <i data-lucide="key" class="w-6 h-6"></i>
+          </span>
+          <div>
+            <h4 class="text-amber-300 font-bold text-sm tracking-wide">考試秒殺口訣：三門入忘出，兩門更重！</h4>
+            <p class="text-xs text-slate-300">
+              <span class="text-amber-200 font-semibold">LSTM 具備 3 個門：</span>輸入門（Input）、遺忘門（Forget）、輸出門（Output）＋ 細胞狀態。<br>
+              <span class="text-purple-300 font-semibold">GRU 具備 2 個門：</span>更新門（Update）、重置門（Reset），結構更精簡速度更快。
+            </p>
+          </div>
+        </div>
+        <div class="bg-slate-900/80 px-4 py-2 rounded-xl border border-slate-700 text-xs text-slate-300 text-center">
+          <span class="text-amber-400 font-mono font-bold block text-sm">門控數學本質</span>
+          輸出 [0, 1] 數值，<strong class="text-emerald-400">× 1 全部通過</strong>，<strong class="text-rose-400">× 0 全部擋掉</strong>
+        </div>
+      </div>
+
+      <!-- 雙欄架構圖解與對比 -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- LSTM 詳細卡片 (附自繪 SVG 輸送帶架構) -->
+        <div class="bg-slate-850 p-6 rounded-2xl border border-slate-700 space-y-4 bg-slate-800/60">
+          <div class="flex items-center justify-between">
+            <h4 class="text-lg font-bold text-amber-400 flex items-center gap-2">
+              <i data-lucide="cpu" class="w-5 h-5"></i> LSTM 架構：細胞狀態輸送帶
+            </h4>
+            <span class="text-xs font-mono bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded">3 門 + 1 態</span>
+          </div>
+
+          <p class="text-xs text-slate-300 leading-relaxed">
+            細胞狀態（$C_t$）宛如一條<strong>輸送帶</strong>，貫穿整個序列。更新主要利用<strong>加法運算</strong>（留下一部分舊的，加上一點新的），避免連乘導致的信號歸零，因而大幅緩解梯度消失！
+          </p>
+
+          <!-- LSTM SVG 圖解 -->
+          <div class="bg-slate-900 rounded-xl p-4 border border-slate-800">
+            <svg viewBox="0 0 460 210" class="w-full h-auto">
+              <!-- 細胞狀態傳送帶 (上方水平線) -->
+              <line x1="20" y1="40" x2="440" y2="40" stroke="#f59e0b" stroke-width="3" stroke-dasharray="4"/>
+              <text x="35" y="30" fill="#f59e0b" font-size="11" font-weight="bold">細胞狀態輸送帶 C_t (Cell State)</text>
+
+              <!-- 遺忘門 Forget Gate -->
+              <g class="interactive-node" onclick="setGateInfo('forget')">
+                <rect x="70" y="90" width="75" height="70" rx="8" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+                <text x="107" y="115" text-anchor="middle" fill="#fca5a5" font-size="11" font-weight="bold">遺忘門</text>
+                <text x="107" y="132" text-anchor="middle" fill="#94a3b8" font-size="9">Forget Gate</text>
+                <circle cx="107" cy="40" r="10" fill="#dc2626"/>
+                <text x="107" y="44" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">×</text>
+                <line x1="107" y1="90" x2="107" y2="50" stroke="#f87171" stroke-width="1.5" marker-end="url(#arrow)"/>
+              </g>
+
+              <!-- 輸入門 Input Gate -->
+              <g class="interactive-node" onclick="setGateInfo('input')">
+                <rect x="195" y="90" width="75" height="70" rx="8" fill="#1e293b" stroke="#60a5fa" stroke-width="1.5"/>
+                <text x="232" y="115" text-anchor="middle" fill="#93c5fd" font-size="11" font-weight="bold">輸入門</text>
+                <text x="232" y="132" text-anchor="middle" fill="#94a3b8" font-size="9">Input Gate</text>
+                <circle cx="232" cy="40" r="10" fill="#2563eb"/>
+                <text x="232" y="44" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">+</text>
+                <line x1="232" y1="90" x2="232" y2="50" stroke="#60a5fa" stroke-width="1.5" marker-end="url(#arrow)"/>
+              </g>
+
+              <!-- 輸出門 Output Gate -->
+              <g class="interactive-node" onclick="setGateInfo('output')">
+                <rect x="320" y="90" width="75" height="70" rx="8" fill="#1e293b" stroke="#34d399" stroke-width="1.5"/>
+                <text x="357" y="115" text-anchor="middle" fill="#6ee7b7" font-size="11" font-weight="bold">輸出門</text>
+                <text x="357" y="132" text-anchor="middle" fill="#94a3b8" font-size="9">Output Gate</text>
+                <line x1="357" y1="160" x2="357" y2="190" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow)"/>
+                <text x="357" y="202" text-anchor="middle" fill="#34d399" font-size="10">h_t (隱藏輸出)</text>
+              </g>
+
+              <!-- 底部共同輸入 -->
+              <line x1="30" y1="180" x2="320" y2="180" stroke="#64748b" stroke-width="1.5"/>
+              <text x="80" y="195" fill="#94a3b8" font-size="9">輸入向量 [h_{t-1}, x_t]</text>
+            </svg>
+          </div>
+
+          <div id="lstm-gate-desc" class="p-3 rounded-lg bg-slate-900 border border-slate-700/80 text-xs text-slate-300">
+            <span class="text-amber-400 font-semibold">點擊上方門控：</span>點選「遺忘門」、「輸入門」或「輸出門」檢視各自工作職責。
+          </div>
+        </div>
+
+        <!-- GRU 與 雙向 RNN (Bi-RNN) 說明區 -->
+        <div class="space-y-4 flex flex-col justify-between">
+          <!-- GRU 卡片 (綠色框標記) -->
+          <div class="p-5 rounded-2xl bg-emerald-950/20 border-l-4 border-emerald-500 bg-slate-800/60 shadow">
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="text-base font-bold text-emerald-400 flex items-center gap-2">
+                <i data-lucide="zap" class="w-4 h-4"></i> GRU（Gated Recurrent Unit）門控循環單元
+              </h4>
+              <span class="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded">2 門精簡版</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed mb-3">
+              將細胞狀態與隱藏狀態合併，僅保留<strong>更新門（Update Gate）</strong>與<strong>重置門（Reset Gate）</strong>。參數量比 LSTM 少約 25%，訓練更快，且多數任務中表現相當。
+            </p>
+            <div class="flex gap-2">
+              <div class="flex-1 p-2 bg-slate-900 rounded-lg text-center border border-slate-800">
+                <span class="text-xs text-emerald-300 font-bold block">更新門</span>
+                <span class="text-[10px] text-slate-400">保留多少前一刻資訊</span>
+              </div>
+              <div class="flex-1 p-2 bg-slate-900 rounded-lg text-center border border-slate-800">
+                <span class="text-xs text-emerald-300 font-bold block">重置門</span>
+                <span class="text-[10px] text-slate-400">遺忘多少前一刻狀態</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 雙向 RNN 卡片 (紫色框標記) -->
+          <div class="p-5 rounded-2xl bg-purple-950/20 border-l-4 border-purple-500 bg-slate-800/60 shadow">
+            <h4 class="text-base font-bold text-purple-400 flex items-center gap-2 mb-2">
+              <i data-lucide="repeat" class="w-4 h-4"></i> 雙向神經網路（Bi-directional RNN / LSTM）
+            </h4>
+            <p class="text-xs text-slate-300 leading-relaxed mb-2">
+              句子「正向讀一次」＋「反向讀一次」，同時融合<strong>前後文脈絡</strong>。
+            </p>
+            <div class="p-3 bg-slate-900 rounded-lg border border-slate-800 text-xs text-slate-300 space-y-1">
+              <span class="text-purple-300 font-semibold block">經典考點例子：多義詞辨識</span>
+              <div>• 「<strong>蘋果</strong> 很好吃」 → 後面是「好吃」，得知為<strong>水果</strong></div>
+              <div>• 「<strong>蘋果</strong> 發表新手機」 → 後面是「新手機」，得知為<strong>科技公司</strong></div>
+            </div>
+          </div>
+
+          <!-- 算法選型對照表（解決開場提問） -->
+          <div class="p-4 rounded-xl bg-slate-800 border border-slate-700 text-xs">
+            <span class="text-slate-400 font-semibold block mb-2">🔍 考題應用辨析速查表：</span>
+            <div class="grid grid-cols-2 gap-2 text-[11px]">
+              <div class="p-2 rounded bg-slate-900 border border-slate-800">
+                <span class="text-amber-400 font-bold block">LSTM 適用</span>
+                電力預測、股價走勢（需時間序列前後記憶）
+              </div>
+              <div class="p-2 rounded bg-slate-900 border border-slate-800">
+                <span class="text-cyan-400 font-bold block">CNN 適用</span>
+                監視器物件偵測、影像分類（空間圖形特徵）
+              </div>
+              <div class="p-2 rounded bg-slate-900 border border-slate-800">
+                <span class="text-pink-400 font-bold block">K-Means 適用</span>
+                無標籤顧客分群（無監督機器學習）
+              </div>
+              <div class="p-2 rounded bg-slate-900 border border-slate-800">
+                <span class="text-emerald-400 font-bold block">自編碼器 / PCA 適用</span>
+                高維感測器特徵降維與資料壓縮
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 重點三：自注意力機制（Self-Attention） -->
+    <section id="sec-attention" class="space-y-6">
+      <div class="flex items-center gap-3 border-b border-slate-800 pb-4">
+        <span class="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-lg border border-cyan-500/30">
+          03
+        </span>
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-sky-950 text-sky-300 border border-sky-800">[00:04:46]</span>
+          <h3 class="text-2xl font-bold text-white">重點三：自注意力機制（Self-Attention）與 QKV 計算</h3>
+        </div>
+        <button onclick="scrollToSlide('slide-card-ep10-04')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-sky-600/30 text-sky-200 border border-sky-500/50 hover:bg-sky-600 transition flex items-center gap-1 cursor-pointer">
+          <i data-lucide="image" class="w-3.5 h-3.5"></i>
+          <span>投影片 04</span>
+        </button>
+      </div>
+
+      <!-- 投影片 SLIDE-CARD-EP10-04 卡片 (天空藍框 Sky) -->
+      <div id="slide-card-ep10-04" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-sky-500 bg-sky-950/40 p-4 sm:p-5 transition-all duration-300 shadow-lg shadow-sky-500/10 hover:shadow-sky-500/20">
+        <div class="flex items-center justify-between pb-3 border-b border-sky-900/60 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-sky-500/20 text-sky-300 border-sky-400/40 flex items-center gap-1.5">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+              投影片 04
+            </span>
+            <span class="text-xs sm:text-sm font-bold text-slate-100">重點三：自注意力機制（全班同時互看：Q 查、K 鍵、V 值）</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="scrollToSection('sec-attention')" class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-sky-900/60 text-sky-300 border border-sky-700 hover:bg-sky-800 transition cursor-pointer flex items-center gap-1" title="跳轉至自注意力章節">
+              <i data-lucide="clock" class="w-3 h-3"></i>
+              [00:04:46]
+            </button>
+            <button onclick="openLightbox('EP10/EP10_04.png', '重點三：自注意力機制', '[00:04:46]', 'sec-attention')" class="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-sky-300 font-semibold transition px-2 py-1 rounded hover:bg-sky-900/40 cursor-pointer" title="點擊全螢幕放大">
+              <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-sky-900/40 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP10/EP10_04.png', '重點三：自注意力機制', '[00:04:46]', 'sec-attention')">
+          <img src="EP10/EP10_04.png" alt="重點三：自注意力機制" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-950/0 group-hover/img:bg-slate-950/30 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/90 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow border border-sky-500/50 flex items-center gap-1.5">
+              <i data-lucide="zoom-in" class="w-4 h-4 text-sky-400"></i>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-900/80 p-3 rounded-xl border border-sky-900/40">
+          <strong class="text-sky-300">【從傳紙條到全班互看】</strong><br>
+          • <b>RNN vs Transformer</b>：RNN 像排成一列傳紙條；Transformer 像全班同學同時彼此互看！<br>
+          • <b>Q (查詢 Query)</b>：我要找什麼？（我舉手提出問題）<br>
+          • <b>K (鍵 Key)</b>：我有什麼？（每個人胸前掛的名牌特徵）<br>
+          • <b>V (值 Value)</b>：被選中時給出的內容（名牌後面的真正豐富資料）。
+        </div>
+      </div>
+
+          <p class="text-sm text-slate-400">打破序列藩籬：任兩字直接連結，徹底解放平行運算</p>
+        </div>
+      </div>
+
+      <!-- QKV 概念比喻方塊 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="p-5 rounded-2xl bg-cyan-950/25 border-t-4 border-cyan-400 bg-slate-800/80 shadow">
+          <div class="text-cyan-400 font-mono text-2xl font-bold mb-1">Q (Query)</div>
+          <div class="text-xs uppercase font-bold text-slate-400 mb-2">查詢向量 · 「我要找什麼」</div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            如同學生舉手主動提問。代表當前詞彙主動向全句子其他詞彙探尋關聯的代表線索。
+          </p>
+        </div>
+        <div class="p-5 rounded-2xl bg-blue-950/25 border-t-4 border-blue-400 bg-slate-800/80 shadow">
+          <div class="text-blue-400 font-mono text-2xl font-bold mb-1">K (Key)</div>
+          <div class="text-xs uppercase font-bold text-slate-400 mb-2">鍵值向量 · 「我有什麼」</div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            如同每位同學胸前佩戴的名牌。用來與每個 Query 計算相關度（點積 Dot-Product）。
+          </p>
+        </div>
+        <div class="p-5 rounded-2xl bg-indigo-950/25 border-t-4 border-indigo-400 bg-slate-800/80 shadow">
+          <div class="text-indigo-400 font-mono text-2xl font-bold mb-1">V (Value)</div>
+          <div class="text-xs uppercase font-bold text-slate-400 mb-2">數值向量 · 「被選時給出的內容」</div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            名牌背後的真正知識資料。當 Query 與 Key 算出的權重越高，該詞的 Value 佔比就越大。
+          </p>
+        </div>
+      </div>
+
+      <!-- 核心算式與互動示意 -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <!-- 運算過程詳解 -->
+        <div class="lg:col-span-6 space-y-4">
+          <div class="p-5 rounded-2xl bg-slate-800/90 border border-slate-700 space-y-3">
+            <h4 class="text-base font-bold text-white flex items-center gap-2">
+              <i data-lucide="calculator" class="w-4 h-4 text-cyan-400"></i> 自注意力標準公式
+            </h4>
+            <div class="p-3 bg-slate-900 rounded-xl text-center border border-slate-800">
+              <code class="text-sm md:text-base text-cyan-300 font-bold code-font">
+                Attention(Q, K, V) = Softmax( (Q · K^T) / √d_k ) · V
+              </code>
+            </div>
+            <ol class="text-xs text-slate-300 space-y-2 list-decimal list-inside leading-relaxed">
+              <li><strong>相似度比對：</strong>將每個字的 $Q$ 與所有字的 $K$ 進行向量點積。</li>
+              <li><strong>縮放與歸一化：</strong>除以 $\sqrt{d_k}$ 避免數值過大，通過 Softmax 轉化為總和為 1 的注意力權重。</li>
+              <li><strong>加權匯總：</strong>利用注意力權重對所有字的 $V$ 做加權加總，得到該字的新特徵。</li>
+            </ol>
+          </div>
+
+          <!-- 代名詞解析案例 綠色框 -->
+          <div class="p-4 rounded-xl bg-emerald-950/20 border-l-4 border-emerald-400 text-slate-300 text-xs leading-relaxed">
+            <strong class="text-emerald-300 block mb-1">實例說明（代名詞消歧義）：</strong>
+            「小明 把書借給 小華，因為 <strong>他</strong> 很大方。」<br>
+            當計算「他」時，它的 $Q$ 和「小明」的 $K$ 匹配度最高，獲得最大權重。新產生的表示向量中幾乎都融入了小明的 $V$，模型便能精確理解「他 = 小明」。
+          </div>
+
+          <!-- 矩陣維度考題直通車 橘色框標記 -->
+          <div class="p-4 rounded-xl bg-amber-950/25 border-l-4 border-amber-500 text-slate-300 text-xs">
+            <div class="flex items-center gap-1.5 font-bold text-amber-400 mb-1">
+              <i data-lucide="check-circle" class="w-4 h-4"></i> 115 年考題：矩陣維度相乘速算法
+            </div>
+            <p>
+              字向量維度為 $[1 \times 10]$，乘上查詢權重矩陣 $W_Q [10 \times 64]$：<br>
+              <span class="code-font text-amber-300 font-bold">[1 × 10] × [10 × 64] = [1 × 64]</span><br>
+              中間維度 10 消除，最終產生的 Query 向量即為 64 維。
+            </p>
+          </div>
+        </div>
+
+        <!-- 互動 SVG：全班互看 vs 傳紙條 -->
+        <div class="lg:col-span-6 bg-slate-800/80 p-5 rounded-2xl border border-slate-700 shadow-xl">
+          <div class="flex justify-between items-center mb-3">
+            <h4 class="text-sm font-bold text-white flex items-center gap-2">
+              <i data-lucide="network" class="w-4 h-4 text-cyan-400"></i> 全局互聯 vs 序列瓶頸
+            </h4>
+            <span class="text-xs text-cyan-300 bg-cyan-500/20 px-2 py-0.5 rounded border border-cyan-500/30">O(1) 距離</span>
+          </div>
+
+          <!-- 互動 SVG 繪圖 -->
+          <div class="bg-slate-900 rounded-xl p-4 border border-slate-800 flex justify-center">
+            <svg viewBox="0 0 380 240" class="w-full h-auto">
+              <!-- 背景圓圈連接線 -->
+              <g stroke="#334155" stroke-width="1.5">
+                <line x1="80" y1="50" x2="300" y2="50" />
+                <line x1="80" y1="50" x2="80" y2="190" />
+                <line x1="80" y1="50" x2="300" y2="190" />
+                <line x1="300" y1="50" x2="80" y2="190" />
+                <line x1="300" y1="50" x2="300" y2="190" />
+                <line x1="80" y1="190" x2="300" y2="190" />
+              </g>
+
+              <!-- 高亮注意線 (他 與 小明) -->
+              <line x1="80" y1="50" x2="300" y2="190" stroke="#06b6d4" stroke-width="3.5" stroke-dasharray="5" class="flow-line"/>
+
+              <!-- 節點 1: 小明 -->
+              <g class="interactive-node" onclick="setWordFocus('小明')">
+                <circle cx="80" cy="50" r="28" fill="#1e293b" stroke="#06b6d4" stroke-width="2.5"/>
+                <text x="80" y="55" text-anchor="middle" fill="#67e8f9" font-size="12" font-weight="bold">小明</text>
+              </g>
+
+              <!-- 節點 2: 書本 -->
+              <g class="interactive-node" onclick="setWordFocus('書本')">
+                <circle cx="300" cy="50" r="28" fill="#1e293b" stroke="#64748b" stroke-width="2"/>
+                <text x="300" y="55" text-anchor="middle" fill="#cbd5e1" font-size="12">書本</text>
+              </g>
+
+              <!-- 節點 3: 小華 -->
+              <g class="interactive-node" onclick="setWordFocus('小華')">
+                <circle cx="80" cy="190" r="28" fill="#1e293b" stroke="#64748b" stroke-width="2"/>
+                <text x="80" y="195" text-anchor="middle" fill="#cbd5e1" font-size="12">小華</text>
+              </g>
+
+              <!-- 節點 4: 他 (Query發起者) -->
+              <g class="interactive-node" onclick="setWordFocus('他')">
+                <circle cx="300" cy="190" r="28" fill="#0891b2" stroke="#22d3ee" stroke-width="3"/>
+                <text x="300" y="195" text-anchor="middle" fill="#ffffff" font-size="13" font-weight="bold">他(Q)</text>
+              </g>
+
+              <text x="190" y="115" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="bold" bg="rgba(0,0,0,0.5)">
+                注意力權重: 0.88
+              </text>
+            </svg>
+          </div>
+
+          <div id="attention-desc-box" class="mt-3 p-3 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300">
+            <span class="text-cyan-400 font-semibold">自注意力優點：</span>
+            任兩 Token 距離為 1，第 1 頁與第 20 頁直連對照，不受文本距離衰減影響！
+          </div>
+
+          <!-- 弱點提示 紅色框 -->
+          <div class="mt-3 p-2.5 rounded-lg bg-rose-950/20 border border-rose-500/30 text-rose-300 text-xs">
+            <strong>⚠️ 計算量瓶頸：</strong>注意力運算複雜度為 $O(N^2)$。若長度變 2 倍，計算量暴增至 4 倍；1000 字需進行 100 萬次比對，極為消耗 GPU 顯存。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 重點四：Transformer 的其他核心零件 -->
+    <section id="sec-parts" class="space-y-6">
+      <div class="flex items-center gap-3 border-b border-slate-800 pb-4">
+        <span class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-lg border border-purple-500/30">
+          04
+        </span>
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-purple-950 text-purple-300 border border-purple-800">[00:07:01]</span>
+          <h3 class="text-2xl font-bold text-white">重點四：Transformer 的關鍵零件與正規化</h3>
+        </div>
+        <button onclick="scrollToSlide('slide-card-ep10-05')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-purple-600/30 text-purple-200 border border-purple-500/50 hover:bg-purple-600 transition flex items-center gap-1 cursor-pointer">
+          <i data-lucide="image" class="w-3.5 h-3.5"></i>
+          <span>投影片 05</span>
+        </button>
+      </div>
+
+      <!-- 投影片 SLIDE-CARD-EP10-05 卡片 (紫色框 Purple) -->
+      <div id="slide-card-ep10-05" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-purple-500 bg-purple-950/40 p-4 sm:p-5 transition-all duration-300 shadow-lg shadow-purple-500/10 hover:shadow-purple-500/20">
+        <div class="flex items-center justify-between pb-3 border-b border-purple-900/60 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-purple-500/20 text-purple-300 border-purple-400/40 flex items-center gap-1.5">
+              <i data-lucide="cpu" class="w-3.5 h-3.5"></i>
+              投影片 05
+            </span>
+            <span class="text-xs sm:text-sm font-bold text-slate-100">重點四：Transformer 的其他零件（多頭、位置編碼、殘差、層正規化）</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="scrollToSection('sec-parts')" class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-purple-900/60 text-purple-300 border border-purple-700 hover:bg-purple-800 transition cursor-pointer flex items-center gap-1" title="跳轉至關鍵零件章節">
+              <i data-lucide="clock" class="w-3 h-3"></i>
+              [00:07:01]
+            </button>
+            <button onclick="openLightbox('EP10/EP10_05.png', '重點四：Transformer 的其他零件', '[00:07:01]', 'sec-parts')" class="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-purple-300 font-semibold transition px-2 py-1 rounded hover:bg-purple-900/40 cursor-pointer" title="點擊全螢幕放大">
+              <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-purple-900/40 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP10/EP10_05.png', '重點四：Transformer 的其他零件', '[00:07:01]', 'sec-parts')">
+          <img src="EP10/EP10_05.png" alt="重點四：Transformer 的其他零件" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-950/0 group-hover/img:bg-slate-950/30 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/90 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow border border-purple-500/50 flex items-center gap-1.5">
+              <i data-lucide="zoom-in" class="w-4 h-4 text-purple-400"></i>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-900/80 p-3 rounded-xl border border-purple-900/40">
+          <strong class="text-purple-300">【Transformer 零件生動比喻】</strong><br>
+          • <b>多頭注意力 (MHA)</b>：好幾組 Q/K/V 平行運作再拼起來，好幾位評審從不同角度同時看；<br>
+          • <b>詞嵌入 (Embedding)</b>：每個字轉成一串數字，意思相近、空間向量也相近；<br>
+          • <b>位置編碼 (PE)</b>：大家同時看會失去先後次序，要另外給每個人「貼座號」（正弦/餘弦）；<br>
+          • <b>前饋網路 (FFN)</b>：看完之後各自整理消化筆記；<br>
+          • <b>殘差連接 & 層正規化 (Add & Norm)</b>：直接加回輸入防梯度消失，並穩定數值分佈。
+        </div>
+      </div>
+
+          <p class="text-sm text-slate-400">多頭注意力、位置編碼、前饋網路、殘差連接與 LayerNorm</p>
+        </div>
+      </div>
+
+      <!-- 五大零件網格展示 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        
+        <!-- 零件 1: 多頭注意力 (高頻考點) -->
+        <div class="p-5 rounded-2xl bg-slate-800/80 border border-indigo-500/40 shadow hover:border-indigo-400 transition">
+          <div class="w-9 h-9 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center mb-3">
+            <i data-lucide="eye" class="w-5 h-5"></i>
+          </div>
+          <h4 class="text-base font-bold text-indigo-300 mb-1">多頭注意力 (Multi-Head)</h4>
+          <span class="text-[11px] font-semibold text-amber-400 block mb-2">★ 考點：從不同表示子空間捕捉多種關係</span>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            好幾組 QKV 平行運作最後拼起來。各「頭」從不同角度分工：一個看文法句法、一個看實體指代、一個看語意情感。
+            <strong class="text-rose-300 block mt-1">※ 觀念澄清：參數沒有變少，速度也沒有加快！</strong>
+          </p>
+        </div>
+
+        <!-- 零件 2: 詞嵌入與位置編碼 -->
+        <div class="p-5 rounded-2xl bg-slate-800/80 border border-cyan-500/40 shadow hover:border-cyan-400 transition">
+          <div class="w-9 h-9 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center mb-3">
+            <i data-lucide="map-pin" class="w-5 h-5"></i>
+          </div>
+          <h4 class="text-base font-bold text-cyan-300 mb-1">位置編碼 (Positional Encoding)</h4>
+          <span class="text-[11px] font-semibold text-cyan-400 block mb-2">★ 考點：為同時輸入的詞補充順序資訊</span>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            全班同時看時，模型無法分辨「狗咬人」與「人咬狗」。因此必須用正弦（Sin）與餘弦（Cos）函數產生數字，如同給每個字「貼上座號」加入詞向量中。
+          </p>
+        </div>
+
+        <!-- 零件 3: 前饋神經網路 FFN -->
+        <div class="p-5 rounded-2xl bg-slate-800/80 border border-emerald-500/40 shadow hover:border-emerald-400 transition">
+          <div class="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-3">
+            <i data-lucide="binary" class="w-5 h-5"></i>
+          </div>
+          <h4 class="text-base font-bold text-emerald-300 mb-1">前饋網路 (FFN)</h4>
+          <span class="text-[11px] font-semibold text-emerald-400 block mb-2">★ 特性：每個位置獨立非線性轉換</span>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            小型全連接層。當所有詞經過注意力交換完資訊後，各自獨立通過一次 FFN，像各成員互相討論完畢後各自整理自己的筆記與深度特徵。
+          </p>
+        </div>
+
+        <!-- 零件 4: 殘差連接 Residual Connection -->
+        <div class="p-5 rounded-2xl bg-slate-800/80 border border-pink-500/40 shadow hover:border-pink-400 transition">
+          <div class="w-9 h-9 rounded-lg bg-pink-500/20 text-pink-400 flex items-center justify-center mb-3">
+            <i data-lucide="git-fork" class="w-5 h-5"></i>
+          </div>
+          <h4 class="text-base font-bold text-pink-300 mb-1">殘差連接 (Add / Residual)</h4>
+          <span class="text-[11px] font-semibold text-pink-400 block mb-2">★ 功用：解決深層網路梯度消失</span>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            公式：$x + \text{Sublayer}(x)$。輸入不經破壞直接「跨越」疊加至輸出，為反向傳播提供梯度捷徑（與 ResNet 同理）。
+          </p>
+        </div>
+
+        <!-- 零件 5: 層正規化 vs 批次正規化 (高頻對比題) -->
+        <div class="p-5 rounded-2xl bg-slate-800/80 border border-purple-500/40 shadow md:col-span-2 lg:col-span-2 hover:border-purple-400 transition">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-9 h-9 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center">
+              <i data-lucide="sliders" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h4 class="text-base font-bold text-purple-300">層正規化 (LayerNorm) vs 批次正規化 (BatchNorm)</h4>
+              <span class="text-[11px] text-purple-400 font-semibold">自然語言處理與序列模型的關鍵決策</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
+              <strong class="text-blue-400 text-xs block mb-1">批次正規化 (BatchNorm) - 影像 CNN 愛用</strong>
+              <p class="text-[11px] text-slate-400 leading-relaxed">
+                拿同一批（Batch）好幾筆資料一起算平均與變異數。當 Batch 較小或文本句子長短不一時算不穩。
+              </p>
+            </div>
+            <div class="p-3 bg-slate-900 rounded-xl border border-purple-800/40">
+              <strong class="text-purple-400 text-xs block mb-1">層正規化 (LayerNorm) - Transformer 愛用</strong>
+              <p class="text-[11px] text-slate-400 leading-relaxed">
+                <span class="text-purple-300 font-semibold">單一樣本自己內部特徵做正規化</span>，不依賴批次大小（Batch Size），因此即便文本長度不同也能非常穩定訓練！
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 重點五：編碼器、解碼器與 BERT vs GPT -->
+    <section id="sec-bert-gpt" class="space-y-6">
+      <div class="flex items-center gap-3 border-b border-slate-800 pb-4">
+        <span class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-lg border border-emerald-500/30">
+          05
+        </span>
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-rose-950 text-rose-300 border border-rose-800">[00:09:16]</span>
+          <h3 class="text-2xl font-bold text-white">重點五：編碼器、解碼器與 BERT vs GPT 終極對決</h3>
+        </div>
+        <button onclick="scrollToSlide('slide-card-ep10-06')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-rose-600/30 text-rose-200 border border-rose-500/50 hover:bg-rose-600 transition flex items-center gap-1 cursor-pointer">
+          <i data-lucide="image" class="w-3.5 h-3.5"></i>
+          <span>投影片 06</span>
+        </button>
+      </div>
+
+      <!-- 投影片 SLIDE-CARD-EP10-06 卡片 (玫瑰紅框 Rose) -->
+      <div id="slide-card-ep10-06" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-rose-500 bg-rose-950/40 p-4 sm:p-5 transition-all duration-300 shadow-lg shadow-rose-500/10 hover:shadow-rose-500/20">
+        <div class="flex items-center justify-between pb-3 border-b border-rose-900/60 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-rose-500/20 text-rose-300 border-rose-400/40 flex items-center gap-1.5">
+              <i data-lucide="git-merge" class="w-3.5 h-3.5"></i>
+              投影片 06
+            </span>
+            <span class="text-xs sm:text-sm font-bold text-slate-100">重點五：編碼器與解碼器（雙向閱讀 vs 遮罩生成）</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="scrollToSection('sec-bert-gpt')" class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-rose-900/60 text-rose-300 border border-rose-700 hover:bg-rose-800 transition cursor-pointer flex items-center gap-1" title="跳轉至編碼器與解碼器章節">
+              <i data-lucide="clock" class="w-3 h-3"></i>
+              [00:09:16]
+            </button>
+            <button onclick="openLightbox('EP10/EP10_06.png', '重點五：編碼器與解碼器', '[00:09:16]', 'sec-bert-gpt')" class="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-rose-300 font-semibold transition px-2 py-1 rounded hover:bg-rose-900/40 cursor-pointer" title="點擊全螢幕放大">
+              <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-rose-900/40 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP10/EP10_06.png', '重點五：編碼器與解碼器', '[00:09:16]', 'sec-bert-gpt')">
+          <img src="EP10/EP10_06.png" alt="重點五：編碼器與解碼器" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-950/0 group-hover/img:bg-slate-950/30 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/90 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow border border-rose-500/50 flex items-center gap-1.5">
+              <i data-lucide="zoom-in" class="w-4 h-4 text-rose-400"></i>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-900/80 p-3 rounded-xl border border-rose-900/40">
+          <strong class="text-rose-300">【雙向理解 vs 單向遮罩生成】</strong><br>
+          • <b>編碼器 (Encoder)</b>：讀懂輸入，同時看左右兩邊上下文（如 BERT，擅長分類與問答理解）；<br>
+          • <b>解碼器 (Decoder)</b>：一字一字自回歸生成，具備<strong>帶遮罩的自注意力 (Masked Attention)</strong>（寫第 5 個字不能偷看第 6 個，後面權重強制設為 0，如 GPT）；<br>
+          • <b>編碼-解碼交叉注意力</b>：每寫一個字回頭看原文（如翻譯時寫英文對照中文）。
+        </div>
+      </div>
+
+          <p class="text-sm text-slate-400">雙向理解 vs 單向生成：模型架構與適用場景完整剖析</p>
+        </div>
+      </div>
+
+      <!-- BERT vs GPT 核心差異雙欄對照 -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- BERT 卡片 (藍色系) -->
+        <div class="p-6 rounded-2xl bg-slate-800/80 border-t-4 border-blue-500 space-y-4 shadow-xl">
+          <div class="flex justify-between items-center">
+            <div>
+              <span class="text-xs font-mono text-blue-400 uppercase font-bold tracking-wider">Encoder-Only 架構</span>
+              <h4 class="text-2xl font-black text-white">BERT</h4>
+            </div>
+            <span class="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs font-bold border border-blue-500/30">
+              擅長「理解」
+            </span>
+          </div>
+
+          <div class="space-y-2 text-xs text-slate-300 leading-relaxed">
+            <p>• <strong>核心特性：</strong>只採用編碼器（Encoder），具備<strong>雙向上下文視野</strong>，能同時綜觀左右前後文。</p>
+            <p>• <strong>兩大預訓練機制：</strong></p>
+            <ul class="list-disc list-inside pl-2 space-y-1 text-slate-400">
+              <li><strong class="text-slate-200">MLM（Masked LM）：</strong>隨機把字遮住（如 [MASK]），讓模型看前後文猜字（克漏字填空）。</li>
+              <li><strong class="text-slate-200">NSP（Next Sentence）：</strong>判斷第二句是否為第一句的接續句。</li>
+            </ul>
+            <p>• <strong>最佳適用場景：</strong>文本分類、情感分析、閱讀理解與問答抽取、實體識別（NER）。</p>
+          </div>
+
+          <div class="p-3 rounded-xl bg-blue-950/40 border border-blue-800/50 text-blue-200 text-xs font-semibold">
+            🚫 致命限制：缺乏自回歸逐步預測機制，完全不適合做長篇文字生成！
+          </div>
+        </div>
+
+        <!-- GPT 卡片 (綠色系) -->
+        <div class="p-6 rounded-2xl bg-slate-800/80 border-t-4 border-emerald-500 space-y-4 shadow-xl">
+          <div class="flex justify-between items-center">
+            <div>
+              <span class="text-xs font-mono text-emerald-400 uppercase font-bold tracking-wider">Decoder-Only 架構</span>
+              <h4 class="text-2xl font-black text-white">GPT 系列</h4>
+            </div>
+            <span class="px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-full text-xs font-bold border border-emerald-500/30">
+              擅長「生成」
+            </span>
+          </div>
+
+          <div class="space-y-2 text-xs text-slate-300 leading-relaxed">
+            <p>• <strong>核心特性：</strong>只採用解碼器（Decoder），進行<strong>單向自回歸（Autoregressive）</strong>文字接龍。</p>
+            <p>• <strong>帶遮罩自注意力（Masked Attention）：</strong></p>
+            <p class="text-slate-400 pl-2">
+              生成第 5 個字時，<strong>絕對不能偷看第 6 個字</strong>。將未來詞彙注意力權重全設為 0，避免訓練時抄答案。
+            </p>
+            <p>• <strong>自回歸機制：</strong>每產出一個字，便接回輸入端作為上下文，持續迭代輸出下一個字。</p>
+            <p>• <strong>最佳適用場景：</strong>文章寫作、對話機器人、創意續寫、代碼生成。</p>
+          </div>
+
+          <div class="p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/50 text-emerald-200 text-xs font-semibold">
+            💡 口訣記憶：BERT 負責「讀」（理解），GPT 專門「寫」（生成）！
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 家族延伸模型補充卡片 (T5 / ViT / Longformer) -->
+      <div class="p-5 rounded-2xl bg-slate-800/50 border border-slate-700">
+        <h4 class="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+          <i data-lucide="boxes" class="w-4 h-4 text-indigo-400"></i> Transformer 衍生明星家族模型速查
+        </h4>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
+            <span class="text-indigo-400 font-bold block mb-1">T5 (Text-to-Text)</span>
+            <p class="text-slate-400 leading-relaxed">
+              Encoder + Decoder 完整架構，統一將所有任務（翻譯、摘要、問答）皆包裝成「文字進、文字出」。
+            </p>
+          </div>
+          <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
+            <span class="text-cyan-400 font-bold block mb-1">ViT (Vision Transformer)</span>
+            <p class="text-slate-400 leading-relaxed">
+              影像領域革新！將圖片切成 $16 \times 16$ 小圖塊（Patches）當成單詞傳入 Encoder 進行影像分類。
+            </p>
+          </div>
+          <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
+            <span class="text-emerald-400 font-bold block mb-1">Longformer</span>
+            <p class="text-slate-400 leading-relaxed">
+              採用「稀疏局部注意力」，每個字僅看鄰近與少數錨點字，成功打破 $O(N^2)$ 記憶體膨脹，支援萬字長文。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 歷屆真題實戰練習區 (互動測驗) -->
+    <section id="sec-exam" class="space-y-6">
+      <div class="flex items-center gap-3 border-b border-slate-800 pb-4">
+        <span class="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold text-lg border border-rose-500/30">
+          <i data-lucide="graduation-cap" class="w-5 h-5"></i>
+        </span>
+        <div>
+          <h3 class="text-2xl font-bold text-white">歷屆 iPAS 真題深度實戰</h3>
+          <p class="text-sm text-slate-400">點擊選項立即檢測學習成效與觀念解析</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- 考題 1: 開場電力預測題 (114 年相似題) -->
+        <div class="p-6 rounded-2xl bg-slate-850 bg-slate-800/70 border border-slate-700 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-xs font-mono text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">題目 01 · 應用選型</span>
+              <span class="text-xs text-slate-400">114 年考題同型題</span>
+            </div>
+            <h4 class="text-sm font-bold text-white mb-4 leading-relaxed">
+              下列四個應用情境中，哪一個最適合採用 LSTM 模型進行開發？
+            </h4>
+            <div class="space-y-2 text-xs">
+              <button onclick="checkQuiz(1, 'A')" class="quiz-btn-1 w-full text-left p-3 rounded-xl bg-slate-900 hover:bg-slate-750 border border-slate-800 transition flex items-center justify-between">
+                <span>(A) 辨識監視影像裡的物件輪廓</span>
+                <span class="indicator-1-A font-bold"></span>
+              </button>
+              <button onclick="checkQuiz(1, 'B')" class="quiz-btn-1 w-full text-left p-3 rounded-xl bg-slate-900 hover:bg-slate-750 border border-slate-800 transition flex items-center justify-between">
+                <span>(B) 根據特徵自動把線上顧客分群</span>
+                <span class="indicator-1-B font-bold"></span>
+              </button>
+              <button onclick="checkQuiz(1, 'C')" class="quiz-btn-1 w-full text-left p-3 rounded-xl bg-slate-900 hover:bg-slate-750 border border-slate-800 transition flex items-center justify-between">
+                <span>(C) 預測未來七天的區域電力需求</span>
+                <span class="indicator-1-C font-bold"></span>
+              </button>
+              <button onclick="checkQuiz(1, 'D')" class="quiz-btn-1 w-full text-left p-3 rounded-xl bg-slate-900 hover:bg-slate-750 border border-slate-800 transition flex items-center justify-between">
+                <span>(D) 把高維度的感測資料壓縮成低維表示</span>
+                <span class="indicator-1-D font-bold"></span>
+              </button>
+            </div>
+          </div>
+          <div id="quiz-explain-1" class="hidden mt-4 p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/40 text-xs text-emerald-200 leading-relaxed">
+            <strong>✅ 正確答案：(C)</strong><br>
+            電力需求為具備前後時間順序的「時間序列」，需仰賴 LSTM 記憶歷史趨勢。其他選項分別適用 CNN (A)、K-Means (B) 與 Autoencoder/PCA (D)。
+          </div>
+        </div>
+
+        <!-- 考題 2: 長文本跨段落審查題 (115 年第 19 題同型題) -->
+        <div class="p-6 rounded-2xl bg-slate-850 bg-slate-800/70 border border-slate-700 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/30">題目 02 · 架構特性</span>
+              <span class="text-xs text-slate-400">115 年第 19 題</span>
+            </div>
+            <h4 class="text-sm font-bold text-white mb-4 leading-relaxed">
+              合約審查系統需比對首頁與第 20 頁的責任條款，雙向 LSTM 抓不到長距離關聯且訓練慢，改用 Transformer 後大幅改善，主因為何？
+            </h4>
+            <div class="space-y-2 text-xs">
+              <button onclick="checkQuiz(2, 'A')" class="quiz-btn-2 w-full text-left p-3 rounded-xl bg-slate-900 hover:bg-slate-750 border border-slate-800 transition flex items-center justify-between">
+                <span>(A) Transformer 模型參數量天生比 LSTM 少</span>
+                <span class="indicator-2-A font-bold"></span>
+              </button>
+              <button onclick="checkQuiz(2, 'B')" class="quiz-btn-2 w-full text-left p-3 rounded-xl bg-slate-900 hover:bg-slate-750 border border-slate-800 transition flex items-center justify-between">
+                <span>(B) 自注意力使任意 Token 直接關聯不受距離限制，且可平行化</span>
+                <span class="indicator-2-B font-bold"></span>
+              </button>
+              <button onclick="checkQuiz(2, 'C')" class="quiz-btn-2 w-full text-left p-3 rounded-xl bg-slate-900 hover:bg-slate-750 border border-slate-800 transition flex items-center justify-between">
+                <span>(C) 位置編碼使模型自動理解合約法規章節語意</span>
+                <span class="indicator-2-C font-bold"></span>
+              </button>
+              <button onclick="checkQuiz(2, 'D')" class="quiz-btn-2 w-full text-left p-3 rounded-xl bg-slate-900 hover:bg-slate-750 border border-slate-800 transition flex items-center justify-between">
+                <span>(D) LSTM 在演算法理論上無法處理超過 512 個 Token</span>
+                <span class="indicator-2-D font-bold"></span>
+              </button>
+            </div>
+          </div>
+          <div id="quiz-explain-2" class="hidden mt-4 p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/40 text-xs text-emerald-200 leading-relaxed">
+            <strong>✅ 正確答案：(B)</strong><br>
+            自注意力使任意距離的 Token 距離恆為 1，直接拉近第 1 頁與第 20 頁關聯，且無須循環依賴，運算可極大平行化！
+          </div>
+        </div>
+
+        <!-- 考題 3: 多頭注意力的主要作用 (114 年第 21 題) -->
+        <div class="p-6 rounded-2xl bg-slate-850 bg-slate-800/70 border border-slate-700 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-xs font-mono text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/30">題目 03 · 注意力機制</span>
+              <span class="text-xs text-slate-400">114 年第 21 題</span>
+            </div>
+            <h4 class="text-sm font-bold text-white mb-4 leading-relaxed">
+              語音辨識團隊採用多頭注意力（Multi-Head Attention）期望模型同時理解發音、語速與語意，多頭注意力的核心作用是？
+            </h4>
+            <div class="space-y-2 text-xs">
+              <button onclick="checkQuiz(3, 'A')" class="quiz-btn-3 w-full text-left p-3 rounded-xl bg-slate-900 hover:bg-slate-750 border border-slate-800 transition flex items-center justify-between">
+                <span>(A) 從不同的表示子空間同時捕捉多樣化的關聯特徵</span>
+                <span class="indicator-3-A font-bold"></span>
+              </button>
+              <button onclick="checkQuiz(3, 'B')" class="quiz-btn-3 w-full text-left p-3 rounded-xl bg-slate-900 hover:bg-slate-750 border border-slate-800 transition flex items-center justify-between">
+                <span>(B) 減少神經網路的權重參數總量</span>
+                <span class="indicator-3-A font-bold"></span>
+              </button>
+              <button onclick="checkQuiz(3, 'C')" class="quiz-btn-3 w-full text-left p-3 rounded-xl bg-slate-900 hover:bg-slate-750 border border-slate-800 transition flex items-center justify-between">
+                <span>(C) 加快單次矩陣乘法的硬體計算速度</span>
+                <span class="indicator-3-C font-bold"></span>
+              </button>
+              <button onclick="checkQuiz(3, 'D')" class="quiz-btn-3 w-full text-left p-3 rounded-xl bg-slate-900 hover:bg-slate-750 border border-slate-800 transition flex items-center justify-between">
+                <span>(D) 取代殘差連接徹底消除梯度消失問題</span>
+                <span class="indicator-3-D font-bold"></span>
+              </button>
+            </div>
+          </div>
+          <div id="quiz-explain-3" class="hidden mt-4 p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/40 text-xs text-emerald-200 leading-relaxed">
+            <strong>✅ 正確答案：(A)</strong><br>
+            多頭注意力讓每個 Head 獨立關注不同面向（如一個看發音、一個看語意）。參數量並未減少，加速也不是其目的，防梯度消失是殘差連接與 LayerNorm 的職責。
+          </div>
+        </div>
+
+        <!-- 考題 4: 法律文本生成 BERT 失敗題 (115 年第 23 題) -->
+        <div class="p-6 rounded-2xl bg-slate-850 bg-slate-800/70 border border-slate-700 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">題目 04 · BERT vs GPT</span>
+              <span class="text-xs text-slate-400">115 年第 23 題</span>
+            </div>
+            <h4 class="text-sm font-bold text-white mb-4 leading-relaxed">
+              法律生成系統要續寫合約後半段條款，BERT 的生成效果顯著劣於 GPT-2，且「增加更多訓練資料也無法改善」，主要原因為何？
+            </h4>
+            <div class="space-y-2 text-xs">
+              <button onclick="checkQuiz(4, 'A')" class="quiz-btn-4 w-full text-left p-3 rounded-xl bg-slate-900 hover:bg-slate-750 border border-slate-800 transition flex items-center justify-between">
+                <span>(A) BERT 模型的預訓練語料庫缺乏法規條款</span>
+                <span class="indicator-4-A font-bold"></span>
+              </button>
+              <button onclick="checkQuiz(4, 'B')" class="quiz-btn-4 w-full text-left p-3 rounded-xl bg-slate-900 hover:bg-slate-750 border border-slate-800 transition flex items-center justify-between">
+                <span>(B) BERT 的 WordPiece 分詞演算法不適合法律術語</span>
+                <span class="indicator-4-B font-bold"></span>
+              </button>
+              <button onclick="checkQuiz(4, 'C')" class="quiz-btn-4 w-full text-left p-3 rounded-xl bg-slate-900 hover:bg-slate-750 border border-slate-800 transition flex items-center justify-between">
+                <span>(C) BERT 採雙向編碼架構，無單向逐字自回歸生成機制</span>
+                <span class="indicator-4-C font-bold"></span>
+              </button>
+              <button onclick="checkQuiz(4, 'D')" class="quiz-btn-4 w-full text-left p-3 rounded-xl bg-slate-900 hover:bg-slate-750 border border-slate-800 transition flex items-center justify-between">
+                <span>(D) BERT 模型參數量過少，需擴大至數十億參數才能生成</span>
+                <span class="indicator-4-D font-bold"></span>
+              </button>
+            </div>
+          </div>
+          <div id="quiz-explain-4" class="hidden mt-4 p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/40 text-xs text-emerald-200 leading-relaxed">
+            <strong>✅ 正確答案：(C)</strong><br>
+            關鍵在「增加資料也無用」！這意味著瓶頸在於<strong>模型架構先天設計</strong>。BERT 採雙向填空訓練，缺乏逐字預測下一個詞的單向 Decoder 自回歸機制，因此無法勝任生成任務。
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 終極重點快閃記憶總整理卡 -->
+
+      <!-- 投影片 SLIDE-CARD-EP10-07 卡片 (琥珀橙框 Amber) -->
+      <div id="slide-card-ep10-07" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-amber-500 bg-amber-950/40 p-4 sm:p-5 transition-all duration-300 shadow-lg shadow-amber-500/10 hover:shadow-amber-500/20">
+        <div class="flex items-center justify-between pb-3 border-b border-amber-900/60 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-amber-500/20 text-amber-300 border-amber-400/40 flex items-center gap-1.5">
+              <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
+              投影片 07
+            </span>
+            <span class="text-xs sm:text-sm font-bold text-slate-100">高頻盲點：最容易搞混的五大核心概念對比</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="scrollToSection('sec-summary')" class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-amber-900/60 text-amber-300 border border-amber-700 hover:bg-amber-800 transition cursor-pointer flex items-center gap-1" title="跳轉至考前速記對比錦囊">
+              <i data-lucide="clock" class="w-3 h-3"></i>
+              [00:11:01]
+            </button>
+            <button onclick="openLightbox('EP10/EP10_07.png', '最容易搞混的五大概念對照', '[00:11:01]', 'sec-summary')" class="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-amber-300 font-semibold transition px-2 py-1 rounded hover:bg-amber-900/40 cursor-pointer" title="點擊全螢幕放大">
+              <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-amber-900/40 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP10/EP10_07.png', '最容易搞混的五大概念對照', '[00:11:01]', 'sec-summary')">
+          <img src="EP10/EP10_07.png" alt="最容易搞混的" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-950/0 group-hover/img:bg-slate-950/30 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/90 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow border border-amber-500/50 flex items-center gap-1.5">
+              <i data-lucide="zoom-in" class="w-4 h-4 text-amber-400"></i>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-900/80 p-3 rounded-xl border border-amber-900/40">
+          <strong class="text-amber-300">【五大考點對照避坑清單】</strong><br>
+          1. <b>LSTM</b>（三個門 ＋ 細胞狀態） vs <b>GRU</b>（兩個門，較輕量、參數少）；<br>
+          2. <b>BERT</b>（純編碼器、雙向、擅長理解） vs <b>GPT</b>（純解碼器、單向、擅長生成）；<br>
+          3. <b>自注意力</b>（一組 QKV） vs <b>多頭注意力</b>（多組平行投影，捕捉多個子空間關聯）；<br>
+          4. <b>批次正規化 (BN)</b>（依賴 Batch 統計，CNN 愛用） vs <b>層正規化 (LN)</b>（不依賴 Batch，Transformer 必備）；<br>
+          5. <b>RNN</b>（逐字串行，長序列淡掉） vs <b>Transformer</b>（全部互看，高度平行化，但長度複雜度為 $O(L^2)$）。
+        </div>
+      </div>
+
+
+    <section id="sec-summary" class="rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-8 border border-indigo-500/30 shadow-2xl">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="p-2 rounded-xl bg-indigo-500 text-white">
+          <i data-lucide="award" class="w-5 h-5"></i>
+        </span>
+        <h3 class="text-xl font-bold text-white">考前 3 分鐘速記總匯（對比錦囊）</h3>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+        <div class="p-4 rounded-xl bg-slate-800/80 border-t-2 border-amber-400 space-y-1.5">
+          <strong class="text-amber-300 block text-sm">LSTM vs GRU</strong>
+          <p class="text-slate-300">LSTM 具備 3 個門（輸入、遺忘、輸出）＋細胞狀態輸送帶；GRU 僅 2 個門（更新、重置）較輕量迅速。</p>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-800/80 border-t-2 border-cyan-400 space-y-1.5">
+          <strong class="text-cyan-300 block text-sm">BERT vs GPT</strong>
+          <p class="text-slate-300">BERT 為純 Encoder，雙向上下文擅長「理解」；GPT 為純 Decoder，單向自回歸遮罩擅長「生成」。</p>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-800/80 border-t-2 border-purple-400 space-y-1.5">
+          <strong class="text-purple-300 block text-sm">LayerNorm vs BatchNorm</strong>
+          <p class="text-slate-300">BatchNorm 依賴同一批次跨樣本統計（CNN 愛用）；LayerNorm 對單一樣本內部所有維度正規化，不依賴 Batch 大小（Transformer 愛用）。</p>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-800/80 border-t-2 border-emerald-400 space-y-1.5">
+          <strong class="text-emerald-300 block text-sm">RNN vs Transformer</strong>
+          <p class="text-slate-300">RNN 逐字循環存在時間瓶頸與梯度消失；Transformer 全班互看完全平行，但運算量隨序列平方（$O(N^2)$）增長。</p>
+        </div>
+      </div>
+    </section>
+
+  
+    <!-- 這集帶走三句話 總結區 (金黃框) -->
+    <section id="sec-final" class="space-y-4">
+      <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+        <span class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-yellow-950 text-yellow-300 border border-yellow-800">[00:12:31]</span>
+        <h3 class="text-xl font-bold text-white flex items-center gap-2">
+          <i data-lucide="sparkles" class="w-5 h-5 text-yellow-400"></i>
+          這集帶走三句話：全篇臨考 30 秒極速精華總結
+        </h3>
+      </div>
+      
+      <!-- 投影片 SLIDE-CARD-EP10-08 卡片 (金黃框 Yellow) -->
+      <div id="slide-card-ep10-08" class="my-6 relative group overflow-hidden rounded-2xl border-2 border-yellow-500 bg-yellow-950/40 p-4 sm:p-5 transition-all duration-300 shadow-lg shadow-yellow-500/10 hover:shadow-yellow-500/20">
+        <div class="flex items-center justify-between pb-3 border-b border-yellow-900/60 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold border bg-yellow-500/20 text-yellow-300 border-yellow-400/40 flex items-center gap-1.5">
+              <i data-lucide="award" class="w-3.5 h-3.5"></i>
+              投影片 08
+            </span>
+            <span class="text-xs sm:text-sm font-bold text-slate-100">這集帶走三句話：臨考 30 秒快速口訣總整理</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="scrollToSection('sec-final')" class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-yellow-900/60 text-yellow-300 border border-yellow-700 hover:bg-yellow-800 transition cursor-pointer flex items-center gap-1" title="跳轉至總結帶走三句話">
+              <i data-lucide="clock" class="w-3 h-3"></i>
+              [00:12:31]
+            </button>
+            <button onclick="openLightbox('EP10/EP10_08.png', '這集帶走三句話：臨考 30 秒快速口訣', '[00:12:31]', 'sec-final')" class="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-yellow-300 font-semibold transition px-2 py-1 rounded hover:bg-yellow-900/40 cursor-pointer" title="點擊全螢幕放大">
+              <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+              <span class="hidden sm:inline">放大</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl bg-slate-900 border border-yellow-900/40 shadow-inner group/img relative cursor-pointer" onclick="openLightbox('EP10/EP10_08.png', '這集帶走三句話：臨考 30 秒快速口訣', '[00:12:31]', 'sec-final')">
+          <img src="EP10/EP10_08.png" alt="這集帶走三句話" class="w-full h-auto object-cover transform group-hover/img:scale-[1.015] transition-transform duration-300" loading="lazy">
+          <div class="absolute inset-0 bg-slate-950/0 group-hover/img:bg-slate-950/30 transition-colors flex items-center justify-center">
+            <span class="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-900/90 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm shadow border border-yellow-500/50 flex items-center gap-1.5">
+              <i data-lucide="zoom-in" class="w-4 h-4 text-yellow-400"></i>
+              點擊全螢幕放大
+            </span>
+          </div>
+        </div>
+        <div class="mt-3 text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-900/80 p-3 rounded-xl border border-yellow-900/40">
+          <strong class="text-yellow-300">【全片精華臨考 30 秒極速總結】</strong><br>
+          ① <b>RNN</b> 邊讀邊做筆記，筆記會淡掉；<b>LSTM 與 GRU</b>：會選擇記什麼的智慧筆記本；<br>
+          ② <b>Transformer</b> 全班同時互看：<b>Q</b> 問、<b>K</b> 比、<b>V</b> 給內容；<br>
+          ③ <span class="text-yellow-400 font-bold">「BERT 讀（理解）、GPT 寫（生成）」</span>！
+        </div>
+      </div>
+
+    </section>
+
+</main>
+
+  <!-- 頁尾 -->
+  <footer class="mt-20 border-t border-slate-800 bg-slate-950 py-8 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 space-y-2">
+      <p class="text-slate-400 font-medium">iPAS AI 應用規劃師 中級科目三 系列精華教學 · EP10：RNN 與 Transformer</p>
+      <p>涵蓋考點：RNN、LSTM/GRU、Self-Attention、QKV 矩陣維度、Multi-Head、BERT/GPT 架構差異</p>
+    </div>
+  </footer>
+
+  <!-- 互動腳本 Script -->
+  <script>
+    
+    /* ==========================================================================
+       投影片 Lightbox 全螢幕展示與時間軸平滑跳轉控制
+       ========================================================================== */
+    let currentLightboxTargetId = null;
+
+    function openLightbox(src, title, badge, targetId) {
+      const modal = document.getElementById('imageLightbox');
+      const card = document.getElementById('lightboxCard');
+      const img = document.getElementById('lightboxImage');
+      const titleEl = document.getElementById('lightboxTitle');
+      const badgeEl = document.getElementById('lightboxBadge');
+      
+      img.src = src;
+      titleEl.textContent = title;
+      badgeEl.textContent = badge;
+      currentLightboxTargetId = targetId;
+      
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        card.classList.remove('scale-95');
+        card.classList.add('scale-100');
+      }, 10);
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      const modal = document.getElementById('imageLightbox');
+      const card = document.getElementById('lightboxCard');
+      modal.classList.add('opacity-0');
+      card.classList.remove('scale-100');
+      card.classList.add('scale-95');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+      }, 200);
+    }
+
+    function closeLightboxOnBackdrop(e) {
+      if (e.target.id === 'imageLightbox') {
+        closeLightbox();
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeLightbox();
+    });
+
+    function jumpFromLightboxToTimeline() {
+      closeLightbox();
+      if (currentLightboxTargetId) {
+        setTimeout(() => {
+          scrollToSection(currentLightboxTargetId);
+        }, 220);
+      }
+    }
+
+    function scrollToSlide(slideId) {
+      const el = document.getElementById(slideId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-4', 'ring-cyan-400', 'ring-offset-2', 'ring-offset-slate-900');
+        setTimeout(() => {
+          el.classList.remove('ring-4', 'ring-cyan-400', 'ring-offset-2', 'ring-offset-slate-900');
+        }, 2000);
+      }
+    }
+
+    function scrollToSection(sectionId) {
+      const el = document.getElementById(sectionId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        el.classList.add('ring-2', 'ring-indigo-400', 'ring-offset-2', 'ring-offset-slate-900');
+        setTimeout(() => {
+          el.classList.remove('ring-2', 'ring-indigo-400', 'ring-offset-2', 'ring-offset-slate-900');
+        }, 1800);
+      }
+    }
+
+    // 初始化 Lucide 圖標
+    lucide.createIcons();
+
+    // 1. RNN 互動細節切換
+    function showRnnDetail(node) {
+      const panel = document.getElementById('rnn-info-panel');
+      if (node === 'folded') {
+        panel.innerHTML = `<span class="text-blue-400 font-semibold">RNN 循環單元：</span> 每個時間步共用同一套權重矩陣 <code class="text-indigo-300">W</code>，因此可處理任意長度的句子。`;
+      } else if (node === 't1') {
+        panel.innerHTML = `<span class="text-blue-400 font-semibold">時間步 1 (輸入「我」)：</span> 隱藏狀態 $h_1$ 記錄第一個字特徵，並準備向下一步傳遞。`;
+      } else if (node === 't2') {
+        panel.innerHTML = `<span class="text-blue-400 font-semibold">時間步 2 (輸入「今天」)：</span> 將 $h_1$ 的筆記與「今天」結合，算出 $h_2$。此時狀態已混合「我 + 今天」。`;
+      } else if (node === 't3') {
+        panel.innerHTML = `<span class="text-blue-400 font-semibold">時間步 3 (輸入「很開心」)：</span> 若句子長達數百字，初期時間步的信號將因連乘效應淡掉，此即<strong>梯度消失</strong>。`;
+      }
+    }
+
+    // 2. LSTM 門控互動切換
+    function setGateInfo(gate) {
+      const desc = document.getElementById('lstm-gate-desc');
+      if (gate === 'forget') {
+        desc.innerHTML = `<span class="text-rose-400 font-bold">遺忘門（Forget Gate）：</span> 決定要從細胞狀態中「丟棄多少過去的舊記憶」。輸出接近 0 代表遺忘，接近 1 代表保留。`;
+      } else if (gate === 'input') {
+        desc.innerHTML = `<span class="text-blue-400 font-bold">輸入門（Input Gate）：</span> 決定要把當前輸入的「多少全新資訊寫入細胞狀態中」。採用加法更新至輸送帶。`;
+      } else if (gate === 'output') {
+        desc.innerHTML = `<span class="text-emerald-400 font-bold">輸出門（Output Gate）：</span> 根據當前更新後的細胞狀態，決定「要過濾並輸出多少作為當前的隱藏狀態 $h_t$」。`;
+      }
+    }
+
+    // 3. 自注意力詞彙聚焦互動
+    function setWordFocus(word) {
+      const box = document.getElementById('attention-desc-box');
+      if (word === '他') {
+        box.innerHTML = `<span class="text-cyan-400 font-bold">詞彙「他」發起查詢 (Query)：</span> 與所有詞的 Key 比對後，發現與「小明」的關聯權重高達 0.88，因此大量吸收小明的 Value 特徵！`;
+      } else if (word === '小明') {
+        box.innerHTML = `<span class="text-cyan-400 font-bold">詞彙「小明」提供鍵值 (Key/Value)：</span> 其語意特徵「大方」成功解答了後文代名詞「他」到底指的是誰。`;
+      } else {
+        box.innerHTML = `<span class="text-slate-300 font-semibold">詞彙「${word}」：</span> 在此句中與代名詞「他」的相關性較低，分配到的注意力權重相對較小。`;
+      }
+    }
+
+    // 4. 測驗互動判斷
+    function checkQuiz(quizNum, choice) {
+      const answers = { 1: 'C', 2: 'B', 3: 'A', 4: 'C' };
+      const isCorrect = choice === answers[quizNum];
+      
+      // 顯示詳解
+      const explainBox = document.getElementById(`quiz-explain-${quizNum}`);
+      explainBox.classList.remove('hidden');
+
+      // 更新按鈕樣式
+      const buttons = document.querySelectorAll(`.quiz-btn-${quizNum}`);
+      buttons.forEach(btn => {
+        btn.classList.remove('bg-emerald-900/40', 'border-emerald-500', 'bg-rose-900/40', 'border-rose-500');
+      });
+
+      const selectedBtn = event.currentTarget;
+      if (isCorrect) {
+        selectedBtn.classList.add('bg-emerald-900/40', 'border-emerald-500');
+      } else {
+        selectedBtn.classList.add('bg-rose-900/40', 'border-rose-500');
+      }
+    }
+  </script>
+
+  <!-- 全螢幕燈箱 Lightbox Modal -->
+  <div id="imageLightbox" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md hidden flex items-center justify-center p-3 sm:p-6 transition-all duration-300 opacity-0" onclick="closeLightboxOnBackdrop(event)">
+    <div class="relative max-w-5xl w-full max-h-[92vh] flex flex-col bg-slate-900 rounded-2xl shadow-2xl border border-slate-700 overflow-hidden transform scale-95 transition-transform duration-300" id="lightboxCard">
+      <!-- 燈箱頂部列 -->
+      <div class="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-slate-800 bg-slate-950">
+        <div class="flex items-center gap-2 overflow-hidden">
+          <span id="lightboxBadge" class="px-2.5 py-0.5 text-xs font-mono font-bold rounded-lg bg-indigo-950 text-indigo-300 border border-indigo-800">
+            [00:00:00]
+          </span>
+          <h4 id="lightboxTitle" class="text-sm sm:text-base font-bold text-white truncate">
+            投影片標題
+          </h4>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="lightboxTimelineBtn" onclick="jumpFromLightboxToTimeline()" class="px-3 py-1 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 transition flex items-center gap-1.5 cursor-pointer">
+            <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+            <span>跳轉章節</span>
+          </button>
+          <button onclick="closeLightbox()" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer" title="關閉 (Esc)">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+      <!-- 圖片本體容器 -->
+      <div class="relative flex-1 bg-slate-950 flex items-center justify-center overflow-auto p-2 sm:p-4 min-h-[300px]">
+        <img id="lightboxImage" src="" alt="放大投影片" class="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl border border-slate-800">
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
