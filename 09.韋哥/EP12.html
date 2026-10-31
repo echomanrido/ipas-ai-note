@@ -1,0 +1,1683 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EP12. 資料整理前三招｜帶你看懂資料清理、特徵縮放和分佈轉換</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- KaTeX for Math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html { scroll-behavior: smooth; }
+    .interactive-card {
+      transition: all 0.25s ease-in-out;
+    }
+    .interactive-card:hover {
+      transform: translateY(-2px);
+    }
+    .timeline-item.active {
+      background-color: #f0fdf4;
+      border-color: #22c55e;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-blue-100 selection:text-blue-900 pb-16">
+
+  <!-- 頂部導覽列 -->
+  <header class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span class="bg-blue-600 text-white text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">AI 核心技能</span>
+        <h1 class="text-lg md:text-xl font-bold text-slate-900 truncate">
+          EP12. 資料整理前三招
+        </h1>
+      </div>
+      <nav class="hidden md:flex space-x-6 text-sm font-medium text-slate-600">
+        <a href="#section-clean" class="hover:text-blue-600 transition">資料清理</a>
+        <a href="#section-scale" class="hover:text-blue-600 transition">特徵縮放</a>
+        <a href="#section-dist" class="hover:text-blue-600 transition">分佈轉換</a>
+        <a href="#section-transcript" class="text-blue-600 hover:text-blue-800 flex items-center gap-1">
+          <i class="fa-solid fa-clock-rotate-left"></i> 時間軸逐字稿
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 主內容容器 -->
+  <main class="max-w-5xl mx-auto px-4 py-8 space-y-12">
+
+    <!-- 標題與簡介 Hero -->
+    <section class="bg-white rounded-2xl border border-slate-200/80 p-6 md:p-8 shadow-sm">
+      <div class="inline-flex items-center gap-2 text-blue-600 font-semibold text-sm mb-3">
+        <i class="fa-solid fa-graduation-cap"></i>
+        <span>AI 應用規劃系列</span>
+      </div>
+      <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight mb-4">
+        EP12. 資料整理前三招｜帶你看懂資料清理、特徵縮放和分佈轉換
+      </h2>
+      <p class="text-slate-600 text-base md:text-lg leading-relaxed mb-6">
+        在機器學習實務中，<strong>「資料品質與特徵表達」往往比演算法本身更能決定模型成敗</strong>。本章考點在歷屆考試中快速竄升（115 年單回即佔 6 題！）。本單元聚焦最核心的三大招：資料清理、特徵縮放與偏態分佈轉換。
+      </p>
+
+      <!-- 藍色框：開場引導題 -->
+      <div class="bg-blue-50/70 border-l-4 border-blue-600 rounded-r-xl p-5">
+        <div class="flex items-center gap-2 text-blue-800 font-bold mb-2">
+          <i class="fa-solid fa-circle-question text-lg"></i>
+          <span>實務思考題：工廠 KNN 零件質檢之謎</span>
+        </div>
+        <p class="text-slate-700 text-sm md:text-base leading-relaxed mb-3">
+          工廠用 <strong>KNN</strong> 判斷零件是否合格，特徵包含「<strong>重量</strong>（數千公克）」與「<strong>厚度</strong>（數公釐）」。工程師發現：厚度明顯不合格的零件，模型卻判定為合格！該怎麼修？
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+          <div class="bg-white p-3 rounded-lg border border-blue-200 text-sm text-slate-700">
+            <strong>(A)</strong> 將 K 值改成 1
+          </div>
+          <div class="bg-white p-3 rounded-lg border-2 border-blue-600 text-sm font-semibold text-blue-900">
+            <strong>(B) 先做特徵縮放</strong> <i class="fa-solid fa-circle-check text-blue-600 ml-1"></i>
+          </div>
+          <div class="bg-white p-3 rounded-lg border border-blue-200 text-sm text-slate-700">
+            <strong>(C)</strong> 刪除厚度特徵
+          </div>
+        </div>
+        <p class="text-xs md:text-sm text-blue-900 font-medium bg-blue-100/60 p-2.5 rounded-lg">
+          💡 <strong>破題解析：</strong> KNN 透過歐氏距離比對鄰居，重量（數千）與厚度（個位數）相差上千倍，距離計算完全被重量霸占，厚度差異徹底被掩沒！必須藉由<strong>特徵縮放</strong>將尺度拉至對等地位。
+        </p>
+      </div>
+    </section>
+
+
+    <!-- ========================================== -->
+    <!-- 9 大精華投影片快速索引導覽列 (Quick Slide Navigator) -->
+    <!-- ========================================== -->
+    <section class="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-5 sm:p-6 text-white shadow-xl border border-indigo-500/30">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-indigo-500/30 pb-3">
+        <div class="flex items-center gap-3">
+          <span class="w-8 h-8 rounded-lg bg-indigo-500/30 border border-indigo-400/40 flex items-center justify-center text-indigo-300 font-bold text-sm">
+            🖼️
+          </span>
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              本集 9 大精華投影片快速索引
+              <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 font-normal">韋哥投影片對照</span>
+            </h2>
+            <p class="text-xs text-indigo-200/80 mt-0.5">點擊卡片快速跳轉至各投影片詳解，支援點擊圖片全螢幕放大與時間軸精確對齊</p>
+          </div>
+        </div>
+        <span class="text-xs font-mono text-indigo-300 bg-indigo-900/50 px-2.5 py-1 rounded-md border border-indigo-700/50">
+          EP12 · 共 9 張精華版書
+        </span>
+      </div>
+
+      <!-- 快速導覽卡片 Grid (9宮格) -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-5 gap-2.5">
+        <!-- Nav 01: 全景輪廓 -->
+        <button onclick="scrollToSlide('slide-card-ep12-01')" class="group text-left p-3 rounded-xl bg-slate-800/80 hover:bg-emerald-950/60 border border-slate-700 hover:border-emerald-500/60 transition-all duration-200 flex flex-col justify-between hover:scale-[1.02]">
+          <div class="flex items-center justify-between w-full mb-1">
+            <span class="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">SLIDE 01</span>
+            <span class="text-[10px] font-mono text-slate-400">⏱ 00:20</span>
+          </div>
+          <div class="text-xs font-bold text-slate-200 group-hover:text-emerald-300 line-clamp-1 leading-snug">
+            第十三章：全景與考題統計
+          </div>
+          <div class="mt-1.5 text-[10px] text-emerald-400/80 font-medium flex items-center gap-1">
+            <span>跳轉檢視</span>
+            <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </button>
+
+        <!-- Nav 02: 資料清理 -->
+        <button onclick="scrollToSlide('slide-card-ep12-02')" class="group text-left p-3 rounded-xl bg-slate-800/80 hover:bg-indigo-950/60 border border-slate-700 hover:border-indigo-500/60 transition-all duration-200 flex flex-col justify-between hover:scale-[1.02]">
+          <div class="flex items-center justify-between w-full mb-1">
+            <span class="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">SLIDE 02</span>
+            <span class="text-[10px] font-mono text-slate-400">⏱ 00:47</span>
+          </div>
+          <div class="text-xs font-bold text-slate-200 group-hover:text-indigo-300 line-clamp-1 leading-snug">
+            重點一：資料清理，先洗菜
+          </div>
+          <div class="mt-1.5 text-[10px] text-indigo-400/80 font-medium flex items-center gap-1">
+            <span>跳轉檢視</span>
+            <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </button>
+
+        <!-- Nav 03: 耐受度對比 -->
+        <button onclick="scrollToSlide('slide-card-ep12-03')" class="group text-left p-3 rounded-xl bg-slate-800/80 hover:bg-sky-950/60 border border-slate-700 hover:border-sky-500/60 transition-all duration-200 flex flex-col justify-between hover:scale-[1.02]">
+          <div class="flex items-center justify-between w-full mb-1">
+            <span class="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">SLIDE 03</span>
+            <span class="text-[10px] font-mono text-slate-400">⏱ 02:46</span>
+          </div>
+          <div class="text-xs font-bold text-slate-200 group-hover:text-sky-300 line-clamp-1 leading-snug">
+            模型對髒資料耐受度不同
+          </div>
+          <div class="mt-1.5 text-[10px] text-sky-400/80 font-medium flex items-center gap-1">
+            <span>跳轉檢視</span>
+            <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </button>
+
+        <!-- Nav 04: 特徵縮放 -->
+        <button onclick="scrollToSlide('slide-card-ep12-04')" class="group text-left p-3 rounded-xl bg-slate-800/80 hover:bg-amber-950/60 border border-slate-700 hover:border-amber-500/60 transition-all duration-200 flex flex-col justify-between hover:scale-[1.02]">
+          <div class="flex items-center justify-between w-full mb-1">
+            <span class="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">SLIDE 04</span>
+            <span class="text-[10px] font-mono text-slate-400">⏱ 04:27</span>
+          </div>
+          <div class="text-xs font-bold text-slate-200 group-hover:text-amber-300 line-clamp-1 leading-snug">
+            重點二：特徵縮放均等權重
+          </div>
+          <div class="mt-1.5 text-[10px] text-amber-400/80 font-medium flex items-center gap-1">
+            <span>跳轉檢視</span>
+            <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </button>
+
+        <!-- Nav 05: 哪些模型要縮放 -->
+        <button onclick="scrollToSlide('slide-card-ep12-05')" class="group text-left p-3 rounded-xl bg-slate-800/80 hover:bg-purple-950/60 border border-slate-700 hover:border-purple-500/60 transition-all duration-200 flex flex-col justify-between hover:scale-[1.02]">
+          <div class="flex items-center justify-between w-full mb-1">
+            <span class="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">SLIDE 05</span>
+            <span class="text-[10px] font-mono text-slate-400">⏱ 05:34</span>
+          </div>
+          <div class="text-xs font-bold text-slate-200 group-hover:text-purple-300 line-clamp-1 leading-snug">
+            哪些模型要縮放與防洩漏
+          </div>
+          <div class="mt-1.5 text-[10px] text-purple-400/80 font-medium flex items-center gap-1">
+            <span>跳轉檢視</span>
+            <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </button>
+
+        <!-- Nav 06: 分佈轉換 -->
+        <button onclick="scrollToSlide('slide-card-ep12-06')" class="group text-left p-3 rounded-xl bg-slate-800/80 hover:bg-teal-950/60 border border-slate-700 hover:border-teal-500/60 transition-all duration-200 flex flex-col justify-between hover:scale-[1.02]">
+          <div class="flex items-center justify-between w-full mb-1">
+            <span class="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-300 border border-teal-500/30">SLIDE 06</span>
+            <span class="text-[10px] font-mono text-slate-400">⏱ 08:16</span>
+          </div>
+          <div class="text-xs font-bold text-slate-200 group-hover:text-teal-300 line-clamp-1 leading-snug">
+            重點三：分佈轉換拉回長尾
+          </div>
+          <div class="mt-1.5 text-[10px] text-teal-400/80 font-medium flex items-center gap-1">
+            <span>跳轉檢視</span>
+            <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </button>
+
+        <!-- Nav 07: 三種轉換一條規則 -->
+        <button onclick="scrollToSlide('slide-card-ep12-07')" class="group text-left p-3 rounded-xl bg-slate-800/80 hover:bg-orange-950/60 border border-slate-700 hover:border-orange-500/60 transition-all duration-200 flex flex-col justify-between hover:scale-[1.02]">
+          <div class="flex items-center justify-between w-full mb-1">
+            <span class="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-300 border border-orange-500/30">SLIDE 07</span>
+            <span class="text-[10px] font-mono text-slate-400">⏱ 09:03</span>
+          </div>
+          <div class="text-xs font-bold text-slate-200 group-hover:text-orange-300 line-clamp-1 leading-snug">
+            三種轉換，一條規則
+          </div>
+          <div class="mt-1.5 text-[10px] text-orange-400/80 font-medium flex items-center gap-1">
+            <span>跳轉檢視</span>
+            <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </button>
+
+        <!-- Nav 08: 最容易搞混的 -->
+        <button onclick="scrollToSlide('slide-card-ep12-08')" class="group text-left p-3 rounded-xl bg-slate-800/80 hover:bg-rose-950/60 border border-slate-700 hover:border-rose-500/60 transition-all duration-200 flex flex-col justify-between hover:scale-[1.02]">
+          <div class="flex items-center justify-between w-full mb-1">
+            <span class="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">SLIDE 08</span>
+            <span class="text-[10px] font-mono text-slate-400">⏱ 10:34</span>
+          </div>
+          <div class="text-xs font-bold text-slate-200 group-hover:text-rose-300 line-clamp-1 leading-snug">
+            最容易搞混的三個「正」
+          </div>
+          <div class="mt-1.5 text-[10px] text-rose-400/80 font-medium flex items-center gap-1">
+            <span>跳轉檢視</span>
+            <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </button>
+
+        <!-- Nav 09: 這集帶走三句話 -->
+        <button onclick="scrollToSlide('slide-card-ep12-09')" class="group text-left p-3 rounded-xl bg-slate-800/80 hover:bg-yellow-950/60 border border-slate-700 hover:border-yellow-500/60 transition-all duration-200 flex flex-col justify-between hover:scale-[1.02]">
+          <div class="flex items-center justify-between w-full mb-1">
+            <span class="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">SLIDE 09</span>
+            <span class="text-[10px] font-mono text-slate-400">⏱ 11:03</span>
+          </div>
+          <div class="text-xs font-bold text-slate-200 group-hover:text-yellow-300 line-clamp-1 leading-snug">
+            這集帶走三句話記憶卡
+          </div>
+          <div class="mt-1.5 text-[10px] text-yellow-400/80 font-medium flex items-center gap-1">
+            <span>跳轉檢視</span>
+            <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </button>
+      </div>
+    </section>
+
+
+
+    <!-- ========================================== -->
+    <!-- SLIDE 01: 第十三章：資料準備與特徵工程 全貌 (翡翠綠框 Emerald) -->
+    <!-- ========================================== -->
+    <div id="slide-card-ep12-01" class="bg-white rounded-2xl border-2 border-emerald-500 shadow-lg shadow-emerald-500/10 overflow-hidden transition-all duration-300 hover:shadow-emerald-500/20">
+      <div class="bg-gradient-to-r from-emerald-50 via-teal-50 to-white px-5 py-4 border-b border-emerald-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-mono font-bold text-xs shadow-sm">SLIDE 01</span>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              第十三章 · 資料準備與特徵工程 全景輪廓
+              <span class="text-xs px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-semibold border border-emerald-200">命題高頻上升</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">兩回共 9 題、115 年單回 6 題！前三大核心占 4 題</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="scrollToSection('t-0020')" class="px-3 py-1 bg-white hover:bg-emerald-50 text-emerald-700 text-xs font-medium rounded-lg border border-emerald-200 transition flex items-center gap-1.5 shadow-sm">
+            <span>⏱ 00:20 導讀逐字稿</span>
+            <span class="text-emerald-500">↓</span>
+          </button>
+          <button onclick="openLightbox('EP12/EP12_01.png', '第十三章 · 資料準備與特徵工程 全景輪廓', '⏱ 00:00:20')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1 shadow-sm">
+            <span>🔍 放大投影片</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 group relative rounded-xl overflow-hidden border border-emerald-200 bg-slate-950 shadow-inner cursor-pointer" onclick="openLightbox('EP12/EP12_01.png', '第十三章 · 資料準備與特徵工程 全景輪廓', '⏱ 00:00:20')">
+          <img src="EP12/EP12_01.png" alt="EP12_01 資料準備與特徵工程 全貌" class="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-300">
+          <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs">
+            <span class="px-3 py-1.5 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-white/20 flex items-center gap-1.5">
+              <span>🔍 點擊檢視高解析大圖</span>
+            </span>
+          </div>
+          <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-900/80 text-[11px] font-mono text-emerald-300 backdrop-blur-sm">
+            EP12_01.png
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-3.5 text-xs sm:text-sm text-slate-700">
+          <div class="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-100 space-y-2">
+            <div class="font-bold text-emerald-900 text-xs sm:text-sm flex items-center gap-1.5">
+              <span>🎯</span>
+              <span>本集前三招學習目標與核心速記</span>
+            </div>
+            <ul class="space-y-1.5 text-slate-700 leading-relaxed text-xs">
+              <li class="flex items-start gap-2">
+                <span class="text-emerald-600 font-bold">1.</span>
+                <span><strong>重點一 資料清理：</strong>缺值怎麼補、異常值要不要留、刪重複、統一格式（先洗菜）。</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-emerald-600 font-bold">2.</span>
+                <span><strong>重點二 特徵縮放：</strong>讓每個特徵說話一樣大聲，避免距離或梯度被大數字霸佔。</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-emerald-600 font-bold">3.</span>
+                <span><strong>重點三 分佈轉換：</strong>把右偏長尾拉回來，但要逐個特徵獨立判斷，避免破壞線性特徵。</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+            <span class="text-slate-500 font-medium">影片對應時間點：<strong class="text-slate-800 font-mono">00:20 ~ 00:47</strong></span>
+            <button onclick="scrollToSection('t-0020')" class="text-emerald-600 hover:text-emerald-800 font-semibold flex items-center gap-1">
+              閱讀導讀逐字稿 →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- 重點一：資料清理 -->
+    <section id="section-clean" class="space-y-6">
+      <div class="flex items-center gap-3 border-b border-slate-200 pb-3">
+        <span class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-black">1</span>
+        <h3 class="text-xl md:text-2xl font-bold text-slate-900">重點一：資料清理（Data Cleaning）</h3>
+      </div>
+
+
+    <!-- ========================================== -->
+    <!-- SLIDE 02: 重點一：資料清理，先洗菜 (靛青藍框 Indigo) -->
+    <!-- ========================================== -->
+    <div id="slide-card-ep12-02" class="bg-white rounded-2xl border-2 border-indigo-500 shadow-lg shadow-indigo-500/10 overflow-hidden transition-all duration-300 hover:shadow-indigo-500/20">
+      <div class="bg-gradient-to-r from-indigo-50 via-slate-50 to-white px-5 py-4 border-b border-indigo-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-mono font-bold text-xs shadow-sm">SLIDE 02</span>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              重點一 · 資料清理，先洗菜（四招與錯誤代價）
+              <span class="text-xs px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 font-semibold border border-indigo-200">基礎關鍵</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">模型只會照資料學，清理做不好，演算法再強也救不回</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="scrollToSection('t-0047')" class="px-3 py-1 bg-white hover:bg-indigo-50 text-indigo-700 text-xs font-medium rounded-lg border border-indigo-200 transition flex items-center gap-1.5 shadow-sm">
+            <span>⏱ 00:47 清理逐字稿</span>
+            <span class="text-indigo-500">↓</span>
+          </button>
+          <button onclick="openLightbox('EP12/EP12_02.png', '重點一 · 資料清理，先洗菜', '⏱ 00:00:47')" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1 shadow-sm">
+            <span>🔍 放大投影片</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 group relative rounded-xl overflow-hidden border border-indigo-200 bg-slate-950 shadow-inner cursor-pointer" onclick="openLightbox('EP12/EP12_02.png', '重點一 · 資料清理，先洗菜', '⏱ 00:00:47')">
+          <img src="EP12/EP12_02.png" alt="EP12_02 資料清理 先洗菜" class="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-300">
+          <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs">
+            <span class="px-3 py-1.5 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-white/20 flex items-center gap-1.5">
+              <span>🔍 點擊檢視高解析大圖</span>
+            </span>
+          </div>
+          <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-900/80 text-[11px] font-mono text-indigo-300 backdrop-blur-sm">
+            EP12_02.png
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-3.5 text-xs sm:text-sm text-slate-700">
+          <div class="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-100 space-y-2">
+            <div class="font-bold text-indigo-900 text-xs sm:text-sm flex items-center gap-1.5">
+              <span>🥬</span>
+              <span>先洗菜四步驟與未清理的三大後遺症</span>
+            </div>
+            <ul class="space-y-1.5 text-slate-700 leading-relaxed text-xs">
+              <li>• <strong>四步驟：</strong>① 補缺值、② 處理異常值、③ 刪重複、④ 統一格式。</li>
+              <li>• <strong>缺失值危害：</strong>造成矩陣運算出現 NaN，模型直接中斷無法計算。</li>
+              <li>• <strong>異常值危害：</strong>極端離群值在平方誤差計算下會強行把線性回歸的線「硬扯歪」。</li>
+              <li>• <strong>重複資料危害：</strong>同一筆樣本多次出現，讓模型嚴重過度偏向那幾筆。</li>
+            </ul>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+            <span class="text-slate-500 font-medium">影片對應時間點：<strong class="text-slate-800 font-mono">00:47 ~ 02:46</strong></span>
+            <button onclick="scrollToSection('t-0047')" class="text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1">
+              閱讀清理逐字稿 →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+      <p class="text-slate-600 leading-relaxed">
+        進模型前要先「洗菜」：<strong>補缺失值、處理異常值、刪重複、統一格式</strong>。清理做不好，再強的模型也救不回預測能力。
+      </p>
+
+      <!-- 缺失值五大處方 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm interactive-card">
+          <div class="text-indigo-600 font-bold mb-2 flex items-center gap-2">
+            <i class="fa-solid fa-trash-can"></i> 1. 直接刪除 (Drop)
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            <strong>適用情境：</strong> 缺失極少、樣本充裕、隨機缺失（MCAR）。代價最小且不干擾分佈。
+          </p>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm interactive-card">
+          <div class="text-indigo-600 font-bold mb-2 flex items-center gap-2">
+            <i class="fa-solid fa-calculator"></i> 2. 統計值填補
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            <strong>平均數 / 中位數 / 眾數：</strong> 快速處理。但若大批樣本補同一個數值，會直接<strong>壓低特徵變異數</strong>。
+          </p>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm interactive-card">
+          <div class="text-indigo-600 font-bold mb-2 flex items-center gap-2">
+            <i class="fa-solid fa-network-wired"></i> 3. KNN / 模型預測
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            <strong>關聯填補：</strong> 找相近條件的樣本抄值，或以其餘高度相關欄位訓練回歸模型進行預測補值。
+          </p>
+        </div>
+      </div>
+
+      <!-- 黃色框：觀念警示 -->
+      <div class="bg-amber-50/80 border-l-4 border-amber-500 rounded-r-xl p-4 md:p-5">
+        <div class="flex items-center gap-2 text-amber-800 font-bold mb-1.5">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span>警訊：缺失指標（Missing Indicator）的業務意涵</span>
+        </div>
+        <p class="text-sm text-amber-900 leading-relaxed">
+          「沒有填寫」本身往往就是最強的訊號！例如：信用卡交易中的「交易地點為空」，極可能代表<strong>網路線上交易</strong>。此時直接刪除會遺失重要訊號，正確做法是新增一欄「缺失指標」或將其歸類為獨立的類別！
+        </p>
+      </div>
+
+      <!-- SVG 互動圖表：IQR 箱型圖異常偵測 -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <h4 class="font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-chart-simple text-blue-600"></i>
+            異常值偵測互動圖：IQR 四分位距法
+          </h4>
+          <span class="text-xs text-slate-400">點擊點或移動滑鼠檢視說明</span>
+        </div>
+
+        <div class="w-full overflow-x-auto">
+          <svg viewBox="0 0 760 250" class="w-full min-w-[650px] select-none">
+            <!-- 背景網格線 -->
+            <line x1="60" y1="130" x2="700" y2="130" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="2 2" />
+
+            <!-- 下界到上界的正常範圍陰影 -->
+            <rect x="180" y="80" width="400" height="100" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" rx="8" />
+
+            <!-- 鬚線 Whisker lines -->
+            <line x1="180" y1="130" x2="280" y2="130" stroke="#475569" stroke-width="2.5" />
+            <line x1="480" y1="130" x2="580" y2="130" stroke="#475569" stroke-width="2.5" />
+
+            <!-- 箱體 Box (Q1 ~ Q3) -->
+            <rect x="280" y="75" width="200" height="110" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5" rx="6" />
+
+            <!-- 中位數線 Q2 (Median) -->
+            <line x1="370" y1="75" x2="370" y2="185" stroke="#1d4ed8" stroke-width="3.5" />
+            <text x="370" y="65" text-anchor="middle" font-size="12" fill="#1d4ed8" font-weight="bold">Q2 (中位數 30萬)</text>
+
+            <!-- Q1, Q3 標註 -->
+            <text x="280" y="205" text-anchor="middle" font-size="12" fill="#334155" font-weight="600">Q1 (20萬)</text>
+            <text x="480" y="205" text-anchor="middle" font-size="12" fill="#334155" font-weight="600">Q3 (30萬)</text>
+
+            <!-- 須端末梢界線 -->
+            <line x1="180" y1="105" x2="180" y2="155" stroke="#ef4444" stroke-width="2.5" />
+            <line x1="580" y1="105" x2="580" y2="155" stroke="#ef4444" stroke-width="2.5" />
+
+            <!-- 邊界公式字樣 -->
+            <text x="180" y="175" text-anchor="middle" font-size="11" fill="#dc2626" font-weight="bold">下界: 5萬</text>
+            <text x="180" y="45" text-anchor="middle" font-size="10" fill="#64748b">Q1 - 1.5×IQR</text>
+
+            <text x="580" y="175" text-anchor="middle" font-size="11" fill="#dc2626" font-weight="bold">上界: 45萬</text>
+            <text x="580" y="45" text-anchor="middle" font-size="10" fill="#64748b">Q3 + 1.5×IQR</text>
+
+            <!-- 異常點 (Outliers) -->
+            <g class="cursor-pointer" onclick="showTip('低於下界（<5萬）：每日營業額異常冷清，屬下端離群值')">
+              <circle cx="100" cy="130" r="7" fill="#ef4444" class="hover:opacity-80 transition" />
+              <text x="100" y="155" text-anchor="middle" font-size="11" fill="#ef4444" font-weight="600">2 萬</text>
+            </g>
+            <g class="cursor-pointer" onclick="showTip('高於上界（>45萬）：雙11大促或極端單量，需判定是否截尾或保留')">
+              <circle cx="650" cy="130" r="7" fill="#ef4444" class="hover:opacity-80 transition" />
+              <text x="650" y="155" text-anchor="middle" font-size="11" fill="#ef4444" font-weight="600">60 萬</text>
+            </g>
+            <g class="cursor-pointer" onclick="showTip('極端大額異常：在詐欺偵測中此為必抓核心樣本，絕對不能清洗！')">
+              <circle cx="695" cy="130" r="8" fill="#b91c1c" class="hover:opacity-80 transition" />
+              <text x="695" y="155" text-anchor="middle" font-size="11" fill="#b91c1c" font-weight="bold">120 萬</text>
+            </g>
+
+            <!-- 標註說明框 -->
+            <text x="380" y="125" text-anchor="middle" font-size="13" fill="#1e40af" font-weight="bold">IQR = 30萬 - 20萬 = 10萬</text>
+            <text x="380" y="145" text-anchor="middle" font-size="11" fill="#475569">1.5 × IQR = 15萬</text>
+          </svg>
+        </div>
+        <div id="svg-tip" class="text-xs bg-slate-100 text-slate-700 py-1.5 px-3 rounded-lg flex items-center gap-2">
+          <i class="fa-solid fa-hand-pointer text-slate-400"></i>
+          <span>點選圖中紅點，檢視不同情境下異常值的處置原則。</span>
+        </div>
+      </div>
+    
+
+    <!-- ========================================== -->
+    <!-- SLIDE 03: 模型對髒資料的耐受度不同 (天空藍框 Sky) -->
+    <!-- ========================================== -->
+    <div id="slide-card-ep12-03" class="bg-white rounded-2xl border-2 border-sky-500 shadow-lg shadow-sky-500/10 overflow-hidden transition-all duration-300 hover:shadow-sky-500/20">
+      <div class="bg-gradient-to-r from-sky-50 via-cyan-50 to-white px-5 py-4 border-b border-sky-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="px-2.5 py-1 rounded-lg bg-sky-600 text-white font-mono font-bold text-xs shadow-sm">SLIDE 03</span>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              深度解析 · 模型對髒資料耐受度（樹模型 vs 線性/神經網路）
+              <span class="text-xs px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 font-semibold border border-sky-200">演算法對比</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">樹模型只看大小順序（比較耐）；線性/神經網路直接乘權重（極度敏感）</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="scrollToSection('t-0246')" class="px-3 py-1 bg-white hover:bg-sky-50 text-sky-700 text-xs font-medium rounded-lg border border-sky-200 transition flex items-center gap-1.5 shadow-sm">
+            <span>⏱ 02:46 耐受度逐字稿</span>
+            <span class="text-sky-500">↓</span>
+          </button>
+          <button onclick="openLightbox('EP12/EP12_03.png', '模型對髒資料耐受度不同', '⏱ 00:02:46')" class="px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1 shadow-sm">
+            <span>🔍 放大投影片</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 group relative rounded-xl overflow-hidden border border-sky-200 bg-slate-950 shadow-inner cursor-pointer" onclick="openLightbox('EP12/EP12_03.png', '模型對髒資料耐受度不同', '⏱ 00:02:46')">
+          <img src="EP12/EP12_03.png" alt="EP12_03 模型對髒資料耐受度不同" class="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-300">
+          <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs">
+            <span class="px-3 py-1.5 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-white/20 flex items-center gap-1.5">
+              <span>🔍 點擊檢視高解析大圖</span>
+            </span>
+          </div>
+          <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-900/80 text-[11px] font-mono text-sky-300 backdrop-blur-sm">
+            EP12_03.png
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-3.5 text-xs sm:text-sm text-slate-700">
+          <div class="p-3.5 rounded-xl bg-sky-50/70 border border-sky-100 space-y-2">
+            <div class="font-bold text-sky-900 text-xs sm:text-sm flex items-center gap-1.5">
+              <span>🌲</span>
+              <span>決策切分 vs 數值相乘的本質差異</span>
+            </div>
+            <ul class="space-y-1.5 text-slate-700 leading-relaxed text-xs">
+              <li>• <strong>樹模型（比較耐）：</strong>決策樹與隨機森林只看「大小順序」。年收入 1 億與 200 萬，在「大於 100 萬嗎？」這一刀都切到同一邊，完全不受離群值數值大小影響！</li>
+              <li>• <strong>線性與神經網路（敏感）：</strong>直接將輸入數值乘以權重加總，1 億的異常值會直接把預測值與梯度拉得巨大無比。</li>
+              <li>• <strong>學校版生動比喻：</strong>整理成績表，缺考補分數或註記缺考；年齡 150 歲是打錯要修；同一學生登記兩次要刪。</li>
+            </ul>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+            <span class="text-slate-500 font-medium">影片對應時間點：<strong class="text-slate-800 font-mono">02:46 ~ 04:27</strong></span>
+            <button onclick="scrollToSection('t-0246')" class="text-sky-600 hover:text-sky-800 font-semibold flex items-center gap-1">
+              閱讀耐受度逐字稿 →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    </section>
+
+    <!-- 重點二：特徵縮放 -->
+    <section id="section-scale" class="space-y-6">
+      <div class="flex items-center gap-3 border-b border-slate-200 pb-3">
+        <span class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black">2</span>
+        <h3 class="text-xl md:text-2xl font-bold text-slate-900">重點二：特徵縮放（Feature Scaling）</h3>
+      </div>
+
+
+    <!-- ========================================== -->
+    <!-- SLIDE 04: 重點二：特徵縮放 (琥珀橙框 Amber) -->
+    <!-- ========================================== -->
+    <div id="slide-card-ep12-04" class="bg-white rounded-2xl border-2 border-amber-500 shadow-lg shadow-amber-500/10 overflow-hidden transition-all duration-300 hover:shadow-amber-500/20">
+      <div class="bg-gradient-to-r from-amber-50 via-orange-50 to-white px-5 py-4 border-b border-amber-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="px-2.5 py-1 rounded-lg bg-amber-600 text-white font-mono font-bold text-xs shadow-sm">SLIDE 04</span>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              重點二 · 特徵縮放（讓每個特徵說話一樣大聲）
+              <span class="text-xs px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 font-semibold border border-amber-200">必考核心</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">把每個特徵數值調到相近範圍：KNN 距離吞沒、梯度下降撞牆震盪</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="scrollToSection('t-0427')" class="px-3 py-1 bg-white hover:bg-amber-50 text-amber-700 text-xs font-medium rounded-lg border border-amber-200 transition flex items-center gap-1.5 shadow-sm">
+            <span>⏱ 04:27 縮放逐字稿</span>
+            <span class="text-amber-500">↓</span>
+          </button>
+          <button onclick="openLightbox('EP12/EP12_04.png', '重點二 · 特徵縮放，讓每個特徵說話一樣大聲', '⏱ 00:04:27')" class="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1 shadow-sm">
+            <span>🔍 放大投影片</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 group relative rounded-xl overflow-hidden border border-amber-200 bg-slate-950 shadow-inner cursor-pointer" onclick="openLightbox('EP12/EP12_04.png', '重點二 · 特徵縮放，讓每個特徵說話一樣大聲', '⏱ 00:04:27')">
+          <img src="EP12/EP12_04.png" alt="EP12_04 特徵縮放 讓每個特徵說話一樣大聲" class="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-300">
+          <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs">
+            <span class="px-3 py-1.5 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-white/20 flex items-center gap-1.5">
+              <span>🔍 點擊檢視高解析大圖</span>
+            </span>
+          </div>
+          <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-900/80 text-[11px] font-mono text-amber-300 backdrop-blur-sm">
+            EP12_04.png
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-3.5 text-xs sm:text-sm text-slate-700">
+          <div class="p-3.5 rounded-xl bg-amber-50/70 border border-amber-100 space-y-2">
+            <div class="font-bold text-amber-900 text-xs sm:text-sm flex items-center gap-1.5">
+              <span>⚖️</span>
+              <span>特徵尺度失衡的兩大災難場景</span>
+            </div>
+            <ul class="space-y-1.5 text-slate-700 leading-relaxed text-xs">
+              <li>• <strong>KNN 距離計算被吞沒：</strong>歐氏距離等於各特徵差的平方和再開根號。年收入差距 10 萬（平方後 100 億），年齡差距 10 歲（平方後 100），年齡的微小差異直接被年收入徹底掩埋！</li>
+              <li>• <strong>梯度下降狹長山谷撞牆：</strong>特徵尺度相差巨大時，損失函數等高線呈狹長深谷，梯度沿著陡峭方向狂震盪（Zig-zag），收斂極度緩慢甚至無法收斂。</li>
+            </ul>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+            <span class="text-slate-500 font-medium">影片對應時間點：<strong class="text-slate-800 font-mono">04:27 ~ 05:34</strong></span>
+            <button onclick="scrollToSection('t-0427')" class="text-amber-600 hover:text-amber-800 font-semibold flex items-center gap-1">
+              閱讀縮放逐字稿 →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+      <p class="text-slate-600 leading-relaxed">
+        將各個特徵數值調整到相仿的數值尺度。不同演算法對特徵尺度的敏感度迥異：
+      </p>
+
+      <!-- 演算法容忍度對照 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-emerald-50/70 border border-emerald-200 rounded-xl p-4">
+          <div class="font-bold text-emerald-900 mb-2 flex items-center gap-2">
+            <i class="fa-solid fa-tree text-emerald-600"></i>
+            樹狀模型（決策樹、隨機森林、XGBoost）
+          </div>
+          <p class="text-xs md:text-sm text-emerald-800 leading-relaxed">
+            <strong>不需要縮放！</strong> 樹模型只問切分點（如：收入 &gt; 100 萬嗎？）。數值無論放大 100 倍或縮小，分裂順序與門檻相對位置完全不變，對離群值與尺度差異天生免疫。
+          </p>
+        </div>
+
+        <div class="bg-rose-50/70 border border-rose-200 rounded-xl p-4">
+          <div class="font-bold text-rose-900 mb-2 flex items-center gap-2">
+            <i class="fa-solid fa-ruler-combined text-rose-600"></i>
+            距離與梯度模型（KNN, SVM, K-Means, 神經網路）
+          </div>
+          <p class="text-xs md:text-sm text-rose-800 leading-relaxed">
+            <strong>絕對必做縮放！</strong> 歐氏距離平方會被大數字吞沒；梯度下降更會因為等高線呈狹長深谷而不斷橫向撞牆，大幅拖累訓練速度。
+          </p>
+        </div>
+      </div>
+
+      <!-- SVG 互動圖表：梯度下降地形對比 -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <h4 class="font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-compass-drafting text-blue-600"></i>
+          損失函數等高線：特徵縮放對梯度下降的影響
+        </h4>
+
+        <div class="w-full overflow-x-auto">
+          <svg viewBox="0 0 760 220" class="w-full min-w-[650px]">
+            <!-- 左半部：未縮放（狹長山谷） -->
+            <g transform="translate(180, 110)">
+              <text x="0" y="-85" text-anchor="middle" font-size="13" font-weight="bold" fill="#dc2626">未縮放：尺度懸殊（狹長峽谷）</text>
+              <ellipse cx="0" cy="0" rx="140" ry="32" fill="none" stroke="#e2e8f0" stroke-width="2" />
+              <ellipse cx="0" cy="0" rx="95" ry="22" fill="none" stroke="#cbd5e1" stroke-width="2" />
+              <ellipse cx="0" cy="0" rx="45" ry="11" fill="none" stroke="#94a3b8" stroke-width="2" />
+              <!-- 撞牆路徑 -->
+              <path d="M -130 -15 L -60 22 L -30 -18 L 10 16 L -5 -6 L 0 0" fill="none" stroke="#ef4444" stroke-width="2.5" marker-end="url(#red-arrow)" />
+              <text x="0" y="55" text-anchor="middle" font-size="11" fill="#64748b">橫向震盪強烈、收斂緩慢</text>
+            </g>
+
+            <!-- 分隔線 -->
+            <line x1="380" y1="20" x2="380" y2="200" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="4 4" />
+
+            <!-- 右半部：已縮放（正圓對稱） -->
+            <g transform="translate(570, 110)">
+              <text x="0" y="-85" text-anchor="middle" font-size="13" font-weight="bold" fill="#16a34a">特徵縮放後：尺度一致（正圓均勻）</text>
+              <circle cx="0" cy="0" r="70" fill="none" stroke="#e2e8f0" stroke-width="2" />
+              <circle cx="0" cy="0" r="45" fill="none" stroke="#cbd5e1" stroke-width="2" />
+              <circle cx="0" cy="0" r="20" fill="none" stroke="#94a3b8" stroke-width="2" />
+              <!-- 直達路徑 -->
+              <path d="M -50 -50 Q -20 -15 0 0" fill="none" stroke="#16a34a" stroke-width="2.5" />
+              <circle cx="0" cy="0" r="4" fill="#16a34a" />
+              <text x="0" y="55" text-anchor="middle" font-size="11" fill="#64748b">沿最短路徑筆直迅速收斂</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <!-- 三種縮放方法卡片 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-xl border border-slate-200">
+          <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">Min-Max 正規化</span>
+          <div class="my-3 text-center bg-slate-50 py-2 rounded-lg font-mono text-sm">
+            (X - Xmin) / (Xmax - Xmin)
+          </div>
+          <ul class="text-xs text-slate-600 space-y-1.5 list-disc pl-4">
+            <li>限制在 <strong>[0, 1]</strong> 範圍</li>
+            <li>影像像素除以 255 即為典型應用</li>
+            <li><strong class="text-rose-600">最怕極端離群值</strong>（分母會被拉至極大）</li>
+          </ul>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200">
+          <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">Z-Score 標準化</span>
+          <div class="my-3 text-center bg-slate-50 py-2 rounded-lg font-mono text-sm">
+            (X - μ) / σ
+          </div>
+          <ul class="text-xs text-slate-600 space-y-1.5 list-disc pl-4">
+            <li>轉換後 <strong>平均 = 0, 標準差 = 1</strong></li>
+            <li>保留原本分佈形狀</li>
+            <li>不限定在 [0, 1] 區間</li>
+          </ul>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200">
+          <span class="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded">RobustScaler</span>
+          <div class="my-3 text-center bg-slate-50 py-2 rounded-lg font-mono text-sm">
+            (X - 中位數) / IQR
+          </div>
+          <ul class="text-xs text-slate-600 space-y-1.5 list-disc pl-4">
+            <li>利用分位數而非平均值</li>
+            <li><strong>抗離群值首選</strong></li>
+            <li>最大值再大也不影響中位數與 IQR</li>
+          </ul>
+        </div>
+      </div>
+
+      
+    <!-- ========================================== -->
+    <!-- SLIDE 05: 哪些模型要縮放？ (紫羅蘭框 Purple) -->
+    <!-- ========================================== -->
+    <div id="slide-card-ep12-05" class="bg-white rounded-2xl border-2 border-purple-500 shadow-lg shadow-purple-500/10 overflow-hidden transition-all duration-300 hover:shadow-purple-500/20">
+      <div class="bg-gradient-to-r from-purple-50 via-indigo-50 to-white px-5 py-4 border-b border-purple-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="px-2.5 py-1 rounded-lg bg-purple-600 text-white font-mono font-bold text-xs shadow-sm">SLIDE 05</span>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              哪些模型要縮放？· 規則只從訓練集學 · 嚴防資料洩漏
+              <span class="text-xs px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 font-semibold border border-purple-200">選型鐵律</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">靠距離（一定要）、靠梯度（建議）、樹模型（不需要）</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="scrollToSection('t-0534')" class="px-3 py-1 bg-white hover:bg-purple-50 text-purple-700 text-xs font-medium rounded-lg border border-purple-200 transition flex items-center gap-1.5 shadow-sm">
+            <span>⏱ 05:34 選型逐字稿</span>
+            <span class="text-purple-500">↓</span>
+          </button>
+          <button onclick="openLightbox('EP12/EP12_05.png', '哪些模型要縮放？· 規則只從訓練集學', '⏱ 00:05:34')" class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1 shadow-sm">
+            <span>🔍 放大投影片</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 group relative rounded-xl overflow-hidden border border-purple-200 bg-slate-950 shadow-inner cursor-pointer" onclick="openLightbox('EP12/EP12_05.png', '哪些模型要縮放？· 規則只從訓練集學', '⏱ 00:05:34')">
+          <img src="EP12/EP12_05.png" alt="EP12_05 哪些模型要縮放" class="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-300">
+          <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs">
+            <span class="px-3 py-1.5 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-white/20 flex items-center gap-1.5">
+              <span>🔍 點擊檢視高解析大圖</span>
+            </span>
+          </div>
+          <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-900/80 text-[11px] font-mono text-purple-300 backdrop-blur-sm">
+            EP12_05.png
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-3.5 text-xs sm:text-sm text-slate-700">
+          <div class="p-3.5 rounded-xl bg-purple-50/70 border border-purple-100 space-y-2">
+            <div class="font-bold text-purple-900 text-xs sm:text-sm flex items-center gap-1.5">
+              <span>🛡️</span>
+              <span>模型縮放三大陣營與資安防洩漏原則</span>
+            </div>
+            <ul class="space-y-1.5 text-slate-700 leading-relaxed text-xs">
+              <li>• <strong>一定要做（靠距離）：</strong>KNN、SVM、K-means。未縮放直接失準。</li>
+              <li>• <strong>建議要做（靠梯度）：</strong>線性回歸、邏輯回歸、類神經網路，縮放後訓練平穩快速。</li>
+              <li>• <strong>不需要做（樹模型）：</strong>決策樹、隨機森林、XGBoost，只問切分點大於小於。</li>
+              <li>• <strong class="text-rose-600">嚴禁資料洩漏（Data Leakage）：</strong>平均值、標準差只能從「訓練集」計算，再套給測試集！若用全部資料計算，測試集資訊就洩漏到訓練期，造成成績虛高假象。</li>
+            </ul>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+            <span class="text-slate-500 font-medium">影片對應時間點：<strong class="text-slate-800 font-mono">05:34 ~ 08:16</strong></span>
+            <button onclick="scrollToSection('t-0534')" class="text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-1">
+              閱讀選型逐字稿 →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+      <!-- 紅色框：禁止資料洩漏 -->
+      <div class="bg-rose-50/80 border-l-4 border-rose-500 rounded-r-xl p-4 md:p-5">
+        <div class="flex items-center gap-2 text-rose-800 font-bold mb-1.5">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span>資安鐵律：資料洩漏（Data Leakage）防範</span>
+        </div>
+        <p class="text-sm text-rose-900 leading-relaxed">
+          縮放參數（平均值、標準差、最大最小值）<strong>只能從「訓練集（Train Set）」計算</strong>！接著再拿相同的參數套用到測試集。若使用全體資料計算，測試集的資訊就偷偷溜進了模型訓練過程，造成評估虛高。如果測試集轉換後數值 &gt; 1.0，完全合乎常理！
+        </p>
+      </div>
+    </section>
+
+    <!-- 重點三：分佈轉換 -->
+    <section id="section-dist" class="space-y-6">
+      <div class="flex items-center gap-3 border-b border-slate-200 pb-3">
+        <span class="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black">3</span>
+        <h3 class="text-xl md:text-2xl font-bold text-slate-900">重點三：分佈轉換（Distribution Transformation）</h3>
+      </div>
+
+
+    <!-- ========================================== -->
+    <!-- SLIDE 06: 重點三：分佈轉換 (深青綠框 Teal) -->
+    <!-- ========================================== -->
+    <div id="slide-card-ep12-06" class="bg-white rounded-2xl border-2 border-teal-500 shadow-lg shadow-teal-500/10 overflow-hidden transition-all duration-300 hover:shadow-teal-500/20">
+      <div class="bg-gradient-to-r from-teal-50 via-emerald-50 to-white px-5 py-4 border-b border-teal-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="px-2.5 py-1 rounded-lg bg-teal-600 text-white font-mono font-bold text-xs shadow-sm">SLIDE 06</span>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              重點三 · 分佈轉換（把長尾拉回來）
+              <span class="text-xs px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 font-semibold border border-teal-200">偏態處理</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">右偏態長尾讓極端值主導損失；取對數有效壓縮長尾</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="scrollToSection('t-0816')" class="px-3 py-1 bg-white hover:bg-teal-50 text-teal-700 text-xs font-medium rounded-lg border border-teal-200 transition flex items-center gap-1.5 shadow-sm">
+            <span>⏱ 08:16 轉換逐字稿</span>
+            <span class="text-teal-500">↓</span>
+          </button>
+          <button onclick="openLightbox('EP12/EP12_06.png', '重點三 · 分佈轉換，把長尾拉回來', '⏱ 00:08:16')" class="px-3 py-1 bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1 shadow-sm">
+            <span>🔍 放大投影片</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 group relative rounded-xl overflow-hidden border border-teal-200 bg-slate-950 shadow-inner cursor-pointer" onclick="openLightbox('EP12/EP12_06.png', '重點三 · 分佈轉換，把長尾拉回來', '⏱ 00:08:16')">
+          <img src="EP12/EP12_06.png" alt="EP12_06 分佈轉換 把長尾拉回來" class="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-300">
+          <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs">
+            <span class="px-3 py-1.5 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-white/20 flex items-center gap-1.5">
+              <span>🔍 點擊檢視高解析大圖</span>
+            </span>
+          </div>
+          <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-900/80 text-[11px] font-mono text-teal-300 backdrop-blur-sm">
+            EP12_06.png
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-3.5 text-xs sm:text-sm text-slate-700">
+          <div class="p-3.5 rounded-xl bg-teal-50/70 border border-teal-100 space-y-2">
+            <div class="font-bold text-teal-900 text-xs sm:text-sm flex items-center gap-1.5">
+              <span>📈</span>
+              <span>右偏長尾的本質與對數魔法</span>
+            </div>
+            <ul class="space-y-1.5 text-slate-700 leading-relaxed text-xs">
+              <li>• <strong>右偏態（Right-skewed）：</strong>大多數人普通，極少數人坐擁極高值（收入、房價、網站瀏覽量）。</li>
+              <li>• <strong>線性模型災難：</strong>少數極端值在平方誤差計算下會產生巨額 Loss，整條回歸直線被硬扯過去。</li>
+              <li>• <strong>取對數 Log 壓短長尾：</strong>原本 100 萬 vs 1,000 萬相差 10 倍，取對數後變成 6 vs 7，僅差距 1！將長尾拉回逼近常態分佈。</li>
+            </ul>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+            <span class="text-slate-500 font-medium">影片對應時間點：<strong class="text-slate-800 font-mono">08:16 ~ 09:03</strong></span>
+            <button onclick="scrollToSection('t-0816')" class="text-teal-600 hover:text-teal-800 font-semibold flex items-center gap-1">
+              閱讀轉換逐字稿 →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+      <p class="text-slate-600 leading-relaxed">
+        真實世界的數值特徵（如年收入、房屋單價、點閱流量）多半具有<strong>「右偏態（Right-skewed / 正偏態）」</strong>特性：少數人坐擁極高值，拖著長長的右尾。
+      </p>
+
+      <!-- SVG 互動圖表：對數轉換前後分佈 -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <h4 class="font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-wave-square text-emerald-600"></i>
+          對數轉換（Log Transform）如何化長尾為常態
+        </h4>
+
+        <div class="w-full overflow-x-auto">
+          <svg viewBox="0 0 760 210" class="w-full min-w-[650px]">
+            <!-- 左邊：右偏態長尾 -->
+            <g transform="translate(80, 30)">
+              <text x="120" y="0" text-anchor="middle" font-size="13" font-weight="bold" fill="#dc2626">原始分佈：右偏長尾 (Right-skewed)</text>
+              <!-- 坐標軸 -->
+              <line x1="0" y1="130" x2="250" y2="130" stroke="#94a3b8" stroke-width="1.5" />
+              <line x1="0" y1="130" x2="0" y2="20" stroke="#94a3b8" stroke-width="1.5" />
+              <!-- 長尾曲線 -->
+              <path d="M 0 130 C 20 10, 40 10, 70 80 C 110 120, 180 128, 240 130" fill="rgba(239, 68, 68, 0.15)" stroke="#ef4444" stroke-width="2.5" />
+              <text x="210" y="115" font-size="11" fill="#ef4444" font-weight="bold">長長右尾 →</text>
+              <text x="125" y="150" text-anchor="middle" font-size="11" fill="#64748b">少數超大極端值主導損失函數</text>
+            </g>
+
+            <!-- 轉換箭頭 -->
+            <g transform="translate(370, 95)">
+              <rect x="-35" y="-18" width="70" height="36" rx="18" fill="#ecfdf5" stroke="#10b981" />
+              <text x="0" y="5" text-anchor="middle" font-size="12" font-weight="bold" fill="#047857">Log(x)</text>
+            </g>
+
+            <!-- 右邊：轉換後接近對稱常態 -->
+            <g transform="translate(470, 30)">
+              <text x="120" y="0" text-anchor="middle" font-size="13" font-weight="bold" fill="#16a34a">轉換後：逼近常態分佈 (Normal-like)</text>
+              <!-- 坐標軸 -->
+              <line x1="0" y1="130" x2="250" y2="130" stroke="#94a3b8" stroke-width="1.5" />
+              <line x1="0" y1="130" x2="0" y2="20" stroke="#94a3b8" stroke-width="1.5" />
+              <!-- 常態鐘形曲線 -->
+              <path d="M 10 130 C 60 130, 80 20, 125 20 C 170 20, 190 130, 240 130" fill="rgba(34, 197, 94, 0.15)" stroke="#22c55e" stroke-width="2.5" />
+              <text x="125" y="150" text-anchor="middle" font-size="11" fill="#64748b">尺度壓縮，回歸直線不再扭曲</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <!-- 綠色框：真題情境與獨立判斷原則 -->
+      <div class="bg-emerald-50/80 border-l-4 border-emerald-600 rounded-r-xl p-5">
+        <div class="flex items-center gap-2 text-emerald-800 font-bold mb-2">
+          <i class="fa-solid fa-lightbulb"></i>
+          <span>115 年歷屆考題關鍵案例：房價預測特徵轉換</span>
+        </div>
+        <p class="text-sm text-slate-700 leading-relaxed mb-3">
+          模型擁有「<strong>距捷運站距離</strong>」與「<strong>屋齡</strong>」兩個特徵。工程師測試發現：捷運距離取對數後模型預測變準，屋齡取對數後表現反而顯著下滑！為什麼？
+        </p>
+        <div class="space-y-2 text-xs md:text-sm text-slate-700 bg-white/80 p-3 rounded-lg border border-emerald-200">
+          <div class="flex items-start gap-2">
+            <span class="text-emerald-600 font-bold">✔ 距捷運站距離：</span>
+            <span>嚴重右偏（多數在 1 公里內，少數在 10 公里外）。取對數後壓縮長尾，兩者從反比非線性變為線性！</span>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-rose-600 font-bold">✘ 屋齡：</span>
+            <span>屋齡與折舊房價原本就呈現<strong>筆直的直線負相關</strong>。硬取對數反而把原本筆直的關係扭曲成彎曲曲線，破壞了原本的線性結構！</span>
+          </div>
+        </div>
+        <p class="mt-3 text-xs md:text-sm font-bold text-emerald-900">
+          💡 <strong>核心口訣：</strong> 分佈轉換必須「<strong>逐個特徵獨立判斷</strong>」，切忌全域整批轉換！
+        </p>
+      </div>
+
+      <!-- 紫色框：名詞易混淆三大天王 -->
+      <div class="bg-purple-50/80 border-l-4 border-purple-500 rounded-r-xl p-5">
+        <div class="flex items-center gap-2 text-purple-900 font-bold mb-3">
+          <i class="fa-solid fa-spell-check text-lg"></i>
+          <span>考卷最愛挖坑！「三個正」與核心名詞辨析</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs md:text-sm">
+          <div class="bg-white p-3 rounded-lg border border-purple-200">
+            <strong class="text-purple-700">1. 正規化 (Normalization)</strong><br>
+            專指 <strong>Min-Max</strong> 特徵縮放，將數值範圍壓縮至 0 到 1 之間。
+          </div>
+          <div class="bg-white p-3 rounded-lg border border-purple-200">
+            <strong class="text-purple-700">2. 批次正規化 (Batch Norm)</strong><br>
+            深度神經網路架構技術，在每層隱藏層對 mini-batch 輸入做標準化。
+          </div>
+          <div class="bg-white p-3 rounded-lg border border-purple-200">
+            <strong class="text-purple-700">3. 正則化 (Regularization)</strong><br>
+            損失函數裡的 <strong>懲罰項</strong>（L1 Lasso, L2 Ridge），旨在抑制權重、防止過擬合。
+          </div>
+        </div>
+      </div>
+
+
+    <!-- ========================================== -->
+    <!-- SLIDE 07: 三種轉換，一條規則 (烈焰橙框 Orange) -->
+    <!-- ========================================== -->
+    <div id="slide-card-ep12-07" class="bg-white rounded-2xl border-2 border-orange-500 shadow-lg shadow-orange-500/10 overflow-hidden transition-all duration-300 hover:shadow-orange-500/20">
+      <div class="bg-gradient-to-r from-orange-50 via-amber-50 to-white px-5 py-4 border-b border-orange-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="px-2.5 py-1 rounded-lg bg-orange-600 text-white font-mono font-bold text-xs shadow-sm">SLIDE 07</span>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              三種轉換 · 一條規則（逐個特徵獨立判斷）
+              <span class="text-xs px-2 py-0.5 rounded-md bg-orange-100 text-orange-800 font-semibold border border-orange-200">避坑鐵則</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">對數 Log、平方根、Box-Cox / Yeo-Johnson；不能全部一起轉！</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="scrollToSection('t-0903')" class="px-3 py-1 bg-white hover:bg-orange-50 text-orange-700 text-xs font-medium rounded-lg border border-orange-200 transition flex items-center gap-1.5 shadow-sm">
+            <span>⏱ 09:03 規則逐字稿</span>
+            <span class="text-orange-500">↓</span>
+          </button>
+          <button onclick="openLightbox('EP12/EP12_07.png', '三種轉換，一條規則', '⏱ 00:09:03')" class="px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1 shadow-sm">
+            <span>🔍 放大投影片</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 group relative rounded-xl overflow-hidden border border-orange-200 bg-slate-950 shadow-inner cursor-pointer" onclick="openLightbox('EP12/EP12_07.png', '三種轉換，一條規則', '⏱ 00:09:03')">
+          <img src="EP12/EP12_07.png" alt="EP12_07 三種轉換 一條規則" class="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-300">
+          <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs">
+            <span class="px-3 py-1.5 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-white/20 flex items-center gap-1.5">
+              <span>🔍 點擊檢視高解析大圖</span>
+            </span>
+          </div>
+          <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-900/80 text-[11px] font-mono text-orange-300 backdrop-blur-sm">
+            EP12_07.png
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-3.5 text-xs sm:text-sm text-slate-700">
+          <div class="p-3.5 rounded-xl bg-orange-50/70 border border-orange-100 space-y-2">
+            <div class="font-bold text-orange-900 text-xs sm:text-sm flex items-center gap-1.5">
+              <span>🧮</span>
+              <span>三種轉換工具與唯一鐵律</span>
+            </div>
+            <ul class="space-y-1.5 text-slate-700 leading-relaxed text-xs">
+              <li>• <strong>對數 Log：</strong>明顯右偏長尾（收入、銷售額、距離、房價）。</li>
+              <li>• <strong>平方根 / 立方根：</strong>中度偏態，縮小力道較對數溫和。</li>
+              <li>• <strong>Box-Cox：</strong>自動找最佳參數，只能用於正數。改良版 <strong>Yeo-Johnson</strong> 支援 0 與負數。</li>
+              <li>• <strong class="text-rose-600">唯一鐵律（考題常考）：</strong>轉換要「逐個特徵獨立判斷」！本來與目標就是直線關係的特徵（如讀書時數與成績、房屋屋齡與折舊），硬取對數反而把直線變彎，導致模型表現變差！</li>
+            </ul>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+            <span class="text-slate-500 font-medium">影片對應時間點：<strong class="text-slate-800 font-mono">09:03 ~ 10:34</strong></span>
+            <button onclick="scrollToSection('t-0903')" class="text-orange-600 hover:text-orange-800 font-semibold flex items-center gap-1">
+              閱讀規則逐字稿 →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    </section>
+
+    
+    <!-- ========================================== -->
+    <!-- SLIDE 08: 最容易搞混的觀念對照 (玫瑰紅框 Rose) -->
+    <!-- ========================================== -->
+    <div id="slide-card-ep12-08" class="bg-white rounded-2xl border-2 border-rose-500 shadow-lg shadow-rose-500/10 overflow-hidden transition-all duration-300 hover:shadow-rose-500/20">
+      <div class="bg-gradient-to-r from-rose-50 via-pink-50 to-white px-5 py-4 border-b border-rose-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-mono font-bold text-xs shadow-sm">SLIDE 08</span>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              最容易搞混的 · 三組易混淆觀念與三個「正」字輩
+              <span class="text-xs px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 font-semibold border border-rose-200">考前必避坑</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">正規化 vs 標準化 · 標準化 vs 特徵選擇 · 正規化 vs 批次正規化 vs 正則化</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="scrollToSection('t-1034')" class="px-3 py-1 bg-white hover:bg-rose-50 text-rose-700 text-xs font-medium rounded-lg border border-rose-200 transition flex items-center gap-1.5 shadow-sm">
+            <span>⏱ 10:34 辨析逐字稿</span>
+            <span class="text-rose-500">↓</span>
+          </button>
+          <button onclick="openLightbox('EP12/EP12_08.png', '最容易搞混的 · 三個「正」字輩觀念剖析', '⏱ 00:10:34')" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1 shadow-sm">
+            <span>🔍 放大投影片</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 group relative rounded-xl overflow-hidden border border-rose-200 bg-slate-950 shadow-inner cursor-pointer" onclick="openLightbox('EP12/EP12_08.png', '最容易搞混的 · 三個「正」字輩觀念剖析', '⏱ 00:10:34')">
+          <img src="EP12/EP12_08.png" alt="EP12_08 最容易搞混的" class="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-300">
+          <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs">
+            <span class="px-3 py-1.5 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-white/20 flex items-center gap-1.5">
+              <span>🔍 點擊檢視高解析大圖</span>
+            </span>
+          </div>
+          <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-900/80 text-[11px] font-mono text-rose-300 backdrop-blur-sm">
+            EP12_08.png
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-3.5 text-xs sm:text-sm text-slate-700">
+          <div class="p-3.5 rounded-xl bg-rose-50/70 border border-rose-100 space-y-2">
+            <div class="font-bold text-rose-900 text-xs sm:text-sm flex items-center gap-1.5">
+              <span>⚡</span>
+              <span>火線對照與考古題陷阱拆解</span>
+            </div>
+            <ul class="space-y-1.5 text-slate-700 leading-relaxed text-xs">
+              <li class="p-1.5 rounded bg-white/80 border border-rose-100">
+                <strong>正規化 vs 標準化：</strong>正規化（Min-Max，壓至 0~1）；標準化（Z-score，平均 0、標準差 1）。
+              </li>
+              <li class="p-1.5 rounded bg-white/80 border border-rose-100">
+                <strong>標準化 vs 特徵選擇（114-48 題陷阱）：</strong>標準化是「調尺度」；特徵選擇是「挑特徵」。
+              </li>
+              <li class="p-1.5 rounded bg-white/80 border border-rose-100">
+                <strong>三個「正」字輩口訣：</strong>
+                <ul class="list-disc pl-4 mt-1 space-y-0.5 text-slate-600">
+                  <li><strong>正規化：</strong>Min-Max 尺度縮放</li>
+                  <li><strong>批次正規化：</strong>神經網路每一層輸入的標準化</li>
+                  <li><strong>正則化：</strong>防過擬合的懲罰項（L1/L2）</li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+            <span class="text-slate-500 font-medium">影片對應時間點：<strong class="text-slate-800 font-mono">10:34 ~ 11:03</strong></span>
+            <button onclick="scrollToSection('t-1034')" class="text-rose-600 hover:text-rose-800 font-semibold flex items-center gap-1">
+              閱讀辨析逐字稿 →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- 考題訊號對照表 -->
+    <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <h3 class="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-bolt text-amber-500"></i>
+        秒殺題感：題幹關鍵字訊號速查表
+      </h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm border-collapse">
+          <thead>
+            <tr class="bg-slate-100 text-slate-700 border-b border-slate-200">
+              <th class="p-3 font-semibold">題目關鍵字訊號</th>
+              <th class="p-3 font-semibold">直覺解題反應</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 text-slate-600 text-xs md:text-sm">
+            <tr class="hover:bg-slate-50">
+              <td class="p-3 font-medium text-slate-900">缺失比例極低、樣本數充足、隨機遺漏</td>
+              <td class="p-3 text-blue-600 font-semibold">直接刪除法 (Drop)</td>
+            </tr>
+            <tr class="hover:bg-slate-50">
+              <td class="p-3 font-medium text-slate-900">異常值本身即為預測目標（如：信用卡盜刷、洗錢）</td>
+              <td class="p-3 text-emerald-600 font-semibold">標記保留（絕對不可清洗移除）</td>
+            </tr>
+            <tr class="hover:bg-slate-50">
+              <td class="p-3 font-medium text-slate-900">以距離為基準（KNN, SVM, K-Means）</td>
+              <td class="p-3 text-indigo-600 font-semibold">必須做「特徵縮放」</td>
+            </tr>
+            <tr class="hover:bg-slate-50">
+              <td class="p-3 font-medium text-slate-900">壓縮在 0 到 1 之間、影像像素除以 255</td>
+              <td class="p-3 text-blue-600 font-semibold">Min-Max 正規化</td>
+            </tr>
+            <tr class="hover:bg-slate-50">
+              <td class="p-3 font-medium text-slate-900">轉換後平均為 0，標準差為 1</td>
+              <td class="p-3 text-indigo-600 font-semibold">Z-Score 標準化</td>
+            </tr>
+            <tr class="hover:bg-slate-50">
+              <td class="p-3 font-medium text-slate-900">資料含有離群值時的縮放工具</td>
+              <td class="p-3 text-purple-600 font-semibold">RobustScaler（基於中位數與 IQR）</td>
+            </tr>
+            <tr class="hover:bg-slate-50">
+              <td class="p-3 font-medium text-slate-900">數值嚴重右偏、拖著長尾的高額收入/房價</td>
+              <td class="p-3 text-emerald-600 font-semibold">取對數轉換 (Log Transform)</td>
+            </tr>
+            <tr class="hover:bg-slate-50">
+              <td class="p-3 font-medium text-slate-900">轉換後某個特徵模型表現反而顯著下降</td>
+              <td class="p-3 text-rose-600 font-semibold">該特徵與目標原本就是「線性關係」</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    
+    <!-- ========================================== -->
+    <!-- SLIDE 09: 這集帶走三句話 (金黃框 Yellow) -->
+    <!-- ========================================== -->
+    <div id="slide-card-ep12-09" class="bg-white rounded-2xl border-2 border-yellow-500 shadow-lg shadow-yellow-500/10 overflow-hidden transition-all duration-300 hover:shadow-yellow-500/20">
+      <div class="bg-gradient-to-r from-yellow-50 via-amber-50 to-white px-5 py-4 border-b border-yellow-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="px-2.5 py-1 rounded-lg bg-yellow-600 text-white font-mono font-bold text-xs shadow-sm">SLIDE 09</span>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              這集帶走三句話 · 考前 30 秒記憶口訣
+              <span class="text-xs px-2 py-0.5 rounded-md bg-yellow-100 text-yellow-800 font-semibold border border-yellow-200">臨考心法</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">資料清理先問真假 · 距離梯度必縮放 · 長尾取對數逐個判斷</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="scrollToSection('t-1103')" class="px-3 py-1 bg-white hover:bg-yellow-50 text-yellow-700 text-xs font-medium rounded-lg border border-yellow-200 transition flex items-center gap-1.5 shadow-sm">
+            <span>⏱ 11:03 總結逐字稿</span>
+            <span class="text-yellow-600">↓</span>
+          </button>
+          <button onclick="openLightbox('EP12/EP12_09.png', '這集帶走三句話 · 考前 30 秒記憶口訣', '⏱ 00:11:03')" class="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1 shadow-sm">
+            <span>🔍 放大投影片</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 group relative rounded-xl overflow-hidden border border-yellow-200 bg-slate-950 shadow-inner cursor-pointer" onclick="openLightbox('EP12/EP12_09.png', '這集帶走三句話 · 考前 30 秒記憶口訣', '⏱ 00:11:03')">
+          <img src="EP12/EP12_09.png" alt="EP12_09 這集帶走三句話" class="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-300">
+          <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs">
+            <span class="px-3 py-1.5 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-white/20 flex items-center gap-1.5">
+              <span>🔍 點擊檢視高解析大圖</span>
+            </span>
+          </div>
+          <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-900/80 text-[11px] font-mono text-yellow-300 backdrop-blur-sm">
+            EP12_09.png
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-3.5 text-xs sm:text-sm text-slate-700">
+          <div class="p-3.5 rounded-xl bg-yellow-50/70 border border-yellow-100 space-y-2">
+            <div class="font-bold text-yellow-900 text-xs sm:text-sm flex items-center gap-1.5">
+              <span>🏆</span>
+              <span>韋哥帶進考場的三大鐵則口訣</span>
+            </div>
+            <ul class="space-y-2 text-slate-700 leading-relaxed text-xs">
+              <li class="p-2.5 rounded-lg bg-white/90 border border-yellow-100 flex items-start gap-2.5">
+                <span class="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">1</span>
+                <div>
+                  <strong class="text-indigo-900">資料清理：</strong>
+                  <span class="text-slate-800">先問異常值是錯誤還是真的；<strong>是要抓的目標就不能清！</strong>（如信用卡盜刷、洗錢）</span>
+                </div>
+              </li>
+              <li class="p-2.5 rounded-lg bg-white/90 border border-yellow-100 flex items-start gap-2.5">
+                <span class="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">2</span>
+                <div>
+                  <strong class="text-amber-900">特徵縮放：</strong>
+                  <span class="text-slate-800">靠距離和梯度的模型要縮放；<strong>縮放的規則只能從訓練集學！</strong>（嚴防資料洩漏）</span>
+                </div>
+              </li>
+              <li class="p-2.5 rounded-lg bg-white/90 border border-yellow-100 flex items-start gap-2.5">
+                <span class="w-5 h-5 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">3</span>
+                <div>
+                  <strong class="text-teal-900">分佈轉換：</strong>
+                  <span class="text-slate-800"><strong>長尾取對數，但要逐個特徵判斷！</strong>（避免把原本的直線關係弄彎）</span>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+            <span class="text-slate-500 font-medium">影片對應時間點：<strong class="text-slate-800 font-mono">11:03 ~ 11:38</strong></span>
+            <button onclick="scrollToSection('t-1103')" class="text-yellow-600 hover:text-yellow-800 font-semibold flex items-center gap-1">
+              閱讀總結逐字稿 →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- 下方時間軸逐字稿面板 -->
+    <section id="section-transcript" class="bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-sm space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 gap-3">
+        <div>
+          <h3 class="text-xl md:text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-blue-600"></i>
+            影片完整時間軸逐字稿
+          </h3>
+          <p class="text-xs text-slate-500 mt-1">點擊任意時間戳記即可快速定位與聚焦閱讀</p>
+        </div>
+        <div class="relative w-full sm:w-64">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+          <input type="text" id="transcript-search" placeholder="搜尋逐字稿關鍵字..."
+                 class="w-full text-xs pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                 onkeyup="filterTranscript()" />
+        </div>
+      </div>
+
+      <!-- 逐字稿時間線列表 -->
+      <div id="transcript-container" class="space-y-3 font-sans text-sm text-slate-700">
+
+        <!-- 00:00:00 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:00:00
+          </span>
+          <p class="leading-relaxed">
+            先問你一題：工廠用 KNN 判斷零件合不合格，特徵是重量和厚度。重量是幾千公克，厚度只有幾公釐。工程師發現厚度明顯不合格的零件，模型卻判成合格，該怎麼修？把 K 改成 1？先做特徵縮放？還是刪掉厚度這個特徵？先停下來想一下，答案在這一集後面揭曉。
+          </p>
+        </div>
+
+        <div id="t-0020"></div>
+        <!-- 00:00:20 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:00:20
+          </span>
+          <p class="leading-relaxed">
+            這集進第 13 章「資料準備與特徵工程」。資料品質和特徵表達往往比演算法本身更決定模型好不好。這章要學會看到資料的毛病，知道該用哪一招處理。這個考點兩回共九題，115 年一回就考六題，是上升最快的考點。這集的前三個重點佔了其中四題。這集先講前三個重點：資料清理、特徵縮放、分佈轉換。
+          </p>
+        </div>
+
+        <div id="t-0047"></div>
+        <!-- 00:00:47 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:00:47
+          </span>
+          <p class="leading-relaxed">
+            <strong>重點一：資料清理。</strong> 資料進模型前要先洗菜：補缺失值、處理異常值、刪重複、統一格式。模型只會照資料學，缺失讓模型無法計算，異常值會把線性模型的線扯歪，重複資料會讓模型偏向那幾筆。清理做不好，換再強的演算法也救不回來。
+          </p>
+        </div>
+
+        <!-- 00:01:06 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:01:06
+          </span>
+          <p class="leading-relaxed">
+            缺失值有五種處理法：缺很少、樣本很多、缺得很隨機，直接刪除；想快速處理，用平均數、中位數、眾數填補，代價是壓低變異；特徵之間有關聯，找條件相似的樣本抄它的值來補；特徵高度相關，用其他特徵訓練一個模型來猜缺失值；有沒有缺本身就有意義時，新增一欄記「這裡原本是空的」，叫缺失指標。
+          </p>
+        </div>
+
+        <!-- 00:01:33 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:01:33
+          </span>
+          <p class="leading-relaxed">
+            為什麼統計值填補會壓低變異？100 人裡有 30 人體重沒填，全部補成平均 60 公斤，等於多了 30 個一模一樣的 60，高矮胖瘦的差異被抹平了。
+          </p>
+        </div>
+
+        <!-- 00:01:46 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:01:46
+          </span>
+          <p class="leading-relaxed">
+            異常值怎麼抓？Z 分數是這個值減平均再除以標準差，離平均超過大概三個標準差就算異常；IQR 是四分位距，資料由小排到大，25% 位置的值叫 Q1，75% 位置叫 Q3，Q3 減 Q1 就是 IQR。低於 Q1 減去 1.5 倍 IQR 或高於 Q3 加上 1.5 倍 IQR 算異常。
+          </p>
+        </div>
+
+        <!-- 00:02:11 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:02:11
+          </span>
+          <p class="leading-relaxed">
+            抓到之後先問他是錯誤還是真的？999 歲是輸入錯誤，移除或修正；豪宅成交價是真的但太極端，截尾或取對數。截尾是定一個上限，超過的一律改成上限；詐欺交易這種異常本身就是我們要抓的目標，標記保留，絕對不能清掉。
+          </p>
+        </div>
+
+        <!-- 00:02:26 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:02:26
+          </span>
+          <p class="leading-relaxed">
+            算一次：某店每日營業額排序後，Q1 是 20 萬，Q3 是 30 萬。IQR 等於 30 減 20 是 10 萬，1.5 倍就是 15 萬。下界是 20 減 15 是 5 萬；上界是 30 加 15 是 45 萬。營業額低於 5 萬或高於 45 萬的日子算異常。
+          </p>
+        </div>
+
+        <div id="t-0246"></div>
+        <!-- 00:02:46 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:02:46
+          </span>
+          <p class="leading-relaxed">
+            模型對髒資料的耐受度不同：樹模型像決策樹、隨機森林只看大小順序。收入 1 億和 200 萬，在「收入大於 100 萬嗎？」這一刀都只是分到同一邊，所以比較耐得住缺失值和異常值；線性模型和神經網路直接拿數值乘權重再加總，1 億會把預測值拉得很大，所以比較敏感。
+          </p>
+        </div>
+
+        <!-- 00:03:09 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:03:09
+          </span>
+          <p class="leading-relaxed">
+            學校版的比喻是整理全班成績表：缺考的補分數或標記缺考；年齡寫成 150 歲是打錯要修；同一位學生登記兩次要刪。但在作弊偵測裡，分數異常的正是要抓的人，不能清掉。
+          </p>
+        </div>
+
+        <!-- 00:03:24 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:03:24
+          </span>
+          <p class="leading-relaxed">
+            題目訊號整理一下：看到缺失比例極低、樣本充足，想到刪除法；看到特徵之間高度相關、用其他欄位推估，想到預測模型填補；看到異常值本身具有預測價值，想到標記保留；問哪種模型對缺值、異常值較有容忍度，想到樹模型；看到 Q1、Q3、1.5 倍，想到 IQR 法。
+          </p>
+        </div>
+
+        <!-- 00:03:44 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:03:44
+          </span>
+          <p class="leading-relaxed">
+            來看一個場景：某銀行要用交易資料訓練盜刷偵測模型，消費金額欄位有少數超過百萬的交易，交易地點欄位缺了 2%。大額交易要刪嗎？缺地點的交易要刪嗎？超過百萬的交易在盜刷常就是異常大額，這些點正是要抓的目標，標記保留。交易地點缺 2% 缺得少，但沒有地點可能代表網路交易，缺本身有意義，所以補一個缺失類別或加一欄缺失指標。用 IQR 把大額交易刪掉，等於把盜刷樣本丟掉；直接刪掉缺地點的交易，丟掉了網路交易這個訊號。
+          </p>
+        </div>
+
+        <div id="t-0427"></div>
+        <!-- 00:04:27 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:04:27
+          </span>
+          <p class="leading-relaxed">
+            <strong>重點二：特徵縮放。</strong> 把每個特徵的數值調到相近的範圍。為什麼要做？KNN 用距離判斷誰是鄰居，距離是把每個特徵的差距平方後加總再開根號。年收入差 10 萬，年齡差 10 歲，平方後一個是 100 億、一個是 100，距離幾乎只由收入決定，年齡等於沒用。梯度一樣，特徵尺度差很多，損失函數的地形會變成又窄又長的山谷，下山時一直左右撞牆，收斂很慢。
+          </p>
+        </div>
+
+        <!-- 00:04:54 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:04:54
+          </span>
+          <p class="leading-relaxed">
+            三種方法：Min-Max 正規化，用這個值減最小再除以最大減最小，壓到 0 到 1 之間；Z-score 標準化就是剛才抓異常值用的 Z 分數，減平均再除以標準差，變成平均 0、標準差 1；Robust 縮放減中位數再除以 IQR，比較不怕離群值。Min-Max 為什麼怕極端值？資料 10, 20, 30, 40, 1000，分母是 990，前四個變成 0.01, 0.02, 0.03，全在 0 旁邊。Robust 只看排在中間的資料，最大值從 1000 變成 100 萬，中位數和 IQR 都不會變。
+          </p>
+        </div>
+
+        <div id="t-0534"></div>
+        <!-- 00:05:34 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:05:34
+          </span>
+          <p class="leading-relaxed">
+            哪些模型要縮放？靠距離的一定要：KNN、SVM、K-Means；靠梯度訓練的線性與邏輯回歸、神經網路也建議縮放，訓練比較穩；樹模型不需要，它只問大於還是小於某個值，數值放大縮小不影響切法。還有一條：縮放要從訓練集算，平均、標準差、最大最小值只能用訓練集計算再拿去套測試集。用全部資料算，測試集的資訊就漏進訓練了，這就是資料洩漏。
+          </p>
+        </div>
+
+        <!-- 00:06:43 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:06:43
+          </span>
+          <p class="leading-relaxed">
+            回到開場那一題：KNN 靠距離，重量的數值比厚度大上千倍，距離幾乎只看重量，厚度的差異被淹沒。答案是先做特徵縮放，用 Z-score 標準化讓兩個特徵尺度一致。把 K 改成 1 不行，最近還是幾乎只由重量決定，而且只聽一個鄰居，那一個若是標錯的資料就會跟著錯；刪掉厚度更不行，厚度正是判斷不合格的關鍵。
+          </p>
+        </div>
+
+        <div id="t-0816"></div>
+        <!-- 00:08:16 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:08:16
+          </span>
+          <p class="leading-relaxed">
+            <strong>重點三：分佈轉換。</strong> 很多數值資料是右偏的，大部分人收入普通，少數人收入極高，分佈拖了一條長的右尾。長尾會讓少數極端值主導線性模型。線性模型要讓所有誤差的平方加總最小，一筆誤差特別大的極端值平方後會非常大，模型為了壓低它，整條線就被它拉過去。取對數能把長尾壓短，100 萬和 1000 萬差 10 倍，取對數後變成 6 和 7，只差 1。明顯右偏的收入、銷售額、距離、房價適合取對數。
+          </p>
+        </div>
+
+        <div id="t-0903"></div>
+        <!-- 00:09:03 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:09:03
+          </span>
+          <p class="leading-relaxed">
+            最重要的一條規則：轉換要逐個特徵判斷，不能全部一起轉。某個特徵和目標本來就是直線關係，硬取對數反而把直線變彎。學校版的比喻是全校零用錢大多幾百元、少數幾萬元，取對數後差距被壓短；但讀書時數和成績本來就是直線關係，硬取對數反而變彎。
+          </p>
+        </div>
+
+        <!-- 00:09:27 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:09:27
+          </span>
+          <p class="leading-relaxed">
+            來看 115 年考過的場景：房價模型有距捷運站距離和屋齡兩個特徵。距離取對數後模型變好，屋齡取對數後模型反而變差，為什麼？距離嚴重右偏，取對數把長尾壓短，關係變得比較直；屋齡和房價本來就大致成直線，每一年降一些，取對數把直線變彎，破壞了原本的結構。所以只對距離取對數，屋齡保持原樣。
+          </p>
+        </div>
+
+        <div id="t-1034"></div>
+        <!-- 00:10:34 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:10:34
+          </span>
+          <p class="leading-relaxed">
+            最後分辨這集最容易搞混的名詞：正規化是 Min-Max 壓到 0 到 1；標準化是 Z-Score 平均 0、標準差 1；特徵選擇是挑特徵。還有三個「正」：正規化是 Min-Max 縮放；批次正規化是標準化每一層的輸入；正則化是防過擬合的懲罰項。
+          </p>
+        </div>
+
+        <div id="t-1103"></div>
+        <!-- 00:11:03 -->
+        <div class="timeline-item p-3.5 rounded-xl border border-slate-100 hover:border-blue-300 transition flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+          <span class="inline-flex items-center gap-1 font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer self-start" onclick="highlightItem(this)">
+            <i class="fa-regular fa-circle-play"></i> 00:11:03
+          </span>
+          <p class="leading-relaxed">
+            這集帶走三句話：資料清理先問異常值是錯誤還是真的，是要抓的目標就不能清；靠距離和梯度的模型要縮放，縮放的規則只能從訓練集；長尾取對數，但要逐個特徵判斷。下一集進第 13 章後半：類別編碼、造特徵、特徵選擇、資料增強。
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 浮動置底速記列 -->
+  <div class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-slate-200 py-2.5 px-4 z-30 shadow-lg">
+    <div class="max-w-5xl mx-auto flex items-center justify-between text-xs text-slate-600">
+      <div class="flex items-center gap-2">
+        <span class="bg-blue-600 text-white font-bold px-2 py-0.5 rounded">複習心法</span>
+        <span class="hidden sm:inline">① 異常值問真假 ② 見距離梯度必縮放 ③ 長尾取對數獨立判斷</span>
+        <span class="sm:hidden truncate">異常真假 / 縮放 / 獨立取對數</span>
+      </div>
+      <a href="#section-transcript" class="text-blue-600 font-semibold hover:underline flex items-center gap-1 shrink-0">
+        <i class="fa-solid fa-arrow-up"></i> 回時間軸
+      </a>
+    </div>
+  </div>
+
+  <script>
+    // 點擊高亮時間戳記
+    function highlightItem(element) {
+      document.querySelectorAll('.timeline-item').forEach(item => {
+        item.classList.remove('active', 'border-blue-500', 'bg-blue-50/40');
+      });
+      const parent = element.closest('.timeline-item');
+      if (parent) {
+        parent.classList.add('active', 'border-blue-500', 'bg-blue-50/40');
+      }
+    }
+
+    // 搜尋過濾逐字稿
+    function filterTranscript() {
+      const query = document.getElementById('transcript-search').value.toLowerCase().trim();
+      const items = document.querySelectorAll('.timeline-item');
+      items.forEach(item => {
+        const text = item.textContent.toLowerCase();
+        if (text.includes(query)) {
+          item.style.display = '';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    }
+
+    // SVG 互動提示
+    function showTip(msg) {
+      const tip = document.getElementById('svg-tip');
+      tip.innerHTML = `<i class="fa-solid fa-circle-info text-blue-600"></i> <strong class="text-slate-900">${msg}</strong>`;
+      tip.classList.add('bg-blue-50', 'text-blue-900');
+    }
+  </script>
+
+  <!-- ========================================== -->
+  <!-- 全螢幕 Lightbox 模態視窗 (Modal) -->
+  <!-- ========================================== -->
+  <div id="image-lightbox" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden items-center justify-center p-4 sm:p-6 transition-opacity duration-300 opacity-0" onclick="handleLightboxClick(event)">
+    <div class="relative max-w-5xl w-full bg-slate-900 rounded-2xl border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <!-- 頂部資訊列 -->
+      <div class="flex items-center justify-between px-5 py-3.5 bg-slate-800/80 border-b border-slate-700 text-white">
+        <div class="flex items-center gap-3">
+          <span id="lightbox-time" class="px-2.5 py-0.5 text-xs font-mono font-bold rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">⏱ 00:00</span>
+          <h3 id="lightbox-title" class="font-bold text-sm sm:text-base text-slate-100">投影片預覽</h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <a id="lightbox-download" href="#" target="_blank" download class="px-2.5 py-1 text-xs rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 transition flex items-center gap-1">
+            <span>原圖開新視窗</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+          </a>
+          <button onclick="closeLightbox()" class="w-8 h-8 rounded-lg bg-slate-700/60 hover:bg-rose-600 text-slate-300 hover:text-white transition flex items-center justify-center">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <!-- 圖片容器 -->
+      <div class="flex-1 overflow-auto p-4 flex items-center justify-center bg-black/60">
+        <img id="lightbox-img" src="" alt="投影片放大圖" class="max-w-full max-h-[75vh] object-contain rounded-lg shadow-lg">
+      </div>
+
+      <!-- 底部提示列 -->
+      <div class="px-5 py-2.5 bg-slate-800/60 border-t border-slate-700/60 text-xs text-slate-400 flex items-center justify-between">
+        <span>按 <kbd class="px-1.5 py-0.5 rounded bg-slate-700 text-slate-200 font-mono text-[11px]">ESC</kbd> 鍵或點擊黑色背景關閉視窗</span>
+        <span class="text-indigo-400 font-medium">韋哥 iPAS 12 · 資料整理前三招</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Lightbox 控制
+    function openLightbox(src, title, timeStr) {
+      const modal = document.getElementById('image-lightbox');
+      const img = document.getElementById('lightbox-img');
+      const titleEl = document.getElementById('lightbox-title');
+      const timeEl = document.getElementById('lightbox-time');
+      const dlLink = document.getElementById('lightbox-download');
+
+      img.src = src;
+      titleEl.textContent = title || '投影片預覽';
+      timeEl.textContent = timeStr || '';
+      dlLink.href = src;
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      requestAnimationFrame(() => {
+        modal.classList.remove('opacity-0');
+        modal.classList.add('opacity-100');
+      });
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      const modal = document.getElementById('image-lightbox');
+      modal.classList.remove('opacity-100');
+      modal.classList.add('opacity-0');
+      setTimeout(() => {
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+      }, 300);
+    }
+
+    function handleLightboxClick(e) {
+      if (e.target.id === 'image-lightbox') {
+        closeLightbox();
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeLightbox();
+      }
+    });
+
+    // 跳轉至投影片卡片
+    function scrollToSlide(slideId) {
+      const el = document.getElementById(slideId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-4', 'ring-indigo-400', 'ring-opacity-80');
+        setTimeout(() => {
+          el.classList.remove('ring-4', 'ring-indigo-400', 'ring-opacity-80');
+        }, 1800);
+      }
+    }
+
+    // 跳轉至逐字稿段落
+    function scrollToSection(sectionId) {
+      const el = document.getElementById(sectionId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-4', 'ring-emerald-400', 'ring-opacity-80');
+        setTimeout(() => {
+          el.classList.remove('ring-4', 'ring-emerald-400', 'ring-opacity-80');
+        }, 1800);
+      }
+    }
+  </script>
+
+</body>
+</html>

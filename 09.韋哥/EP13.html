@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EP13.類別編碼與資料增強｜帶你看懂類別編碼、造新特徵、特徵選擇和資料增強</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- KaTeX for formula rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+  <style>
+    html { scroll-behavior: smooth; }
+    .code-font { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    /* 自訂滾動條 */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+
+  <!-- 頂部導航列 -->
+  <header class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <h1 class="text-sm sm:text-lg font-bold text-slate-900 truncate max-w-xs sm:max-w-md md:max-w-xl">
+          EP13. 類別編碼與資料增強
+        </h1>
+      </div>
+      <div class="flex items-center space-x-2 sm:space-x-4">
+        <a href="#interactive-lesson" class="text-xs sm:text-sm font-medium text-slate-600 hover:text-indigo-600 transition px-2 py-1">
+          重點教材
+        </a>
+        <a href="#transcript-section" class="text-xs sm:text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition border border-indigo-200 flex items-center gap-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
+          逐字稿對照
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+    <!-- 考題趨勢與課前思考題橫幅 -->
+    <section class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+      <div class="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
+        <svg class="w-96 h-96 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      </div>
+      <div class="relative z-10 space-y-4">
+        <div class="inline-flex items-center gap-2 bg-indigo-500/30 text-indigo-300 text-xs px-3 py-1 rounded-full border border-indigo-400/30">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          出題趨勢：近兩回 9 題、115 年單回狂考 6 題！上升最快考點
+        </div>
+        <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">
+          【iPAS AI應用規劃師】類別編碼、造新特徵、特徵選擇與資料增強
+        </h2>
+        
+        <!-- 課前動腦思考題 -->
+        <div class="mt-4 bg-white/10 backdrop-blur-sm border border-white/15 p-5 rounded-xl space-y-3">
+          <div class="flex items-center gap-2 text-amber-300 font-bold text-sm">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            開場情境思考題
+          </div>
+          <p class="text-slate-200 text-sm leading-relaxed">
+            AI 團隊為四個專案統一添加了<strong>「隨機水平翻轉 (Random Horizontal Flip)」</strong>資料增強：<br>
+            <span class="font-mono bg-black/30 px-2 py-0.5 rounded text-xs mr-1">專案A</span> 貓狗分類 &nbsp;|&nbsp; 
+            <span class="font-mono bg-black/30 px-2 py-0.5 rounded text-xs mr-1">專案B</span> 車型分類 &nbsp;|&nbsp; 
+            <span class="font-mono bg-black/30 px-2 py-0.5 rounded text-xs mr-1">專案C</span> 行人偵測 &nbsp;|&nbsp; 
+            <span class="font-mono bg-black/30 px-2 py-0.5 rounded text-xs mr-1">專案D</span> 手寫數字辨識
+          </p>
+          <div class="flex flex-wrap items-center gap-3 pt-2">
+            <span class="text-xs text-amber-200">哪一個專案的測試表現會明顯下降？</span>
+            <button onclick="toggleAnswer()" class="text-xs bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold px-3 py-1 rounded transition shadow">
+              查看解答與破題核心
+            </button>
+            <div id="quick-answer" class="hidden text-xs bg-emerald-950/80 border border-emerald-500 text-emerald-200 px-3 py-1 rounded">
+              🎯 <strong>答案：專案D 手寫數字辨識！</strong> 數字具有語意方向性（如翻轉後不是字或變成錯字），破壞標籤正確性。
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 核心教材主體 -->
+    <div id="interactive-lesson" class="space-y-12">
+
+    <!-- ========================================== -->
+    <!-- 9 大精華投影片快速索引導覽列 (Quick Slide Navigator) -->
+    <!-- ========================================== -->
+    <section class="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-5 sm:p-6 text-white shadow-xl border border-indigo-500/30">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-indigo-500/30 pb-3">
+        <div class="flex items-center gap-3">
+          <span class="w-8 h-8 rounded-lg bg-indigo-500/30 border border-indigo-400/40 flex items-center justify-center text-indigo-300 font-bold text-sm">
+            🖼️
+          </span>
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              本集 9 大精華投影片快速索引
+              <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 font-normal">韋哥投影片對照</span>
+            </h2>
+            <p class="text-xs text-indigo-200/80 mt-0.5">點擊卡片快速跳轉至各投影片詳解，支援點擊圖片全螢幕放大與時間軸精確對齊</p>
+          </div>
+        </div>
+        <span class="text-xs font-mono text-indigo-300 bg-indigo-900/50 px-2.5 py-1 rounded-md border border-indigo-700/50">
+          EP13 · 共 9 張精華版書
+        </span>
+      </div>
+
+      <!-- 快速導覽卡片 Grid (9宮格) -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-5 gap-2.5">
+        <!-- Nav 01: 全景輪廓 -->
+        <button onclick="scrollToSlide('slide-card-ep13-01')" class="group text-left p-3 rounded-xl bg-slate-800/80 hover:bg-emerald-950/60 border border-slate-700 hover:border-emerald-500/60 transition-all duration-200 flex flex-col justify-between hover:scale-[1.02]">
+          <div class="flex items-center justify-between w-full mb-1">
+            <span class="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">SLIDE 01</span>
+            <span class="text-[10px] font-mono text-slate-400">⏱ 00:15</span>
+          </div>
+          <div class="text-xs font-bold text-slate-200 group-hover:text-emerald-300 line-clamp-1 leading-snug">
+            第十三章後半：四大重點全貌
+          </div>
+          <div class="mt-1.5 text-[10px] text-emerald-400/80 font-medium flex items-center gap-1">
+            <span>跳轉檢視</span>
+            <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </button>
+
+        <!-- Nav 02: 類別編碼 -->
+        <button onclick="scrollToSlide('slide-card-ep13-02')" class="group text-left p-3 rounded-xl bg-slate-800/80 hover:bg-indigo-950/60 border border-slate-700 hover:border-indigo-500/60 transition-all duration-200 flex flex-col justify-between hover:scale-[1.02]">
+          <div class="flex items-center justify-between w-full mb-1">
+            <span class="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">SLIDE 02</span>
+            <span class="text-[10px] font-mono text-slate-400">⏱ 00:43</span>
+          </div>
+          <div class="text-xs font-bold text-slate-200 group-hover:text-indigo-300 line-clamp-1 leading-snug">
+            重點四：類別編碼與順序陷阱
+          </div>
+          <div class="mt-1.5 text-[10px] text-indigo-400/80 font-medium flex items-center gap-1">
+            <span>跳轉檢視</span>
+            <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </button>
+
+        <!-- Nav 03: 造新特徵 -->
+        <button onclick="scrollToSlide('slide-card-ep13-03')" class="group text-left p-3 rounded-xl bg-slate-800/80 hover:bg-amber-950/60 border border-slate-700 hover:border-amber-500/60 transition-all duration-200 flex flex-col justify-between hover:scale-[1.02]">
+          <div class="flex items-center justify-between w-full mb-1">
+            <span class="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">SLIDE 03</span>
+            <span class="text-[10px] font-mono text-slate-400">⏱ 04:22</span>
+          </div>
+          <div class="text-xs font-bold text-slate-200 group-hover:text-amber-300 line-clamp-1 leading-snug">
+            重點五：從原始欄位造新特徵
+          </div>
+          <div class="mt-1.5 text-[10px] text-amber-400/80 font-medium flex items-center gap-1">
+            <span>跳轉檢視</span>
+            <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </button>
+
+        <!-- Nav 04: 造特徵題目訊號 -->
+        <button onclick="scrollToSlide('slide-card-ep13-04')" class="group text-left p-3 rounded-xl bg-slate-800/80 hover:bg-sky-950/60 border border-slate-700 hover:border-sky-500/60 transition-all duration-200 flex flex-col justify-between hover:scale-[1.02]">
+          <div class="flex items-center justify-between w-full mb-1">
+            <span class="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">SLIDE 04</span>
+            <span class="text-[10px] font-mono text-slate-400">⏱ 05:51</span>
+          </div>
+          <div class="text-xs font-bold text-slate-200 group-hover:text-sky-300 line-clamp-1 leading-snug">
+            學校比喻與訊號：造特徵
+          </div>
+          <div class="mt-1.5 text-[10px] text-sky-400/80 font-medium flex items-center gap-1">
+            <span>跳轉檢視</span>
+            <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </button>
+
+        <!-- Nav 05: 特徵選擇三法 -->
+        <button onclick="scrollToSlide('slide-card-ep13-05')" class="group text-left p-3 rounded-xl bg-slate-800/80 hover:bg-purple-950/60 border border-slate-700 hover:border-purple-500/60 transition-all duration-200 flex flex-col justify-between hover:scale-[1.02]">
+          <div class="flex items-center justify-between w-full mb-1">
+            <span class="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">SLIDE 05</span>
+            <span class="text-[10px] font-mono text-slate-400">⏱ 07:07</span>
+          </div>
+          <div class="text-xs font-bold text-slate-200 group-hover:text-purple-300 line-clamp-1 leading-snug">
+            重點六：特徵選擇與過擬合
+          </div>
+          <div class="mt-1.5 text-[10px] text-purple-400/80 font-medium flex items-center gap-1">
+            <span>跳轉檢視</span>
+            <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </button>
+
+        <!-- Nav 06: 特徵選擇學校訊號 -->
+        <button onclick="scrollToSlide('slide-card-ep13-06')" class="group text-left p-3 rounded-xl bg-slate-800/80 hover:bg-orange-950/60 border border-slate-700 hover:border-orange-500/60 transition-all duration-200 flex flex-col justify-between hover:scale-[1.02]">
+          <div class="flex items-center justify-between w-full mb-1">
+            <span class="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-300 border border-orange-500/30">SLIDE 06</span>
+            <span class="text-[10px] font-mono text-slate-400">⏱ 08:30</span>
+          </div>
+          <div class="text-xs font-bold text-slate-200 group-hover:text-orange-300 line-clamp-1 leading-snug">
+            學校比喻與訊號：特徵選擇
+          </div>
+          <div class="mt-1.5 text-[10px] text-orange-400/80 font-medium flex items-center gap-1">
+            <span>跳轉檢視</span>
+            <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </button>
+
+        <!-- Nav 07: 資料增強 -->
+        <button onclick="scrollToSlide('slide-card-ep13-07')" class="group text-left p-3 rounded-xl bg-slate-800/80 hover:bg-teal-950/60 border border-slate-700 hover:border-teal-500/60 transition-all duration-200 flex flex-col justify-between hover:scale-[1.02]">
+          <div class="flex items-center justify-between w-full mb-1">
+            <span class="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-300 border border-teal-500/30">SLIDE 07</span>
+            <span class="text-[10px] font-mono text-slate-400">⏱ 09:48</span>
+          </div>
+          <div class="text-xs font-bold text-slate-200 group-hover:text-teal-300 line-clamp-1 leading-snug">
+            重點七：資料增強與泛化提升
+          </div>
+          <div class="mt-1.5 text-[10px] text-teal-400/80 font-medium flex items-center gap-1">
+            <span>跳轉檢視</span>
+            <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </button>
+
+        <!-- Nav 08: 易混淆對照 -->
+        <button onclick="scrollToSlide('slide-card-ep13-08')" class="group text-left p-3 rounded-xl bg-slate-800/80 hover:bg-rose-950/60 border border-slate-700 hover:border-rose-500/60 transition-all duration-200 flex flex-col justify-between hover:scale-[1.02]">
+          <div class="flex items-center justify-between w-full mb-1">
+            <span class="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">SLIDE 08</span>
+            <span class="text-[10px] font-mono text-slate-400">⏱ 11:50</span>
+          </div>
+          <div class="text-xs font-bold text-slate-200 group-hover:text-rose-300 line-clamp-1 leading-snug">
+            易混淆對照：本集三大組
+          </div>
+          <div class="mt-1.5 text-[10px] text-rose-400/80 font-medium flex items-center gap-1">
+            <span>跳轉檢視</span>
+            <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </button>
+
+        <!-- Nav 09: 這集帶走四句話 -->
+        <button onclick="scrollToSlide('slide-card-ep13-09')" class="group text-left p-3 rounded-xl bg-slate-800/80 hover:bg-yellow-950/60 border border-slate-700 hover:border-yellow-500/60 transition-all duration-200 flex flex-col justify-between hover:scale-[1.02]">
+          <div class="flex items-center justify-between w-full mb-1">
+            <span class="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">SLIDE 09</span>
+            <span class="text-[10px] font-mono text-slate-400">⏱ 11:50</span>
+          </div>
+          <div class="text-xs font-bold text-slate-200 group-hover:text-yellow-300 line-clamp-1 leading-snug">
+            這集帶走四句話記憶卡
+          </div>
+          <div class="mt-1.5 text-[10px] text-yellow-400/80 font-medium flex items-center gap-1">
+            <span>跳轉檢視</span>
+            <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </button>
+      </div>
+    </section>
+
+
+
+    <!-- ========================================== -->
+    <!-- SLIDE 01: 第十三章後半：重點四 ～ 七 全貌 (翡翠綠框 Emerald) -->
+    <!-- ========================================== -->
+    <div id="slide-card-ep13-01" class="bg-white rounded-2xl border-2 border-emerald-500 shadow-lg shadow-emerald-500/10 overflow-hidden transition-all duration-300 hover:shadow-emerald-500/20">
+      <div class="bg-gradient-to-r from-emerald-50 via-teal-50 to-white px-5 py-4 border-b border-emerald-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-mono font-bold text-xs shadow-sm">SLIDE 01</span>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              第十三章後半 · 重點四～七 全景架構
+              <span class="text-xs px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-semibold border border-emerald-200">命題命中率最高</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">L23301 兩回共 9 題，115 年考 6 題！本集四大重點直接命中 6 題</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="scrollToTranscript('t-000015')" class="px-3 py-1 bg-white hover:bg-emerald-50 text-emerald-700 text-xs font-medium rounded-lg border border-emerald-200 transition flex items-center gap-1.5 shadow-sm">
+            <span>⏱ 00:15 考情逐字稿</span>
+            <span class="text-emerald-500">↓</span>
+          </button>
+          <button onclick="openLightbox('EP13/EP13_01.png', '第十三章後半 · 重點四～七 全景架構', '⏱ 00:00:15')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1 shadow-sm">
+            <span>🔍 放大投影片</span>
+          </button>
+        </div>
+      </div>
+
+
+    <!-- ========================================== -->
+    <!-- SLIDE 07: 重點七：資料增強 (深青綠框 Teal) -->
+    <!-- ========================================== -->
+    <div id="slide-card-ep13-07" class="bg-white rounded-2xl border-2 border-teal-500 shadow-lg shadow-teal-500/10 overflow-hidden transition-all duration-300 hover:shadow-teal-500/20">
+      <div class="bg-gradient-to-r from-teal-50 via-emerald-50 to-white px-5 py-4 border-b border-teal-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="px-2.5 py-1 rounded-lg bg-teal-600 text-white font-mono font-bold text-xs shadow-sm">SLIDE 07</span>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              重點七 · 資料增強（Data Augmentation）與泛化能力
+              <span class="text-xs px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 font-semibold border border-teal-200">影像與表格增強</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">製造更多訓練樣本 ➔ 模型見過更多變化 ➔ 泛化能力更強</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="scrollToTranscript('t-000948')" class="px-3 py-1 bg-white hover:bg-teal-50 text-teal-700 text-xs font-medium rounded-lg border border-teal-200 transition flex items-center gap-1.5 shadow-sm">
+            <span>⏱ 09:48 增強逐字稿</span>
+            <span class="text-teal-500">↓</span>
+          </button>
+          <button onclick="openLightbox('EP13/EP13_07.png', '重點七 · 資料增強與泛化能力', '⏱ 00:09:48')" class="px-3 py-1 bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1 shadow-sm">
+            <span>🔍 放大投影片</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 group relative rounded-xl overflow-hidden border border-teal-200 bg-slate-950 shadow-inner cursor-pointer" onclick="openLightbox('EP13/EP13_07.png', '重點七 · 資料增強與泛化能力', '⏱ 00:09:48')">
+          <img src="EP13/EP13_07.png" alt="EP13_07 資料增強" class="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-300">
+          <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs">
+            <span class="px-3 py-1.5 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-white/20 flex items-center gap-1.5">
+              <span>🔍 點擊檢視高解析大圖</span>
+            </span>
+          </div>
+          <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-900/80 text-[11px] font-mono text-teal-300 backdrop-blur-sm">
+            EP13_07.png
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-3.5 text-xs sm:text-sm text-slate-700">
+          <div class="p-3.5 rounded-xl bg-teal-50/70 border border-teal-100 space-y-2">
+            <div class="font-bold text-teal-900 text-xs sm:text-sm flex items-center gap-1.5">
+              <span>🐱</span>
+              <span>小貓翻轉實例與增強兩大鐵則</span>
+            </div>
+            <ul class="space-y-1.5 text-slate-700 leading-relaxed text-xs">
+              <li>• <strong>變換範例：</strong>原本的貓咪照片 ➔ 左右水平翻轉、旋轉 10 度、調暗一點，一口氣產生 3 張新樣本！以後不同角度、光線的貓咪都認得出來。</li>
+              <li>• <strong class="text-rose-600">鐵則一（標籤必須仍正確）：</strong>貓左右翻還是貓；但<strong>手寫數字『b』水平翻轉變成『d』、『6』垂直翻轉變成『9』</strong>，標籤若未改模型直接學錯！</li>
+              <li>• <strong class="text-rose-600">鐵則二（嚴防資料洩漏）：</strong>必須先切分好 Train / Validation / Test，<strong>只能對 Train Set 進行增強</strong>！若對全體資料增強，變形樣本會跨集滲漏，分數虛高。</li>
+            </ul>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+            <span class="text-slate-500 font-medium">影片對應時間點：<strong class="text-slate-800 font-mono">09:48 ~ 11:29</strong></span>
+            <button onclick="scrollToTranscript('t-000948')" class="text-teal-600 hover:text-teal-800 font-semibold flex items-center gap-1">
+              閱讀增強逐字稿 →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- ========================================== -->
+    <!-- SLIDE 03: 重點五：從原始欄位造新特徵 (琥珀橙框 Amber) -->
+    <!-- ========================================== -->
+    <div id="slide-card-ep13-03" class="bg-white rounded-2xl border-2 border-amber-500 shadow-lg shadow-amber-500/10 overflow-hidden transition-all duration-300 hover:shadow-amber-500/20">
+      <div class="bg-gradient-to-r from-amber-50 via-orange-50 to-white px-5 py-4 border-b border-amber-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="px-2.5 py-1 rounded-lg bg-amber-600 text-white font-mono font-bold text-xs shadow-sm">SLIDE 03</span>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              重點五 · 從原始欄位造新特徵（組合或加工）
+              <span class="text-xs px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 font-semibold border border-amber-200">實務核心</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">特徵組合或加工常常比更換模型架構更有效！互動特徵與聚合特徵</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="scrollToTranscript('t-000422')" class="px-3 py-1 bg-white hover:bg-amber-50 text-amber-700 text-xs font-medium rounded-lg border border-amber-200 transition flex items-center gap-1.5 shadow-sm">
+            <span>⏱ 04:22 造特徵逐字稿</span>
+            <span class="text-amber-500">↓</span>
+          </button>
+          <button onclick="openLightbox('EP13/EP13_03.png', '重點五 · 從原始欄位造新特徵', '⏱ 00:04:22')" class="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1 shadow-sm">
+            <span>🔍 放大投影片</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 group relative rounded-xl overflow-hidden border border-amber-200 bg-slate-950 shadow-inner cursor-pointer" onclick="openLightbox('EP13/EP13_03.png', '重點五 · 從原始欄位造新特徵', '⏱ 00:04:22')">
+          <img src="EP13/EP13_03.png" alt="EP13_03 從原始欄位造新特徵" class="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-300">
+          <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs">
+            <span class="px-3 py-1.5 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-white/20 flex items-center gap-1.5">
+              <span>🔍 點擊檢視高解析大圖</span>
+            </span>
+          </div>
+          <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-900/80 text-[11px] font-mono text-amber-300 backdrop-blur-sm">
+            EP13_03.png
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-3.5 text-xs sm:text-sm text-slate-700">
+          <div class="p-3.5 rounded-xl bg-amber-50/70 border border-amber-100 space-y-2">
+            <div class="font-bold text-amber-900 text-xs sm:text-sm flex items-center gap-1.5">
+              <span>💡</span>
+              <span>造特徵兩大招：互動與聚合</span>
+            </div>
+            <ul class="space-y-1.5 text-slate-700 leading-relaxed text-xs">
+              <li>• <strong>互動特徵（Interaction）：</strong>如「價格 × 滿意度」、「單價 × 數量 = 總金額」。捕捉兩個特徵「合在一起」才發生的綜合效應，分開看完全看不出來！</li>
+              <li>• <strong>聚合特徵（Aggregation）：</strong>如「過去 7 天點擊次數」、「使用者過去 30 天平均消費金額」。把時序或一連串瑣碎行為濃縮成一個代表性數值。</li>
+              <li>• <strong>威力總結：</strong>給模型更好消化的高價值資訊，效益遠大於盲目調參或換更複雜的黑箱演算法。</li>
+            </ul>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+            <span class="text-slate-500 font-medium">影片對應時間點：<strong class="text-slate-800 font-mono">04:22 ~ 05:51</strong></span>
+            <button onclick="scrollToTranscript('t-000422')" class="text-amber-600 hover:text-amber-800 font-semibold flex items-center gap-1">
+              閱讀造特徵逐字稿 →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+      <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 group relative rounded-xl overflow-hidden border border-emerald-200 bg-slate-950 shadow-inner cursor-pointer" onclick="openLightbox('EP13/EP13_01.png', '第十三章後半 · 重點四～七 全景架構', '⏱ 00:00:15')">
+          <img src="EP13/EP13_01.png" alt="EP13_01 第十三章後半 重點四～七" class="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-300">
+          <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs">
+            <span class="px-3 py-1.5 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-white/20 flex items-center gap-1.5">
+              <span>🔍 點擊檢視高解析大圖</span>
+            </span>
+          </div>
+          <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-900/80 text-[11px] font-mono text-emerald-300 backdrop-blur-sm">
+            EP13_01.png
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-3.5 text-xs sm:text-sm text-slate-700">
+          <div class="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-100 space-y-2">
+            <div class="font-bold text-emerald-900 text-xs sm:text-sm flex items-center gap-1.5">
+              <span>🎯</span>
+              <span>本集四大核心技術與命中考題</span>
+            </div>
+            <ul class="space-y-1.5 text-slate-700 leading-relaxed text-xs">
+              <li class="flex items-start gap-2">
+                <span class="text-emerald-600 font-bold">四.</span>
+                <span><strong>類別編碼：</strong>文字轉數字，有序 Label、無序 One-Hot、高基數 Target / Embedding（命中 115-24、115-46）。</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-emerald-600 font-bold">五.</span>
+                <span><strong>從原始欄位造新特徵：</strong>互動相乘、滑動窗口滯後、週期 sin/cos（命中 114-20、115-26）。</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-emerald-600 font-bold">六.</span>
+                <span><strong>特徵選擇三法：</strong>Filter 海選、Wrapper 試鏡、Embedded 邊演邊選（解決過擬合）。</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-emerald-600 font-bold">七.</span>
+                <span><strong>資料增強：</strong>翻轉旋轉變換、SMOTE 合成少數類（命中 115-4、115-41）。</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+            <span class="text-slate-500 font-medium">影片對應時間點：<strong class="text-slate-800 font-mono">00:15 ~ 00:43</strong></span>
+            <button onclick="scrollToTranscript('t-000015')" class="text-emerald-600 hover:text-emerald-800 font-semibold flex items-center gap-1">
+              閱讀考情逐字稿 →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+      <!-- ================= 模組一：類別編碼 ================= -->
+      <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-6">
+        <div class="border-b border-slate-100 pb-4">
+          <span class="text-xs font-bold text-indigo-600 tracking-wider uppercase">Module 01</span>
+          <h3 class="text-xl sm:text-2xl font-bold text-slate-900 mt-1">重點四：類別編碼 (Categorical Encoding)</h3>
+          <p class="text-slate-500 text-sm mt-1">演算法只吃矩陣數字，字串特徵必須轉換。用錯編碼會讓模型直接曲解特徵關係！</p>
+        </div>
+
+        <!-- 4大編碼方式表格 -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+                <th class="p-3.5">編碼方式</th>
+                <th class="p-3.5">原理機制</th>
+                <th class="p-3.5">最佳適用場景</th>
+                <th class="p-3.5">致命缺點與陷阱</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-slate-600">
+              <tr class="hover:bg-slate-50 transition">
+                <td class="p-3.5 font-bold text-slate-800">Label Encoding<br><span class="text-xs text-slate-400 font-normal">標籤編碼</span></td>
+                <td class="p-3.5">每類給予整數值<br>(國小:0, 國中:1, 高中:2)</td>
+                <td class="p-3.5"><span class="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded font-medium">有序類別</span><br>教育程度、會員階級</td>
+                <td class="p-3.5 text-rose-600">無序類別會被強加大小權重（誤認台南 2 比台北 0 大）</td>
+              </tr>
+              <tr class="hover:bg-slate-50 transition">
+                <td class="p-3.5 font-bold text-slate-800">One-Hot Encoding<br><span class="text-xs text-slate-400 font-normal">獨熱編碼</span></td>
+                <td class="p-3.5">每類開獨立新欄位，是則 1 其餘 0<br>(紅:[1,0,0], 綠:[0,1,0])</td>
+                <td class="p-3.5"><span class="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded font-medium">無序且低基數</span><br>顏色、性別、低維狀態</td>
+                <td class="p-3.5 text-rose-600">遇高基數 (如 8000 種商品) 產生維度爆炸與記憶體耗盡</td>
+              </tr>
+              <tr class="hover:bg-slate-50 transition">
+                <td class="p-3.5 font-bold text-slate-800">Target Encoding<br><span class="text-xs text-slate-400 font-normal">目標編碼</span></td>
+                <td class="p-3.5">用該類別在目標答案的平均值取代 (預測房價時台北代入台北平均)</td>
+                <td class="p-3.5"><span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded font-medium">高基數且強相關</span><br>僅需固定 1 欄</td>
+                <td class="p-3.5 text-rose-600">極易引發資料洩漏 (Data Leakage)，需用交叉擬合 (OOF)</td>
+              </tr>
+              <tr class="hover:bg-slate-50 transition">
+                <td class="p-3.5 font-bold text-slate-800">Embedding<br><span class="text-xs text-slate-400 font-normal">嵌入向量</span></td>
+                <td class="p-3.5">學出低維稠密向量 (如 32 維)，具備語意距離</td>
+                <td class="p-3.5"><span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded font-medium">深度學習推薦系統</span><br>高基數巨量類別</td>
+                <td class="p-3.5 text-rose-600">需要神經網路反向傳播訓練，黑盒子不易直接解釋</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 藍色框框：避坑重點 -->
+        <div class="bg-blue-50/80 border-l-4 border-blue-600 p-4 rounded-r-xl space-y-2">
+          <div class="flex items-center gap-2 text-blue-900 font-bold text-sm">
+            <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+            【避坑重點】Target Encoding 如何防止資料洩漏 (Data Leakage)？
+          </div>
+          <p class="text-xs sm:text-sm text-blue-800 leading-relaxed">
+            平均值是由目標標籤計算出來的。若把驗證集或當前樣本自己的房價答案算進去，等於「提早偷看考題答案」，驗證分數會大幅虛高！<br>
+            <strong>正確做法：</strong>訓練資料必須使用 <strong>交叉擬合 (Out-of-Fold, OOF)</strong>，計算每一筆資料時絕對不用到自己的答案；驗證與測試集則嚴格僅套用訓練集學出來的靜態對照表。
+          </p>
+        </div>
+
+        <!-- 黃色框框：考題訊號 -->
+        <div class="bg-amber-50/80 border-l-4 border-amber-500 p-4 rounded-r-xl space-y-1.5">
+          <div class="flex items-center gap-2 text-amber-900 font-bold text-sm">
+            <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            【考題訊號快速反射】
+          </div>
+          <ul class="text-xs sm:text-sm text-amber-800 list-disc list-inside space-y-1">
+            <li>看到「<strong>教育程度、會員等級、有順序</strong>」 ➔ 秒選 <code>Label Encoding</code></li>
+            <li>看到「<strong>城市、顏色、無順序</strong>」 ➔ 秒選 <code>One-Hot Encoding</code></li>
+            <li>看到「<strong>高基數、上千種類別、維度爆炸、記憶體爆掉</strong>」 ➔ 改用 <code>Target Encoding</code> 或 <code>Embedding</code></li>
+            <li>看到 <code>to_categorical</code> ➔ Keras 將標籤轉換為 One-Hot 的專屬函式</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ================= 模組二：從原始欄位造新特徵 ================= -->
+      <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-6">
+        <div class="border-b border-slate-100 pb-4">
+          <span class="text-xs font-bold text-indigo-600 tracking-wider uppercase">Module 02</span>
+          <h3 class="text-xl sm:text-2xl font-bold text-slate-900 mt-1">重點五：從原始欄位造新特徵 (Feature Engineering)</h3>
+          <p class="text-slate-500 text-sm mt-1">原始特徵往往資訊量不足，加工組合特徵常常比直接換模型更有效！</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-indigo-500"></span> 互動特徵 (Interaction)
+            </h4>
+            <p class="text-xs text-slate-600 mt-2 leading-relaxed">
+              相乘或相除捕捉協同效應。如：<code class="text-indigo-600">價格 × 滿意度</code>、<code class="text-indigo-600">出席率 × 作業繳交率</code>。單獨看平淡，合在一起才顯現關鍵影饗力。
+            </p>
+          </div>
+          <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-indigo-500"></span> 滯後特徵 (Lag)
+            </h4>
+            <p class="text-xs text-slate-600 mt-2 leading-relaxed">
+              時間序列的核心，取 <code class="text-indigo-600">t-1 (昨天)</code>、<code class="text-indigo-600">t-7 (上週同天)</code>。搭配<strong>滑動窗口 (Sliding Window)</strong> 與移動平均，濾除每日波動。
+            </p>
+          </div>
+          <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-indigo-500"></span> 週期編碼 (Cyclical)
+            </h4>
+            <p class="text-xs text-slate-600 mt-2 leading-relaxed">
+              星期、小時具備循環性。若直接用 1~7，模型會以為週日(7)與週一(1)差距最遠。必須用 <code class="text-indigo-600">sin</code> 與 <code class="text-indigo-600">cos</code> 投影到二維圓環。
+            </p>
+          </div>
+        </div>
+
+        <!-- 互動 SVG：週期編碼 Sin/Cos 圓環展示 -->
+        <div class="border border-slate-200 rounded-xl p-5 bg-gradient-to-br from-slate-50 to-indigo-50/30">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            <div>
+              <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                【互動演示】週期編碼：為什麼星期要轉成 Sin & Cos？
+              </h4>
+              <p class="text-xs text-slate-500 mt-1">拖曳滑桿選擇星期幾，觀察圓環上的連續投影與首尾相接特性：</p>
+            </div>
+            <!-- 控制滑桿 -->
+            <div class="flex items-center gap-3 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+              <label for="daySlider" class="text-xs font-semibold text-slate-700 whitespace-nowrap">選擇星期：</label>
+              <input type="range" id="daySlider" min="1" max="7" value="7" step="1" class="w-28 sm:w-36 accent-indigo-600 cursor-pointer" oninput="updateCyclicSVG(this.value)">
+              <span id="dayLabel" class="text-xs font-bold text-indigo-700 w-16">週日 (7)</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            <!-- 圓環 SVG -->
+            <div class="flex justify-center">
+              <svg width="280" height="280" viewBox="0 0 280 280" class="overflow-visible select-none">
+                <!-- 網格軸線 -->
+                <line x1="30" y1="140" x2="250" y2="140" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="2 2"/>
+                <line x1="140" y1="30" x2="140" y2="250" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="2 2"/>
+                <text x="255" y="144" font-size="11" fill="#64748b" class="font-mono">cos</text>
+                <text x="135" y="24" font-size="11" fill="#64748b" class="font-mono">sin</text>
+                
+                <!-- 基準圓 -->
+                <circle cx="140" cy="140" r="90" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4 4"/>
+                
+                <!-- 靜態 7 個點的輔助標記 -->
+                <!-- 週一 ~ 週日 -->
+                <g id="dayPointsGroup" class="cursor-pointer"></g>
+
+                <!-- 動態指針與選中點 -->
+                <line id="radiusLine" x1="140" y1="140" x2="230" y2="140" stroke="#4f46e5" stroke-width="2"/>
+                <circle id="activePoint" cx="230" cy="140" r="7" fill="#4f46e5" stroke="#ffffff" stroke-width="2" class="transition-all duration-200 shadow"/>
+              </svg>
+            </div>
+
+            <!-- 數據對照卡片 -->
+            <div class="space-y-3">
+              <div class="bg-white p-3.5 rounded-lg border border-slate-200 space-y-1">
+                <span class="text-xs text-slate-400">當前特徵向量轉換值 (7天週期, T=7)</span>
+                <div class="flex gap-4 font-mono text-sm font-semibold text-slate-800">
+                  <div>X_sin = <span id="valSin" class="text-indigo-600">0.00</span></div>
+                  <div>X_cos = <span id="valCos" class="text-indigo-600">1.00</span></div>
+                </div>
+              </div>
+              <div class="p-3.5 bg-rose-50 border border-rose-100 rounded-lg text-xs text-rose-800">
+                <strong>若用純整數標籤 (1 ~ 7)：</strong><br>
+                週日 (7) 與週一 (1) 差距為 <span class="font-mono font-bold">|7 - 1| = 6</span>，模型誤判其為時間跨度最遠的兩天！
+              </div>
+              <div class="p-3.5 bg-emerald-50 border border-emerald-100 rounded-lg text-xs text-emerald-800">
+                <strong>透過週期圓環投影：</strong><br>
+                週日與週一的 Euclidean 距離為 <span class="font-mono font-bold">0.868</span>，完美呈現兩天相鄰首尾相接的真實連續性。
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 綠色框框：實務場景應用 -->
+        <div class="bg-emerald-50/80 border-l-4 border-emerald-500 p-4 rounded-r-xl space-y-2">
+          <div class="flex items-center gap-2 text-emerald-900 font-bold text-sm">
+            <svg class="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+            【實務考題場景：連鎖餐廳預測明日來客數】
+          </div>
+          <p class="text-xs sm:text-sm text-emerald-800 leading-relaxed">
+            手上有每日來客數、日期與天氣，模型在<strong>週末前後預測奇差無比</strong>，最佳工程組合拳：
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-xs text-emerald-900 font-medium">
+            <div class="bg-white/80 p-2 rounded border border-emerald-200">1. 滯後特徵：滯後 1 天、滯後 7 天、7 日移動平均</div>
+            <div class="bg-white/80 p-2 rounded border border-emerald-200">2. 週期編碼：日期的星期幾轉 sin / cos</div>
+            <div class="bg-white/80 p-2 rounded border border-emerald-200">3. 互動特徵：週末 × 下雨（下雨在假日的衝擊遠高於平日）</div>
+          </div>
+        </div>
+      
+
+    <!-- ========================================== -->
+    <!-- SLIDE 04: 學校版與題目訊號：造特徵 (天空藍框 Sky) -->
+    <!-- ========================================== -->
+    <div id="slide-card-ep13-04" class="bg-white rounded-2xl border-2 border-sky-500 shadow-lg shadow-sky-500/10 overflow-hidden transition-all duration-300 hover:shadow-sky-500/20">
+      <div class="bg-gradient-to-r from-sky-50 via-cyan-50 to-white px-5 py-4 border-b border-sky-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="px-2.5 py-1 rounded-lg bg-sky-600 text-white font-mono font-bold text-xs shadow-sm">SLIDE 04</span>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              學校版與題目訊號 · 造特徵秒殺反應
+              <span class="text-xs px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 font-semibold border border-sky-200">題感秒殺</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">出席率×作業繳交率 · 拿上週成績預測這週 · 互動、滯後、週期編碼</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="scrollToTranscript('t-000551')" class="px-3 py-1 bg-white hover:bg-sky-50 text-sky-700 text-xs font-medium rounded-lg border border-sky-200 transition flex items-center gap-1.5 shadow-sm">
+            <span>⏱ 05:51 訊號逐字稿</span>
+            <span class="text-sky-500">↓</span>
+          </button>
+          <button onclick="openLightbox('EP13/EP13_04.png', '學校版與題目訊號：造特徵', '⏱ 00:05:51')" class="px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1 shadow-sm">
+            <span>🔍 放大投影片</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 group relative rounded-xl overflow-hidden border border-sky-200 bg-slate-950 shadow-inner cursor-pointer" onclick="openLightbox('EP13/EP13_04.png', '學校版與題目訊號：造特徵', '⏱ 00:05:51')">
+          <img src="EP13/EP13_04.png" alt="EP13_04 學校版與題目訊號 造特徵" class="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-300">
+          <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs">
+            <span class="px-3 py-1.5 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-white/20 flex items-center gap-1.5">
+              <span>🔍 點擊檢視高解析大圖</span>
+            </span>
+          </div>
+          <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-900/80 text-[11px] font-mono text-sky-300 backdrop-blur-sm">
+            EP13_04.png
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-3.5 text-xs sm:text-sm text-slate-700">
+          <div class="p-3.5 rounded-xl bg-sky-50/70 border border-sky-100 space-y-2">
+            <div class="font-bold text-sky-900 text-xs sm:text-sm flex items-center gap-1.5">
+              <span>⚡</span>
+              <span>考題關鍵字 ➔ 答案直覺對應</span>
+            </div>
+            <ul class="space-y-1.5 text-slate-700 leading-relaxed text-xs">
+              <li class="p-1.5 rounded bg-white/80 border border-sky-100">
+                <strong>看到「兩個特徵的互動效果（114-20）」：</strong>➔ 立即選擇<strong>乘積（相乘）或交互組合</strong>。
+              </li>
+              <li class="p-1.5 rounded bg-white/80 border border-sky-100">
+                <strong>看到「滑動窗口、過去多個時間點」：</strong>➔ 立即選擇<strong>滯後特徵（Lag Feature）</strong>。
+              </li>
+              <li class="p-1.5 rounded bg-white/80 border border-sky-100">
+                <strong>看到「星期、月份、24 小時循環」：</strong>➔ 立即選擇 <strong>sin、cos 週期編碼</strong>（解決 23 點與 0 點斷層問題）。
+              </li>
+            </ul>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+            <span class="text-slate-500 font-medium">影片對應時間點：<strong class="text-slate-800 font-mono">05:51 ~ 07:07</strong></span>
+            <button onclick="scrollToTranscript('t-000551')" class="text-sky-600 hover:text-sky-800 font-semibold flex items-center gap-1">
+              閱讀訊號逐字稿 →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    </section>
+
+      <!-- ================= 模組三：特徵選擇三法 ================= -->
+      <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-6">
+        <div class="border-b border-slate-100 pb-4">
+          <span class="text-xs font-bold text-indigo-600 tracking-wider uppercase">Module 03</span>
+          <h3 class="text-xl sm:text-2xl font-bold text-slate-900 mt-1">重點六：特徵選擇三法 (Feature Selection)</h3>
+          <p class="text-slate-500 text-sm mt-1">特徵不是愈多愈好！過多特徵引發過擬合與運算瓶頸。特徵選擇是挑現有子集（不產生新軸，區別於 PCA 降維）。</p>
+        </div>
+
+        <!-- 互動特徵選擇三法切換卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="selectionCards">
+          <!-- Filter -->
+          <div onclick="selectMethod('filter')" id="card-filter" class="cursor-pointer border-2 border-indigo-600 bg-indigo-50/50 p-5 rounded-xl transition duration-200 space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold px-2 py-0.5 rounded bg-indigo-600 text-white">方法一</span>
+              <span class="text-xs text-indigo-700 font-semibold">【書面審查・海選】</span>
+            </div>
+            <h4 class="text-lg font-bold text-slate-800">Filter 過濾法</h4>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              用統計指標（相關係數、卡方檢定、ANOVA 變異數分析）一次比對單一特徵與目標標籤。
+            </p>
+            <div class="text-xs space-y-1 pt-2 border-t border-slate-200/60 text-slate-500">
+              <div><strong class="text-emerald-700">優點：</strong>運算極快、不依賴模型</div>
+              <div><strong class="text-rose-700">缺點：</strong>看不到特徵間的交互作用</div>
+            </div>
+          </div>
+
+          <!-- Wrapper -->
+          <div onclick="selectMethod('wrapper')" id="card-wrapper" class="cursor-pointer border-2 border-transparent bg-slate-50 hover:bg-slate-100 p-5 rounded-xl transition duration-200 space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold px-2 py-0.5 rounded bg-slate-400 text-white">方法二</span>
+              <span class="text-xs text-slate-500 font-semibold">【試鏡淘汰・重選】</span>
+            </div>
+            <h4 class="text-lg font-bold text-slate-800">Wrapper 包裝法</h4>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              用模型評估指標挑選，如 RFE（遞迴特徵消除）、前向選擇。每次刪減或增加一個特徵並重訓。
+            </p>
+            <div class="text-xs space-y-1 pt-2 border-t border-slate-200/60 text-slate-500">
+              <div><strong class="text-emerald-700">優點：</strong>最精準、能找出最佳組合</div>
+              <div><strong class="text-rose-700">缺點：</strong>反覆重訓極花時間、容易過擬合</div>
+            </div>
+          </div>
+
+          <!-- Embedded -->
+          <div onclick="selectMethod('embedded')" id="card-embedded" class="cursor-pointer border-2 border-transparent bg-slate-50 hover:bg-slate-100 p-5 rounded-xl transition duration-200 space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold px-2 py-0.5 rounded bg-slate-400 text-white">方法三</span>
+              <span class="text-xs text-slate-500 font-semibold">【邊演邊挑・內建】</span>
+            </div>
+            <h4 class="text-lg font-bold text-slate-800">Embedded 嵌入法</h4>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              在模型訓練過程中同步完成特徵篩選。如 L1 Lasso 正則化（把無用權重壓為 0）、決策樹重要性。
+            </p>
+            <div class="text-xs space-y-1 pt-2 border-t border-slate-200/60 text-slate-500">
+              <div><strong class="text-emerald-700">優點：</strong>兼顧精度與速度、訓練一次搞定</div>
+              <div><strong class="text-rose-700">缺點：</strong>綁定特定演算法（如 Lasso, XGBoost）</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 實戰組合技提示區 -->
+        <div class="bg-rose-50/80 border-l-4 border-rose-500 p-4 rounded-r-xl space-y-2">
+          <div class="flex items-center gap-2 text-rose-900 font-bold text-sm">
+            <svg class="w-5 h-5 text-rose-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.064c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.5 6a1 1 0 00-.91.59C4.248 7.39 4 8.78 4 10c0 4.418 3.582 8 8 8s8-3.582 8-8c0-2.316-.763-4.453-2.05-6.19a1 1 0 00-.776-.412 1 1 0 00-.779.155z" clip-rule="evenodd"/></svg>
+            【架構陷阱題：電信公司 300 個特徵要篩選，該怎麼排？】
+          </div>
+          <p class="text-xs sm:text-sm text-rose-800 leading-relaxed">
+            千萬不能一開始就上 <strong>Wrapper (RFE)</strong>！300 個特徵若全排列重訓，運算時間會直接炸裂。<br>
+            <strong>黃金兩段式：</strong>
+            <span class="font-bold underline">第一輪先用 Filter 初篩</span>（快速砍掉 200 個無關特徵），
+            <span class="font-bold underline">第二輪再用 Embedded (Lasso) 或 Wrapper 精挑</span>。
+          </p>
+        </div>
+      
+
+    <!-- ========================================== -->
+    <!-- SLIDE 06: 學校版與題目訊號：特徵選擇 (烈焰橙框 Orange) -->
+    <!-- ========================================== -->
+    <div id="slide-card-ep13-06" class="bg-white rounded-2xl border-2 border-orange-500 shadow-lg shadow-orange-500/10 overflow-hidden transition-all duration-300 hover:shadow-orange-500/20">
+      <div class="bg-gradient-to-r from-orange-50 via-amber-50 to-white px-5 py-4 border-b border-orange-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="px-2.5 py-1 rounded-lg bg-orange-600 text-white font-mono font-bold text-xs shadow-sm">SLIDE 06</span>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              學校版比喻與訊號 · 特徵選擇三法（海選、試鏡、邊演邊選）
+              <span class="text-xs px-2 py-0.5 rounded-md bg-orange-100 text-orange-800 font-semibold border border-orange-200">解題秒殺</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">Filter 看書面篩選 · Wrapper 一個個上台試做 · Embedded 邊做邊淘汰</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="scrollToTranscript('t-000830')" class="px-3 py-1 bg-white hover:bg-orange-50 text-orange-700 text-xs font-medium rounded-lg border border-orange-200 transition flex items-center gap-1.5 shadow-sm">
+            <span>⏱ 08:30 方法逐字稿</span>
+            <span class="text-orange-500">↓</span>
+          </button>
+          <button onclick="openLightbox('EP13/EP13_06.png', '學校版與題目訊號：特徵選擇', '⏱ 00:08:30')" class="px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1 shadow-sm">
+            <span>🔍 放大投影片</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 group relative rounded-xl overflow-hidden border border-orange-200 bg-slate-950 shadow-inner cursor-pointer" onclick="openLightbox('EP13/EP13_06.png', '學校版與題目訊號：特徵選擇', '⏱ 00:08:30')">
+          <img src="EP13/EP13_06.png" alt="EP13_06 學校版與題目訊號 特徵選擇" class="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-300">
+          <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs">
+            <span class="px-3 py-1.5 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-white/20 flex items-center gap-1.5">
+              <span>🔍 點擊檢視高解析大圖</span>
+            </span>
+          </div>
+          <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-900/80 text-[11px] font-mono text-orange-300 backdrop-blur-sm">
+            EP13_06.png
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-3.5 text-xs sm:text-sm text-slate-700">
+          <div class="p-3.5 rounded-xl bg-orange-50/70 border border-orange-100 space-y-2">
+            <div class="font-bold text-orange-900 text-xs sm:text-sm flex items-center gap-1.5">
+              <span>🎭</span>
+              <span>選班級幹部比喻與關鍵字直通</span>
+            </div>
+            <ul class="space-y-1.5 text-slate-700 leading-relaxed text-xs">
+              <li>• <strong>Filter 過濾法（海選）：</strong>先看書面成績單！關鍵字：<strong>統計量、相關係數、卡方檢定、互資訊、不依賴模型</strong>。速度極快但忽略特徵組合效應。</li>
+              <li>• <strong>Wrapper 包裝法（試鏡）：</strong>讓候選人輪流上台試做看效果！關鍵字：<strong>RFE（遞迴特徵消除）、反覆訓練模型評估子集</strong>。效果最佳但運算最慢。</li>
+              <li>• <strong>Embedded 嵌入法（邊演邊選）：</strong>在正式工作表現中邊做邊淘汰！如 Lasso 回歸（L1 正則化將係數壓縮至 0）、隨機森林特徵重要度。</li>
+            </ul>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+            <span class="text-slate-500 font-medium">影片對應時間點：<strong class="text-slate-800 font-mono">08:30 ~ 09:48</strong></span>
+            <button onclick="scrollToTranscript('t-000830')" class="text-orange-600 hover:text-orange-800 font-semibold flex items-center gap-1">
+              閱讀方法逐字稿 →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    </section>
+
+      <!-- ================= 模組四：資料增強 ================= -->
+      <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-6">
+        <div class="border-b border-slate-100 pb-4">
+          <span class="text-xs font-bold text-indigo-600 tracking-wider uppercase">Module 04</span>
+          <h3 class="text-xl sm:text-2xl font-bold text-slate-900 mt-1">重點七：資料增強 (Data Augmentation) 與 SMOTE</h3>
+          <p class="text-slate-500 text-sm mt-1">製造合理變形擴展樣本多樣性，提升模型泛化能力（Generalization）。</p>
+        </div>
+
+        <!-- 各型態增強速查 -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <div class="font-bold text-indigo-700">🖼️ 影像資料</div>
+            <div class="text-slate-500 mt-1">翻轉、旋轉、裁切、縮放、調整光影、加高斯噪聲</div>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <div class="font-bold text-indigo-700">📝 文字資料</div>
+            <div class="text-slate-500 mt-1">同義詞替換 (EDA)、隨機刪除、同義片語置換</div>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <div class="font-bold text-indigo-700">📈 時序資料</div>
+            <div class="text-slate-500 mt-1">加入輕微噪聲、滑動窗口截取、局部時長縮放</div>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <div class="font-bold text-indigo-700">📊 表格不平衡</div>
+            <div class="text-slate-500 mt-1"><strong>SMOTE</strong>：少數類近鄰線性插值生成新樣本</div>
+          </div>
+        </div>
+
+        <!-- 互動 SVG：SMOTE 原理展示 -->
+        <div class="border border-slate-200 rounded-xl p-5 bg-slate-50">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 bg-rose-500 rounded-full"></span>
+                【動態模擬】SMOTE 少數類合成樣本原理：
+                <span class="font-mono text-xs text-slate-500">x_new = x_A + λ × (x_B - x_A)</span>
+              </h4>
+              <p class="text-xs text-slate-500">點擊按鈕，觀察在少數類兩點連線上隨機插值生成的新樣本點：</p>
+            </div>
+            <button onclick="generateSmotePoint()" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1 self-start sm:self-auto">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              生成新合成樣本 (SMOTE)
+            </button>
+          </div>
+
+          <div class="flex justify-center bg-white rounded-lg border border-slate-200 p-2">
+            <svg id="smoteSvg" width="100%" height="200" viewBox="0 0 600 200" class="select-none">
+              <!-- 多數類群體 (灰點) -->
+              <g fill="#cbd5e1">
+                <circle cx="80" cy="50" r="7"/>
+                <circle cx="110" cy="80" r="7"/>
+                <circle cx="60" cy="120" r="7"/>
+                <circle cx="130" cy="140" r="7"/>
+                <circle cx="170" cy="60" r="7"/>
+                <circle cx="190" cy="110" r="7"/>
+                <circle cx="150" cy="160" r="7"/>
+              </g>
+              <text x="70" y="30" font-size="11" fill="#94a3b8" font-weight="bold">多數類樣本 (例如正常交易 990 筆)</text>
+
+              <!-- 少數類核心兩點 A 與 B (藍點) -->
+              <line x1="360" y1="130" x2="480" y2="70" stroke="#93c5fd" stroke-width="2" stroke-dasharray="4 4"/>
+              
+              <circle cx="360" cy="130" r="9" fill="#2563eb" stroke="#ffffff" stroke-width="2"/>
+              <text x="345" y="155" font-size="12" fill="#1e40af" font-weight="bold">少數樣本 A</text>
+
+              <circle cx="480" cy="70" r="9" fill="#2563eb" stroke="#ffffff" stroke-width="2"/>
+              <text x="475" y="55" font-size="12" fill="#1e40af" font-weight="bold">少數樣本 B</text>
+
+              <!-- 動態生成點容器 -->
+              <g id="syntheticPointsContainer"></g>
+            </svg>
+          </div>
+          <div class="text-[11px] text-slate-400 text-center mt-2">
+            提示：SMOTE 不是單純複製樣本（單純複製易過擬合），而是在特徵空間相鄰連線上隨機取點合成。
+          </div>
+        </div>
+
+        <!-- 紅色框框：資料增強必考兩大鐵則 -->
+        <div class="bg-rose-50 border-l-4 border-rose-600 p-5 rounded-r-xl space-y-3">
+          <div class="flex items-center gap-2 text-rose-900 font-extrabold text-sm sm:text-base">
+            <svg class="w-6 h-6 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            【高頻致命考點：資料增強兩大鐵則】
+          </div>
+          <div class="space-y-2 text-xs sm:text-sm text-rose-900">
+            <div class="p-3 bg-white/70 rounded-lg border border-rose-200">
+              <span class="font-bold text-rose-700">鐵則一：變換後的「標籤語意」必須維持正確無誤！</span><br>
+              貓左右翻轉依然是貓；但手寫英文字母 <code>b</code> 水平翻轉會變成 <code>d</code>，數字 <code>6</code> 旋轉會變成 <code>9</code>。若標籤沒跟著改，等於餵給模型毒藥數據！這就是開場思考題「手寫數字翻轉後分數大跌」的根本原因。
+            </div>
+            <div class="p-3 bg-white/70 rounded-lg border border-rose-200">
+              <span class="font-bold text-rose-700">鐵則二：絕對必須「先切分、再對訓練集增強」！</span><br>
+              嚴禁對整體資料增強後才切分 Train/Validation/Test。否則同一張圖的原圖與微調版會同時存在於訓練與驗證集中，造成嚴重的<strong>資料洩漏 (Data Leakage)</strong>，驗證分數虛高卻在正式上線時爆掉。
+            </div>
+          </div>
+        </div>
+      
+
+    
+    <!-- ========================================== -->
+    <!-- SLIDE 09: 這集帶走四句話 (金黃框 Yellow) -->
+    <!-- ========================================== -->
+    <div id="slide-card-ep13-09" class="bg-white rounded-2xl border-2 border-yellow-500 shadow-lg shadow-yellow-500/10 overflow-hidden transition-all duration-300 hover:shadow-yellow-500/20">
+      <div class="bg-gradient-to-r from-yellow-50 via-amber-50 to-white px-5 py-4 border-b border-yellow-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="px-2.5 py-1 rounded-lg bg-yellow-600 text-white font-mono font-bold text-xs shadow-sm">SLIDE 09</span>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              這集帶走四句話 · 考前 30 秒記憶口訣
+              <span class="text-xs px-2 py-0.5 rounded-md bg-yellow-100 text-yellow-800 font-semibold border border-yellow-200">終極必背</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">文字變數字 · 原始欄位加工 · 特徵選擇三法 · 資料增強兩鐵則</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="scrollToTranscript('t-001150')" class="px-3 py-1 bg-white hover:bg-yellow-50 text-yellow-700 text-xs font-medium rounded-lg border border-yellow-200 transition flex items-center gap-1.5 shadow-sm">
+            <span>⏱ 11:50 四句口訣逐字稿</span>
+            <span class="text-yellow-600">↓</span>
+          </button>
+          <button onclick="openLightbox('EP13/EP13_09.png', '這集帶走四句話 · 考前 30 秒記憶口訣', '⏱ 00:11:50')" class="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1 shadow-sm">
+            <span>🔍 放大投影片</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 group relative rounded-xl overflow-hidden border border-yellow-200 bg-slate-950 shadow-inner cursor-pointer" onclick="openLightbox('EP13/EP13_09.png', '這集帶走四句話 · 考前 30 秒記憶口訣', '⏱ 00:11:50')">
+          <img src="EP13/EP13_09.png" alt="EP13_09 這集帶走四句話" class="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-300">
+          <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs">
+            <span class="px-3 py-1.5 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-white/20 flex items-center gap-1.5">
+              <span>🔍 點擊檢視高解析大圖</span>
+            </span>
+          </div>
+          <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-900/80 text-[11px] font-mono text-yellow-300 backdrop-blur-sm">
+            EP13_09.png
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-3.5 text-xs sm:text-sm text-slate-700">
+          <div class="p-3.5 rounded-xl bg-yellow-50/70 border border-yellow-100 space-y-2">
+            <div class="font-bold text-yellow-900 text-xs sm:text-sm flex items-center gap-1.5">
+              <span>🏆</span>
+              <span>韋哥帶進考場的四大直覺口訣</span>
+            </div>
+            <ul class="space-y-2 text-slate-700 leading-relaxed text-xs">
+              <li class="p-2 rounded-lg bg-white/90 border border-yellow-100 flex items-start gap-2">
+                <span class="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">四</span>
+                <div>
+                  <strong class="text-indigo-900">文字變數字：</strong>
+                  <span class="text-slate-800"><strong>有順序用 Label、沒順序用 One-Hot、類別多時別用 One-Hot！</strong></span>
+                </div>
+              </li>
+              <li class="p-2 rounded-lg bg-white/90 border border-yellow-100 flex items-start gap-2">
+                <span class="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">五</span>
+                <div>
+                  <strong class="text-amber-900">造新特徵：</strong>
+                  <span class="text-slate-800"><strong>互動、滯後、週期：原始欄位加工，常常比換模型更有效！</strong></span>
+                </div>
+              </li>
+              <li class="p-2 rounded-lg bg-white/90 border border-yellow-100 flex items-start gap-2">
+                <span class="w-5 h-5 rounded-full bg-orange-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">六</span>
+                <div>
+                  <strong class="text-orange-900">特徵選擇三法：</strong>
+                  <span class="text-slate-800"><strong>海選（Filter）、試鏡（Wrapper）、邊演邊選（Embedded）！</strong></span>
+                </div>
+              </li>
+              <li class="p-2 rounded-lg bg-white/90 border border-yellow-100 flex items-start gap-2">
+                <span class="w-5 h-5 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">七</span>
+                <div>
+                  <strong class="text-teal-900">資料增強：</strong>
+                  <span class="text-slate-800"><strong>標籤要還是對的，而且只對訓練資料做！</strong></span>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+            <span class="text-slate-500 font-medium">影片對應時間點：<strong class="text-slate-800 font-mono">11:50 ~ 12:30</strong></span>
+            <button onclick="scrollToTranscript('t-001150')" class="text-yellow-600 hover:text-yellow-800 font-semibold flex items-center gap-1">
+              閱讀口訣逐字稿 →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+      <!-- ========================================== -->
+    <!-- SLIDE 08: 易混淆對照：這集的三組 (玫瑰紅框 Rose) -->
+    <!-- ========================================== -->
+    <div id="slide-card-ep13-08" class="bg-white rounded-2xl border-2 border-rose-500 shadow-lg shadow-rose-500/10 overflow-hidden transition-all duration-300 hover:shadow-rose-500/20">
+      <div class="bg-gradient-to-r from-rose-50 via-pink-50 to-white px-5 py-4 border-b border-rose-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-mono font-bold text-xs shadow-sm">SLIDE 08</span>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              易混淆對照 · 本集三大組觀念火線辨析
+              <span class="text-xs px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 font-semibold border border-rose-200">必考陷阱</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">特徵選擇 vs 降維 · Label vs One-Hot · Filter vs Wrapper</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="scrollToTranscript('t-001150')" class="px-3 py-1 bg-white hover:bg-rose-50 text-rose-700 text-xs font-medium rounded-lg border border-rose-200 transition flex items-center gap-1.5 shadow-sm">
+            <span>⏱ 11:50 總結逐字稿</span>
+            <span class="text-rose-500">↓</span>
+          </button>
+          <button onclick="openLightbox('EP13/EP13_08.png', '易混淆對照：這集的三組', '⏱ 00:11:50')" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1 shadow-sm">
+            <span>🔍 放大投影片</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 group relative rounded-xl overflow-hidden border border-rose-200 bg-slate-950 shadow-inner cursor-pointer" onclick="openLightbox('EP13/EP13_08.png', '易混淆對照：這集的三組', '⏱ 00:11:50')">
+          <img src="EP13/EP13_08.png" alt="EP13_08 易混淆對照" class="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-300">
+          <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs">
+            <span class="px-3 py-1.5 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-white/20 flex items-center gap-1.5">
+              <span>🔍 點擊檢視高解析大圖</span>
+            </span>
+          </div>
+          <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-900/80 text-[11px] font-mono text-rose-300 backdrop-blur-sm">
+            EP13_08.png
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-3.5 text-xs sm:text-sm text-slate-700">
+          <div class="p-3.5 rounded-xl bg-rose-50/70 border border-rose-100 space-y-2">
+            <div class="font-bold text-rose-900 text-xs sm:text-sm flex items-center gap-1.5">
+              <span>⚡</span>
+              <span>三組火線對決精準剖析</span>
+            </div>
+            <ul class="space-y-2 text-slate-700 leading-relaxed text-xs">
+              <li class="p-2 rounded-lg bg-white/80 border border-rose-100">
+                <div class="font-bold text-slate-900 mb-0.5">① 特徵選擇 vs 降維</div>
+                <div class="text-slate-600"><strong>特徵選擇：</strong>挑現有特徵（欄位子集，不產生新特徵）。<br><strong>降維：</strong>組合出全新軸向特徵（如 PCA，特徵意義改變）。</div>
+              </li>
+              <li class="p-2 rounded-lg bg-white/80 border border-rose-100">
+                <div class="font-bold text-slate-900 mb-0.5">② Label vs One-Hot 編碼</div>
+                <div class="text-slate-600"><strong>Label：</strong>有序類別（1 欄整數）。<br><strong>One-Hot：</strong>無序類別（多欄 0/1）；高基數時忌用 One-Hot。</div>
+              </li>
+              <li class="p-2 rounded-lg bg-white/80 border border-rose-100">
+                <div class="font-bold text-slate-900 mb-0.5">③ Filter vs Wrapper 特徵選擇</div>
+                <div class="text-slate-600"><strong>Filter：</strong>看統計指標，速度快，不依賴模型。<br><strong>Wrapper：</strong>看模型實際表現，需反覆訓練，速度慢。</div>
+              </li>
+            </ul>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+            <span class="text-slate-500 font-medium">影片對應時間點：<strong class="text-slate-800 font-mono">11:50 ~ 12:20</strong></span>
+            <button onclick="scrollToTranscript('t-001150')" class="text-rose-600 hover:text-rose-800 font-semibold flex items-center gap-1">
+              閱讀易混淆逐字稿 →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    </section>
+
+    </div>
+
+    <!-- ================= 逐字稿與時間軸模組 ================= -->
+    <section id="transcript-section" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <!-- 標題與搜尋控制列 -->
+      <div class="p-6 bg-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 bg-red-600 text-white text-[11px] font-bold rounded">YouTube 完整同步</span>
+            <span class="text-xs text-slate-300">時長 12分39秒 · 繁體中文校正版</span>
+          </div>
+          <h3 class="text-lg sm:text-xl font-bold mt-1 text-white">影片時間軸逐字稿檢索</h3>
+        </div>
+        
+        <!-- 搜尋輸入框與控制 -->
+        <div class="flex items-center gap-2 w-full md:w-80">
+          <div class="relative w-full">
+            <input type="text" id="searchInput" placeholder="搜尋關鍵字 (如: Target, 翻轉, 8000)..." 
+              class="w-full bg-slate-800 border border-slate-700 text-slate-100 text-xs sm:text-sm rounded-lg pl-9 pr-8 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-slate-400"
+              oninput="filterTranscript(this.value)">
+            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <button onclick="clearSearch()" id="clearBtn" class="hidden text-slate-400 hover:text-white absolute right-2.5 top-2.5 text-xs">✕</button>
+          </div>
+          <button onclick="copyFullTranscript()" class="whitespace-nowrap px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg border border-slate-700 transition flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            複製全篇
+          </button>
+        </div>
+      </div>
+
+
+    <!-- ========================================== -->
+    <!-- SLIDE 05: 重點六：特徵選擇三法 (紫羅蘭框 Purple) -->
+    <!-- ========================================== -->
+    <div id="slide-card-ep13-05" class="bg-white rounded-2xl border-2 border-purple-500 shadow-lg shadow-purple-500/10 overflow-hidden transition-all duration-300 hover:shadow-purple-500/20">
+      <div class="bg-gradient-to-r from-purple-50 via-indigo-50 to-white px-5 py-4 border-b border-purple-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="px-2.5 py-1 rounded-lg bg-purple-600 text-white font-mono font-bold text-xs shadow-sm">SLIDE 05</span>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              重點六 · 特徵選擇三法（對抗過擬合與維度災難）
+              <span class="text-xs px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 font-semibold border border-purple-200">架構對比</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">特徵太多導致模型慢、過擬合、難解釋！特徵選擇 vs 降維的本質差異</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="scrollToTranscript('t-000707')" class="px-3 py-1 bg-white hover:bg-purple-50 text-purple-700 text-xs font-medium rounded-lg border border-purple-200 transition flex items-center gap-1.5 shadow-sm">
+            <span>⏱ 07:07 選擇逐字稿</span>
+            <span class="text-purple-500">↓</span>
+          </button>
+          <button onclick="openLightbox('EP13/EP13_05.png', '重點六 · 特徵選擇三法', '⏱ 00:07:07')" class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1 shadow-sm">
+            <span>🔍 放大投影片</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 group relative rounded-xl overflow-hidden border border-purple-200 bg-slate-950 shadow-inner cursor-pointer" onclick="openLightbox('EP13/EP13_05.png', '重點六 · 特徵選擇三法', '⏱ 00:07:07')">
+          <img src="EP13/EP13_05.png" alt="EP13_05 特徵選擇三法" class="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-300">
+          <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs">
+            <span class="px-3 py-1.5 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-white/20 flex items-center gap-1.5">
+              <span>🔍 點擊檢視高解析大圖</span>
+            </span>
+          </div>
+          <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-900/80 text-[11px] font-mono text-purple-300 backdrop-blur-sm">
+            EP13_05.png
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-3.5 text-xs sm:text-sm text-slate-700">
+          <div class="p-3.5 rounded-xl bg-purple-50/70 border border-purple-100 space-y-2">
+            <div class="font-bold text-purple-900 text-xs sm:text-sm flex items-center gap-1.5">
+              <span>🎯</span>
+              <span>特徵過多痛點與兩大概念辨析</span>
+            </div>
+            <ul class="space-y-1.5 text-slate-700 leading-relaxed text-xs">
+              <li>• <strong>特徵太多的三大痛點：</strong>運算變慢、容易過擬合（死記訓練集雜訊，遇到新資料失準）、模型缺乏可解釋性。</li>
+              <li>• <strong>特徵選擇（Feature Selection）：</strong>從現有特徵中挑出有用的「子集」，<strong>不產生任何新特徵</strong>，欄位意義完整保留！</li>
+              <li>• <strong>降維（Dimensionality Reduction）：</strong>將原本多個特徵投影或旋轉組合成全新座標軸（如 PCA 主成分），特徵本身已經是融合後的新變數。</li>
+            </ul>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+            <span class="text-slate-500 font-medium">影片對應時間點：<strong class="text-slate-800 font-mono">07:07 ~ 08:30</strong></span>
+            <button onclick="scrollToTranscript('t-000707')" class="text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-1">
+              閱讀選擇逐字稿 →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- ========================================== -->
+    <!-- SLIDE 02: 重點四：類別編碼 (靛青藍框 Indigo) -->
+    <!-- ========================================== -->
+    <div id="slide-card-ep13-02" class="bg-white rounded-2xl border-2 border-indigo-500 shadow-lg shadow-indigo-500/10 overflow-hidden transition-all duration-300 hover:shadow-indigo-500/20">
+      <div class="bg-gradient-to-r from-indigo-50 via-slate-50 to-white px-5 py-4 border-b border-indigo-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-mono font-bold text-xs shadow-sm">SLIDE 02</span>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              重點四 · 類別編碼（Label 編碼與無序陷阱）
+              <span class="text-xs px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 font-semibold border border-indigo-200">必考核心</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">有順序才能用 Label 編碼！無序類別亂用 Label 會誤導模型產生假大小關係</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="scrollToTranscript('t-000043')" class="px-3 py-1 bg-white hover:bg-indigo-50 text-indigo-700 text-xs font-medium rounded-lg border border-indigo-200 transition flex items-center gap-1.5 shadow-sm">
+            <span>⏱ 00:43 編碼逐字稿</span>
+            <span class="text-indigo-500">↓</span>
+          </button>
+          <button onclick="openLightbox('EP13/EP13_02.png', '重點四 · 類別編碼（Label 編碼與無序陷阱）', '⏱ 00:00:43')" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1 shadow-sm">
+            <span>🔍 放大投影片</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 group relative rounded-xl overflow-hidden border border-indigo-200 bg-slate-950 shadow-inner cursor-pointer" onclick="openLightbox('EP13/EP13_02.png', '重點四 · 類別編碼（Label 編碼與無序陷阱）', '⏱ 00:00:43')">
+          <img src="EP13/EP13_02.png" alt="EP13_02 類別編碼" class="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-300">
+          <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs">
+            <span class="px-3 py-1.5 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-white/20 flex items-center gap-1.5">
+              <span>🔍 點擊檢視高解析大圖</span>
+            </span>
+          </div>
+          <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-900/80 text-[11px] font-mono text-indigo-300 backdrop-blur-sm">
+            EP13_02.png
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-3.5 text-xs sm:text-sm text-slate-700">
+          <div class="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-100 space-y-2">
+            <div class="font-bold text-indigo-900 text-xs sm:text-sm flex items-center gap-1.5">
+              <span>🏷️</span>
+              <span>Label 編碼本質與致命誤導</span>
+            </div>
+            <ul class="space-y-1.5 text-slate-700 leading-relaxed text-xs">
+              <li>• <strong>為什麼要編碼：</strong>多數演算法（回歸、KNN、神經網路）只吃純數字，文字類別必須轉化。</li>
+              <li>• <strong>Label 標籤編碼：</strong>每類分配一個連續整數（如：國小 ➔ 0、國中 ➔ 1、高中 ➔ 2）。</li>
+              <li>• <strong>適用情境：</strong>天然具有<strong>大小或順序關係</strong>的類別（教育程度、軍階、會員等級）。</li>
+              <li>• <strong class="text-rose-600">致命警示：</strong>若用在「無序類別」（如：台北 0、台中 1、台南 2），線性模型或距離計算會誤以為「台南比台北大 2 倍」，造成嚴重錯誤歸納！</li>
+            </ul>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+            <span class="text-slate-500 font-medium">影片對應時間點：<strong class="text-slate-800 font-mono">00:43 ~ 04:22</strong></span>
+            <button onclick="scrollToTranscript('t-000043')" class="text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1">
+              閱讀編碼逐字稿 →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+      <!-- 快速章節導航標籤 -->
+      <div class="bg-slate-100 px-6 py-2.5 border-b border-slate-200 flex flex-wrap gap-2 text-xs">
+        <span class="text-slate-500 py-1 font-medium">段落快速跳轉：</span>
+        <button onclick="jumpToTime('00:00:00')" class="px-2.5 py-1 bg-white hover:bg-indigo-50 hover:text-indigo-600 rounded border border-slate-200 text-slate-700 font-medium transition">00:00 開場思考題</button>
+        <button onclick="jumpToTime('00:00:43')" class="px-2.5 py-1 bg-white hover:bg-indigo-50 hover:text-indigo-600 rounded border border-slate-200 text-slate-700 font-medium transition">00:43 類別編碼</button>
+        <button onclick="jumpToTime('00:04:22')" class="px-2.5 py-1 bg-white hover:bg-indigo-50 hover:text-indigo-600 rounded border border-slate-200 text-slate-700 font-medium transition">04:22 原始欄位造新特徵</button>
+        <button onclick="jumpToTime('00:07:07')" class="px-2.5 py-1 bg-white hover:bg-indigo-50 hover:text-indigo-600 rounded border border-slate-200 text-slate-700 font-medium transition">07:07 特徵選擇三法</button>
+        <button onclick="jumpToTime('00:09:48')" class="px-2.5 py-1 bg-white hover:bg-indigo-50 hover:text-indigo-600 rounded border border-slate-200 text-slate-700 font-medium transition">09:48 資料增強與解答</button>
+        <button onclick="jumpToTime('00:11:50')" class="px-2.5 py-1 bg-white hover:bg-indigo-50 hover:text-indigo-600 rounded border border-slate-200 text-slate-700 font-medium transition">11:50 核心易混淆總結</button>
+      </div>
+
+      <!-- 逐字稿條列區容器 -->
+      <div id="transcriptList" class="p-6 space-y-4 max-h-[600px] overflow-y-auto divide-y divide-slate-100">
+        <!-- 逐字稿內容將由 JavaScript 動態渲染以支援搜尋高亮 -->
+      </div>
+    </section>
+
+    <!-- 底部版權與下集預告 -->
+    <footer class="text-center text-xs text-slate-400 py-6 border-t border-slate-200 space-y-2">
+      <p>教材來源：【韋哥科技教室】iPAS AI應用規劃師 中級科目三 系列 EP13</p>
+      <p>下一集預告：第 14 章 · 模型選擇與架構設計</p>
+    </footer>
+
+  </main>
+
+  <!-- 浮動提示元件 (Toast) -->
+  <div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white text-xs px-4 py-2.5 rounded-lg shadow-2xl opacity-0 transition-opacity pointer-events-none z-50 flex items-center gap-2">
+    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+    <span id="toastMsg">已複製到剪貼簿</span>
+  </div>
+
+  <!-- JavaScript 邏輯程式碼 -->
+  <script>
+    // 原始逐字稿數據庫
+    const rawTranscriptData = [
+      {
+        time: "00:00:00",
+        tag: "開場思考",
+        text: "先問你一題：AI 團隊幫四個專案統一加了隨機水平翻轉——貓狗分類、車型分類、行人偵測、手寫數字辨識。其中一個專案的測試表現明顯下降，是哪一個？先停下來想一下，答案在這一集最後一個重點揭曉。"
+      },
+      {
+        time: "00:00:15",
+        tag: "章節考情",
+        text: "上一集講了第 13 章的前三個重點：資料清理、特徵縮放、分佈轉換。這集講後四個：類別編碼、從原始欄位造新特徵、特徵選擇三法、資料增強。這個考點兩回共 9 題，115 年一回就考了 6 題，是上升最快的考點。考古題對照表的 9 題裡，這集的四個重點對到 6 題，其中 115 年第 46 題同時考了特徵縮放與標籤轉成編號。"
+      },
+      {
+        time: "00:00:43",
+        tag: "類別編碼",
+        text: "重點四是類別編碼。多數演算法只吃數字，城市、顏色這種文字類別要先編碼，選錯編碼會讓模型誤會資料。第一種是 Label 標籤編碼，每類給一個整數，例如國小 0、國中 1、高中 2。它適合有順序的類別；用在沒有順序的類別，例如台北 0、台南 2，模型會以為台南比台北大。"
+      },
+      {
+        time: "00:01:07",
+        tag: "類別編碼",
+        text: "第二種是 One-Hot 獨熱編碼。每一欄是就 1，其餘 0。顏色有紅、綠、藍三類就開三欄，紅色寫成 [1, 0, 0]，綠色 [0, 1, 0]，藍色 [0, 0, 1]。每類各佔一欄彼此沒有大小之分，適合沒有順序、類別又不多的情況。類別很多時就麻煩了，這叫高基數（High Cardinality），是指一個欄位有非常多種不同值，例如 3,000 種商品，One-Hot 會產生 3,000 欄，大部分都是 0，記憶體和訓練時間都暴增。"
+      },
+      {
+        time: "00:01:37",
+        tag: "類別編碼",
+        text: "第三種是 Target 目標編碼。用這個類別的目標平均值取代。目標就是要預測的答案，例如預測房價時，把台北換成訓練資料裡台北物件的平均房價，台南換成台南的平均。不管有幾種城市都只佔一欄，適合高基數而且和目標相關的類別。它的風險是用到的話會造成目標值洩露（Data Leakage），因為平均值是用房價答案算出來的；算平均時如果把驗證資料或要預測的那一筆自己的答案也算進去，等於先偷看了答案，這樣驗證分數會虛高。"
+      },
+      {
+        time: "00:02:10",
+        tag: "類別編碼",
+        text: "正確做法是訓練資料的編碼用交叉擬合（Out-of-fold），每筆的編碼都不用到自己的答案，驗證與測試資料只套用訓練資料學到的對照表。第四種是 Embedding 嵌入，每類學一個低維向量，也就是每一類用一小串數字表示，例如每個商品用 32 個數字。這些數字一開始是隨機的，訓練時跟著模型一起調整，最後常一起被買的商品數字會比較接近。它適合高基數深度學習的情況，代價是需要訓練。"
+      },
+      {
+        time: "00:02:41",
+        tag: "比喻與信號",
+        text: "學校版比喻：年級 1、2、3 有順序用 1、2、3 的 Label 編碼；社團像籃球、熱舞、圍棋沒有順序用 One-Hot 每個社團一欄；全國 3000 所學校校名用 One-Hot 會爆出 3000 欄。題目訊號整理：看到教育程度、會員等級（有順序）想到 Label 編碼；看到城市、顏色（無順序）想到 One-Hot；看到高基數、上千種類別、維度爆炸那是 One-Hot 的問題，改用 Target 或 Embedding。看到 to_categorical 那是 Keras 把標籤轉成 One-Hot 的函式；Label 編碼特徵和答案用的函式不一樣。"
+      },
+      {
+        time: "00:03:23",
+        tag: "考古題剖析",
+        text: "來看 115 年考過同類型的場景：電商推薦模型有商品編號欄位，大約 8000 種。工程師用 One-Hot 之後記憶體爆掉、訓練極慢，該怎麼改？改用 Label 編碼？乾脆刪掉這個欄位？還是改用 Embedding 或目標編碼？8000 種類別用 One-Hot 就是 8000 欄，這是高基數造成的維度爆炸，需要一種欄位數不隨類別數暴增的編碼。所以答案是改用 Embedding 或用目標編碼。Embedding 每個商品學一個 32 維向量，不管商品有 8000 種還是 8 萬種，每筆資料都只要 32 欄；目標編碼更省只要一欄。補充一句：Embedding 本身還有一張類別數乘以 32 的表，8 萬種商品的表還是比 8000 種大 10 倍，只是比 One-Hot 省得多。Label 編碼不行，商品編號沒有順序給整數會讓模型誤會大小；刪掉欄位也不行，商品本身是推薦最重要的資訊。"
+      },
+      {
+        time: "00:04:22",
+        tag: "造新特徵",
+        text: "重點五：從原始欄位造新特徵。原始欄位不一定直接好用，把它們組合或加工，常常比換模型更有效。互動特徵是把兩個特徵組合起來，例如價格乘滿意度、單價乘數量，它抓的是兩個特徵一起才有的影響，分開就看不出來。聚合特徵是把一串行為濃縮成一個數，例如過去 7 天的點擊次數。還有幾種和時間有關的造法：滯後特徵用昨天、前天、上週同一天的銷量，因為時間序列裡過去的值最能預測未來；移動平均例如過去 7 天的平均銷量，去掉每日波動看趨勢；時間拆解把時間戳拆成星期與時段，讓模型抓到假日尖峰的規律。"
+      },
+      {
+        time: "00:05:05",
+        tag: "造新特徵",
+        text: "滑動窗口是用一個固定寬度的窗口，把過去幾個時間點的值排成一列當輸入，它的目的是建立滯後特徵（115 年第 26 題考的就是這個）。例如窗口寬 3 天，用第一、二、三天銷量預測第四天；窗口往右滑一個，用第二、三、四天預測第五天，這樣做出一筆筆訓練資料。週期編碼是把星期用 sin 和 cos 表示。為什麼？星期一到星期日編成 1 到 7，模型會以為星期日的 7 和星期一的 1 差最遠。把 7 天平均排在一個圓上像時鐘的刻度，每一天用它在圓上的橫座標 cos 和縱座標 sin 兩個數字表示，圓是首尾相接的，星期日的位置就緊鄰星期一。"
+      },
+      {
+        time: "00:05:51",
+        tag: "比喻與場景",
+        text: "學校版比喻：單看出席率或作業繳交率都普通，兩者相乘的投入度更能預測成績，這是互動特徵；拿上週的小考成績預測這週，這是滯後特徵。題目訊號：看到兩個特徵的互動效果想到相乘或交互組合（114 年第 20 題考的就是這個）；看到滑動窗口、過去多個時間點想到滯後特徵；看到星期、月份循環想到 sin / cos 週期編碼。來看場景：連鎖餐廳要預測明天的來客數，手上有每日來客數、日期、天氣，模型對週末前後預測特別差，該加哪些特徵？來客數有很強的昨天、上週同一天規律，需要滯後特徵；日期只是一串數字模型看不出星期規律，要拆出星期幾再用 sin/cos 編碼；下雨又是週末影響特別大，加週末乘下雨的互動特徵。講義選擇是加入滯後 1 天、滯後 7 天、7 日移動平均、星期的週期編碼。"
+      },
+      {
+        time: "00:07:07",
+        tag: "特徵選擇",
+        text: "重點六：特徵選擇三法。特徵太多會讓模型變慢、容易過擬合也難解釋。過擬合是把訓練資料的雜訊也背起來，遇到新資料就失效。特徵選擇是從現有特徵挑出有用的子集，不產生新特徵；降維則是把特徵組合成新的軸，例如第三章講過的 PCA。第一種是 Filter 過濾法，用統計量篩選海選：相關係數看數值特徵和目標是不是一起變大變小；卡方檢定看類別特徵和類別目標有沒有關聯；變異數分析看不同類別的平均值差異大不大。優點是快、不依賴模型；缺點是看不到特徵之間的交互作用，因為它一次只拿一個特徵和目標比，合在一起才有用時 Filter 會把兩個都刪掉。"
+      },
+      {
+        time: "00:07:57",
+        tag: "特徵選擇",
+        text: "第二種是 Wrapper 包裝法，用模型表現挑，像一個一個上台試鏡。做法有遞迴特徵消除（RFE），還有前向或後向選擇。RFE 是全部特徵訓練，刪掉最不重要的一個，再重新訓練再刪，直到剩下想要的數量；前向選擇反過來從零個開始一次加一個。它精準但很花時間，也可能過擬合，因為反覆看同一份驗證分數挑組合，挑出來的可能只是剛好在這份資料上分數高，換一份資料就不靈。"
+      },
+      {
+        time: "00:08:30",
+        tag: "特徵選擇",
+        text: "第三種是 Embedded 嵌入法，訓練時邊選邊演邊淘汰（名字裡也有嵌入，和重點四的向量 Embedding 不同）。例如用 L1 正規化的 Lasso 會把不重要特徵的權重直接壓成 0，權重是 0 的特徵就被刪掉了；樹模型的特徵重要性也是這一類。它一次完成，缺點是綁特定模型。學校版比喻：選班級幹部，Filter 先看書面資料篩選，Wrapper 讓候選人一個個上台試做，Embedded 邊做邊淘汰表現差的人。題目訊號：統計量、相關係數、卡方、不依賴模型 ➔ Filter；RFE、反覆訓練模型評估 ➔ Wrapper；訓練過程中同時完成、L1 Lasso、樹重要性 ➔ Embedded。"
+      },
+      {
+        time: "00:09:17",
+        tag: "場景規劃",
+        text: "來看場景：電信公司要做客戶流失模型，有 300 個客戶行為特徵，想先快速刪掉明顯沒用的再精挑，特徵選擇該怎麼安排？第一輪要快用 Filter 算每個特徵和流失的相關性，刪掉幾乎無關的；第二輪要準，剩下的用 Lasso（Embedded）讓沒用的權重歸零，或用 RFE（Wrapper）。講義的選擇是先 Filter 初篩再 Embedded 精選。為什麼不一開始就用 Wrapper？300 個特徵用 RFE 要反覆訓練非常多次，太花時間了。"
+      },
+      {
+        time: "00:09:48",
+        tag: "資料增強",
+        text: "重點七：資料增強。資料增強是用變換製造更多訓練樣本，讓模型見過更多變化、泛化更好。泛化就是在沒看過的新資料上的表現。例如一張貓的照片左右翻轉、旋轉 10 度、調暗一點就變成三張新的訓練照片，模型以後遇到角度不同、光線不同的貓也認得出來。常見手法看資料形態：影像可以翻轉、旋轉、裁切、縮放、調色、加雜訊；文字可以同義詞替換、隨機插入刪除交換字詞；時序資料可以加雜訊、局部縮放、窗口裁切；表格資料可以用 SMOTE 合成少數類樣本。"
+      },
+      {
+        time: "00:10:29",
+        tag: "SMOTE與鐵則",
+        text: "SMOTE 用在某一類資料特別少的時候，例如 1000 筆交易裡只有 10 筆盜刷。它挑一筆少數類樣本和它附近的另一筆少數類樣本，在兩點的連線上隨機取一個點當成新樣本，讓少數類變多。資料增強有兩條鐵則：第一，變換之後標籤必須還是對的！貓左右翻轉還是貓，手寫的 b 左右翻轉就變成 d，標籤還寫 b 模型就學錯了；第二，先切好訓練、驗證、測試，再只對訓練資料增強！不然同一張圖的變形會同時出現在訓練和驗證裡造成資訊洩漏，分數虛高。學校版比喻：練習題換個數字再出一題，算法和答案對應不變是好的增強；把 6 倒過來印成 9 答案卻還寫 6 就教錯了。"
+      },
+      {
+        time: "00:11:29",
+        tag: "開場解答",
+        text: "回到開場那一題：逐一問翻轉後標籤對嗎？貓、狗、車子、行人翻過去類別不變；手寫數字翻過去可能不成字或變成另一個數字。所以答案是第四個：手寫數字辨識！數字有固定的寫法，翻轉後的圖片配上原本的標籤等於餵給模型錯誤答案，所以這個專案表現下降。"
+      },
+      {
+        time: "00:11:50",
+        tag: "四句總結",
+        text: "最後分辨易混淆對照：特徵選擇是挑現有特徵，降維是組合出新特徵；Label 用在有序類別一欄，One-Hot 用在無序類別多欄；Filter 看統計量速度快，Wrapper 看模型表現耗時長。最後帶走四句話：文字變數字有順序用 Label、沒順序用 One-Hot、類別多時別用 One-Hot；原始欄位組合加工互動、滯後、週期常常比換模型更有效；特徵選擇三法 Filter 海選、Wrapper 試鏡、Embedded 邊演邊選；資料增強練出更多資料，但標籤要還是對的，而且只對訓練資料做。下一集進入第 14 章：模型選擇與架構設計。"
+      }
+    ];
+
+    // 初始化渲染
+    window.onload = function() {
+      renderTranscript(rawTranscriptData);
+      initCyclicGraph();
+      updateCyclicSVG(7);
+    };
+
+    // 渲染逐字稿清單
+    function renderTranscript(data, keyword = '') {
+      const container = document.getElementById('transcriptList');
+      if (data.length === 0) {
+        container.innerHTML = `<div class="text-center py-12 text-slate-400 text-sm">找不到符合「${keyword}」的逐字稿段落</div>`;
+        return;
+      }
+      container.innerHTML = data.map(item => {
+        let content = item.text;
+        if (keyword) {
+          const reg = new RegExp(`(${keyword})`, 'gi');
+          content = content.replace(reg, '<span class="bg-amber-200 text-amber-900 px-1 rounded font-bold">$1</span>');
+        }
+        return `
+          <div id="t-${item.time.replace(/:/g, '')}" class="pt-4 first:pt-0 group hover:bg-slate-50/80 p-3 rounded-xl transition duration-150">
+            <div class="flex items-center justify-between mb-1.5">
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 flex items-center gap-1 cursor-pointer" onclick="jumpToTime('${item.time}')">
+                  <svg class="w-3 h-3 text-indigo-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/></svg>
+                  ${item.time}
+                </span>
+                <span class="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">${item.tag}</span>
+              </div>
+              <button onclick="copySnippet('${item.time}', '${escapeQuotes(item.text)}')" class="opacity-0 group-hover:opacity-100 transition text-[11px] text-slate-400 hover:text-indigo-600 flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                複製此段
+              </button>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">${content}</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 搜尋過濾功能
+    function filterTranscript(query) {
+      const q = query.trim().toLowerCase();
+      const clearBtn = document.getElementById('clearBtn');
+      if (q) {
+        clearBtn.classList.remove('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+      }
+      const filtered = rawTranscriptData.filter(d => 
+        d.text.toLowerCase().includes(q) || 
+        d.time.includes(q) || 
+        d.tag.toLowerCase().includes(q)
+      );
+      renderTranscript(filtered, q);
+    }
+
+    function clearSearch() {
+      const input = document.getElementById('searchInput');
+      input.value = '';
+      filterTranscript('');
+    }
+
+    // 跳轉時間並高亮
+    function jumpToTime(timeStr) {
+      const targetId = 't-' + timeStr.replace(/:/g, '');
+      const el = document.getElementById(targetId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('bg-indigo-100/70', 'ring-2', 'ring-indigo-500');
+        setTimeout(() => {
+          el.classList.remove('bg-indigo-100/70', 'ring-2', 'ring-indigo-500');
+        }, 1800);
+      }
+    }
+
+    // 顯示 / 隱藏答案
+    function toggleAnswer() {
+      const el = document.getElementById('quick-answer');
+      el.classList.toggle('hidden');
+    }
+
+    // 複製單段
+    function copySnippet(time, text) {
+      const copyText = `[${time}] ${text}`;
+      executeCopy(copyText, `已複製 [${time}] 逐字稿`);
+    }
+
+    // 複製全篇逐字稿
+    function copyFullTranscript() {
+      const fullText = rawTranscriptData.map(d => `[${d.time}] ${d.text}`).join('\n\n');
+      executeCopy(fullText, "已複製完整時間軸逐字稿");
+    }
+
+    function executeCopy(text, msg) {
+      const dummy = document.createElement("textarea");
+      document.body.appendChild(dummy);
+      dummy.value = text;
+      dummy.select();
+      document.execCommand("copy");
+      document.body.removeChild(dummy);
+      showToast(msg);
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.innerText = msg;
+      toast.classList.remove('opacity-0');
+      toast.classList.add('opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0');
+      }, 2000);
+    }
+
+    function escapeQuotes(str) {
+      return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    // ================= 週期編碼 SVG 動態控制 =================
+    const dayNames = ["週一", "週二", "週三", "週四", "週五", "週六", "週日"];
+    function initCyclicGraph() {
+      const group = document.getElementById('dayPointsGroup');
+      let html = '';
+      const cx = 140, cy = 140, r = 90;
+      for (let i = 1; i <= 7; i++) {
+        const theta = (2 * Math.PI * i) / 7;
+        const x = cx + r * Math.cos(theta);
+        const y = cy - r * Math.sin(theta);
+        html += `
+          <g onclick="updateCyclicSVG(${i})">
+            <circle cx="${x}" cy="${y}" r="4" fill="#94a3b8" class="hover:scale-150 transition"/>
+            <text x="${x + (x > cx ? 8 : -26)}" y="${y + (y > cy ? 12 : -6)}" font-size="10" fill="#475569" font-weight="bold">${dayNames[i-1]}</text>
+          </g>
+        `;
+      }
+      group.innerHTML = html;
+    }
+
+    function updateCyclicSVG(day) {
+      const slider = document.getElementById('daySlider');
+      slider.value = day;
+      const dayNum = parseInt(day);
+      document.getElementById('dayLabel').innerText = `${dayNames[dayNum-1]} (${dayNum})`;
+
+      const cx = 140, cy = 140, r = 90;
+      const theta = (2 * Math.PI * dayNum) / 7;
+      const cosVal = Math.cos(theta);
+      const sinVal = Math.sin(theta);
+
+      const targetX = cx + r * cosVal;
+      const targetY = cy - r * sinVal; // SVG y軸向下
+
+      const activePoint = document.getElementById('activePoint');
+      const radiusLine = document.getElementById('radiusLine');
+
+      activePoint.setAttribute('cx', targetX);
+      activePoint.setAttribute('cy', targetY);
+      radiusLine.setAttribute('x2', targetX);
+      radiusLine.setAttribute('y2', targetY);
+
+      document.getElementById('valSin').innerText = sinVal.toFixed(3);
+      document.getElementById('valCos').innerText = cosVal.toFixed(3);
+    }
+
+    // ================= 特徵選擇三法 切換效果 =================
+    function selectMethod(type) {
+      const cards = ['filter', 'wrapper', 'embedded'];
+      cards.forEach(c => {
+        const el = document.getElementById(`card-${c}`);
+        if (c === type) {
+          el.className = 'cursor-pointer border-2 border-indigo-600 bg-indigo-50/50 p-5 rounded-xl transition duration-200 space-y-3';
+        } else {
+          el.className = 'cursor-pointer border-2 border-transparent bg-slate-50 hover:bg-slate-100 p-5 rounded-xl transition duration-200 space-y-3';
+        }
+      });
+    }
+
+    // ================= SMOTE 動態點生成 =================
+    let smoteCount = 0;
+    function generateSmotePoint() {
+      const container = document.getElementById('syntheticPointsContainer');
+      const lambda = Math.random();
+      // A: (360, 130), B: (480, 70)
+      const ax = 360, ay = 130;
+      const bx = 480, by = 70;
+      const nx = ax + lambda * (bx - ax);
+      const ny = ay + lambda * (by - ay);
+
+      smoteCount++;
+      const newCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      newCircle.setAttribute("cx", nx);
+      newCircle.setAttribute("cy", ny);
+      newCircle.setAttribute("r", "6");
+      newCircle.setAttribute("fill", "#dc2626");
+      newCircle.setAttribute("stroke", "#ffffff");
+      newCircle.setAttribute("stroke-width", "1.5");
+      newCircle.setAttribute("class", "animate-pulse");
+
+      container.appendChild(newCircle);
+      showToast(`已生成 SMOTE 合成新樣本點 #${smoteCount} (λ = ${lambda.toFixed(2)})`);
+
+      if (container.children.length > 7) {
+        container.removeChild(container.firstChild);
+      }
+    }
+  </script>
+
+  <!-- ========================================== -->
+  <!-- 全螢幕 Lightbox 模態視窗 (Modal) -->
+  <!-- ========================================== -->
+  <div id="image-lightbox" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden items-center justify-center p-4 sm:p-6 transition-opacity duration-300 opacity-0" onclick="handleLightboxClick(event)">
+    <div class="relative max-w-5xl w-full bg-slate-900 rounded-2xl border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <!-- 頂部資訊列 -->
+      <div class="flex items-center justify-between px-5 py-3.5 bg-slate-800/80 border-b border-slate-700 text-white">
+        <div class="flex items-center gap-3">
+          <span id="lightbox-time" class="px-2.5 py-0.5 text-xs font-mono font-bold rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">⏱ 00:00</span>
+          <h3 id="lightbox-title" class="font-bold text-sm sm:text-base text-slate-100">投影片預覽</h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <a id="lightbox-download" href="#" target="_blank" download class="px-2.5 py-1 text-xs rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 transition flex items-center gap-1">
+            <span>原圖開新視窗</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+          </a>
+          <button onclick="closeLightbox()" class="w-8 h-8 rounded-lg bg-slate-700/60 hover:bg-rose-600 text-slate-300 hover:text-white transition flex items-center justify-center">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <!-- 圖片容器 -->
+      <div class="flex-1 overflow-auto p-4 flex items-center justify-center bg-black/60">
+        <img id="lightbox-img" src="" alt="投影片放大圖" class="max-w-full max-h-[75vh] object-contain rounded-lg shadow-lg">
+      </div>
+
+      <!-- 底部提示列 -->
+      <div class="px-5 py-2.5 bg-slate-800/60 border-t border-slate-700/60 text-xs text-slate-400 flex items-center justify-between">
+        <span>按 <kbd class="px-1.5 py-0.5 rounded bg-slate-700 text-slate-200 font-mono text-[11px]">ESC</kbd> 鍵或點擊黑色背景關閉視窗</span>
+        <span class="text-indigo-400 font-medium">韋哥 iPAS 13 · 類別編碼、造特徵、特徵選擇、資料增強</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Lightbox 控制
+    function openLightbox(src, title, timeStr) {
+      const modal = document.getElementById('image-lightbox');
+      const img = document.getElementById('lightbox-img');
+      const titleEl = document.getElementById('lightbox-title');
+      const timeEl = document.getElementById('lightbox-time');
+      const dlLink = document.getElementById('lightbox-download');
+
+      img.src = src;
+      titleEl.textContent = title || '投影片預覽';
+      timeEl.textContent = timeStr || '';
+      dlLink.href = src;
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      requestAnimationFrame(() => {
+        modal.classList.remove('opacity-0');
+        modal.classList.add('opacity-100');
+      });
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      const modal = document.getElementById('image-lightbox');
+      modal.classList.remove('opacity-100');
+      modal.classList.add('opacity-0');
+      setTimeout(() => {
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+      }, 300);
+    }
+
+    function handleLightboxClick(e) {
+      if (e.target.id === 'image-lightbox') {
+        closeLightbox();
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeLightbox();
+      }
+    });
+
+    // 跳轉至投影片卡片
+    function scrollToSlide(slideId) {
+      const el = document.getElementById(slideId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-4', 'ring-indigo-400', 'ring-opacity-80');
+        setTimeout(() => {
+          el.classList.remove('ring-4', 'ring-indigo-400', 'ring-opacity-80');
+        }, 1800);
+      }
+    }
+
+    // 跳轉至逐字稿段落 (考慮滾動容器)
+    function scrollToTranscript(targetId) {
+      const sec = document.getElementById('transcript-section');
+      if (sec) {
+        sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      setTimeout(() => {
+        const el = document.getElementById(targetId);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('bg-indigo-100/90', 'ring-2', 'ring-indigo-400');
+          setTimeout(() => {
+            el.classList.remove('bg-indigo-100/90', 'ring-2', 'ring-indigo-400');
+          }, 2000);
+        }
+      }, 400);
+    }
+  </script>
+
+</body>
+</html>
