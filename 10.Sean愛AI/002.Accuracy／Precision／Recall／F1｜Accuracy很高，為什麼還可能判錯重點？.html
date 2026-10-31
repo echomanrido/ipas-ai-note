@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iPAS AI 評估指標互動教學｜Accuracy、Precision、Recall、F1-score 深度解析</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Google Fonts: Inter & Noto Sans TC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Smooth transitions & custom slider */
+    input[type=range] {
+      accent-color: #6366f1;
+    }
+    .metric-gauge-fill {
+      transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .tug-of-war-indicator {
+      transition: transform 0.3s ease-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans selection:bg-indigo-500 selection:text-white pb-16">
+
+  <!-- Header Banner -->
+  <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap justify-between items-center gap-4">
+      <div class="flex items-center space-x-3">
+        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+          <i class="fa-solid fa-graduation-cap mr-1.5"></i> iPAS AI 應用規劃師
+        </span>
+        <h1 class="text-lg md:text-xl font-bold tracking-tight text-white flex items-center">
+          模型評估指標互動講義
+        </h1>
+      </div>
+      <div class="flex items-center space-x-2 text-xs md:text-sm text-slate-400">
+        <a href="../index.html" class="flex items-center gap-1.5 px-3 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition" title="返回全站首頁">
+          <i class="fa-solid fa-house text-xs"></i> 回首頁
+        </a>
+        <span class="bg-slate-800 px-3 py-1 rounded-md text-emerald-400 border border-slate-700">高頻必考章節：J1_032</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-8">
+
+    <!-- 0. 截圖 5 特色重現：模型評估三大支柱 (Three Pillars Summary) -->
+    <section class="bg-[#fbf9f4] text-slate-800 border-2 border-stone-300/80 rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+      <!-- 仿原影片紙質微點質感 -->
+      <div class="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:16px_16px]"></div>
+      
+      <div class="relative z-10 max-w-3xl mx-auto text-center space-y-4">
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center justify-center gap-2">
+          <i class="fa-solid fa-layer-group text-rose-600"></i> 模型評估三大支柱
+        </h2>
+        <p class="text-xs sm:text-sm text-slate-600">
+          短影音精華核心架構 · 點擊卡片可快速滾動至該指標之深度原理解析
+        </p>
+
+        <!-- 三個復刻原影音紅框膠囊卡片 -->
+        <div class="space-y-3 pt-2">
+          <!-- 支柱 1: Precision -->
+          <div onclick="scrollToSection('precisionDetailCard')" class="cursor-pointer group bg-[#fffaf5] border-2 border-rose-500/70 hover:border-rose-600 rounded-xl py-3.5 px-4 sm:px-6 transition-all duration-200 transform hover:-translate-y-0.5 shadow-sm hover:shadow-md">
+            <h4 class="text-base sm:text-lg font-extrabold text-rose-700 group-hover:text-rose-800">
+              Precision（精確率）
+            </h4>
+            <p class="text-xs sm:text-sm text-stone-700 font-medium mt-0.5">
+              看報警準不準 <span class="text-rose-600 font-bold">（避免誤報）</span>
+            </p>
+          </div>
+
+          <!-- 支柱 2: Recall -->
+          <div onclick="scrollToSection('recallDetailCard')" class="cursor-pointer group bg-[#fffaf5] border-2 border-rose-500/70 hover:border-rose-600 rounded-xl py-3.5 px-4 sm:px-6 transition-all duration-200 transform hover:-translate-y-0.5 shadow-sm hover:shadow-md">
+            <h4 class="text-base sm:text-lg font-extrabold text-rose-700 group-hover:text-rose-800">
+              Recall（召回率）
+            </h4>
+            <p class="text-xs sm:text-sm text-stone-700 font-medium mt-0.5">
+              看危險抓不抓得到 <span class="text-rose-600 font-bold">（避免漏診）</span>
+            </p>
+          </div>
+
+          <!-- 支柱 3: F1 Score -->
+          <div onclick="scrollToSection('f1DetailCard')" class="cursor-pointer group bg-[#fffaf5] border-2 border-rose-500/70 hover:border-rose-600 rounded-xl py-3.5 px-4 sm:px-6 transition-all duration-200 transform hover:-translate-y-0.5 shadow-sm hover:shadow-md">
+            <h4 class="text-base sm:text-lg font-extrabold text-rose-700 group-hover:text-rose-800">
+              F1 Score
+            </h4>
+            <p class="text-xs sm:text-sm text-stone-700 font-medium mt-0.5">
+              兩邊兼顧的<span class="text-purple-700 font-bold">最佳平衡點</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 1. 痛點情境引言 (Hook Scenario) -->
+    <section class="bg-gradient-to-br from-rose-950/40 via-slate-900 to-indigo-950/40 border border-rose-500/30 rounded-2xl p-6 sm:p-8 relative overflow-hidden shadow-2xl">
+      <div class="absolute -right-8 -bottom-8 opacity-10 pointer-events-none text-rose-500">
+        <i class="fa-solid fa-triangle-exclamation text-9xl"></i>
+      </div>
+      <div class="max-w-3xl relative z-10 space-y-4">
+        <div class="inline-flex items-center gap-2 text-rose-400 text-sm font-semibold tracking-wide uppercase">
+          <i class="fa-solid fa-skull-crossbones animate-pulse"></i> 致命盲點案例分析
+        </div>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-white leading-snug">
+          號稱準確率 99% 的醫療 AI，真的安全嗎？
+        </h2>
+        <p class="text-slate-300 text-base leading-relaxed">
+          假設在一萬人的健康篩檢中，有 <span class="text-amber-400 font-bold">9,900 人健康</span>，只有 <span class="text-rose-400 font-bold">100 人確診重症</span>。
+          此時工程師寫出一個「無腦 AI」——無論是誰受檢，<strong class="text-white underline decoration-rose-500">一律盲猜沒生病</strong>！
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          <div class="bg-slate-950/60 border border-emerald-500/30 p-4 rounded-xl flex items-center gap-3">
+            <div class="p-3 bg-emerald-500/20 text-emerald-400 rounded-lg text-xl">
+              <i class="fa-solid fa-face-smile"></i>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400">表面上的 Accuracy (答對率)</p>
+              <p class="text-2xl font-black text-emerald-400">99.0% <span class="text-xs font-normal text-slate-400">(看似完美)</span></p>
+            </div>
+          </div>
+          <div class="bg-slate-950/60 border border-rose-500/40 p-4 rounded-xl flex items-center gap-3">
+            <div class="p-3 bg-rose-500/20 text-rose-400 rounded-lg text-xl">
+              <i class="fa-solid fa-bell-slash"></i>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400">實際重症漏診率 (FN 漏抓)</p>
+              <p class="text-2xl font-black text-rose-400">100% 漏診 <span class="text-xs font-normal text-rose-300">(致命危機)</span></p>
+            </div>
+          </div>
+        </div>
+        <p class="text-sm text-indigo-300 italic pt-1">
+          💡 結論：面對不平衡資料集 (Imbalanced Data)，單看「整體準確率」會造成嚴重誤導！
+        </p>
+      </div>
+    </section>
+
+    <!-- 2. 四大核心指標卡片 (Color Cards) -->
+    <section>
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xl font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-cubes text-indigo-400"></i> 四大評估核心概念卡
+        </h3>
+        <span class="text-xs text-slate-400">點擊互動計算器可即時驗證數值</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- 1. Accuracy 藍色/灰色 -->
+        <div class="bg-slate-800/80 border-t-4 border-t-blue-500 border-slate-700 rounded-xl p-5 flex flex-col justify-between shadow-lg hover:border-slate-600 transition">
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-xs uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">整體答對率</span>
+              <span class="text-slate-400 font-mono text-sm">全部都算</span>
+            </div>
+            <h4 class="text-lg font-bold text-white">Accuracy 準確率</h4>
+            <div class="my-3 p-2 bg-slate-900 rounded font-mono text-xs text-blue-300 text-center border border-slate-800">
+              (TP + TN) / 全體樣本數
+            </div>
+            <p class="text-sm text-slate-300 leading-relaxed">
+              模型把有病的說有病、沒病的說沒病，所有答對的比例。
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-700 text-xs text-rose-300 flex items-start gap-1.5">
+            <i class="fa-solid fa-triangle-exclamation mt-0.5 flex-shrink-0"></i>
+            <span><strong>盲點：</strong>正負樣本極端失衡時，全猜多數類就能輕鬆騙取 99% 高分。</span>
+          </div>
+        </div>
+
+        <!-- 2. Precision 綠色 (整合截圖 1 SVG 視覺圖解) -->
+        <div id="precisionDetailCard" class="bg-slate-800/80 border-t-4 border-t-emerald-500 border-slate-700 rounded-xl p-5 flex flex-col justify-between shadow-lg hover:border-slate-600 transition">
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-xs uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">警報品質</span>
+              <span class="text-emerald-400 text-sm font-semibold">怕吵、怕誤報</span>
+            </div>
+            <h4 class="text-lg font-bold text-white">Precision 精確率</h4>
+            
+            <!-- 復刻截圖 1 公式與 SVG 幾何集合 -->
+            <div class="my-2.5 p-2 bg-[#fcfaf5] rounded-lg border border-stone-300 text-slate-900 text-center">
+              <div class="font-serif font-black text-rose-700 text-xs tracking-wider mb-1">Precision (精確率)</div>
+              <div class="font-mono text-sm font-bold text-rose-700 leading-none">
+                <span class="border-b-2 border-rose-600 pb-0.5 inline-block">TP</span><br>
+                <span class="pt-0.5 inline-block">TP + FP</span>
+              </div>
+              
+              <!-- 截圖 1 SVG: 系統警報區橢圓與點位 -->
+              <div class="mt-2 flex justify-center">
+                <svg viewBox="0 0 180 82" class="w-full max-w-[170px] h-auto">
+                  <text x="90" y="11" fill="#c2410c" font-size="9" font-weight="bold" text-anchor="middle">系統警報區</text>
+                  <!-- 橢圓紅色外框 -->
+                  <ellipse cx="90" cy="46" rx="84" ry="32" fill="#fff5eb" stroke="#ea580c" stroke-width="1.6" stroke-dasharray="2,2"/>
+                  <!-- TP 猜對圓點 (紅色 4 點) -->
+                  <circle cx="48" cy="38" r="3.2" fill="#ef4444"/>
+                  <circle cx="58" cy="38" r="3.2" fill="#ef4444"/>
+                  <circle cx="48" cy="48" r="3.2" fill="#ef4444"/>
+                  <circle cx="58" cy="48" r="3.2" fill="#ef4444"/>
+                  <text x="53" y="62" fill="#dc2626" font-size="7.5" font-weight="bold" text-anchor="middle">TP (猜對)</text>
+                  <!-- FP 誤報圓點 (綠色方框+4點) -->
+                  <rect x="110" y="28" width="28" height="28" rx="4" fill="none" stroke="#16a34a" stroke-width="1.2"/>
+                  <circle cx="118" cy="36" r="2.8" fill="#16a34a"/>
+                  <circle cx="130" cy="36" r="2.8" fill="#16a34a"/>
+                  <circle cx="118" cy="48" r="2.8" fill="#16a34a"/>
+                  <circle cx="130" cy="48" r="2.8" fill="#16a34a"/>
+                  <text x="124" y="66" fill="#16a34a" font-size="7.5" font-weight="bold" text-anchor="middle">FP (誤報)</text>
+                </svg>
+              </div>
+              <p class="text-[10px] text-rose-700 font-bold mt-1">誤報過高：浪費資源與恐慌</p>
+            </div>
+
+            <p class="text-xs text-slate-300 leading-relaxed mt-2">
+              分母是<strong>「所有被系統警告的人」</strong>。報警到底準不準？
+            </p>
+          </div>
+          <div class="mt-3 pt-2.5 border-t border-slate-700 text-xs text-emerald-300 flex items-start gap-1.5">
+            <i class="fa-solid fa-shield-halved mt-0.5 flex-shrink-0"></i>
+            <span><strong>典型應用：</strong>垃圾郵件辨識、法院判刑（不可冤枉無辜）。</span>
+          </div>
+        </div>
+
+        <!-- 3. Recall 橘色/紅色 (整合截圖 2 SVG 視覺圖解) -->
+        <div id="recallDetailCard" class="bg-slate-800/80 border-t-4 border-t-rose-500 border-slate-700 rounded-xl p-5 flex flex-col justify-between shadow-lg hover:border-slate-600 transition">
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-xs uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30">漏診致命</span>
+              <span class="text-rose-400 text-sm font-semibold">寧可錯殺</span>
+            </div>
+            <h4 class="text-lg font-bold text-white">Recall 召回率</h4>
+
+            <!-- 復刻截圖 2 公式與 SVG 幾何集合 -->
+            <div class="my-2.5 p-2 bg-[#fcfaf5] rounded-lg border border-stone-300 text-slate-900 text-center">
+              <div class="font-serif font-black text-rose-700 text-xs tracking-wider mb-1">Recall (召回率)</div>
+              <div class="font-mono text-sm font-bold text-rose-700 leading-none">
+                <span class="border-b-2 border-rose-600 pb-0.5 inline-block">TP</span><br>
+                <span class="pt-0.5 inline-block">TP + FN</span>
+              </div>
+              
+              <!-- 截圖 2 SVG: 實際生病區橢圓與點位 -->
+              <div class="mt-2 flex justify-center">
+                <svg viewBox="0 0 180 82" class="w-full max-w-[170px] h-auto">
+                  <text x="90" y="11" fill="#c2410c" font-size="9" font-weight="bold" text-anchor="middle">實際生病區</text>
+                  <!-- 橢圓紅色外框 -->
+                  <ellipse cx="90" cy="46" rx="84" ry="32" fill="#fff5eb" stroke="#ea580c" stroke-width="1.6" stroke-dasharray="2,2"/>
+                  <!-- FN 漏診 (紅色圓角方框 + 4 點) -->
+                  <rect x="38" y="28" width="28" height="28" rx="4" fill="none" stroke="#dc2626" stroke-width="1.2"/>
+                  <circle cx="46" cy="36" r="2.8" fill="#dc2626"/>
+                  <circle cx="58" cy="36" r="2.8" fill="#dc2626"/>
+                  <circle cx="46" cy="48" r="2.8" fill="#dc2626"/>
+                  <circle cx="58" cy="48" r="2.8" fill="#dc2626"/>
+                  <text x="52" y="66" fill="#dc2626" font-size="7.5" font-weight="bold" text-anchor="middle">FN (漏診)</text>
+                  <!-- TP 猜對圓點 (紅色 4 點) -->
+                  <circle cx="120" cy="38" r="3.2" fill="#ef4444"/>
+                  <circle cx="130" cy="38" r="3.2" fill="#ef4444"/>
+                  <circle cx="120" cy="48" r="3.2" fill="#ef4444"/>
+                  <circle cx="130" cy="48" r="3.2" fill="#ef4444"/>
+                  <text x="125" y="62" fill="#dc2626" font-size="7.5" font-weight="bold" text-anchor="middle">TP (猜對)</text>
+                </svg>
+              </div>
+              <p class="text-[10px] text-rose-700 font-bold mt-1">漏診過高：代價人命關天</p>
+            </div>
+
+            <p class="text-xs text-slate-300 leading-relaxed mt-2">
+              分母是<strong>「所有真正生病的人」</strong>。全體病患有沒有漏掉？
+            </p>
+          </div>
+          <div class="mt-3 pt-2.5 border-t border-slate-700 text-xs text-rose-300 flex items-start gap-1.5">
+            <i class="fa-solid fa-heart-pulse mt-0.5 flex-shrink-0"></i>
+            <span><strong>典型應用：</strong>癌症快篩、地震警報、機場安檢（寧可錯抓不能漏）。</span>
+          </div>
+        </div>
+
+        <!-- 4. F1-Score 紫色 (整合截圖 4 調和平均公式與對比) -->
+        <div id="f1DetailCard" class="bg-slate-800/80 border-t-4 border-t-purple-500 border-slate-700 rounded-xl p-5 flex flex-col justify-between shadow-lg hover:border-slate-600 transition">
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-xs uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30">拔河天平</span>
+              <span class="text-purple-300 text-sm font-semibold">調和平均</span>
+            </div>
+            <h4 class="text-lg font-bold text-white">F1-score 綜合指標</h4>
+
+            <!-- 復刻截圖 4 公式與雙數值對比示範卡 -->
+            <div class="my-2.5 p-2 bg-[#fcfaf5] rounded-lg border border-stone-300 text-slate-900 text-center font-sans">
+              <div class="font-serif font-black text-rose-700 text-xs tracking-wider">F1 Score</div>
+              <div class="text-[10px] text-stone-600 font-semibold mb-1">調和平均數 (Harmonic Mean)</div>
+              <div class="font-mono text-xs font-bold text-rose-700 leading-tight">
+                = 2 × <span class="inline-block align-middle"><span class="border-b border-rose-600 pb-0.5 block">Precision × Recall</span><span class="pt-0.5 block">Precision + Recall</span></span>
+              </div>
+
+              <!-- 截圖 4 經典數值對照 -->
+              <div class="mt-2 space-y-1 text-left bg-white p-2 rounded border border-stone-200 font-mono text-[11px]">
+                <div class="text-rose-600 font-semibold flex justify-between">
+                  <span>P = 1.0, R = 0.1</span>
+                  <span>⟹ <strong class="text-rose-700 font-extrabold">F1 = 0.18</strong> ⚠️</span>
+                </div>
+                <div class="text-emerald-700 font-semibold flex justify-between">
+                  <span>P = 0.9, R = 0.9</span>
+                  <span>⟹ <strong class="text-emerald-800 font-extrabold">F1 = 0.90</strong> ✨</span>
+                </div>
+              </div>
+            </div>
+
+            <p class="text-xs text-slate-300 leading-relaxed mt-2">
+              調和平均強烈<strong>「偏向低分者」</strong>，只要單邊偏廢，F1 就立刻崩盤。
+            </p>
+          </div>
+          <div class="mt-3 pt-2.5 border-t border-slate-700 text-xs text-purple-300 flex items-start gap-1.5">
+            <i class="fa-solid fa-scale-balanced mt-0.5 flex-shrink-0"></i>
+            <span><strong>核心價值：</strong>制約投機模型，逼模型同時兼顧精準度與覆蓋率。</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 互動式混淆矩陣與即時計算器 (Interactive Simulator) -->
+    <section class="bg-slate-800/90 border border-slate-700 rounded-2xl p-6 shadow-xl">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-4 border-b border-slate-700">
+        <div>
+          <h3 class="text-xl font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-indigo-400"></i>
+            動態混淆矩陣 (Confusion Matrix) 模擬試驗所
+          </h3>
+          <p class="text-sm text-slate-400 mt-1">動手微調四個象限或選擇預設情境，體驗指標如何在極端情況下變化</p>
+        </div>
+        <!-- 快速切換預設情境 -->
+        <div class="flex flex-wrap gap-2">
+          <button onclick="applyPreset('medical_blind')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-950 text-rose-300 border border-rose-700 hover:bg-rose-900 transition">
+            <i class="fa-solid fa-triangle-exclamation mr-1"></i> 99%醫療 AI 盲猜
+          </button>
+          <button onclick="applyPreset('balanced_good')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-700 hover:bg-emerald-900 transition">
+            <i class="fa-solid fa-check-double mr-1"></i> 優質均衡模型
+          </button>
+          <button onclick="applyPreset('alarmist')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-950 text-amber-300 border border-amber-700 hover:bg-amber-900 transition">
+            <i class="fa-solid fa-bullhorn mr-1"></i> 寧可錯殺大聲公 (高 Recall)
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- 左側：混淆矩陣 2x2 格子輸入與控制 -->
+        <div class="lg:col-span-6 space-y-6">
+          <div class="bg-slate-950/70 p-4 rounded-xl border border-slate-700/80">
+            <div class="text-center font-bold text-sm text-indigo-300 mb-3 tracking-wide">
+              —— 混淆矩陣 2 × 2 分布 ——
+            </div>
+
+            <!-- Matrix Headers -->
+            <div class="grid grid-cols-3 gap-2 text-center text-xs font-bold mb-2">
+              <div class="text-slate-500 self-end">實際 \ AI預測</div>
+              <div class="bg-indigo-900/40 text-indigo-300 py-1.5 rounded border border-indigo-700/40">預測陽性 (有病/警報)</div>
+              <div class="bg-slate-800/60 text-slate-300 py-1.5 rounded border border-slate-700">預測陰性 (健康/正常)</div>
+            </div>
+
+            <!-- Row 1: 實際生病 -->
+            <div class="grid grid-cols-3 gap-2 mb-2">
+              <div class="bg-rose-950/40 text-rose-300 p-2 rounded flex flex-col justify-center items-center text-xs font-bold border border-rose-800/40">
+                <span>實際陽性</span>
+                <span class="text-[10px] text-rose-400 font-normal">(真的有病)</span>
+              </div>
+
+              <!-- TP -->
+              <div class="bg-emerald-950/40 border-2 border-emerald-500/60 rounded-lg p-2.5 flex flex-col justify-between">
+                <div class="flex justify-between items-center text-xs">
+                  <span class="font-bold text-emerald-400">TP (真陽性)</span>
+                  <span class="text-[10px] text-emerald-300/70">抓對了</span>
+                </div>
+                <input type="number" id="inputTP" min="0" max="10000" value="0" 
+                  class="bg-slate-900 text-white font-mono font-bold text-right rounded p-1.5 border border-slate-700 w-full mt-1.5 text-base focus:outline-none focus:border-emerald-500"
+                  oninput="updateMetrics()">
+              </div>
+
+              <!-- FN -->
+              <div class="bg-rose-950/40 border-2 border-rose-500/60 rounded-lg p-2.5 flex flex-col justify-between">
+                <div class="flex justify-between items-center text-xs">
+                  <span class="font-bold text-rose-400">FN (偽陰性)</span>
+                  <span class="text-[10px] text-rose-300/70">漏抓致命</span>
+                </div>
+                <input type="number" id="inputFN" min="0" max="10000" value="100" 
+                  class="bg-slate-900 text-white font-mono font-bold text-right rounded p-1.5 border border-slate-700 w-full mt-1.5 text-base focus:outline-none focus:border-rose-500"
+                  oninput="updateMetrics()">
+              </div>
+            </div>
+
+            <!-- Row 2: 實際健康 -->
+            <div class="grid grid-cols-3 gap-2">
+              <div class="bg-slate-900 text-slate-300 p-2 rounded flex flex-col justify-center items-center text-xs font-bold border border-slate-800">
+                <span>實際陰性</span>
+                <span class="text-[10px] text-slate-400 font-normal">(健康正常)</span>
+              </div>
+
+              <!-- FP -->
+              <div class="bg-amber-950/40 border-2 border-amber-500/60 rounded-lg p-2.5 flex flex-col justify-between">
+                <div class="flex justify-between items-center text-xs">
+                  <span class="font-bold text-amber-400">FP (偽陽性)</span>
+                  <span class="text-[10px] text-amber-300/70">誤報恐慌</span>
+                </div>
+                <input type="number" id="inputFP" min="0" max="10000" value="0" 
+                  class="bg-slate-900 text-white font-mono font-bold text-right rounded p-1.5 border border-slate-700 w-full mt-1.5 text-base focus:outline-none focus:border-amber-500"
+                  oninput="updateMetrics()">
+              </div>
+
+              <!-- TN -->
+              <div class="bg-blue-950/40 border-2 border-blue-500/60 rounded-lg p-2.5 flex flex-col justify-between">
+                <div class="flex justify-between items-center text-xs">
+                  <span class="font-bold text-blue-400">TN (真陰性)</span>
+                  <span class="text-[10px] text-blue-300/70">平安無事</span>
+                </div>
+                <input type="number" id="inputTN" min="0" max="10000" value="9900" 
+                  class="bg-slate-900 text-white font-mono font-bold text-right rounded p-1.5 border border-slate-700 w-full mt-1.5 text-base focus:outline-none focus:border-blue-500"
+                  oninput="updateMetrics()">
+              </div>
+            </div>
+
+            <div class="mt-3 flex justify-between items-center text-xs text-slate-400 px-1 font-mono">
+              <span>總樣本數 N = <strong id="valTotal" class="text-white">10000</strong></span>
+              <span>陽性病人 = <strong id="valActualPos" class="text-rose-400">100</strong></span>
+              <span>陰性健康 = <strong id="valActualNeg" class="text-blue-400">9900</strong></span>
+            </div>
+          </div>
+
+          <!-- 快速滑桿微調 (調整正向預測門檻 Threshold) -->
+          <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+            <div class="flex justify-between items-center text-sm mb-2">
+              <span class="font-semibold text-slate-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-gauge-high text-indigo-400"></i> AI 警報敏感度模擬 (Threshold)
+              </span>
+              <span id="thresholdLabel" class="font-mono text-xs text-indigo-300">目前：極度寬鬆 (全猜陰性)</span>
+            </div>
+            <input type="range" id="sensitivitySlider" min="0" max="100" value="0" class="w-full h-2 bg-slate-700 rounded-lg cursor-pointer" oninput="handleSliderChange(this.value)">
+            <div class="flex justify-between text-[11px] text-slate-500 mt-1">
+              <span>← 保守不亂叫 (高 Precision)</span>
+              <span>過度神經質 (高 Recall) →</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右側：即時指標儀表板 & 診斷評語 -->
+        <div class="lg:col-span-6 flex flex-col justify-between space-y-4">
+          <div class="space-y-3.5">
+            
+            <!-- Accuracy Gauge -->
+            <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-800">
+              <div class="flex justify-between items-center mb-1.5">
+                <span class="text-sm font-bold text-blue-400 flex items-center gap-1.5">
+                  <i class="fa-solid fa-bullseye"></i> Accuracy (準確率)
+                </span>
+                <span id="metricAccuracy" class="text-lg font-mono font-extrabold text-blue-400">99.0%</span>
+              </div>
+              <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                <div id="barAccuracy" class="metric-gauge-fill bg-blue-500 h-full rounded-full" style="width: 99%"></div>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1.5 flex justify-between">
+                <span>計算公式: (TP + TN) / Total</span>
+                <span id="calcAccuracy" class="font-mono text-slate-300">(0 + 9900) / 10000</span>
+              </p>
+            </div>
+
+            <!-- Precision Gauge -->
+            <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-800">
+              <div class="flex justify-between items-center mb-1.5">
+                <span class="text-sm font-bold text-emerald-400 flex items-center gap-1.5">
+                  <i class="fa-solid fa-filter"></i> Precision (精確率)
+                </span>
+                <span id="metricPrecision" class="text-lg font-mono font-extrabold text-emerald-400">0.0%</span>
+              </div>
+              <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                <div id="barPrecision" class="metric-gauge-fill bg-emerald-500 h-full rounded-full" style="width: 0%"></div>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1.5 flex justify-between">
+                <span>計算公式: TP / (TP + FP) [警報準度]</span>
+                <span id="calcPrecision" class="font-mono text-slate-300">0 / 0</span>
+              </p>
+            </div>
+
+            <!-- Recall Gauge -->
+            <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-800">
+              <div class="flex justify-between items-center mb-1.5">
+                <span class="text-sm font-bold text-rose-400 flex items-center gap-1.5">
+                  <i class="fa-solid fa-magnet"></i> Recall (召回率)
+                </span>
+                <span id="metricRecall" class="text-lg font-mono font-extrabold text-rose-400">0.0%</span>
+              </div>
+              <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                <div id="barRecall" class="metric-gauge-fill bg-rose-500 h-full rounded-full" style="width: 0%"></div>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1.5 flex justify-between">
+                <span>計算公式: TP / (TP + FN) [抓獲比率]</span>
+                <span id="calcRecall" class="font-mono text-slate-300">0 / (0 + 100)</span>
+              </p>
+            </div>
+
+            <!-- F1 Gauge -->
+            <div class="bg-slate-900 p-3.5 rounded-xl border border-purple-900/60">
+              <div class="flex justify-between items-center mb-1.5">
+                <span class="text-sm font-bold text-purple-400 flex items-center gap-1.5">
+                  <i class="fa-solid fa-scale-unbalanced"></i> F1-Score (調和平均)
+                </span>
+                <span id="metricF1" class="text-lg font-mono font-extrabold text-purple-400">0.0%</span>
+              </div>
+              <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                <div id="barF1" class="metric-gauge-fill bg-purple-500 h-full rounded-full" style="width: 0%"></div>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1.5 flex justify-between">
+                <span>計算公式: 2PR / (P + R)</span>
+                <span class="font-mono text-slate-400">兼顧雙方拔河平衡</span>
+              </p>
+            </div>
+
+          </div>
+
+          <!-- 即時臨床 / 實務診斷診斷卡 -->
+          <div id="diagnosisBox" class="p-4 rounded-xl border bg-rose-950/50 border-rose-600/50 text-rose-200 text-sm flex items-start gap-3">
+            <i id="diagnosisIcon" class="fa-solid fa-skull-crossbones text-rose-400 text-xl mt-0.5"></i>
+            <div>
+              <h5 id="diagnosisTitle" class="font-bold text-white text-base">診斷分析載入中...</h5>
+              <p id="diagnosisDesc" class="mt-1 leading-relaxed text-slate-300">正在分析混淆矩陣指標組合...</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. 視覺化拔河圖解：Precision 怕吵 vs Recall 寧可錯殺 (整合截圖 3 兩大指標拉鋸天平 SVG) -->
+    <section class="bg-[#fbf9f4] text-slate-800 border-2 border-stone-300/80 rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+      <!-- 仿原片背景微質點 -->
+      <div class="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:16px_16px]"></div>
+      
+      <div class="relative z-10 max-w-4xl mx-auto">
+        <div class="text-center mb-6">
+          <h3 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            兩大指標的拉鋸 (Trade-off)
+          </h3>
+          <p class="text-xs sm:text-sm text-stone-600 mt-1">
+            拖曳下方「決策閾值 (Threshold)」滑桿，觀察天平橫桿如何即時傾斜，並動態牽動 Precision 與 Recall 條型長度的此消彼長
+          </p>
+        </div>
+
+        <!-- 截圖 3 特色復刻：天平橫桿與雙進度條 SVG -->
+        <div class="bg-white/80 backdrop-blur rounded-2xl p-6 border border-stone-300 shadow-inner flex flex-col items-center">
+          
+          <svg class="w-full max-w-[420px] h-36" viewBox="0 0 360 140">
+            <!-- 支架文字：決策閾值 (Threshold) -->
+            <text x="180" y="32" fill="#334155" font-size="12" font-weight="bold" text-anchor="middle" font-family="'Inter', sans-serif">
+              決策閾值 (Threshold)
+            </text>
+
+            <!-- 支點三角形 (Fulcrum) -->
+            <polygon points="180,48 168,70 192,70" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linejoin="round"/>
+            <polygon points="180,51 171,68 189,68" fill="#fecaca"/>
+
+            <!-- 天平主橫桿 (可動態傾斜 Group) -->
+            <g id="scaleBarGroup" style="transform-origin: 180px 48px; transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);">
+              <line x1="50" y1="48" x2="310" y2="48" stroke="#334155" stroke-width="4.5" stroke-linecap="round"/>
+              <circle cx="50" cy="48" r="4.5" fill="#ef4444"/>
+              <circle cx="310" cy="48" r="4.5" fill="#ef4444"/>
+            </g>
+
+            <!-- 底部兩大指標動態條型 (截圖 3 經典紅條框) -->
+            <!-- 左側: Precision -->
+            <text x="95" y="94" fill="#1e293b" font-size="12" font-weight="bold" text-anchor="middle">Precision</text>
+            <rect x="35" y="102" width="120" height="18" fill="#f8fafc" stroke="#334155" stroke-width="1.8" rx="2"/>
+            <rect id="svgBarPrecision" x="37" y="104" width="0" height="14" fill="#ef4444" rx="1.5" class="transition-all duration-300"/>
+
+            <!-- 右側: Recall -->
+            <text x="265" y="94" fill="#1e293b" font-size="12" font-weight="bold" text-anchor="middle">Recall</text>
+            <rect x="205" y="102" width="120" height="18" fill="#f8fafc" stroke="#334155" stroke-width="1.8" rx="2"/>
+            <rect id="svgBarRecall" x="207" y="104" width="0" height="14" fill="#ef4444" rx="1.5" class="transition-all duration-300"/>
+          </svg>
+
+          <!-- 閥值控制滑桿 Slider -->
+          <div class="w-full max-w-md mt-3 space-y-2">
+            <div class="flex justify-between items-center text-xs font-semibold text-stone-700">
+              <span class="flex items-center gap-1 text-emerald-700">
+                <i class="fa-solid fa-shield-cat"></i> 高門檻 (怕誤報、高 Precision)
+              </span>
+              <span class="flex items-center gap-1 text-rose-700">
+                低門檻 (寧可錯殺、高 Recall) <i class="fa-solid fa-virus"></i>
+              </span>
+            </div>
+            <input type="range" id="tradeoffSlider" min="0" max="100" value="0" 
+                   class="w-full h-2.5 bg-stone-300 rounded-lg cursor-pointer accent-rose-600"
+                   oninput="syncFromTradeoffSlider(this.value)">
+            <p id="tradeoffCaption" class="text-center text-xs font-mono font-bold text-slate-700 pt-1">
+              當前狀態：極端寬鬆 · Precision 0% vs Recall 0%
+            </p>
+          </div>
+
+        </div>
+
+        <!-- 底部重點引用字卡 -->
+        <div class="mt-5 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-stone-800 text-xs sm:text-sm text-center leading-relaxed">
+          <p class="font-bold text-amber-900">
+            ⚠️ 偏偏這兩個指標像在拔河：寧可錯殺與怕吵不報互相排斥。一旦漏診，代價往往人命關天！
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. iPAS 考點精華與速記口訣 (Exam Cheat Sheet) -->
+    <section class="bg-gradient-to-r from-slate-900 via-indigo-950/60 to-slate-900 border border-indigo-500/30 rounded-2xl p-6 md:p-8 shadow-xl">
+      <div class="flex items-center gap-2 mb-4 text-indigo-400 font-bold text-lg">
+        <i class="fa-solid fa-bookmark"></i>
+        iPAS 證照必背！高頻考點口訣對照表
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- 口訣 1 -->
+        <div class="bg-slate-950/80 p-4 rounded-xl border border-slate-800">
+          <div class="text-emerald-400 font-extrabold text-base mb-1">
+            <i class="fa-solid fa-check mr-1.5"></i> Precision 看「報警準不準」
+          </div>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            系統說「有病」的人裡，到底幾個真有病？<br>
+            <strong class="text-slate-200">分母是系統預測為 Positive 的總數</strong> [TP + FP]。避免虛驚一場！
+          </p>
+        </div>
+
+        <!-- 口訣 2 -->
+        <div class="bg-slate-950/80 p-4 rounded-xl border border-slate-800">
+          <div class="text-rose-400 font-extrabold text-base mb-1">
+            <i class="fa-solid fa-radiation mr-1.5"></i> Recall 看「危險抓不抓得到」
+          </div>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            全體真的有病的人裡面，到底揪出了多少人？<br>
+            <strong class="text-slate-200">分母是真實為 Positive 的總數</strong> [TP + FN]。絕不可漏抓！
+          </p>
+        </div>
+
+        <!-- 口訣 3 -->
+        <div class="bg-slate-950/80 p-4 rounded-xl border border-slate-800">
+          <div class="text-purple-400 font-extrabold text-base mb-1">
+            <i class="fa-solid fa-crosshairs mr-1.5"></i> F1 是「調和平均兼顧好」
+          </div>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            不能只討好其中一邊！調和平均數特性是<strong>「偏向較小值」</strong>，只要任一端是 0，F1 就直接歸零，防止模型投機取巧。
+          </p>
+        </div>
+      </div>
+
+      <!-- 常見考題陷阱提醒 -->
+      <div class="mt-6 bg-slate-900/90 border-l-4 border-l-amber-500 p-4 rounded-r-xl">
+        <h5 class="text-amber-400 font-bold text-sm flex items-center gap-2">
+          <i class="fa-solid fa-circle-question"></i> iPAS 選擇題常見陷阱題型
+        </h5>
+        <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+          <strong>Q：當資料集中負樣本高達 99.9% 時，若某模型宣告具有 99.8% 的 Accuracy，該模型是否一定是優質模型？</strong><br>
+          <span class="text-emerald-400 font-semibold">A：不一定（多為錯誤干擾選項）！</span> 因為只要全猜負樣本，隨便都能達到 99.9% Accuracy。此時必須檢驗 <strong>Recall、Precision</strong> 以及 <strong>F1-score</strong> 或改用 <strong>ROC-AUC / PR-AUC</strong> 評估。
+        </p>
+      </div>
+    </section>
+
+    <!-- 6. 互動式時間軸逐字稿模組 (Interactive Timeline Transcript) -->
+    <section id="transcriptSection" class="bg-slate-800/90 border border-slate-700 rounded-2xl p-6 sm:p-8 shadow-2xl relative">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-slate-700">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="p-2 rounded-lg bg-indigo-500/20 text-indigo-400 text-lg">
+              <i class="fa-solid fa-clock-rotate-left"></i>
+            </span>
+            <h3 class="text-xl sm:text-2xl font-black text-white tracking-tight">
+              時間軸逐字稿 & 影片同步導覽
+            </h3>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">
+            短影音完整講稿 · 點選任一時間點自動連動上方矩陣數值與觀念天平
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <!-- 原始 YouTube 影片快捷跳轉 -->
+          <a href="https://youtube.com/shorts/acrmGi5XG6g?si=QD-FLJ9k8foNrlHJ" target="_blank" rel="noopener noreferrer" 
+             class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/30 text-xs font-bold transition">
+            <i class="fa-brands fa-youtube text-base"></i> 觀看原 YouTube Shorts
+          </a>
+          <!-- 模擬播放按鈕 -->
+          <button id="playbackToggleBtn" onclick="toggleAutoPlayTranscript()" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-600/30">
+            <i id="playbackIcon" class="fa-solid fa-play"></i>
+            <span id="playbackText">自動循序導覽</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 搜尋與類別篩選標籤 -->
+      <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 my-6">
+        <div class="flex flex-wrap gap-1.5 sm:gap-2">
+          <button onclick="filterTranscript('all')" class="filter-btn active px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition" data-filter="all">
+            全部章節 (13)
+          </button>
+          <button onclick="filterTranscript('accuracy')" class="filter-btn px-3 py-1 rounded-lg text-xs font-semibold bg-slate-900 text-slate-300 border border-slate-700 hover:border-slate-500 transition" data-filter="accuracy">
+            <span class="w-2 h-2 rounded-full inline-block bg-rose-500 mr-1.5"></span>Accuracy 盲點
+          </button>
+          <button onclick="filterTranscript('precision')" class="filter-btn px-3 py-1 rounded-lg text-xs font-semibold bg-slate-900 text-slate-300 border border-slate-700 hover:border-slate-500 transition" data-filter="precision">
+            <span class="w-2 h-2 rounded-full inline-block bg-emerald-500 mr-1.5"></span>Precision 精確
+          </button>
+          <button onclick="filterTranscript('recall')" class="filter-btn px-3 py-1 rounded-lg text-xs font-semibold bg-slate-900 text-slate-300 border border-slate-700 hover:border-slate-500 transition" data-filter="recall">
+            <span class="w-2 h-2 rounded-full inline-block bg-amber-500 mr-1.5"></span>Recall 召回
+          </button>
+          <button onclick="filterTranscript('f1')" class="filter-btn px-3 py-1 rounded-lg text-xs font-semibold bg-slate-900 text-slate-300 border border-slate-700 hover:border-slate-500 transition" data-filter="f1">
+            <span class="w-2 h-2 rounded-full inline-block bg-purple-500 mr-1.5"></span>F1-score 拔河
+          </button>
+        </div>
+
+        <div class="relative w-full sm:w-64">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-400"></i>
+          <input type="text" id="transcriptSearch" placeholder="搜尋講稿關鍵字..." oninput="handleSearch(this.value)"
+                 class="w-full bg-slate-950 text-xs text-slate-200 pl-8 pr-3 py-2 rounded-lg border border-slate-700 focus:outline-none focus:border-indigo-500 font-mono">
+        </div>
+      </div>
+
+      <!-- 垂直發光時間軸主體 (Vertical Glowing Timeline) -->
+      <div class="relative pl-6 sm:pl-8 space-y-5 before:content-[''] before:absolute before:left-2 sm:before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-gradient-to-b before:from-rose-500 before:via-emerald-500 before:to-purple-500" id="transcriptList">
+        
+        <!-- [00:00:03] -->
+        <div class="transcript-item group relative cursor-pointer" data-category="accuracy" data-time="3" onclick="selectTranscriptItem(this, 'medical_blind', 0)">
+          <div class="absolute -left-[27px] sm:-left-[31px] top-4 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-slate-900 shadow-[0_0_12px_#f43f5e] group-hover:scale-125 transition-transform"></div>
+          <div class="bg-rose-950/30 hover:bg-rose-950/50 border border-rose-500/40 rounded-xl p-4 transition shadow-md hover:border-rose-400">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="font-mono text-xs font-bold text-rose-400 bg-rose-500/20 px-2.5 py-0.5 rounded-md border border-rose-500/30 flex items-center gap-1">
+                <i class="fa-regular fa-clock"></i> 00:00:03
+              </span>
+              <span class="text-[11px] font-semibold text-rose-300">破題質疑 · Accuracy 迷思</span>
+            </div>
+            <p class="text-sm font-semibold text-white tracking-wide">
+              「號稱準確率 99% 的醫療 AI，真的安全嗎？」
+            </p>
+          </div>
+        </div>
+
+        <!-- [00:00:08] -->
+        <div class="transcript-item group relative cursor-pointer" data-category="accuracy" data-time="8" onclick="selectTranscriptItem(this, 'medical_blind', 0)">
+          <div class="absolute -left-[27px] sm:-left-[31px] top-4 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-slate-900 shadow-[0_0_12px_#f43f5e] group-hover:scale-125 transition-transform"></div>
+          <div class="bg-rose-950/30 hover:bg-rose-950/50 border border-rose-500/40 rounded-xl p-4 transition shadow-md hover:border-rose-400">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="font-mono text-xs font-bold text-rose-400 bg-rose-500/20 px-2.5 py-0.5 rounded-md border border-rose-500/30 flex items-center gap-1">
+                <i class="fa-regular fa-clock"></i> 00:00:08
+              </span>
+              <span class="text-[11px] font-semibold text-slate-400">極端資料分佈</span>
+            </div>
+            <p class="text-sm text-slate-200">
+              如果九成九的人本來就健康，AI 只要無腦全猜「沒病」，就能騙到完美高分。
+            </p>
+          </div>
+        </div>
+
+        <!-- [00:00:13] -->
+        <div class="transcript-item group relative cursor-pointer" data-category="accuracy" data-time="13" onclick="selectTranscriptItem(this, 'medical_blind', 0)">
+          <div class="absolute -left-[27px] sm:-left-[31px] top-4 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-slate-900 shadow-[0_0_12px_#f43f5e] group-hover:scale-125 transition-transform"></div>
+          <div class="bg-rose-950/40 hover:bg-rose-950/60 border border-rose-500/60 rounded-xl p-4 transition shadow-md hover:border-rose-400">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="font-mono text-xs font-bold text-rose-400 bg-rose-500/20 px-2.5 py-0.5 rounded-md border border-rose-500/30 flex items-center gap-1">
+                <i class="fa-regular fa-clock"></i> 00:00:13
+              </span>
+              <span class="text-[11px] font-bold text-rose-400 animate-pulse">漏診危機 (FN 暴增)</span>
+            </div>
+            <p class="text-sm font-bold text-rose-200">
+              但真正的重症患者卻被漏掉了！
+            </p>
+          </div>
+        </div>
+
+        <!-- [00:00:17] -->
+        <div class="transcript-item group relative cursor-pointer" data-category="accuracy" data-time="17" onclick="selectTranscriptItem(this, 'medical_blind', 0)">
+          <div class="absolute -left-[27px] sm:-left-[31px] top-4 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-slate-900 shadow-[0_0_12px_#f43f5e] group-hover:scale-125 transition-transform"></div>
+          <div class="bg-rose-950/30 hover:bg-rose-950/50 border border-rose-500/40 rounded-xl p-4 transition shadow-md hover:border-rose-400">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="font-mono text-xs font-bold text-rose-400 bg-rose-500/20 px-2.5 py-0.5 rounded-md border border-rose-500/30 flex items-center gap-1">
+                <i class="fa-regular fa-clock"></i> 00:00:17
+              </span>
+              <span class="text-[11px] font-semibold text-rose-300">核心痛點定義</span>
+            </div>
+            <p class="text-sm text-slate-200">
+              這就是單看「整體答對率」的致命盲點。
+            </p>
+          </div>
+        </div>
+
+        <!-- [00:00:21] -->
+        <div class="transcript-item group relative cursor-pointer" data-category="precision" data-time="21" onclick="selectTranscriptItem(this, 'balanced_good', 25)">
+          <div class="absolute -left-[27px] sm:-left-[31px] top-4 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-slate-900 shadow-[0_0_12px_#10b981] group-hover:scale-125 transition-transform"></div>
+          <div class="bg-emerald-950/30 hover:bg-emerald-950/50 border border-emerald-500/40 rounded-xl p-4 transition shadow-md hover:border-emerald-400">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="font-mono text-xs font-bold text-emerald-400 bg-emerald-500/20 px-2.5 py-0.5 rounded-md border border-emerald-500/30 flex items-center gap-1">
+                <i class="fa-regular fa-clock"></i> 00:00:21
+              </span>
+              <span class="text-[11px] font-semibold text-emerald-300">指標引出 · 查準率</span>
+            </div>
+            <p class="text-sm font-semibold text-white">
+              要評估警報品質，得看 Precision，也就是精確率。
+            </p>
+          </div>
+        </div>
+
+        <!-- [00:00:26] -->
+        <div class="transcript-item group relative cursor-pointer" data-category="precision" data-time="26" onclick="selectTranscriptItem(this, 'balanced_good', 25)">
+          <div class="absolute -left-[27px] sm:-left-[31px] top-4 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-slate-900 shadow-[0_0_12px_#10b981] group-hover:scale-125 transition-transform"></div>
+          <div class="bg-emerald-950/30 hover:bg-emerald-950/50 border border-emerald-500/40 rounded-xl p-4 transition shadow-md hover:border-emerald-400">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="font-mono text-xs font-bold text-emerald-400 bg-emerald-500/20 px-2.5 py-0.5 rounded-md border border-emerald-500/30 flex items-center gap-1">
+                <i class="fa-regular fa-clock"></i> 00:00:26
+              </span>
+              <span class="text-[11px] font-semibold text-emerald-300">公式核心：分母 (TP + FP)</span>
+            </div>
+            <p class="text-sm text-slate-200">
+              分母是「所有被系統警告的人」。誤報太高，只會造成恐慌和資源浪費。
+            </p>
+          </div>
+        </div>
+
+        <!-- [00:00:30] -->
+        <div class="transcript-item group relative cursor-pointer" data-category="recall" data-time="30" onclick="selectTranscriptItem(this, 'alarmist', 80)">
+          <div class="absolute -left-[27px] sm:-left-[31px] top-4 w-3.5 h-3.5 rounded-full bg-amber-500 border-2 border-slate-900 shadow-[0_0_12px_#f59e0b] group-hover:scale-125 transition-transform"></div>
+          <div class="bg-amber-950/30 hover:bg-amber-950/50 border border-amber-500/40 rounded-xl p-4 transition shadow-md hover:border-amber-400">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="font-mono text-xs font-bold text-amber-400 bg-amber-500/20 px-2.5 py-0.5 rounded-md border border-amber-500/30 flex items-center gap-1">
+                <i class="fa-regular fa-clock"></i> 00:00:30
+              </span>
+              <span class="text-[11px] font-semibold text-amber-300">指標引出 · 查全率</span>
+            </div>
+            <p class="text-sm font-semibold text-white">
+              為了不漏掉病患，我們需要 Recall（召回率）。
+            </p>
+          </div>
+        </div>
+
+        <!-- [00:00:35] -->
+        <div class="transcript-item group relative cursor-pointer" data-category="recall" data-time="35" onclick="selectTranscriptItem(this, 'alarmist', 80)">
+          <div class="absolute -left-[27px] sm:-left-[31px] top-4 w-3.5 h-3.5 rounded-full bg-amber-500 border-2 border-slate-900 shadow-[0_0_12px_#f59e0b] group-hover:scale-125 transition-transform"></div>
+          <div class="bg-amber-950/30 hover:bg-amber-950/50 border border-amber-500/40 rounded-xl p-4 transition shadow-md hover:border-amber-400">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="font-mono text-xs font-bold text-amber-400 bg-amber-500/20 px-2.5 py-0.5 rounded-md border border-amber-500/30 flex items-center gap-1">
+                <i class="fa-regular fa-clock"></i> 00:00:35
+              </span>
+              <span class="text-[11px] font-semibold text-amber-300">公式核心：分母 (TP + FN)</span>
+            </div>
+            <p class="text-sm text-slate-200">
+              分母是「所有真正生病的人」。一旦漏診，代價往往人命關天。
+            </p>
+          </div>
+        </div>
+
+        <!-- [00:00:40] -->
+        <div class="transcript-item group relative cursor-pointer" data-category="f1" data-time="40" onclick="selectTranscriptItem(this, 'balanced_good', 50)">
+          <div class="absolute -left-[27px] sm:-left-[31px] top-4 w-3.5 h-3.5 rounded-full bg-purple-500 border-2 border-slate-900 shadow-[0_0_12px_#a855f7] group-hover:scale-125 transition-transform"></div>
+          <div class="bg-purple-950/30 hover:bg-purple-950/50 border border-purple-500/40 rounded-xl p-4 transition shadow-md hover:border-purple-400">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="font-mono text-xs font-bold text-purple-400 bg-purple-500/20 px-2.5 py-0.5 rounded-md border border-purple-500/30 flex items-center gap-1">
+                <i class="fa-regular fa-clock"></i> 00:00:40
+              </span>
+              <span class="text-[11px] font-semibold text-purple-300"> Trade-off 拔河天平</span>
+            </div>
+            <p class="text-sm text-slate-200">
+              偏偏這兩個指標像在拔河，寧可錯殺與怕吵不報會互相排斥。
+            </p>
+          </div>
+        </div>
+
+        <!-- [00:00:45] -->
+        <div class="transcript-item group relative cursor-pointer" data-category="f1" data-time="45" onclick="selectTranscriptItem(this, 'balanced_good', 50)">
+          <div class="absolute -left-[27px] sm:-left-[31px] top-4 w-3.5 h-3.5 rounded-full bg-purple-500 border-2 border-slate-900 shadow-[0_0_12px_#a855f7] group-hover:scale-125 transition-transform"></div>
+          <div class="bg-purple-950/30 hover:bg-purple-950/50 border border-purple-500/40 rounded-xl p-4 transition shadow-md hover:border-purple-400">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="font-mono text-xs font-bold text-purple-400 bg-purple-500/20 px-2.5 py-0.5 rounded-md border border-purple-500/30 flex items-center gap-1">
+                <i class="fa-regular fa-clock"></i> 00:00:45
+              </span>
+              <span class="text-[11px] font-semibold text-purple-300">調和平均數 Harmonic Mean</span>
+            </div>
+            <p class="text-sm font-semibold text-white">
+              所以我們用 F1-score 這個調和平均數，
+            </p>
+          </div>
+        </div>
+
+        <!-- [00:00:49] -->
+        <div class="transcript-item group relative cursor-pointer" data-category="f1" data-time="49" onclick="selectTranscriptItem(this, 'balanced_good', 50)">
+          <div class="absolute -left-[27px] sm:-left-[31px] top-4 w-3.5 h-3.5 rounded-full bg-purple-500 border-2 border-slate-900 shadow-[0_0_12px_#a855f7] group-hover:scale-125 transition-transform"></div>
+          <div class="bg-purple-950/30 hover:bg-purple-950/50 border border-purple-500/40 rounded-xl p-4 transition shadow-md hover:border-purple-400">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="font-mono text-xs font-bold text-purple-400 bg-purple-500/20 px-2.5 py-0.5 rounded-md border border-purple-500/30 flex items-center gap-1">
+                <i class="fa-regular fa-clock"></i> 00:00:49
+              </span>
+              <span class="text-[11px] font-semibold text-purple-300">雙向制約</span>
+            </div>
+            <p class="text-sm text-slate-200">
+              強迫模型找出不亂叫、也不漏抓的最佳平衡。
+            </p>
+          </div>
+        </div>
+
+        <!-- [00:00:54] -->
+        <div class="transcript-item group relative cursor-pointer" data-category="accuracy" data-time="54" onclick="selectTranscriptItem(this, 'medical_blind', 0)">
+          <div class="absolute -left-[27px] sm:-left-[31px] top-4 w-3.5 h-3.5 rounded-full bg-indigo-500 border-2 border-slate-900 shadow-[0_0_12px_#6366f1] group-hover:scale-125 transition-transform"></div>
+          <div class="bg-indigo-950/30 hover:bg-indigo-950/50 border border-indigo-500/40 rounded-xl p-4 transition shadow-md hover:border-indigo-400">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="font-mono text-xs font-bold text-indigo-400 bg-indigo-500/20 px-2.5 py-0.5 rounded-md border border-indigo-500/30 flex items-center gap-1">
+                <i class="fa-regular fa-clock"></i> 00:00:54
+              </span>
+              <span class="text-[11px] font-semibold text-indigo-300">專題警語</span>
+            </div>
+            <p class="text-sm text-slate-200">
+              面對極端資料，別再被表面的高分騙了。
+            </p>
+          </div>
+        </div>
+
+        <!-- [00:01:02] -->
+        <div class="transcript-item group relative cursor-pointer" data-category="f1" data-time="62" onclick="selectTranscriptItem(this, 'balanced_good', 50)">
+          <div class="absolute -left-[27px] sm:-left-[31px] top-4 w-4 h-4 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 border-2 border-slate-900 shadow-[0_0_16px_#fbbf24] group-hover:scale-125 transition-transform"></div>
+          <div class="bg-gradient-to-r from-amber-950/50 via-slate-900 to-indigo-950/50 border-2 border-amber-500/60 rounded-xl p-4 transition shadow-xl hover:border-amber-400">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="font-mono text-xs font-bold text-amber-300 bg-amber-500/20 px-2.5 py-0.5 rounded-md border border-amber-500/40 flex items-center gap-1">
+                <i class="fa-solid fa-crown text-amber-400"></i> 00:01:02
+              </span>
+              <span class="text-xs font-black uppercase tracking-wider text-amber-400">黃金結論口訣</span>
+            </div>
+            <p class="text-sm sm:text-base font-extrabold text-white leading-relaxed">
+              「記住：<span class="text-emerald-400 underline decoration-emerald-500 decoration-2 underline-offset-4">Precision 看報警準不準</span>，<span class="text-rose-400 underline decoration-rose-500 decoration-2 underline-offset-4">Recall 看危險時抓不抓得到</span>，<span class="text-purple-400 underline decoration-purple-500 decoration-2 underline-offset-4">F1 則兩邊都要顧好</span>。」
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="mt-12 text-center text-xs text-slate-500 py-6 border-t border-slate-800">
+    <p>iPAS AI 應用規劃師複習講義 · 互動教材由短影音內容轉化生成</p>
+  </footer>
+
+  <!-- JavaScript 邏輯：即時矩陣計算與狀態反饋 -->
+  <script>
+    // 取得輸入元素
+    const inputTP = document.getElementById('inputTP');
+    const inputFN = document.getElementById('inputFN');
+    const inputFP = document.getElementById('inputFP');
+    const inputTN = document.getElementById('inputTN');
+
+    const sensitivitySlider = document.getElementById('sensitivitySlider');
+    const thresholdLabel = document.getElementById('thresholdLabel');
+
+    // 計算並刷新指標
+    function updateMetrics() {
+      const tp = Math.max(0, parseFloat(inputTP.value) || 0);
+      const fn = Math.max(0, parseFloat(inputFN.value) || 0);
+      const fp = Math.max(0, parseFloat(inputFP.value) || 0);
+      const tn = Math.max(0, parseFloat(inputTN.value) || 0);
+
+      const total = tp + fn + fp + tn;
+      const actualPos = tp + fn;
+      const actualNeg = fp + tn;
+      const predPos = tp + fp;
+
+      // 更新總數統計
+      document.getElementById('valTotal').innerText = total;
+      document.getElementById('valActualPos').innerText = actualPos;
+      document.getElementById('valActualNeg').innerText = actualNeg;
+
+      // 1. Accuracy
+      const accuracy = total > 0 ? (tp + tn) / total : 0;
+      // 2. Precision
+      const precision = predPos > 0 ? tp / predPos : 0;
+      // 3. Recall
+      const recall = actualPos > 0 ? tp / actualPos : 0;
+      // 4. F1-Score
+      const f1 = (precision + recall) > 0 ? (2 * precision * recall) / (precision + recall) : 0;
+
+      // 更新進度條與數值
+      renderGauge('Accuracy', accuracy, `(${tp} + ${tn}) / ${total}`);
+      renderGauge('Precision', precision, `${tp} / (${tp} + ${fp})`);
+      renderGauge('Recall', recall, `${tp} / (${tp} + ${fn})`);
+      renderGauge('F1', f1, `2×(${fmtPct(precision)}×${fmtPct(recall)}) / 相加`);
+
+      // 更新天平 (整合舊天平與截圖 3 經典 SVG 天平)
+      updateBalanceBeam(precision, recall);
+
+      // 更新診斷評價文字
+      updateDiagnosis(accuracy, precision, recall, f1, actualPos, fn);
+    }
+
+    function fmtPct(val) {
+      return (val * 100).toFixed(1) + '%';
+    }
+
+    function renderGauge(name, value, formulaDetail) {
+      const pctStr = fmtPct(value);
+      const metricEl = document.getElementById(`metric${name}`);
+      const barEl = document.getElementById(`bar${name}`);
+      if (metricEl) metricEl.innerText = pctStr;
+      if (barEl) barEl.style.width = `${Math.min(100, Math.max(0, value * 100))}%`;
+      const calcElem = document.getElementById(`calc${name}`);
+      if (calcElem) calcElem.innerText = formulaDetail;
+    }
+
+    // 槓桿天平動態轉動 (包含截圖 3 的 scaleBarGroup 與長條紅色 bar)
+    function updateBalanceBeam(p, r) {
+      // 1. 舊天平
+      const beam = document.getElementById('balanceBeam');
+      const diff = (r - p);
+      const angle = Math.max(-16, Math.min(16, diff * 18));
+      if (beam) {
+        beam.style.transform = (p === 0 && r === 0) ? 'rotate(0deg)' : `rotate(${angle}deg)`;
+      }
+
+      // 2. 截圖 3 復刻天平
+      const scaleBar = document.getElementById('scaleBarGroup');
+      if (scaleBar) {
+        scaleBar.style.transform = (p === 0 && r === 0) ? 'rotate(0deg)' : `rotate(${angle}deg)`;
+      }
+
+      // 3. 截圖 3 底部動態紅條 (寬度最大 116px)
+      const barP = document.getElementById('svgBarPrecision');
+      const barR = document.getElementById('svgBarRecall');
+      if (barP) barP.setAttribute('width', Math.max(0, Math.min(116, p * 116)));
+      if (barR) barR.setAttribute('width', Math.max(0, Math.min(116, r * 116)));
+
+      // 更新下方狀態字幕
+      const caption = document.getElementById('tradeoffCaption');
+      if (caption) {
+        caption.innerText = `當前狀態：Precision ${(p * 100).toFixed(0)}%  vs  Recall ${(r * 100).toFixed(0)}%`;
+      }
+    }
+
+    // 拔河滑桿連動
+    function syncFromTradeoffSlider(val) {
+      if (sensitivitySlider) {
+        sensitivitySlider.value = val;
+      }
+      handleSliderChange(val);
+      const slider = document.getElementById('tradeoffSlider');
+      if (slider) slider.value = val;
+    }
+
+    // 平滑滾動至對應章節
+    function scrollToSection(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-4', 'ring-rose-500/60');
+        setTimeout(() => el.classList.remove('ring-4', 'ring-rose-500/60'), 1500);
+      }
+    }
+
+    // 更新診斷評價邏輯
+    function updateDiagnosis(acc, prec, rec, f1, actualPos, fn) {
+      const box = document.getElementById('diagnosisBox');
+      const icon = document.getElementById('diagnosisIcon');
+      const title = document.getElementById('diagnosisTitle');
+      const desc = document.getElementById('diagnosisDesc');
+
+      if (!box || !title || !desc) return;
+
+      if (acc > 0.95 && rec < 0.3 && actualPos > 0) {
+        // 經典醫療盲點
+        box.className = "p-4 rounded-xl border bg-rose-950/60 border-rose-600/50 text-rose-200 text-sm flex items-start gap-3";
+        if (icon) icon.className = "fa-solid fa-skull-crossbones text-rose-400 text-xl mt-0.5";
+        title.innerText = "極度危險！標準的「高答對率、全數漏診」陷阱";
+        desc.innerText = `雖然 Accuracy 達到 ${(acc * 100).toFixed(1)}%，但 Recall 僅 ${(rec * 100).toFixed(1)}%！重症病患高達 ${fn} 人被誤放回家，此模型在醫療/安檢實務上屬於不及格的盲目猜測。`;
+      } else if (f1 > 0.85) {
+        // 優秀表現
+        box.className = "p-4 rounded-xl border bg-emerald-950/60 border-emerald-600/50 text-emerald-200 text-sm flex items-start gap-3";
+        if (icon) icon.className = "fa-solid fa-circle-check text-emerald-400 text-xl mt-0.5";
+        title.innerText = "指標健康！Precision 與 Recall 取得優異平衡";
+        desc.innerText = `F1-Score 達到 ${(f1 * 100).toFixed(1)}%，代表模型既不隨意誤響警報（Precision ${(prec * 100).toFixed(1)}%），也能有效抓出絕大多數真病患（Recall ${(rec * 100).toFixed(1)}%）。`;
+      } else if (rec > 0.85 && prec < 0.3) {
+        // 寧可錯殺大聲公
+        box.className = "p-4 rounded-xl border bg-amber-950/60 border-amber-600/50 text-amber-200 text-sm flex items-start gap-3";
+        if (icon) icon.className = "fa-solid fa-bullhorn text-amber-400 text-xl mt-0.5";
+        title.innerText = "警報太吵！過度敏感導致資源浪費";
+        desc.innerText = `Recall 達到 ${(rec * 100).toFixed(1)}%（漏診少），但 Precision 只有 ${(prec * 100).toFixed(1)}%，代表大量健康人被誤診警告，會造成狼來了效應與龐大的醫療重篩成本。`;
+      } else if (prec > 0.85 && rec < 0.4) {
+        // 保守不說話
+        box.className = "p-4 rounded-xl border bg-indigo-950/60 border-indigo-600/50 text-indigo-200 text-sm flex items-start gap-3";
+        if (icon) icon.className = "fa-solid fa-user-shield text-indigo-400 text-xl mt-0.5";
+        title.innerText = "過於保守！報警雖準但嚴重漏抓";
+        desc.innerText = `Precision 高達 ${(prec * 100).toFixed(1)}%，但 Recall 只有 ${(rec * 100).toFixed(1)}%。適合門禁開鎖或垃圾郵件，但若用於重症快篩則漏抓率太高。`;
+      } else {
+        // 一般情況
+        box.className = "p-4 rounded-xl border bg-slate-900 border-slate-700 text-slate-300 text-sm flex items-start gap-3";
+        if (icon) icon.className = "fa-solid fa-info-circle text-indigo-400 text-xl mt-0.5";
+        title.innerText = "模型調校中：觀察各項指標互相牽制";
+        desc.innerText = `目前 Accuracy: ${(acc * 100).toFixed(1)}%、Precision: ${(prec * 100).toFixed(1)}%、Recall: ${(rec * 100).toFixed(1)}%、F1: ${(f1 * 100).toFixed(1)}%。繼續微調數值觀察消長。`;
+      }
+    }
+
+    // 預設情境按鈕
+    function applyPreset(type) {
+      if (type === 'medical_blind') {
+        inputTP.value = 0;
+        inputFN.value = 100;
+        inputFP.value = 0;
+        inputTN.value = 9900;
+        sensitivitySlider.value = 0;
+        thresholdLabel.innerText = "目前：無腦全猜陰性";
+      } else if (type === 'balanced_good') {
+        inputTP.value = 90;
+        inputFN.value = 10;
+        inputFP.value = 50;
+        inputTN.value = 9850;
+        sensitivitySlider.value = 50;
+        thresholdLabel.innerText = "目前：均衡適中配置";
+      } else if (type === 'alarmist') {
+        inputTP.value = 98;
+        inputFN.value = 2;
+        inputFP.value = 800;
+        inputTN.value = 9100;
+        sensitivitySlider.value = 90;
+        thresholdLabel.innerText = "目前：寧可錯殺一百 (敏感高)";
+      }
+      updateMetrics();
+    }
+
+    // 滑桿調整模擬
+    function handleSliderChange(val) {
+      const v = parseInt(val, 10);
+      const totalSick = 100;
+      const totalHealthy = 9900;
+
+      // 隨著敏感度增高：TP 增加 (抓到更多病人)，但 FP 也暴增 (誤抓健康人)
+      const tp = Math.round((v / 100) * totalSick);
+      const fn = totalSick - tp;
+
+      // 誤報率隨門檻指數型增加
+      const fpRatio = Math.pow(v / 100, 2); 
+      const fp = Math.round(fpRatio * 1500);
+      const tn = totalHealthy - fp;
+
+      inputTP.value = tp;
+      inputFN.value = fn;
+      inputFP.value = fp;
+      inputTN.value = tn;
+
+      if (v < 20) {
+        thresholdLabel.innerText = `門檻極嚴格 (${v}%)：極怕誤報，漏抓率高`;
+      } else if (v > 75) {
+        thresholdLabel.innerText = `門檻極寬鬆 (${v}%)：寧可錯殺，大量誤報`;
+      } else {
+        thresholdLabel.innerText = `中度門檻 (${v}%)：兼顧誤報與漏抓`;
+      }
+
+      updateMetrics();
+    }
+
+    // 初始化執行一次
+    window.onload = function() {
+      updateMetrics();
+    };
+
+    // ====== 時間軸逐字稿互動與自動導覽邏輯 ======
+    let autoPlayInterval = null;
+    let autoPlayIndex = 0;
+
+    // 點擊逐字稿卡片：高亮、聯動上方矩陣數值、平滑滾動至天平/矩陣
+    function selectTranscriptItem(element, preset, sliderVal, shouldScroll = false) {
+      // 移除其他項目的高亮樣式
+      document.querySelectorAll('.transcript-item > div:last-child').forEach(el => {
+        el.classList.remove('ring-2', 'ring-indigo-400', 'scale-[1.01]');
+      });
+
+      const card = element.querySelector('div:last-child');
+      if (card) {
+        card.classList.add('ring-2', 'ring-indigo-400', 'scale-[1.01]');
+      }
+
+      // 連動上方模擬器狀態
+      if (preset) {
+        applyPreset(preset);
+      }
+      if (sliderVal !== undefined && sensitivitySlider) {
+        sensitivitySlider.value = sliderVal;
+        handleSliderChange(sliderVal);
+      }
+
+      if (shouldScroll) {
+        document.getElementById('balanceBeam')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    // 篩選逐字稿項目
+    function filterTranscript(cat) {
+      const items = document.querySelectorAll('.transcript-item');
+      const buttons = document.querySelectorAll('.filter-btn');
+
+      buttons.forEach(btn => {
+        if (btn.getAttribute('data-filter') === cat) {
+          btn.className = "filter-btn active px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition";
+        } else {
+          btn.className = "filter-btn px-3 py-1 rounded-lg text-xs font-semibold bg-slate-900 text-slate-300 border border-slate-700 hover:border-slate-500 transition";
+        }
+      });
+
+      items.forEach(item => {
+        if (cat === 'all' || item.getAttribute('data-category') === cat) {
+          item.style.display = 'block';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    }
+
+    // 搜尋講稿關鍵字
+    function handleSearch(keyword) {
+      const q = keyword.trim().toLowerCase();
+      const items = document.querySelectorAll('.transcript-item');
+
+      items.forEach(item => {
+        const text = item.innerText.toLowerCase();
+        if (!q || text.includes(q)) {
+          item.style.display = 'block';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    }
+
+    // 自動循環逐字稿導覽
+    function toggleAutoPlayTranscript() {
+      const icon = document.getElementById('playbackIcon');
+      const text = document.getElementById('playbackText');
+      const items = Array.from(document.querySelectorAll('.transcript-item'));
+
+      if (autoPlayInterval) {
+        clearInterval(autoPlayInterval);
+        autoPlayInterval = null;
+        icon.className = "fa-solid fa-play";
+        text.innerText = "自動循序導覽";
+      } else {
+        icon.className = "fa-solid fa-pause text-amber-400";
+        text.innerText = "暫停播放";
+
+        autoPlayInterval = setInterval(() => {
+          if (autoPlayIndex >= items.length) {
+            autoPlayIndex = 0;
+          }
+          const item = items[autoPlayIndex];
+          if (item) {
+            item.click();
+            item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+          autoPlayIndex++;
+        }, 3200);
+      }
+    }
+  </script>
+</body>
+</html>
