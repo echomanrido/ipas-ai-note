@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iPAS AI 應用規劃師衝刺｜DBSCAN 密度分群法與時間軸逐字稿</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+    body { font-family: 'Noto Sans TC', sans-serif; }
+    .timeline-line::before {
+      content: '';
+      position: absolute;
+      left: 1.25rem;
+      top: 1rem;
+      bottom: 1rem;
+      width: 2px;
+      background: #e2e8f0;
+      z-index: 0;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 text-white py-8 px-4 sm:px-8 border-b border-indigo-800 shadow-lg">
+    <div class="max-w-5xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <div class="inline-flex items-center gap-2 bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full text-xs font-semibold mb-3 border border-indigo-400/30">
+          <i class="fa-solid fa-graduation-cap"></i> iPAS AI 應用規劃師 初級科目一・高頻章節
+        </div>
+        <h1 class="text-2xl sm:text-4xl font-extrabold tracking-tight">DBSCAN 密度分群法</h1>
+        <p class="text-slate-300 mt-2 text-sm sm:text-base">
+          不用先指定群數也能自動分群？從核心概念到時間軸逐字稿精講
+        </p>
+      </div>
+      <div>
+        <a href="../index.html" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-semibold border border-white/20 transition shadow-sm" title="返回全站首頁">
+          <i class="fa-solid fa-house text-xs"></i> 回首頁
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 sm:px-8 py-8 space-y-10 flex-1">
+
+    <!-- 三大彩色重點框 -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- 紅色警告框 -->
+      <div class="bg-rose-50/70 border-l-4 border-rose-500 p-5 rounded-r-xl shadow-sm">
+        <div class="flex items-center gap-2 text-rose-700 font-bold text-base mb-2">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span>【必考大忌】非監督 vs 監督</span>
+        </div>
+        <p class="text-sm text-rose-900/90 leading-relaxed">
+          <strong class="font-bold underline">DBSCAN 屬於非監督式學習</strong>的分群演算法，絕對不能跟 <strong class="font-bold">KNN（K-最近鄰，監督式分類）</strong> 搞混！考試若問標註標籤請直接排除 DBSCAN。
+        </p>
+      </div>
+
+      <!-- 藍色核心參數框 -->
+      <div class="bg-sky-50/70 border-l-4 border-sky-500 p-5 rounded-r-xl shadow-sm">
+        <div class="flex items-center gap-2 text-sky-700 font-bold text-base mb-2">
+          <i class="fa-solid fa-compass-drafting"></i>
+          <span>【核心二參數】Eps 與 MinPts</span>
+        </div>
+        <p class="text-sm text-sky-900/90 leading-relaxed">
+          以某點為圓心畫半徑 <strong>&epsilon; (Eps)</strong>，若圓圈內資料點數達到 <strong>MinPts</strong> 門檻，該點即成立為核心點，並啟動鄰近連鎖串聯。
+        </p>
+      </div>
+
+      <!-- 綠色優勢框 -->
+      <div class="bg-emerald-50/70 border-l-4 border-emerald-500 p-5 rounded-r-xl shadow-sm">
+        <div class="flex items-center gap-2 text-emerald-700 font-bold text-base mb-2">
+          <i class="fa-solid fa-circle-check"></i>
+          <span>【演算法優勢】形狀自由＆耐雜訊</span>
+        </div>
+        <p class="text-sm text-emerald-900/90 leading-relaxed">
+          與 K-Means 只能找凸狀球形不同，DBSCAN 能識別<strong>任意形狀</strong>（雙月形、環形）。孤立點自動視為<strong>雜訊 (Noise)</strong>，不必硬分群。
+        </p>
+      </div>
+    </section>
+
+    <!-- 互動式 SVG 教學演示區 -->
+    <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-diagram-project text-indigo-600"></i>
+            DBSCAN 動態拓撲演示：三大點類型
+          </h2>
+          <p class="text-xs text-slate-500 mt-1">
+            點擊下方按鈕或直接點擊畫布加入新點，觀察演算法判定
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btnCore" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition border border-indigo-200">
+            聚焦：核心點圈選
+          </button>
+          <button id="btnChain" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition border border-emerald-200">
+            聚焦：連鎖重疊串聯
+          </button>
+          <button id="btnNoise" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition border border-amber-200">
+            聚焦：落單雜訊點
+          </button>
+          <button id="btnReset" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+            重置畫布
+          </button>
+        </div>
+      </div>
+
+      <!-- SVG 畫布本體 -->
+      <div class="relative w-full h-[320px] bg-slate-900 rounded-xl mt-4 overflow-hidden shadow-inner cursor-crosshair">
+        <svg id="clusterSvg" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <!-- 網格背景 -->
+            <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+              <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#1e293b" stroke-width="1"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid)" />
+          <!-- 動態繪製圖形群組 -->
+          <g id="circlesLayer"></g>
+          <g id="linksLayer"></g>
+          <g id="pointsLayer"></g>
+          <g id="labelsLayer"></g>
+        </svg>
+
+        <!-- 圖例 -->
+        <div class="absolute bottom-3 left-3 bg-slate-900/80 backdrop-blur border border-slate-700 px-3 py-2 rounded-lg text-xs text-slate-300 flex items-center gap-4">
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-indigo-400"></span>核心點 (Core)</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>邊緣點 (Border)</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span>雜訊點 (Noise)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 時間軸逐字稿 Section -->
+    <section class="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm">
+      <div class="flex items-center justify-between pb-6 border-b border-slate-100">
+        <div>
+          <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-indigo-600"></i>
+            時間軸逐字稿詳解
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-500 mt-1">
+            對齊影片秒數，解析每一段台詞背後的資料科學核心考點
+          </p>
+        </div>
+        <span class="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md font-mono">
+          全長 01:20
+        </span>
+      </div>
+
+      <!-- 垂直時間軸主體 -->
+      <div class="relative timeline-line mt-6 space-y-6">
+
+        <!-- 00:03 -->
+        <div class="relative pl-10 group" onclick="focusStage('intro')">
+          <div class="absolute left-2.5 top-1 -translate-x-1/2 w-5 h-5 rounded-full bg-slate-200 border-4 border-white shadow-sm flex items-center justify-center group-hover:bg-indigo-600 transition"></div>
+          <div class="bg-slate-50 rounded-xl p-4 border border-slate-200/80 hover:border-indigo-300 hover:shadow-sm transition cursor-pointer">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <span class="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                00:03
+              </span>
+              <span class="text-xs font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-700">傳統分群痛點</span>
+            </div>
+            <p class="text-sm font-semibold text-slate-800 mb-1">
+              「傳統分群總要先猜群數，常常分得很不自然。」
+            </p>
+            <p class="text-xs text-slate-600">
+              💡 <strong>考點剖析：</strong>暗指 K-Means 演算法必須事先指定 $K$ 值，且容易受離群值影響，切割邊界為球狀（Voronoi 圖），無法順應真實非線性分佈。
+            </p>
+          </div>
+        </div>
+
+        <!-- 00:08 -->
+        <div class="relative pl-10 group" onclick="focusStage('core')">
+          <div class="absolute left-2.5 top-1 -translate-x-1/2 w-5 h-5 rounded-full bg-indigo-500 border-4 border-white shadow-sm flex items-center justify-center"></div>
+          <div class="bg-indigo-50/40 rounded-xl p-4 border border-indigo-200/80 hover:border-indigo-400 hover:shadow-sm transition cursor-pointer">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <span class="font-mono text-xs font-bold text-indigo-700 bg-white px-2 py-0.5 rounded border border-indigo-200">
+                00:08 - 00:16
+              </span>
+              <span class="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">半徑畫圈與密度門檻</span>
+            </div>
+            <p class="text-sm font-semibold text-slate-800 mb-1">
+              「想自動分類，你需要 DBSCAN。想像這是一張地圖，我們的任務是找出人群聚集區。演算法會以某個人為圓心，畫出半徑，只要這圈內達到最少人數門檻，這群人就成立一個密集區。」
+            </p>
+            <p class="text-xs text-slate-600">
+              💡 <strong>考點剖析：</strong>
+              <span class="text-sky-700 font-medium">半徑＝Eps (&epsilon;)</span>、<span class="text-sky-700 font-medium">最少人數門檻＝MinPts</span>。在圈內點數 &ge; MinPts 時，圓心點被定義為「<strong>核心點 (Core Point)</strong>」。
+            </p>
+          </div>
+        </div>
+
+        <!-- 00:21 -->
+        <div class="relative pl-10 group" onclick="focusStage('border')">
+          <div class="absolute left-2.5 top-1 -translate-x-1/2 w-5 h-5 rounded-full bg-emerald-500 border-4 border-white shadow-sm flex items-center justify-center"></div>
+          <div class="bg-emerald-50/40 rounded-xl p-4 border border-emerald-200/80 hover:border-emerald-400 hover:shadow-sm transition cursor-pointer">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <span class="font-mono text-xs font-bold text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-200">
+                00:21 - 00:37
+              </span>
+              <span class="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">邊緣人包容與連鎖反應</span>
+            </div>
+            <p class="text-sm font-semibold text-slate-800 mb-1">
+              「但如果有人剛好站在邊緣，自己身邊人數不夠，該算哪一群？只要相鄰的密集圈互相重疊，DBSCAN 就會像連鎖反應一樣，把它們全部串聯成巨大的不規則群體，邊緣人自然就被包容進來了。」
+            </p>
+            <p class="text-xs text-slate-600">
+              💡 <strong>考點剖析：</strong>
+              身邊人數未達 MinPts，但落在核心點的半徑範圍內，稱為「<strong>邊界點 (Border Point)</strong>」；核心點彼此透過密度直達 (Directly Density-Reachable) 串聯成大群。
+            </p>
+          </div>
+        </div>
+
+        <!-- 00:37 -->
+        <div class="relative pl-10 group" onclick="focusStage('noise')">
+          <div class="absolute left-2.5 top-1 -translate-x-1/2 w-5 h-5 rounded-full bg-rose-500 border-4 border-white shadow-sm flex items-center justify-center"></div>
+          <div class="bg-rose-50/40 rounded-xl p-4 border border-rose-200/80 hover:border-rose-400 hover:shadow-sm transition cursor-pointer">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <span class="font-mono text-xs font-bold text-rose-800 bg-white px-2 py-0.5 rounded border border-rose-200">
+                00:37 - 00:46
+              </span>
+              <span class="text-xs font-semibold px-2 py-0.5 rounded bg-rose-100 text-rose-800">落單點＝雜訊過濾</span>
+            </div>
+            <p class="text-sm font-semibold text-slate-800 mb-1">
+              「至於那些四周空曠、沒沾到邊的落單點，則會被標記為雜訊。這不一定是資料錯誤，單純只是密度太低。」
+            </p>
+            <p class="text-xs text-slate-600">
+              💡 <strong>考點剖析：</strong>
+              既不是核心點也不是邊界點者即為「<strong>雜訊點 (Noise / Outlier)</strong>」。此機制賦予 DBSCAN 極高之異常值容忍能力。
+            </p>
+          </div>
+        </div>
+
+        <!-- 00:51 -->
+        <div class="relative pl-10 group" onclick="focusStage('exam')">
+          <div class="absolute left-2.5 top-1 -translate-x-1/2 w-5 h-5 rounded-full bg-purple-600 border-4 border-white shadow-sm flex items-center justify-center"></div>
+          <div class="bg-purple-50/50 rounded-xl p-4 border-2 border-purple-300 hover:border-purple-500 hover:shadow-sm transition cursor-pointer">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <span class="font-mono text-xs font-bold text-purple-900 bg-white px-2 py-0.5 rounded border border-purple-200">
+                00:51 - 00:56
+              </span>
+              <span class="text-xs font-extrabold px-2 py-0.5 rounded bg-purple-600 text-white">⭐ 必考重點標記</span>
+            </div>
+            <p class="text-sm font-bold text-purple-950 mb-1">
+              「這裡必考：DBSCAN 屬於非監督式學習的分群法，絕對不能跟 KNN 搞混！」
+            </p>
+            <p class="text-xs text-purple-900">
+              💡 <strong>極速辨析口訣：</strong>
+              <strong>KNN</strong>（K-Nearest Neighbors）= 需要已知標籤的<strong>監督式分類</strong>；<br/>
+              <strong>DBSCAN</strong>（Density-Based Spatial Clustering）= 不需要標籤的<strong>非監督式分群</strong>。
+            </p>
+          </div>
+        </div>
+
+        <!-- 00:56 -->
+        <div class="relative pl-10 group" onclick="focusStage('conclusion')">
+          <div class="absolute left-2.5 top-1 -translate-x-1/2 w-5 h-5 rounded-full bg-slate-800 border-4 border-white shadow-sm flex items-center justify-center"></div>
+          <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 hover:border-slate-400 hover:shadow-sm transition cursor-pointer">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <span class="font-mono text-xs font-bold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">
+                00:56 - 01:15
+              </span>
+              <span class="text-xs font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-700">演算法收斂與總結</span>
+            </div>
+            <p class="text-sm font-semibold text-slate-800 mb-1">
+              「擁擠的人潮已經自動串聯成色彩鮮明的不規則聚落，而所有的落單者被俐落地過濾為雜訊，完全不需要硬猜群數。」
+            </p>
+            <p class="text-xs text-slate-600">
+              💡 <strong>考點總結：</strong>無需指定群數 $k$、自動剔除離群值、適應不規則形狀。
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="bg-slate-900 text-slate-400 text-xs py-6 border-t border-slate-800 text-center">
+    <div class="max-w-5xl mx-auto px-4 space-y-1">
+      <p>教學內容根據 YouTube Short 原音逐字稿與 iPAS AI 應用規劃師能力指標整理</p>
+      <p class="text-slate-500 font-mono">DBSCAN Clustering Interactive Timeline &copy; 2026</p>
+    </div>
+  </footer>
+
+  <!-- SVG 動態互動腳本 -->
+  <script>
+    const pointsData = [
+      // 群聚 A (核心 + 邊界)
+      { id: 1, x: 120, y: 140, type: 'core' },
+      { id: 2, x: 150, y: 150, type: 'core' },
+      { id: 3, x: 130, y: 180, type: 'core' },
+      { id: 4, x: 100, y: 160, type: 'border' },
+      { id: 5, x: 175, y: 165, type: 'border' },
+      
+      // 群聚 B (連鎖延伸)
+      { id: 6, x: 230, y: 130, type: 'core' },
+      { id: 7, x: 270, y: 140, type: 'core' },
+      { id: 8, x: 250, y: 170, type: 'core' },
+      { id: 9, x: 295, y: 120, type: 'border' },
+      
+      // 雜訊點 (Noise)
+      { id: 10, x: 380, y: 70, type: 'noise' },
+      { id: 11, x: 420, y: 220, type: 'noise' }
+    ];
+
+    const EPS_RADIUS = 48;
+    const svg = document.getElementById('clusterSvg');
+    const circlesLayer = document.getElementById('circlesLayer');
+    const linksLayer = document.getElementById('linksLayer');
+    const pointsLayer = document.getElementById('pointsLayer');
+    const labelsLayer = document.getElementById('labelsLayer');
+
+    function renderCanvas(focus = 'all') {
+      circlesLayer.innerHTML = '';
+      linksLayer.innerHTML = '';
+      pointsLayer.innerHTML = '';
+      labelsLayer.innerHTML = '';
+
+      // 繪製連鎖串聯線條
+      if (focus === 'chain' || focus === 'all' || focus === 'conclusion') {
+        const chains = [
+          [pointsData[0], pointsData[1]],
+          [pointsData[1], pointsData[2]],
+          [pointsData[0], pointsData[2]],
+          [pointsData[1], pointsData[5]],
+          [pointsData[5], pointsData[6]],
+          [pointsData[6], pointsData[7]],
+          [pointsData[5], pointsData[7]]
+        ];
+        chains.forEach(([p1, p2]) => {
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.setAttribute('x1', p1.x);
+          line.setAttribute('y1', p1.y);
+          line.setAttribute('x2', p2.x);
+          line.setAttribute('y2', p2.y);
+          line.setAttribute('stroke', '#6366f1');
+          line.setAttribute('stroke-width', '2');
+          line.setAttribute('stroke-dasharray', '4 4');
+          line.setAttribute('opacity', '0.6');
+          linksLayer.appendChild(line);
+        });
+      }
+
+      // 繪製核心點半徑圈
+      pointsData.forEach(p => {
+        if (p.type === 'core') {
+          const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          circle.setAttribute('cx', p.x);
+          circle.setAttribute('cy', p.y);
+          circle.setAttribute('r', EPS_RADIUS);
+          circle.setAttribute('fill', '#6366f1');
+          circle.setAttribute('fill-opacity', focus === 'core' ? '0.25' : '0.12');
+          circle.setAttribute('stroke', '#818cf8');
+          circle.setAttribute('stroke-width', '1.5');
+          if (focus === 'core') {
+            circle.setAttribute('stroke-dasharray', '3 3');
+          }
+          circlesLayer.appendChild(circle);
+        }
+      });
+
+      // 繪製節點點位
+      pointsData.forEach(p => {
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', p.x);
+        circle.setAttribute('cy', p.y);
+        circle.setAttribute('r', p.type === 'core' ? '7' : '5');
+
+        let color = '#818cf8';
+        if (p.type === 'border') color = '#34d399';
+        if (p.type === 'noise') color = '#f87171';
+
+        // 焦點放大
+        if ((focus === 'noise' && p.type === 'noise') ||
+            (focus === 'border' && p.type === 'border') ||
+            (focus === 'core' && p.type === 'core')) {
+          circle.setAttribute('r', '9');
+          circle.setAttribute('stroke', '#ffffff');
+          circle.setAttribute('stroke-width', '2');
+        }
+
+        circle.setAttribute('fill', color);
+        circle.classList.add('transition-all', 'duration-300');
+        pointsLayer.appendChild(circle);
+
+        // 標註文字
+        if (focus === 'noise' && p.type === 'noise') {
+          const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          txt.setAttribute('x', p.x + 12);
+          txt.setAttribute('y', p.y + 4);
+          txt.setAttribute('fill', '#f87171');
+          txt.setAttribute('font-size', '11');
+          txt.setAttribute('font-weight', 'bold');
+          txt.textContent = '雜訊 (Noise)';
+          labelsLayer.appendChild(txt);
+        }
+      });
+    }
+
+    function focusStage(stage) {
+      renderCanvas(stage);
+    }
+
+    document.getElementById('btnCore').onclick = () => renderCanvas('core');
+    document.getElementById('btnChain').onclick = () => renderCanvas('chain');
+    document.getElementById('btnNoise').onclick = () => renderCanvas('noise');
+    document.getElementById('btnReset').onclick = () => renderCanvas('all');
+
+    // 支援點擊新增雜訊或節點
+    svg.addEventListener('click', (e) => {
+      const rect = svg.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      pointsData.push({ id: Date.now(), x, y, type: 'noise' });
+      renderCanvas('all');
+    });
+
+    // 初始渲染
+    renderCanvas('all');
+  </script>
+</body>
+</html>
