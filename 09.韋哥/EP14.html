@@ -1,0 +1,1813 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iPAS AI 應用規劃師 EP14 - 模型選擇與架構設計 完整精析與時間軸逐字稿</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#075985',
+              800: '#0c4a6e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & Font Awesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- KaTeX for Math Formulas -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+    }
+    code, pre {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.4);
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(100, 116, 139, 0.7);
+    }
+    .mark-highlight {
+      background-color: #fef08a;
+      color: #854d0e;
+      padding: 0.1rem 0.25rem;
+      border-radius: 0.25rem;
+      font-weight: 600;
+    }
+    .dark .mark-highlight {
+      background-color: #854d0e;
+      color: #fef08a;
+    }
+    .svg-slide-container svg {
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.03));
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-200">
+
+  <!-- Header / Navigation -->
+  <header class="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-slate-800 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span class="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 text-white font-black text-lg shadow-md shadow-sky-500/20">
+          <i class="fa-solid fa-brain"></i>
+        </span>
+        <div>
+          <span class="text-xs font-bold text-sky-600 dark:text-sky-400 tracking-wider uppercase block">iPAS AI 應用規劃師 中級科目三</span>
+          <h1 class="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight flex items-center gap-2">
+            EP14 模型選擇與架構設計
+            <span class="hidden sm:inline-block text-xs bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 font-semibold px-2 py-0.5 rounded-full border border-sky-300 dark:border-sky-800">考點 L23302</span>
+          </h1>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2 sm:space-x-4">
+        <!-- Quick Nav Links -->
+        <nav class="hidden md:flex items-center space-x-1 text-sm font-semibold text-slate-600 dark:text-slate-300">
+          <a href="#matrix" class="px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition">任務配模型</a>
+          <a href="#explainability" class="px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition">SHAP 解釋性</a>
+          <a href="#bias-variance" class="px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition">偏差與變異</a>
+          <a href="#deployment" class="px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition">邊緣部署</a>
+          <a href="#rag" class="px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition">RAG 混合搜尋</a>
+          <a href="#quiz" class="px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition text-indigo-600 dark:text-indigo-400">實戰模擬題</a>
+          <a href="#transcript" class="px-2.5 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 hover:bg-sky-100 transition">時間軸逐字稿</a>
+        </nav>
+
+        <!-- Theme Toggle -->
+        <button id="themeToggle" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 transition" title="切換深淺模式">
+          <i class="fa-solid fa-moon dark:hidden"></i>
+          <i class="fa-solid fa-sun hidden dark:block text-amber-400"></i>
+        </button>
+
+        <!-- YouTube Link Button -->
+        <a href="https://www.youtube.com/watch?v=ugeY5JaeLGw&list=PLC0AIqDG72yo&index=28" target="_blank" rel="noopener noreferrer" class="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white shadow-sm transition">
+          <i class="fa-brands fa-youtube"></i>
+          <span>原片播放</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section & YouTube Video Player Component -->
+  <section class="bg-gradient-to-b from-sky-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-950 dark:to-slate-950 border-b border-slate-200 dark:border-slate-800 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto">
+      
+      <!-- Video Full Title & Meta Header -->
+      <div class="mb-6">
+        <div class="flex flex-wrap items-center gap-2 mb-2">
+          <span class="inline-flex items-center gap-1 text-xs font-extrabold px-2.5 py-1 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+            <i class="fa-solid fa-graduation-cap"></i> 韋哥科技教室
+          </span>
+          <span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-md bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300">
+            <i class="fa-solid fa-clock"></i> 全長 15:21
+          </span>
+          <span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+            <i class="fa-solid fa-check-double"></i> 考古題覆蓋率 100%
+          </span>
+        </div>
+        <h2 class="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+          【iPAS AI應用規劃師_中級科目三 系列 EP14】模型選擇與架構設計｜你看懂模型選擇、解釋性、部署限制和偏差與變異。
+        </h2>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
+          考點編號：<span class="font-mono font-bold text-sky-600 dark:text-sky-400">L23302</span>（兩回考古題出現 10 題，另有 1 題相關）。掌握機器學習分類/回歸任務模型對應、SHAP 可解釋性、邊緣計算剪枝與量化、偏差變異權衡，以及 RAG 混合搜尋策略。
+        </p>
+      </div>
+
+      <!-- Player & Quick Summary Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Video Player -->
+        <div class="lg:col-span-7 bg-black rounded-3xl overflow-hidden shadow-xl aspect-video relative border border-slate-300 dark:border-slate-800">
+          <iframe id="ytPlayer" class="w-full h-full" src="https://www.youtube.com/embed/ugeY5JaeLGw?enablejsapi=1&rel=0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+        </div>
+
+        <!-- 4 Golden Rules Summary Card -->
+        <div class="lg:col-span-5 flex flex-col justify-between space-y-4 bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-md">
+          <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+              <i class="fa-solid fa-key text-amber-500"></i>
+              本集必帶走四大金句
+            </h3>
+            <span class="text-xs bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 font-bold px-2 py-0.5 rounded-full">四句核心口訣</span>
+          </div>
+
+          <div class="space-y-3">
+            <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 flex items-start gap-3">
+              <span class="flex-shrink-0 w-6 h-6 rounded-lg bg-sky-600 text-white font-black text-xs flex items-center justify-center">1</span>
+              <div>
+                <p class="text-xs font-bold text-slate-900 dark:text-white">先問要預測什麼、有多少資料</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">任務性質（分類/回歸/分群）決定輸出層，資料量規模決定模型容量與抗過擬合能力。</p>
+              </div>
+            </div>
+
+            <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 flex items-start gap-3">
+              <span class="flex-shrink-0 w-6 h-6 rounded-lg bg-indigo-600 text-white font-black text-xs flex items-center justify-center">2</span>
+              <div>
+                <p class="text-xs font-bold text-slate-900 dark:text-white">醫療、金融、法遵一定要說得出理由</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">拒貸與診斷影響人身權益，黑箱模型（XGBoost）必須搭配 SHAP 進行單筆局部解釋。</p>
+              </div>
+            </div>
+
+            <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 flex items-start gap-3">
+              <span class="flex-shrink-0 w-6 h-6 rounded-lg bg-emerald-600 text-white font-black text-xs flex items-center justify-center">3</span>
+              <div>
+                <p class="text-xs font-bold text-slate-900 dark:text-white">上手機、上雲端、要即時，選法各不同</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">邊緣限制嚴格選 MobileNet + 量化；毫秒即時靠快取與知識蒸餾；雲端用大模型集成。</p>
+              </div>
+            </div>
+
+            <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 flex items-start gap-3">
+              <span class="flex-shrink-0 w-6 h-6 rounded-lg bg-rose-600 text-white font-black text-xs flex items-center justify-center">4</span>
+              <div>
+                <p class="text-xs font-bold text-slate-900 dark:text-white">太簡單會偏（高偏差），太複雜會飄（高變異）</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">訓練驗證雙爛為欠擬合；訓練極高但驗證劇降為過擬合，依診斷結果實施對應策略。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-2 flex items-center justify-between text-xs text-slate-500">
+            <span class="flex items-center gap-1"><i class="fa-solid fa-bolt text-amber-500"></i> 隨時點選逐字稿可跳轉秒數</span>
+            <a href="#transcript" class="text-sky-600 dark:text-sky-400 font-semibold hover:underline">查看逐字稿 &darr;</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 1 Vector Graphic: 第十四章章節目錄與考點 -->
+      <div class="mt-8 bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-md">
+        <div class="flex items-center justify-between mb-3 text-xs text-slate-500 font-semibold">
+          <span class="flex items-center gap-1.5 text-sky-600 dark:text-sky-400">
+            <i class="fa-solid fa-vector-square"></i> 原廠簡報向量圖解 1：章節大綱總覽
+          </span>
+          <span class="bg-sky-50 dark:bg-sky-950/60 px-2.5 py-1 rounded-md text-sky-700 dark:text-sky-300">考點 L23302</span>
+        </div>
+        <div class="w-full overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800">
+          <svg viewBox="0 0 1000 500" class="w-full h-auto select-none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1000" height="500" fill="#fafaff"/>
+            <circle cx="28" cy="35" r="7" fill="#f97316"/>
+            <text x="45" y="41" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="600" fill="#4f46e5">iPAS 14 · 模型選擇與架構設計</text>
+            <line x1="395" y1="35" x2="980" y2="35" stroke="#4f46e5" stroke-width="2" stroke-linecap="round"/>
+
+            <text x="25" y="112" font-family="'Noto Sans TC', sans-serif" font-size="44" font-weight="900" fill="#1e1b4b">第十四章：<tspan fill="#ea580c">模型選擇與架構設計</tspan></text>
+
+            <!-- 01 任務與資料量 -->
+            <rect x="25" y="155" width="465" height="74" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="43" y="171" width="46" height="42" rx="8" fill="#0d9488"/>
+            <text x="54" y="198" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="bold" fill="#ffffff">一</text>
+            <text x="103" y="199" font-family="'Noto Sans TC', sans-serif" font-size="24" font-weight="bold" fill="#1e293b">任務與資料量</text>
+
+            <!-- 02 解釋性 -->
+            <rect x="510" y="155" width="465" height="74" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="528" y="171" width="46" height="42" rx="8" fill="#0d9488"/>
+            <text x="539" y="198" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="bold" fill="#ffffff">二</text>
+            <text x="588" y="199" font-family="'Noto Sans TC', sans-serif" font-size="24" font-weight="bold" fill="#1e293b">解釋性</text>
+
+            <!-- 03 部署限制 -->
+            <rect x="25" y="249" width="465" height="74" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="43" y="265" width="46" height="42" rx="8" fill="#0d9488"/>
+            <text x="54" y="292" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="bold" fill="#ffffff">三</text>
+            <text x="103" y="293" font-family="'Noto Sans TC', sans-serif" font-size="24" font-weight="bold" fill="#1e293b">部署限制</text>
+
+            <!-- 04 偏差與變異 -->
+            <rect x="510" y="249" width="465" height="74" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="528" y="265" width="46" height="42" rx="8" fill="#0d9488"/>
+            <text x="539" y="292" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="bold" fill="#ffffff">四</text>
+            <text x="588" y="293" font-family="'Noto Sans TC', sans-serif" font-size="24" font-weight="bold" fill="#1e293b">偏差與變異</text>
+
+            <!-- 05 AutoML與遷移學習 -->
+            <rect x="25" y="343" width="465" height="74" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="43" y="359" width="46" height="42" rx="8" fill="#0d9488"/>
+            <text x="54" y="386" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="bold" fill="#ffffff">五</text>
+            <text x="103" y="387" font-family="'Noto Sans TC', sans-serif" font-size="24" font-weight="bold" fill="#1e293b">AutoML 與遷移學習</text>
+
+            <!-- 06 超出學習指引的 RAG 檢索 -->
+            <rect x="510" y="343" width="465" height="74" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="528" y="359" width="46" height="42" rx="8" fill="#f97316"/>
+            <text x="539" y="386" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="bold" fill="#ffffff">六</text>
+            <text x="588" y="387" font-family="'Noto Sans TC', sans-serif" font-size="24" font-weight="bold" fill="#1e293b">超出學習指引的 RAG 檢索</text>
+
+            <text x="25" y="475" font-family="'Noto Sans TC', sans-serif" font-size="22" font-weight="600" fill="#334155">
+              考點 L23302：兩回考古題 <tspan font-weight="900" fill="#1e1b4b">10 題</tspan>，另有 <tspan font-weight="900" fill="#1e1b4b">1 題</tspan> 相關
+            </text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16 flex-1 w-full">
+
+    <!-- 1. 任務與資料配對 (Task & Scale Matrix) -->
+    <section id="matrix" class="scroll-mt-20">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <span class="text-xs font-bold text-sky-600 dark:text-sky-400 tracking-wider uppercase">Section 01</span>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">任務與資料量模型配對矩陣</h2>
+        </div>
+        <span class="text-xs bg-slate-200 dark:bg-slate-800 px-3 py-1 rounded-full text-slate-600 dark:text-slate-300 font-semibold">基本必考</span>
+      </div>
+
+      <!-- Slide 2 Vector Graphic: 重點一 任務與資料量配模型 -->
+      <div class="mb-6 bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div class="flex items-center justify-between mb-3 text-xs text-slate-500 font-semibold">
+          <span class="flex items-center gap-1.5 text-sky-600 dark:text-sky-400">
+            <i class="fa-solid fa-vector-square"></i> 原廠簡報向量圖解 2：任務與資料量核心原則
+          </span>
+          <span class="bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-1 rounded-md text-indigo-700 dark:text-indigo-300">重點一</span>
+        </div>
+        <div class="w-full overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800">
+          <svg viewBox="0 0 1000 500" class="w-full h-auto select-none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1000" height="500" fill="#fafaff"/>
+            <circle cx="28" cy="35" r="7" fill="#f97316"/>
+            <text x="45" y="41" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="600" fill="#4f46e5">iPAS 14 · 模型選擇與架構設計</text>
+            <line x1="395" y1="35" x2="980" y2="35" stroke="#4f46e5" stroke-width="2" stroke-linecap="round"/>
+
+            <text x="25" y="112" font-family="'Noto Sans TC', sans-serif" font-size="44" font-weight="900" fill="#1e1b4b">重點一：<tspan fill="#ea580c">任務與資料量配模型</tspan></text>
+
+            <rect x="25" y="145" width="950" height="64" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="42" y="157" width="94" height="40" rx="8" fill="#581c87"/>
+            <text x="56" y="183" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="bold" fill="#ffffff">問題 1</text>
+            <text x="152" y="185" font-family="'Noto Sans TC', sans-serif" font-size="25" font-weight="bold" fill="#1e293b">要預測什麼？</text>
+
+            <rect x="25" y="225" width="950" height="64" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="42" y="237" width="94" height="40" rx="8" fill="#ea580c"/>
+            <text x="56" y="263" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="bold" fill="#ffffff">問題 2</text>
+            <text x="152" y="265" font-family="'Noto Sans TC', sans-serif" font-size="25" font-weight="bold" fill="#1e293b">有多少資料？</text>
+
+            <text x="25" y="322" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="600" fill="#475569">要預測什麼 → 也決定最後一層的輸出層與損失函數怎麼配</text>
+            <text x="25" y="352" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="600" fill="#475569">細節在 EP08 神經網路基本功</text>
+
+            <rect x="25" y="380" width="950" height="62" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="42" y="392" width="94" height="38" rx="8" fill="#6366f1"/>
+            <text x="56" y="417" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="bold" fill="#ffffff">越複雜</text>
+            <text x="152" y="419" font-family="'Noto Sans TC', sans-serif" font-size="23" font-weight="bold" fill="#1e293b">能學的模式越多，但要越多資料才餵得飽</text>
+
+            <rect x="25" y="455" width="950" height="38" rx="14" fill="#fff1f2" stroke="#fecdd3" stroke-width="1.5"/>
+            <circle cx="50" cy="474" r="11" fill="#e11d48"/>
+            <text x="47" y="480" font-family="'Noto Sans TC', sans-serif" font-size="15" font-weight="bold" fill="#ffffff">!</text>
+            <text x="73" y="480" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="bold" fill="#1e293b">資料少卻用大模型 → 連雜訊也背起來 ＝ 過擬合</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Blue Callout: 核心觀念 -->
+      <div class="mb-6 p-4 rounded-2xl border-l-4 border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100">
+        <h4 class="font-bold text-sm flex items-center gap-2">
+          <i class="fa-solid fa-circle-info text-blue-500"></i> 【核心觀念】選模型兩大靈魂問題
+        </h4>
+        <p class="mt-1 text-xs sm:text-sm text-blue-800 dark:text-blue-200">
+          <strong>1. 要預測什麼？</strong>（分類、回歸、分群、降維、時間序列）決定了輸出層激活函數與損失函數。<br>
+          <strong>2. 有多少資料？</strong> 模型參數量必須與樣本數嚴格匹配。小資料用大模型會把雜訊當規律，導致嚴重過擬合；大資料用簡單線性模型則會欠擬合。
+        </p>
+      </div>
+
+      <!-- Interactive Tab Component -->
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+        
+        <!-- Task Category Tabs -->
+        <div class="flex flex-wrap gap-2 pb-4 border-b border-slate-100 dark:border-slate-800">
+          <button onclick="switchTask('classification')" id="btn-classification" class="task-tab-btn active px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-sky-600 text-white shadow-sm transition">分類任務 (Classification)</button>
+          <button onclick="switchTask('regression')" id="btn-regression" class="task-tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition">回歸任務 (Regression)</button>
+          <button onclick="switchTask('clustering')" id="btn-clustering" class="task-tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition">分群任務 (Clustering)</button>
+          <button onclick="switchTask('dim-reduction')" id="btn-dim-reduction" class="task-tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition">降維任務 (Dimensionality)</button>
+          <button onclick="switchTask('timeseries')" id="btn-timeseries" class="task-tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition">時間序列 (Time Series)</button>
+        </div>
+
+        <!-- Task Dynamic Description Display -->
+        <div id="taskContent" class="mt-6">
+          <!-- Populated by JavaScript -->
+        </div>
+
+        <!-- Data Scale 3-Tier Grid -->
+        <div class="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
+          <h4 class="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-database text-sky-500"></i> 資料量分級選型指南 (Data Scale)
+          </h4>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            
+            <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full">小資料規模</span>
+                <span class="text-xs text-slate-400 font-mono">&lt; 數千筆</span>
+              </div>
+              <h5 class="font-bold text-sm text-slate-900 dark:text-white mb-1">線性模型 / 淺層決策樹 / Lasso / Ridge</h5>
+              <p class="text-xs text-slate-600 dark:text-slate-400">參數少、結構單純、高度可解釋、不易過擬合。高維小樣本情境推薦使用支持向量機 (SVM)。</p>
+            </div>
+
+            <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 px-2.5 py-0.5 rounded-full">中資料規模</span>
+                <span class="text-xs text-slate-400 font-mono">數千 ~ 數十萬筆</span>
+              </div>
+              <h5 class="font-bold text-sm text-slate-900 dark:text-white mb-1">隨機森林 / XGBoost / LightGBM</h5>
+              <p class="text-xs text-slate-600 dark:text-slate-400">表格資料 (Tabular) 的絕對王者。訓練速度與記憶體消耗平衡佳，天然支援非線性關係。</p>
+            </div>
+
+            <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-2.5 py-0.5 rounded-full">大資料規模</span>
+                <span class="text-xs text-slate-400 font-mono">&gt; 百萬筆 / 非結構化</span>
+              </div>
+              <h5 class="font-bold text-sm text-slate-900 dark:text-white mb-1">深度學習 (CNN / Transformer / MLP)</h5>
+              <p class="text-xs text-slate-600 dark:text-slate-400">適合影像、語音、自然語言等複雜特徵提取，需大量標註資料與高階 GPU 算力餵飽參數。</p>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Green Callout: 必考題型實戰 -->
+        <div class="mt-6 p-4 rounded-2xl border-l-4 border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 text-xs sm:text-sm">
+          <span class="font-bold flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300">
+            <i class="fa-solid fa-pen-to-square"></i> 【必考題型解析】房仲平台成交價預測
+          </span>
+          <p class="mt-1 text-slate-700 dark:text-slate-200">
+            <strong>題目情境：</strong> 房仲業者需要預測房屋成交價（連續數值），資料存在複雜非線性關係，且內部稽核要求提供<strong>「整體特徵重要性」</strong>說明。<br>
+            <strong>破題解法：</strong> 成交價為回歸任務，排除分類模型；存在非線性關係排除純多元線性回歸；選用<strong>隨機森林回歸 (Random Forest Regressor)</strong>。隨機森林天然能計算特徵分割時的不純度減少量，自動提供全域特徵重要性 (Feature Importance)。
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 2. 模型可解釋性與 SHAP 模擬器 (Explainability & SHAP Waterfall) -->
+    <section id="explainability" class="scroll-mt-20">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <span class="text-xs font-bold text-sky-600 dark:text-sky-400 tracking-wider uppercase">Section 02</span>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">可解釋性需求與 SHAP 瀑布流模擬</h2>
+        </div>
+        <span class="text-xs bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 px-3 py-1 rounded-full font-bold">高頻考點</span>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+        
+        <!-- Slide 3 Vector Graphic: 重點二 解釋性需求 白箱 vs 黑箱 -->
+        <div>
+          <div class="flex items-center justify-between mb-3 text-xs text-slate-500 font-semibold">
+            <span class="flex items-center gap-1.5 text-sky-600 dark:text-sky-400">
+              <i class="fa-solid fa-vector-square"></i> 原廠簡報向量圖解 3：高解釋性 (白箱) vs 低解釋性 (黑箱)
+            </span>
+            <span class="bg-amber-50 dark:bg-amber-950/60 px-2.5 py-1 rounded-md text-amber-700 dark:text-amber-300">重點二</span>
+          </div>
+          <div class="w-full overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800">
+            <svg viewBox="0 0 1000 480" class="w-full h-auto select-none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="1000" height="480" fill="#fafaff"/>
+              <circle cx="28" cy="35" r="7" fill="#f97316"/>
+              <text x="45" y="41" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="600" fill="#4f46e5">iPAS 14 · 模型選擇與架構設計</text>
+              <line x1="395" y1="35" x2="980" y2="35" stroke="#4f46e5" stroke-width="2" stroke-linecap="round"/>
+
+              <text x="25" y="112" font-family="'Noto Sans TC', sans-serif" font-size="44" font-weight="900" fill="#1e1b4b">重點二：<tspan fill="#ea580c">解釋性需求</tspan></text>
+              <text x="25" y="152" font-family="'Noto Sans TC', sans-serif" font-size="22" font-weight="600" fill="#334155">醫療、金融、法遵：決定影響人的權益，必須說得出為什麼這樣判</text>
+
+              <rect x="25" y="180" width="465" height="270" rx="18" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="2"/>
+              <text x="48" y="235" font-family="'Noto Sans TC', sans-serif" font-size="30" font-weight="900" fill="#1e1b4b">高解釋性（白箱）</text>
+              <text x="48" y="280" font-family="'Noto Sans TC', sans-serif" font-size="22" font-weight="600" fill="#1e293b">線性迴歸、邏輯迴歸、淺層決策樹</text>
+              <text x="48" y="360" font-family="'Noto Sans TC', sans-serif" font-size="24" font-weight="bold" fill="#1e1b4b">→ 直接看係數或規則</text>
+
+              <rect x="510" y="180" width="465" height="270" rx="18" fill="#1e293b"/>
+              <text x="535" y="235" font-family="'Noto Sans TC', sans-serif" font-size="30" font-weight="900" fill="#ffffff">低解釋性（黑箱）</text>
+              <text x="535" y="280" font-family="'Noto Sans TC', sans-serif" font-size="22" font-weight="500" fill="#cbd5e1">隨機森林、梯度提升、深度神經網路</text>
+              <text x="535" y="360" font-family="'Noto Sans TC', sans-serif" font-size="24" font-weight="bold" fill="#ffffff">→ 要搭配解釋工具</text>
+              <text x="535" y="420" font-family="'Noto Sans TC', sans-serif" font-size="19" font-weight="500" fill="#e2e8f0">隨機森林內建整體特徵重要性，但要解釋單筆，仍要靠 SHAP</text>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Explainability Tools Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60">
+            <span class="text-xs font-bold text-sky-600 dark:text-sky-400 block mb-1">SHAP (Shapley Value)</span>
+            <p class="text-xs text-slate-600 dark:text-slate-300"><strong>單筆 + 整體兼具</strong>。博弈論貢獻分配，可精準算出每個特徵對「單一案件」的加減分貢獻。</p>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60">
+            <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 block mb-1">LIME</span>
+            <p class="text-xs text-slate-600 dark:text-slate-300"><strong>單筆局部解釋</strong>。在待測樣本周圍擾動資料，用可解釋的線性模型局部逼近黑箱行為。</p>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60">
+            <span class="text-xs font-bold text-amber-600 dark:text-amber-400 block mb-1">PDP 部分相依圖</span>
+            <p class="text-xs text-slate-600 dark:text-slate-300"><strong>全域整體趨勢</strong>。固定其他特徵，檢視某 1~2 個特徵數值邊際變動對整體模型預測的平均影響。</p>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60">
+            <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 block mb-1">全域特徵重要性 (FI)</span>
+            <p class="text-xs text-slate-600 dark:text-slate-300"><strong>僅限宏觀統計</strong>。說明哪些特徵在整體訓練中權重最大，<strong>絕對無法</strong>說明單一客戶被拒原因。</p>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60">
+            <span class="text-xs font-bold text-rose-600 dark:text-rose-400 block mb-1">Grad-CAM</span>
+            <p class="text-xs text-slate-600 dark:text-slate-300"><strong>電腦視覺專屬</strong>。利用最後卷積層梯度生成熱力圖 (Heatmap)，展示模型判讀圖片時關注的區域。</p>
+          </div>
+        </div>
+
+        <!-- Red Callout: 考試大陷阱 -->
+        <div class="p-4 rounded-2xl border-l-4 border-rose-500 bg-rose-50/70 dark:bg-rose-950/40 text-rose-900 dark:text-rose-100 text-xs sm:text-sm">
+          <span class="font-bold flex items-center gap-1.5 text-rose-700 dark:text-rose-300">
+            <i class="fa-solid fa-triangle-exclamation"></i> 【高頻防雷警訊】開場貸款審核拒絕題
+          </span>
+          <p class="mt-1 text-slate-700 dark:text-slate-200">
+            <strong>考題陷阱：</strong> 題目問「銀行使用 XGBoost 審查貸款，法規要求為<strong>每一位被拒絕的客戶</strong>提供清晰理由，應使用何種工具？」<br>
+            <strong>錯誤選項：</strong> 特徵重要性 (Feature Importance) 只能看整體趨勢，無法針對單一個案提出法律抗辯依據；混淆矩陣是整體評估指標；Grad-CAM 僅限影像。<strong>唯一正解：SHAP（或 LIME）！</strong>
+          </p>
+        </div>
+
+        <!-- Interactive SHAP Waterfall Simulation -->
+        <div class="mt-6 p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h4 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                <i class="fa-solid fa-chart-waterfall text-indigo-500"></i> SHAP 單筆案件局部貢獻動態瀑布流 (Waterfall Plot)
+              </h4>
+              <p class="text-xs text-slate-500">基準基礎值 (Base Value) = 0.50，當預測值 $f(x) \ge 0.60$ 即核准貸款，低於則拒絕。</p>
+            </div>
+            <div class="inline-flex rounded-xl bg-slate-200 dark:bg-slate-700 p-1">
+              <button onclick="setShapCase('approved')" id="caseApprovedBtn" class="px-3 py-1 text-xs font-bold rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm transition">案例 A：貸款核准</button>
+              <button onclick="setShapCase('rejected')" id="caseRejectedBtn" class="px-3 py-1 text-xs font-bold rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 transition">案例 B：貸款駁回（拒貸）</button>
+            </div>
+          </div>
+
+          <!-- Dynamic SVG Waterfall Container -->
+          <div id="shapWaterfallGraphic" class="w-full overflow-x-auto">
+            <!-- Rendered by JavaScript -->
+          </div>
+          
+          <div id="shapExplainText" class="mt-4 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300">
+            <!-- Explanation rendered by JS -->
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 3. 偏差與變異 (Bias vs Variance) 靶心圖 -->
+    <section id="bias-variance" class="scroll-mt-20">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <span class="text-xs font-bold text-sky-600 dark:text-sky-400 tracking-wider uppercase">Section 03</span>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">偏差（Bias）與變異（Variance）權衡分析</h2>
+        </div>
+        <span class="text-xs bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 px-3 py-1 rounded-full font-bold">數學架構題核心</span>
+      </div>
+
+      <!-- Slide 5 Vector Graphic: 重點四 偏差與變異 -->
+      <div class="mb-6 bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div class="flex items-center justify-between mb-3 text-xs text-slate-500 font-semibold">
+          <span class="flex items-center gap-1.5 text-sky-600 dark:text-sky-400">
+            <i class="fa-solid fa-vector-square"></i> 原廠簡報向量圖解 5：系統性誤差 vs 訓練資料敏感度
+          </span>
+          <span class="bg-rose-50 dark:bg-rose-950/60 px-2.5 py-1 rounded-md text-rose-700 dark:text-rose-300">重點四</span>
+        </div>
+        <div class="w-full overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800">
+          <svg viewBox="0 0 1000 480" class="w-full h-auto select-none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1000" height="480" fill="#fafaff"/>
+            <circle cx="28" cy="35" r="7" fill="#f97316"/>
+            <text x="45" y="41" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="600" fill="#4f46e5">iPAS 14 · 模型選擇與架構設計</text>
+            <line x1="395" y1="35" x2="980" y2="35" stroke="#4f46e5" stroke-width="2" stroke-linecap="round"/>
+
+            <text x="25" y="112" font-family="'Noto Sans TC', sans-serif" font-size="44" font-weight="900" fill="#1e1b4b">重點四：<tspan fill="#ea580c">偏差與變異</tspan></text>
+
+            <rect x="25" y="145" width="950" height="80" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="42" y="162" width="124" height="46" rx="8" fill="#4f46e5"/>
+            <text x="54" y="193" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="bold" fill="#ffffff">偏差 Bias</text>
+            <text x="180" y="194" font-family="'Noto Sans TC', sans-serif" font-size="26" font-weight="bold" fill="#1e293b">模型的系統性誤差：每次都往同一個方向錯</text>
+
+            <text x="25" y="260" font-family="'Noto Sans TC', sans-serif" font-size="22" font-weight="600" fill="#334155">和神經元裡的偏置 b 是兩回事</text>
+
+            <rect x="25" y="285" width="950" height="150" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="42" y="305" width="168" height="46" rx="8" fill="#ea580c"/>
+            <text x="52" y="336" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="bold" fill="#ffffff">變異 Variance</text>
+            <text x="224" y="337" font-family="'Noto Sans TC', sans-serif" font-size="26" font-weight="bold" fill="#1e293b">模型對訓練資料有多敏感：</text>
+
+            <text x="224" y="380" font-family="'Noto Sans TC', sans-serif" font-size="25" font-weight="bold" fill="#1e293b">換一份訓練資料，學出來的模型就差很多</text>
+            <text x="224" y="418" font-family="'Noto Sans TC', sans-serif" font-size="25" font-weight="bold" fill="#1e293b">→ 變異高</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        
+        <!-- Left: Interactive Dart Target SVG -->
+        <div class="lg:col-span-6 flex flex-col items-center">
+          <div class="w-full max-w-sm aspect-square bg-slate-50 dark:bg-slate-950 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 flex items-center justify-center relative">
+            <svg id="dartTargetSvg" viewBox="0 0 300 300" class="w-full h-full select-none">
+              <!-- Rings -->
+              <circle cx="150" cy="150" r="135" fill="none" stroke="#cbd5e1" stroke-width="2" class="dark:stroke-slate-800"/>
+              <circle cx="150" cy="150" r="100" fill="none" stroke="#cbd5e1" stroke-width="2" class="dark:stroke-slate-800"/>
+              <circle cx="150" cy="150" r="65" fill="none" stroke="#94a3b8" stroke-width="2" class="dark:stroke-slate-700"/>
+              <circle cx="150" cy="150" r="30" fill="#fee2e2" stroke="#ef4444" stroke-width="2" class="dark:fill-rose-950/40 dark:stroke-rose-600"/>
+              <circle cx="150" cy="150" r="6" fill="#dc2626"/>
+
+              <!-- Crosshair Lines -->
+              <line x1="150" y1="5" x2="150" y2="295" stroke="#e2e8f0" stroke-width="1" class="dark:stroke-slate-800"/>
+              <line x1="5" y1="150" x2="295" y2="150" stroke="#e2e8f0" stroke-width="1" class="dark:stroke-slate-800"/>
+
+              <!-- Dynamic Dart Shots Container -->
+              <g id="dartShots"></g>
+            </svg>
+          </div>
+
+          <!-- Target Mode Selector Buttons -->
+          <div class="grid grid-cols-2 gap-2 w-full mt-4">
+            <button onclick="setDartMode('ideal')" id="dart-btn-ideal" class="dart-mode-btn p-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-sky-50 dark:bg-sky-950 text-sky-700 dark:text-sky-300">
+              ① 低偏差 · 低變異 (理想)
+            </button>
+            <button onclick="setDartMode('high-bias')" id="dart-btn-high-bias" class="dart-mode-btn p-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+              ② 高偏差 · 低變異 (欠擬合)
+            </button>
+            <button onclick="setDartMode('high-var')" id="dart-btn-high-var" class="dart-mode-btn p-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+              ③ 低偏差 · 高變異 (過擬合)
+            </button>
+            <button onclick="setDartMode('both-high')" id="dart-btn-both-high" class="dart-mode-btn p-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+              ④ 高偏差 · 高變異 (最差)
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Theoretical Breakdown & Math -->
+        <div class="lg:col-span-6 space-y-4">
+          <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+            <span class="text-xs font-mono text-slate-400 block mb-1">GENERALIZATION ERROR DECOMPOSITION</span>
+            <div id="katexErrorFormula" class="py-2 text-sm sm:text-base text-slate-900 dark:text-white font-bold">
+              <!-- KaTeX renders here -->
+            </div>
+            <p class="text-xs text-slate-600 dark:text-slate-300 mt-2">
+              泛化誤差可嚴格拆解為三部分：<br>
+              • <strong>偏差平方 ($\text{Bias}^2$)</strong>：簡化模型假設帶來的系統性錯誤。<br>
+              • <strong>變異 ($\text{Variance}$)</strong>：模型對訓練集擾動產生的預測波動。<br>
+              • <strong>不可約誤差 ($\sigma^2$)</strong>：環境底噪，任何模型皆無法消除。
+            </p>
+          </div>
+
+          <!-- Dynamic Status Description -->
+          <div id="dartStatusCard" class="p-4 rounded-2xl border border-sky-300 dark:border-sky-800 bg-sky-50/50 dark:bg-sky-950/30">
+            <h5 id="dartStatusTitle" class="font-bold text-sm text-sky-900 dark:text-sky-200">① 低偏差 · 低變異 (理想狀態)</h5>
+            <p id="dartStatusDesc" class="mt-1 text-xs text-slate-600 dark:text-slate-300">
+              預測點緊湊聚集於紅心中央。模型結構容量與資料複雜度完美匹配，訓練集與驗證集皆獲得極佳精確度。
+            </p>
+            <div id="dartStatusActions" class="mt-2 text-xs font-bold text-sky-700 dark:text-sky-300">
+              建議對策：保持現有超參數與架構，進行線上 A/B 測試。
+            </div>
+          </div>
+
+          <!-- Strategy Contrast Table -->
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50">
+              <span class="font-bold text-amber-800 dark:text-amber-300 block mb-1">高偏差改善 (欠擬合)</span>
+              <ul class="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-300 text-[11px]">
+                <li>換用更複雜模型 (如線性轉樹集成)</li>
+                <li>增加特徵工程、多項式特徵</li>
+                <li>減少正則化強度 (降低 $\lambda$)</li>
+                <li>增加訓練輪數 (Epochs)</li>
+              </ul>
+            </div>
+            <div class="p-3 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50">
+              <span class="font-bold text-rose-800 dark:text-rose-300 block mb-1">高變異改善 (過擬合)</span>
+              <ul class="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-300 text-[11px]">
+                <li>擴充訓練資料量或資料增強</li>
+                <li>增加 L1/L2 正則化懲罰</li>
+                <li>使用 Dropout、提前停止 (Early Stop)</li>
+                <li>Bagging 集成取平均以降低變異</li>
+              </ul>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 4. 邊緣部署與量化流程 (Deployment & Quantization) -->
+    <section id="deployment" class="scroll-mt-20">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <span class="text-xs font-bold text-sky-600 dark:text-sky-400 tracking-wider uppercase">Section 04</span>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">部署限制與邊緣運算模型壓縮</h2>
+        </div>
+        <span class="text-xs bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 px-3 py-1 rounded-full font-bold">工程落地關鍵</span>
+      </div>
+
+      <!-- Slide 4 Vector Graphic: 重點三 部署限制 -->
+      <div class="mb-6 bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div class="flex items-center justify-between mb-3 text-xs text-slate-500 font-semibold">
+          <span class="flex items-center gap-1.5 text-sky-600 dark:text-sky-400">
+            <i class="fa-solid fa-vector-square"></i> 原廠簡報向量圖解 4：硬體環境限制與模型壓縮對策
+          </span>
+          <span class="bg-orange-50 dark:bg-orange-950/60 px-2.5 py-1 rounded-md text-orange-700 dark:text-orange-300">重點三</span>
+        </div>
+        <div class="w-full overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800">
+          <svg viewBox="0 0 1000 480" class="w-full h-auto select-none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1000" height="480" fill="#fafaff"/>
+            <circle cx="28" cy="35" r="7" fill="#f97316"/>
+            <text x="45" y="41" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="600" fill="#4f46e5">iPAS 14 · 模型選擇與架構設計</text>
+            <line x1="395" y1="35" x2="980" y2="35" stroke="#4f46e5" stroke-width="2" stroke-linecap="round"/>
+
+            <text x="25" y="112" font-family="'Noto Sans TC', sans-serif" font-size="44" font-weight="900" fill="#1e1b4b">重點三：<tspan fill="#ea580c">部署限制</tspan></text>
+            <text x="25" y="152" font-family="'Noto Sans TC', sans-serif" font-size="22" font-weight="600" fill="#334155">上線環境會反過來限制你能選什麼模型</text>
+
+            <rect x="25" y="180" width="950" height="74" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="42" y="196" width="194" height="42" rx="8" fill="#4f46e5"/>
+            <text x="56" y="224" font-family="'Noto Sans TC', sans-serif" font-size="19" font-weight="bold" fill="#ffffff">手機、IoT、邊緣</text>
+            <text x="252" y="225" font-family="'Noto Sans TC', sans-serif" font-size="24" font-weight="bold" fill="#1e293b">記憶體小、算力弱、耗電 → 小模型、剪枝、量化</text>
+
+            <rect x="25" y="274" width="950" height="74" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="42" y="290" width="180" height="42" rx="8" fill="#0d9488"/>
+            <text x="56" y="318" font-family="'Noto Sans TC', sans-serif" font-size="19" font-weight="bold" fill="#ffffff">雲端、資料中心</text>
+            <text x="238" y="319" font-family="'Noto Sans TC', sans-serif" font-size="24" font-weight="bold" fill="#1e293b">資源充足 → 大模型、集成</text>
+
+            <rect x="25" y="368" width="950" height="74" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="42" y="384" width="136" height="42" rx="8" fill="#ea580c"/>
+            <text x="54" y="412" font-family="'Noto Sans TC', sans-serif" font-size="19" font-weight="bold" fill="#ffffff">毫秒級即時</text>
+            <text x="194" y="413" font-family="'Noto Sans TC', sans-serif" font-size="24" font-weight="bold" fill="#1e293b">交易、推薦，要顧延遲 → 快取、知識蒸餾</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Yellow Callout: 部署工程 -->
+      <div class="mb-6 p-4 rounded-2xl border-l-4 border-amber-500 bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-100 text-xs sm:text-sm">
+        <span class="font-bold flex items-center gap-1.5 text-amber-700 dark:text-amber-300">
+          <i class="fa-solid fa-microchip"></i> 【邊緣三大硬體限制】記憶體小、算力弱、耗電緊
+        </span>
+        <p class="mt-1 text-slate-700 dark:text-slate-200">
+          工廠產線攝影機或 IoT 終端常常沒有獨立高階 GPU。如果直接部署 ResNet-152 或大型 Transformer，推論時間往往高達數秒甚至造成記憶體溢位 (OOM)。解題原則：選輕量架構（如 MobileNet）+ 剪枝 (Pruning) + 模型量化 (Quantization)。
+        </p>
+      </div>
+
+      <!-- Deployment Architecture Contrast -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- Mobile & Edge -->
+        <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-950 text-sky-600 dark:text-sky-400 flex items-center justify-center text-lg mb-4">
+              <i class="fa-solid fa-mobile-screen"></i>
+            </div>
+            <h4 class="font-bold text-base text-slate-900 dark:text-white mb-1">邊緣裝置 / IoT / 手機</h4>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">算力極度受限、散熱條件差、依賴電池供電</p>
+            
+            <div class="space-y-2.5 text-xs">
+              <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                <span class="font-bold text-sky-600 dark:text-sky-400 block mb-0.5">輕量模型 (MobileNet)</span>
+                採用深度可分離卷積 (Depthwise Separable Convolution)，參數量大幅減少 80~90%。
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                <span class="font-bold text-sky-600 dark:text-sky-400 block mb-0.5">剪枝 (Pruning)</span>
+                移除神經網路中權重接近 0 的無效連線，大幅減少運算參數量。
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                <span class="font-bold text-sky-600 dark:text-sky-400 block mb-0.5">INT8 量化 (Quantization)</span>
+                將 32-bit 浮點數轉換為 8-bit 整數，模型體積縮減 75%，大幅釋放記憶體。
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-bold text-sky-600 dark:text-sky-400">
+            適用：產線即時瑕疵檢測、無人機邊緣運算
+          </div>
+        </div>
+
+        <!-- Real-time Low Latency -->
+        <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg mb-4">
+              <i class="fa-solid fa-bolt-lightning"></i>
+            </div>
+            <h4 class="font-bold text-base text-slate-900 dark:text-white mb-1">毫秒級即時響應 (&lt; 20ms)</h4>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">高頻金融交易、搜尋引擎推薦、即時競價</p>
+            
+            <div class="space-y-2.5 text-xs">
+              <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                <span class="font-bold text-amber-600 dark:text-amber-400 block mb-0.5">快取機制 (Cache Layer)</span>
+                使用 Redis 預存高頻熱門查詢結果，命中時直接回傳，繞過模型推論。
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                <span class="font-bold text-amber-600 dark:text-amber-400 block mb-0.5">知識蒸餾 (Knowledge Distillation)</span>
+                讓輕量「學生模型」學習大型「教師模型」的軟標籤 (Soft Labels) 輸出分佈。
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                <span class="font-bold text-amber-600 dark:text-amber-400 block mb-0.5">推論引擎優化 (TensorRT/ONNX)</span>
+                算子融合 (Kernel Fusion)，最大化硬體吞吐量與管線併發。
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-bold text-amber-600 dark:text-amber-400">
+            適用：外送派單演算法、防偽刷卡即時攔截
+          </div>
+        </div>
+
+        <!-- Cloud Data Center -->
+        <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-lg mb-4">
+              <i class="fa-solid fa-cloud"></i>
+            </div>
+            <h4 class="font-bold text-base text-slate-900 dark:text-white mb-1">雲端資料中心 (Cloud Center)</h4>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">算力充沛、多張 GPU 叢集、記憶體無瓶頸</p>
+            
+            <div class="space-y-2.5 text-xs">
+              <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                <span class="font-bold text-indigo-600 dark:text-indigo-400 block mb-0.5">巨量參數基礎模型 (LLM)</span>
+                部署 70B+ 大型語言模型或超大型多模態 Vision-Language 架構。
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                <span class="font-bold text-indigo-600 dark:text-indigo-400 block mb-0.5">多模型堆疊集成 (Stacking)</span>
+                多個異質模型 (XGBoost + LightGBM + MLP) 進行兩階段堆疊融合預測。
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                <span class="font-bold text-indigo-600 dark:text-indigo-400 block mb-0.5">批次離線排程處理</span>
+                針對無即時性需求的隔日分析報表，以高並行管線執行計算。
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
+            適用：跨國氣象數值預報、大語言模型訓練
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- AutoML 與 遷移學習 向量展示 (Section 4.5) -->
+    <section class="scroll-mt-20">
+      <!-- Slide 6 Vector Graphic: 重點五 AutoML 與遷移學習 -->
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div class="flex items-center justify-between mb-3 text-xs text-slate-500 font-semibold">
+          <span class="flex items-center gap-1.5 text-sky-600 dark:text-sky-400">
+            <i class="fa-solid fa-vector-square"></i> 原廠簡報向量圖解 6：AutoML 適用與不適用場景
+          </span>
+          <span class="bg-purple-50 dark:bg-purple-950/60 px-2.5 py-1 rounded-md text-purple-700 dark:text-purple-300">重點五</span>
+        </div>
+        <div class="w-full overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800">
+          <svg viewBox="0 0 1000 480" class="w-full h-auto select-none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1000" height="480" fill="#fafaff"/>
+            <circle cx="28" cy="35" r="7" fill="#f97316"/>
+            <text x="45" y="41" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="600" fill="#4f46e5">iPAS 14 · 模型選擇與架構設計</text>
+            <line x1="395" y1="35" x2="980" y2="35" stroke="#4f46e5" stroke-width="2" stroke-linecap="round"/>
+
+            <text x="25" y="112" font-family="'Noto Sans TC', sans-serif" font-size="44" font-weight="900" fill="#1e1b4b">重點五：<tspan fill="#ea580c">AutoML 與遷移學習</tspan></text>
+
+            <rect x="25" y="138" width="950" height="52" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="38" y="148" width="76" height="32" rx="6" fill="#4f46e5"/>
+            <text x="45" y="170" font-family="'Noto Sans TC', sans-serif" font-size="14" font-weight="bold" fill="#ffffff">AutoML</text>
+            <text x="126" y="171" font-family="'Noto Sans TC', sans-serif" font-size="19" font-weight="bold" fill="#1e293b">自動嘗試多種模型與超參數，替你跑完選模型、調參數的苦工</text>
+
+            <rect x="25" y="200" width="950" height="52" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="38" y="210" width="60" height="32" rx="6" fill="#475569"/>
+            <text x="44" y="232" font-family="'Noto Sans TC', sans-serif" font-size="14" font-weight="bold" fill="#ffffff">超參數</text>
+            <text x="110" y="233" font-family="'Noto Sans TC', sans-serif" font-size="19" font-weight="bold" fill="#1e293b">訓練前要人先決定的設定，例如樹最多長幾層、學習率多大</text>
+
+            <rect x="25" y="270" width="465" height="190" rx="16" fill="#f0fdf4" stroke="#86efac" stroke-width="2"/>
+            <text x="45" y="312" font-family="'Noto Sans TC', sans-serif" font-size="28" font-weight="900" fill="#166534">適合</text>
+            <text x="45" y="352" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="bold" fill="#1e293b">時間短、要快速比較多種模型</text>
+            <text x="45" y="388" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="bold" fill="#1e293b">缺乏專職工程師</text>
+            <text x="45" y="424" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="bold" fill="#1e293b">先做出可用的基準模型</text>
+            <text x="45" y="450" font-family="'Noto Sans TC', sans-serif" font-size="14" font-weight="600" fill="#64748b">基準模型：當比較標準的第一版，不求最好，先知道大概幾分</text>
+
+            <rect x="510" y="270" width="465" height="190" rx="16" fill="#fff7ed" stroke="#fdba74" stroke-width="2"/>
+            <text x="530" y="312" font-family="'Noto Sans TC', sans-serif" font-size="28" font-weight="900" fill="#9a3412">不適合</text>
+            <text x="530" y="352" font-family="'Noto Sans TC', sans-serif" font-size="22" font-weight="bold" fill="#1e293b">已有成熟 MLOps 與資深團隊</text>
+            <text x="530" y="392" font-family="'Noto Sans TC', sans-serif" font-size="16" font-weight="600" fill="#475569">MLOps：模型上線、監控、重訓的整套維運流程</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. RAG 檢索方式比較器 (RAG Search & RRF) -->
+    <section id="rag" class="scroll-mt-20">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <span class="text-xs font-bold text-sky-600 dark:text-sky-400 tracking-wider uppercase">Section 05</span>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">RAG 檢索策略與倒數排名融合 (RRF)</h2>
+        </div>
+        <span class="text-xs bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 px-3 py-1 rounded-full font-bold">高階架構題</span>
+      </div>
+
+      <!-- Slide 7 Vector Graphic: 重點六 超出學習指引的 RAG 檢索 -->
+      <div class="mb-6 bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div class="flex items-center justify-between mb-3 text-xs text-slate-500 font-semibold">
+          <span class="flex items-center gap-1.5 text-sky-600 dark:text-sky-400">
+            <i class="fa-solid fa-vector-square"></i> 原廠簡報向量圖解 7：RAG 檢索策略三巨頭 (語意 vs BM25 vs 混合)
+          </span>
+          <span class="bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-1 rounded-md text-indigo-700 dark:text-indigo-300">重點六</span>
+        </div>
+        <div class="w-full overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800">
+          <svg viewBox="0 0 1000 480" class="w-full h-auto select-none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1000" height="480" fill="#fafaff"/>
+            <circle cx="28" cy="35" r="7" fill="#f97316"/>
+            <text x="45" y="41" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="600" fill="#4f46e5">iPAS 14 · 模型選擇與架構設計</text>
+            <line x1="395" y1="35" x2="980" y2="35" stroke="#4f46e5" stroke-width="2" stroke-linecap="round"/>
+
+            <text x="25" y="112" font-family="'Noto Sans TC', sans-serif" font-size="44" font-weight="900" fill="#1e1b4b">重點六：超出學習指引的 <tspan fill="#ea580c">RAG 檢索</tspan></text>
+            <text x="25" y="145" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="bold" fill="#ea580c">115 年考過一題，先記結論</text>
+
+            <rect x="25" y="160" width="950" height="45" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="36" y="169" width="48" height="27" rx="6" fill="#4f46e5"/>
+            <text x="43" y="188" font-family="'Noto Sans TC', sans-serif" font-size="14" font-weight="bold" fill="#ffffff">RAG</text>
+            <text x="96" y="189" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="bold" fill="#1e293b">檢索增強生成：先從知識庫找出相關文件，再交給大型語言模型根據文件回答</text>
+
+            <rect x="25" y="214" width="950" height="45" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="36" y="223" width="48" height="27" rx="6" fill="#475569"/>
+            <text x="43" y="242" font-family="'Noto Sans TC', sans-serif" font-size="14" font-weight="bold" fill="#ffffff">切片</text>
+            <text x="96" y="243" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="bold" fill="#1e293b">文件先切成一小段一小段，再存進知識庫</text>
+
+            <rect x="25" y="268" width="950" height="64" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <text x="45" y="306" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="bold" fill="#1e293b">語意向量搜尋</text>
+            <text x="220" y="295" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="bold" fill="#1e293b">擅長：意思相近但用字不同</text>
+            <text x="220" y="322" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="bold" fill="#ea580c">弱點：專有名詞、編號容易抓錯</text>
+
+            <rect x="25" y="340" width="950" height="64" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <text x="45" y="378" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="bold" fill="#1e293b">關鍵字搜尋 BM25</text>
+            <text x="220" y="367" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="bold" fill="#1e293b">擅長：精準比對字詞</text>
+            <text x="220" y="394" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="bold" fill="#ea580c">弱點：換個說法就找不到</text>
+
+            <rect x="25" y="412" width="950" height="62" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <text x="45" y="438" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="bold" fill="#1e293b">混合搜尋</text>
+            <text x="45" y="460" font-family="'Noto Sans TC', sans-serif" font-size="14" font-weight="600" fill="#64748b">Hybrid Search</text>
+            <text x="220" y="437" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="bold" fill="#1e293b">兩者都用，再用 RRF 倒數排名融合合併</text>
+            <text x="220" y="463" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="bold" fill="#ea580c">弱點：設定較複雜</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Purple Callout: 高階架構 -->
+      <div class="mb-6 p-4 rounded-2xl border-l-4 border-purple-500 bg-purple-50/70 dark:bg-purple-950/40 text-purple-900 dark:text-purple-100 text-xs sm:text-sm">
+        <span class="font-bold flex items-center gap-1.5 text-purple-700 dark:text-purple-300">
+          <i class="fa-solid fa-shapes"></i> 【超出指引考點】為什麼純語意向量搜尋會抓錯合約條款？
+        </span>
+        <p class="mt-1 text-slate-700 dark:text-slate-200">
+          <strong>原廠考題：</strong> 企業內部合約知識庫中，針對特定編號（例如「合約 A1024 違約責任條款」）進行檢索，發現向量搜尋經常抓成其他條款，應如何最佳化？<br>
+          <strong>解析：</strong> 語意向量（Dense Vector）擅長同義詞與泛化語意，但對精確代碼、型號極度不敏感；BM25（Sparse Term Matching）擅長字字符合但無語意泛化。<strong>唯一正解：混合搜尋（Hybrid Search）結合 RRF 倒數排名融合！</strong>
+        </p>
+      </div>
+
+      <!-- Interactive RAG Simulator Component -->
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+        
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h4 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+              <i class="fa-solid fa-magnifying-glass text-purple-500"></i> RAG 檢索方式即時效果比對
+            </h4>
+            <p class="text-xs text-slate-500">測試查詢：<code class="text-purple-600 dark:text-purple-400 font-bold">合約 A1024 違約賠償規定</code></p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold text-slate-500">當前模擬器模式:</span>
+            <span id="currentRrfBadge" class="text-xs font-bold px-2.5 py-1 rounded-lg bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">混合搜尋 (Hybrid + RRF)</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          
+          <!-- BM25 Column -->
+          <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-slate-700 dark:text-slate-300">① 關鍵字搜尋 (BM25)</span>
+              <span class="text-[10px] bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300 font-mono">Sparse Match</span>
+            </div>
+            <p class="text-[11px] text-slate-500 mb-3">優勢：字字精準對照「A1024」<br>劣勢：無法理解「賠償」等同於「罰金」</p>
+            <div class="space-y-2 text-xs">
+              <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                <div class="flex justify-between font-bold text-slate-900 dark:text-white">
+                  <span>文件 #A1024-總綱</span>
+                  <span class="text-sky-600 font-mono">Rank 1</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-1">精準比對到 A1024 編號，但此段為總則非違約。</div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                <div class="flex justify-between font-bold text-slate-900 dark:text-white">
+                  <span>文件 #A1024-罰則</span>
+                  <span class="text-sky-600 font-mono">Rank 2</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-1">包含 A1024 與罰則，正確目標。</div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 opacity-60">
+                <div class="flex justify-between font-bold text-slate-900 dark:text-white">
+                  <span>文件 #B5001-賠償細則</span>
+                  <span class="text-slate-400 font-mono">Rank 3</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-1">非 A1024 合約，雜訊匹配。</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dense Vector Column -->
+          <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-slate-700 dark:text-slate-300">② 語意向量搜尋 (Embedding)</span>
+              <span class="text-[10px] bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300 font-mono">Dense Vector</span>
+            </div>
+            <p class="text-[11px] text-slate-500 mb-3">優勢：能理解「賠償」與「違約責任」概念<br>劣勢：容易忽略「A1024」這個代號差異</p>
+            <div class="space-y-2 text-xs">
+              <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                <div class="flex justify-between font-bold text-slate-900 dark:text-white">
+                  <span>文件 #General-違約專章</span>
+                  <span class="text-purple-600 font-mono">Rank 1</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-1">語意相似度最高，但完全是別份通用合約！</div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                <div class="flex justify-between font-bold text-slate-900 dark:text-white">
+                  <span>文件 #A1024-罰則</span>
+                  <span class="text-purple-600 font-mono">Rank 2</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-1">語意相近但排名被通用合約擠下。</div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 opacity-60">
+                <div class="flex justify-between font-bold text-slate-900 dark:text-white">
+                  <span>文件 #C9000-解約條款</span>
+                  <span class="text-slate-400 font-mono">Rank 3</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-1">語意亦很接近違約。</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hybrid RRF Column -->
+          <div class="p-4 rounded-2xl bg-purple-50/70 dark:bg-purple-950/40 border-2 border-purple-400 dark:border-purple-600">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-purple-900 dark:text-purple-200">③ 混合搜尋 (Hybrid + RRF)</span>
+              <span class="text-[10px] bg-purple-200 dark:bg-purple-800 px-2 py-0.5 rounded text-purple-900 dark:text-purple-100 font-mono font-bold">RRF Fused</span>
+            </div>
+            <p class="text-[11px] text-purple-800 dark:text-purple-300 mb-3">透過倒數排名融合公式計算最終權重分數：<br>$\text{RRF Score} = \sum \frac{1}{k + r_i}$ ($k=60$)</p>
+            <div class="space-y-2 text-xs">
+              <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-purple-300 dark:border-purple-700 shadow-sm">
+                <div class="flex justify-between font-bold text-purple-900 dark:text-purple-300">
+                  <span class="flex items-center gap-1.5"><i class="fa-solid fa-crown text-amber-500"></i> 文件 #A1024-罰則</span>
+                  <span class="text-emerald-600 dark:text-emerald-400 font-mono font-black">TOP 1</span>
+                </div>
+                <div class="text-[11px] text-slate-600 dark:text-slate-300 mt-1">
+                  兩邊排名皆在前列 (BM25: 2, 語意: 2)<br>
+                  融合分數：$\frac{1}{60+2} + \frac{1}{60+2} = 0.0322$
+                </div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                <div class="flex justify-between font-bold text-slate-900 dark:text-white">
+                  <span>文件 #A1024-總綱</span>
+                  <span class="text-slate-500 font-mono">TOP 2</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-1">融合分數：$\frac{1}{60+1} + 0 = 0.0163$</div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                <div class="flex justify-between font-bold text-slate-900 dark:text-white">
+                  <span>文件 #General-違約專章</span>
+                  <span class="text-slate-500 font-mono">TOP 3</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-1">融合分數：$0 + \frac{1}{60+1} = 0.0163$</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div id="katexRrfFormula" class="pt-2 text-center text-xs text-slate-600 dark:text-slate-400">
+          <!-- KaTeX will format RRF definition -->
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 考前總結與易混淆辨析區塊 (Slide 8 & 9) -->
+    <section class="space-y-8">
+      
+      <!-- Slide 8: 最容易搞混的 3 大組對比 -->
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div class="flex items-center justify-between mb-3 text-xs text-slate-500 font-semibold">
+          <span class="flex items-center gap-1.5 text-rose-600 dark:text-rose-400">
+            <i class="fa-solid fa-vector-square"></i> 原廠簡報向量圖解 8：最容易搞混的核心觀念
+          </span>
+          <span class="bg-rose-50 dark:bg-rose-950/60 px-2.5 py-1 rounded-md text-rose-700 dark:text-rose-300">防雷必背</span>
+        </div>
+        <div class="w-full overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800">
+          <svg viewBox="0 0 1000 480" class="w-full h-auto select-none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1000" height="480" fill="#fafaff"/>
+            <circle cx="28" cy="35" r="7" fill="#f97316"/>
+            <text x="45" y="41" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="600" fill="#4f46e5">iPAS 14 · 模型選擇與架構設計</text>
+            <line x1="395" y1="35" x2="980" y2="35" stroke="#4f46e5" stroke-width="2" stroke-linecap="round"/>
+
+            <text x="25" y="112" font-family="'Noto Sans TC', sans-serif" font-size="44" font-weight="900" fill="#1e1b4b">最容易搞混的</text>
+
+            <rect x="25" y="150" width="455" height="84" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <text x="50" y="202" font-family="'Noto Sans TC', sans-serif" font-size="26" font-weight="900" fill="#1e1b4b">SHAP <tspan font-size="22" font-weight="600" fill="#334155">能解釋單筆</tspan></text>
+
+            <text x="495" y="200" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="bold" fill="#64748b">vs</text>
+
+            <rect x="520" y="150" width="455" height="84" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <text x="545" y="202" font-family="'Noto Sans TC', sans-serif" font-size="26" font-weight="900" fill="#ea580c">全域特徵重要性 <tspan font-size="22" font-weight="600" fill="#334155">只能看整體</tspan></text>
+
+            <rect x="25" y="255" width="455" height="84" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <text x="50" y="307" font-family="'Noto Sans TC', sans-serif" font-size="26" font-weight="900" fill="#1e1b4b">AutoML <tspan font-size="22" font-weight="600" fill="#334155">快速比較、缺人</tspan></text>
+
+            <text x="495" y="305" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="bold" fill="#64748b">vs</text>
+
+            <rect x="520" y="255" width="455" height="84" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <text x="545" y="307" font-family="'Noto Sans TC', sans-serif" font-size="26" font-weight="900" fill="#ea580c">手動建模 <tspan font-size="22" font-weight="600" fill="#334155">精細控制、高度客製</tspan></text>
+
+            <rect x="25" y="360" width="455" height="84" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <text x="50" y="412" font-family="'Noto Sans TC', sans-serif" font-size="26" font-weight="900" fill="#1e1b4b">偏差 Bias <tspan font-size="22" font-weight="600" fill="#334155">模型的系統性誤差</tspan></text>
+
+            <text x="495" y="410" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="bold" fill="#64748b">vs</text>
+
+            <rect x="520" y="360" width="455" height="84" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <text x="545" y="412" font-family="'Noto Sans TC', sans-serif" font-size="26" font-weight="900" fill="#ea580c">偏置 b <tspan font-size="22" font-weight="600" fill="#334155">神經元的常數項</tspan></text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Slide 9: 這集帶走四句話 (總結金句) -->
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div class="flex items-center justify-between mb-3 text-xs text-slate-500 font-semibold">
+          <span class="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+            <i class="fa-solid fa-vector-square"></i> 原廠簡報向量圖解 9：通關四句訣
+          </span>
+          <span class="bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-md text-emerald-700 dark:text-emerald-300">考前必讀</span>
+        </div>
+        <div class="w-full overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800">
+          <svg viewBox="0 0 1000 480" class="w-full h-auto select-none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1000" height="480" fill="#fafaff"/>
+            <circle cx="28" cy="35" r="7" fill="#f97316"/>
+            <text x="45" y="41" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="600" fill="#4f46e5">iPAS 14 · 模型選擇與架構設計</text>
+            <line x1="395" y1="35" x2="980" y2="35" stroke="#4f46e5" stroke-width="2" stroke-linecap="round"/>
+
+            <text x="25" y="112" font-family="'Noto Sans TC', sans-serif" font-size="44" font-weight="900" fill="#1e1b4b">這集帶走<tspan fill="#ea580c">四句話</tspan></text>
+
+            <rect x="25" y="145" width="950" height="66" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="42" y="159" width="38" height="38" rx="8" fill="#581c87"/>
+            <text x="54" y="186" font-family="'Noto Sans TC', sans-serif" font-size="22" font-weight="bold" fill="#ffffff">1</text>
+            <text x="96" y="187" font-family="'Noto Sans TC', sans-serif" font-size="24" font-weight="bold" fill="#1e293b">先問要預測什麼、有多少資料</text>
+
+            <rect x="25" y="225" width="950" height="66" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="42" y="239" width="38" height="38" rx="8" fill="#581c87"/>
+            <text x="54" y="266" font-family="'Noto Sans TC', sans-serif" font-size="22" font-weight="bold" fill="#ffffff">2</text>
+            <text x="96" y="267" font-family="'Noto Sans TC', sans-serif" font-size="24" font-weight="bold" fill="#1e293b">醫療、金融、法遵一定要說得出理由</text>
+
+            <rect x="25" y="305" width="950" height="66" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="42" y="319" width="38" height="38" rx="8" fill="#581c87"/>
+            <text x="54" y="346" font-family="'Noto Sans TC', sans-serif" font-size="22" font-weight="bold" fill="#ffffff">3</text>
+            <text x="96" y="347" font-family="'Noto Sans TC', sans-serif" font-size="24" font-weight="bold" fill="#1e293b">上手機、上雲端、要即時，選法不同</text>
+
+            <rect x="25" y="385" width="950" height="66" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <rect x="42" y="399" width="38" height="38" rx="8" fill="#581c87"/>
+            <text x="54" y="426" font-family="'Noto Sans TC', sans-serif" font-size="22" font-weight="bold" fill="#ffffff">4</text>
+            <text x="96" y="427" font-family="'Noto Sans TC', sans-serif" font-size="24" font-weight="bold" fill="#1e293b">太簡單會偏，太複雜會飄</text>
+          </svg>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- 6. 完整時間軸逐字稿模組 (Timeline Transcript Module) -->
+    <section id="transcript" class="scroll-mt-20">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div>
+          <span class="text-xs font-bold text-sky-600 dark:text-sky-400 tracking-wider uppercase">Section 06</span>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <i class="fa-solid fa-list-ol text-sky-500"></i>
+            章節時間軸與完整逐字稿
+          </h2>
+          <p class="text-xs text-slate-500">點選任一時間標籤可立即同步跳轉原片秒數播放。</p>
+        </div>
+
+        <!-- Transcript Search Input -->
+        <div class="relative w-full sm:w-72">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+          <input type="text" id="transcriptSearch" oninput="filterTranscript()" placeholder="搜尋關鍵字 (如: SHAP, 變異, 量化...)" class="w-full pl-9 pr-8 py-2 rounded-xl text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 transition">
+          <button id="clearSearchBtn" onclick="clearTranscriptSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Transcript Chapter Chips Filter -->
+      <div class="flex flex-wrap items-center gap-1.5 mb-4 text-xs">
+        <span class="text-slate-400 text-[11px] font-semibold mr-1">快速切換章節:</span>
+        <button onclick="filterTranscriptCategory('all')" class="cat-filter-btn active px-3 py-1 rounded-lg bg-sky-600 text-white font-bold transition">全部章節 (00:00~15:21)</button>
+        <button onclick="filterTranscriptCategory('01')" class="cat-filter-btn px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition">01 任務配模型</button>
+        <button onclick="filterTranscriptCategory('02')" class="cat-filter-btn px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition">02 解釋性與SHAP</button>
+        <button onclick="filterTranscriptCategory('03')" class="cat-filter-btn px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition">03 邊緣部署</button>
+        <button onclick="filterTranscriptCategory('04')" class="cat-filter-btn px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition">04 偏差與變異</button>
+        <button onclick="filterTranscriptCategory('05')" class="cat-filter-btn px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition">05 AutoML與遷移</button>
+        <button onclick="filterTranscriptCategory('06')" class="cat-filter-btn px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition">06 RAG混合搜尋</button>
+      </div>
+
+      <!-- Transcript Container List -->
+      <div id="transcriptList" class="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 max-h-[700px] overflow-y-auto custom-scrollbar">
+        <!-- Rendered by JavaScript -->
+      </div>
+    </section>
+
+    <!-- 7. 隨堂考點實戰測驗 (Practice Quiz) -->
+    <section id="quiz" class="scroll-mt-20">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <span class="text-xs font-bold text-sky-600 dark:text-sky-400 tracking-wider uppercase">Section 07</span>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">高頻真題模擬實戰測驗 (6題)</h2>
+        </div>
+        <span class="text-xs bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-3 py-1 rounded-full font-bold">即時回饋</span>
+      </div>
+
+      <div class="space-y-4" id="quizContainer">
+        <!-- Questions rendered by JavaScript -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-8 px-4 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center space-x-2">
+        <span class="font-bold text-slate-800 dark:text-slate-200">iPAS AI 應用規劃師 (中級) 互動學習指引系統</span>
+        <span>•</span>
+        <span>影片授權與教材出處：韋哥科技教室</span>
+      </div>
+      <div class="flex items-center space-x-4">
+        <a href="#transcript" class="hover:text-sky-600 transition">回到逐字稿</a>
+        <a href="#matrix" class="hover:text-sky-600 transition">模型對照表</a>
+        <a href="https://www.youtube.com/watch?v=ugeY5JaeLGw" target="_blank" rel="noopener noreferrer" class="hover:text-red-500 transition">
+          <i class="fa-brands fa-youtube mr-1"></i> YouTube 原片
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Application Logic Scripts -->
+  <script>
+    // YouTube Player API Controller
+    function jumpToTime(seconds) {
+      const iframe = document.getElementById('ytPlayer');
+      if (iframe) {
+        iframe.src = `https://www.youtube.com/embed/ugeY5JaeLGw?start=${seconds}&autoplay=1&enablejsapi=1&rel=0`;
+        const videoElement = document.getElementById('ytPlayer');
+        if (videoElement) {
+          videoElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+    }
+
+    // Theme Mode Toggle
+    const themeBtn = document.getElementById('themeToggle');
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    themeBtn.addEventListener('click', () => {
+      if (document.documentElement.classList.contains('dark')) {
+        document.documentElement.classList.remove('dark');
+        localStorage.theme = 'light';
+      } else {
+        document.documentElement.classList.add('dark');
+        localStorage.theme = 'dark';
+      }
+    });
+
+    // 1. Task & Scale Matrix Logic
+    const tasksData = {
+      classification: {
+        title: "分類任務 (Classification)",
+        badge: "離散標籤預測 (Discrete Labels)",
+        targetDesc: "目標變數為類別，例如：二元分類（違約 / 未違約、腫瘤良惡性）或多元分類（影像標記 10 類別）。最後一層搭配 Sigmoid 或 Softmax 輸出機率分佈，損失函數搭配 Cross-Entropy Loss。",
+        models: [
+          { name: "羅吉斯回歸 (Logistic Regression)", note: "高解釋性白箱基準模型，係數代表對數勝算比 (Odds Ratio)，適合小資料或線性可分。" },
+          { name: "支持向量機 (SVM)", note: "適合高維度小樣本（如基因數據），善用核函數 (RBF Kernel) 投射至高維空間進行超平面分割。" },
+          { name: "隨機森林 / XGBoost / LightGBM", note: "表格資料最首選。多決策樹集成，天然能捕捉非線性交互作用，抗雜訊能力強。" },
+          { name: "卷積 / 轉換器神經網路 (CNN / Transformer)", note: "非結構化資料必備（影像分類、文字意圖識別），需要龐大資料量支撐。" }
+        ]
+      },
+      regression: {
+        title: "回歸任務 (Regression)",
+        badge: "連續數值預測 (Continuous Values)",
+        targetDesc: "目標變數為連續性實數，例如：預測房價、用電負載量、股票收益率。輸出層不加激活函數（或加線性激活），損失函數使用均方誤差 (MSE) 或絕對誤差 (MAE)。",
+        models: [
+          { name: "多元線性回歸 (Linear Regression)", note: "白箱模型首選，適合特徵與目標呈明顯線性關係且要求高度業務解釋性時。" },
+          { name: "Lasso (L1) / Ridge (L2)", note: "特徵數量眾多或高度共線性時使用，Lasso 具特徵篩選稀疏化效果，Ridge 可約束權重。" },
+          { name: "隨機森林 / 梯度提升樹 (GBDT)", note: "非線性回歸首選，不需要特徵正規化即可處理複雜曲線關係，內建特徵重要性統計。" },
+          { name: "多層感知機 (MLP / Deep Neural Net)", note: "超大型資料集且特徵交互作用極其複雜時採用。" }
+        ]
+      },
+      clustering: {
+        title: "分群任務 (Clustering)",
+        badge: "無監督學習 (Unsupervised)",
+        targetDesc: "資料沒有預設目標標籤，透過樣本間的幾何距離或密度相似度自動劃分群體，例如：客戶輪廓分群、異常連線偵測。",
+        models: [
+          { name: "K-means 分群", note: "必須預先給定群數 K，假設群體為凸面球狀分佈，計算速度極快但對離群值敏感。" },
+          { name: "DBSCAN 密度分群", note: "基於半徑 $\\epsilon$ 與核心點最小樣本數分群，能識別任意不規則形狀並自動過濾噪聲點。" },
+          { name: "階層式分群 (Hierarchical Clustering)", note: "產生樹狀圖 (Dendrogram)，直觀檢視層級聚集結構，適合小規模樣本分析。" }
+        ]
+      },
+      "dim-reduction": {
+        title: "降維任務 (Dimensionality Reduction)",
+        badge: "特徵萃取與壓縮 (Feature Extraction)",
+        targetDesc: "將高維特徵空間壓縮至低維度，解決「維度詛咒 (Curse of Dimensionality)」，去除冗餘相關性，亦常用於二維/三維視覺化展示。",
+        models: [
+          { name: "主成分分析 (PCA)", note: "線性正交投影，尋找最大變異方向，無監督學習，轉換後的主成分相互獨立具正交性。" },
+          { name: "自編碼器 (Autoencoder)", note: "神經網路非線性降維，透過瓶頸層 (Bottleneck) 強迫模型保留關鍵重構資訊。" },
+          { name: "t-SNE / UMAP", note: "流形學習降維，極度擅長保留局部鄰近結構，主要用於高維向量二維視覺化呈現。" }
+        ]
+      },
+      timeseries: {
+        title: "時間序列預測 (Time Series Forecasting)",
+        badge: "時序相關性 (Temporal Dependency)",
+        targetDesc: "樣本之間存在先後時間順序與自相關性，不能隨機打亂劃分驗證集。常見於設備感測器時序預警、伺服器流量預估。",
+        models: [
+          { name: "ARIMA / SARIMA", note: "傳統統計經典模型，需平穩序列檢驗，適合短週期、規律性明顯且資料量較少之場景。" },
+          { name: "LSTM / GRU (循環神經網路)", note: "具備遺忘閘與更新閘，能捕捉長距離時序相依性，但無法平行化計算。" },
+          { name: "時間卷積網路 (TCN)", note: "以擴張因果卷積 (Dilated Causal Conv) 實現時序捕捉，計算可全面 GPU 平行化，比 RNN 更快。" }
+        ]
+      }
+    };
+
+    function switchTask(taskId) {
+      document.querySelectorAll('.task-tab-btn').forEach(btn => {
+        btn.classList.remove('bg-sky-600', 'text-white', 'shadow-sm');
+        btn.classList.add('bg-slate-100', 'dark:bg-slate-800', 'text-slate-700', 'dark:text-slate-300');
+      });
+      const activeBtn = document.getElementById(`btn-${taskId}`);
+      if (activeBtn) {
+        activeBtn.classList.remove('bg-slate-100', 'dark:bg-slate-800', 'text-slate-700', 'dark:text-slate-300');
+        activeBtn.classList.add('bg-sky-600', 'text-white', 'shadow-sm');
+      }
+
+      const data = tasksData[taskId];
+      const container = document.getElementById('taskContent');
+      let modelsHtml = data.models.map(m => `
+        <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60">
+          <div class="text-xs font-bold text-sky-600 dark:text-sky-400 mb-1">${m.name}</div>
+          <div class="text-xs text-slate-600 dark:text-slate-300">${m.note}</div>
+        </div>
+      `).join('');
+
+      container.innerHTML = `
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-base font-bold text-slate-900 dark:text-white">${data.title}</h3>
+            <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300">${data.badge}</span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300">${data.targetDesc}</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
+            ${modelsHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    // 2. SHAP Dynamic Waterfall Logic
+    const shapData = {
+      approved: {
+        baseValue: 0.50,
+        finalScore: 0.78,
+        resultBadge: "貸款核准 (Approved)",
+        resultClass: "text-emerald-600 dark:text-emerald-400 font-bold",
+        explanation: "申請人年收破百萬與在職 6 年為強大加分項（+0.18、+0.12），雖有信用卡負債微扣分（-0.07），整體得分 0.78 遠高於 0.60 門檻。",
+        features: [
+          { name: "年收入 (Annual Income > 120萬)", val: "+0.18", isPos: true, width: "35%" },
+          { name: "在職年資 (Job Tenure = 6年)", val: "+0.12", isPos: true, width: "24%" },
+          { name: "聯徵信用分數 (Credit Score = 750)", val: "+0.05", isPos: true, width: "10%" },
+          { name: "信用卡動用率 (Debt Utilization = 45%)", val: "-0.07", isPos: false, width: "14%" }
+        ]
+      },
+      rejected: {
+        baseValue: 0.50,
+        finalScore: 0.31,
+        resultBadge: "貸款駁回 (Rejected)",
+        resultClass: "text-rose-600 dark:text-rose-400 font-bold",
+        explanation: "【法遵拒貸抗辯】申請人曾有 2 次逾期還款記錄（SHAP 重扣 -0.22）且負債比高達 80%（扣 -0.11），即使年收入微幅貢獻（+0.04），最終得分 0.31 低於 0.60，因此系統依法具體開列駁回理由。",
+        features: [
+          { name: "近期逾期還款次數 (Overdue = 2次)", val: "-0.22", isPos: false, width: "42%" },
+          { name: "信用卡動用率 (Debt Utilization = 80%)", val: "-0.11", isPos: false, width: "22%" },
+          { name: "在職年資 (Job Tenure = 3個月)", val: "-0.06", isPos: false, width: "12%" },
+          { name: "年收入 (Annual Income = 45萬)", val: "+0.04", isPos: true, width: "8%" },
+          { name: "自有不動產擔保 (Collateral)", val: "+0.16", isPos: true, width: "30%" }
+        ]
+      }
+    };
+
+    function setShapCase(caseType) {
+      const isApp = caseType === 'approved';
+      document.getElementById('caseApprovedBtn').className = isApp 
+        ? "px-3 py-1 text-xs font-bold rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm transition"
+        : "px-3 py-1 text-xs font-bold rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 transition";
+      document.getElementById('caseRejectedBtn').className = !isApp 
+        ? "px-3 py-1 text-xs font-bold rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm transition"
+        : "px-3 py-1 text-xs font-bold rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 transition";
+
+      const data = shapData[caseType];
+      let rowsHtml = data.features.map(f => `
+        <div class="flex items-center text-xs py-1.5 border-b border-slate-100 dark:border-slate-800">
+          <div class="w-1/3 truncate font-semibold text-slate-800 dark:text-slate-200" title="${f.name}">${f.name}</div>
+          <div class="w-1/2 px-2">
+            <div class="w-full bg-slate-200 dark:bg-slate-700 h-3 rounded-full overflow-hidden flex ${f.isPos ? 'justify-start' : 'justify-end'}">
+              <div class="${f.isPos ? 'bg-emerald-500' : 'bg-rose-500'} h-full rounded-full transition-all duration-500" style="width: ${f.width}"></div>
+            </div>
+          </div>
+          <div class="w-1/6 text-right font-mono font-bold ${f.isPos ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}">${f.val}</div>
+        </div>
+      `).join('');
+
+      document.getElementById('shapWaterfallGraphic').innerHTML = `
+        <div class="min-w-[450px] p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+          <div class="flex justify-between items-center pb-2 mb-2 border-b border-slate-100 dark:border-slate-800 text-xs font-bold">
+            <span class="text-slate-500">基準基底值 $E[f(x)] = 0.50$</span>
+            <span class="${data.resultClass}">${data.resultBadge} → 最終預測分值: ${data.finalScore}</span>
+          </div>
+          <div class="space-y-1">${rowsHtml}</div>
+        </div>
+      `;
+
+      document.getElementById('shapExplainText').innerHTML = `
+        <div class="flex items-start gap-2">
+          <i class="fa-solid fa-lightbulb text-amber-500 mt-0.5"></i>
+          <div>
+            <strong class="text-slate-900 dark:text-white">SHAP 局部解釋結論：</strong>
+            <span>${data.explanation}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    // 3. Bias vs Variance Dart Simulation Logic
+    const dartConfigs = {
+      ideal: {
+        title: "① 低偏差 · 低變異 (理想狀態)",
+        desc: "投擲點精準且密集地收斂在靶心周圍。表示模型結構適中，在訓練集與未見過的新測試集皆能維持極小預測誤差。",
+        action: "最佳模型狀態。可固化超參數，準備模型上線並建立 MLOps 即時監控資料漂移 (Data Drift)。",
+        shots: [
+          {cx: 148, cy: 152}, {cx: 153, cy: 147}, {cx: 151, cy: 154},
+          {cx: 147, cy: 148}, {cx: 154, cy: 153}, {cx: 150, cy: 149}
+        ]
+      },
+      "high-bias": {
+        title: "② 高偏差 · 低變異 (欠擬合 - Underfitting)",
+        desc: "投擲點彼此非常集中，但整體嚴重偏離靶心。代表模型過於簡單（例如試圖用一條直線去擬合複雜的二次拋物線關係），產生了系統性誤差。",
+        action: "【處方】提高模型複雜度（如將線性模型改為隨機森林或神經網路）、引入多項式交互特徵、減少正則化約束。",
+        shots: [
+          {cx: 75, cy: 78}, {cx: 82, cy: 74}, {cx: 79, cy: 83},
+          {cx: 73, cy: 81}, {cx: 86, cy: 77}, {cx: 77, cy: 85}
+        ]
+      },
+      "high-var": {
+        title: "③ 低偏差 · 高變異 (過擬合 - Overfitting)",
+        desc: "投擲點圍繞著靶心分佈，但分散程度極大（每次換一份訓練集，學出的模型預測波動劇烈）。訓練集表現近乎 100 分，但測試集表現一落千丈。",
+        action: "【處方】擴充訓練資料集、加強 L1/L2 正則化懲罰、決策樹剪枝限制深度、使用 Dropout 或 Bagging 投票取平均。",
+        shots: [
+          {cx: 150, cy: 60}, {cx: 230, cy: 160}, {cx: 145, cy: 240},
+          {cx: 65, cy: 155}, {cx: 210, cy: 85}, {cx: 90, cy: 220}
+        ]
+      },
+      "both-high": {
+        title: "④ 高偏差 · 高變異 (最差情況)",
+        desc: "投擲點既嚴重偏離靶心，又彼此散落各處。預測完全失去準確性與一致性。",
+        action: "【處方】必須徹底重新檢視特徵品質、修正嚴重標籤錯誤，並重構特徵工程與算法架構。",
+        shots: [
+          {cx: 240, cy: 65}, {cx: 210, cy: 110}, {cx: 260, cy: 130},
+          {cx: 270, cy: 45}, {cx: 195, cy: 90}, {cx: 250, cy: 100}
+        ]
+      }
+    };
+
+    function setDartMode(mode) {
+      document.querySelectorAll('.dart-mode-btn').forEach(btn => {
+        btn.classList.remove('bg-sky-50', 'dark:bg-sky-950', 'text-sky-700', 'dark:text-sky-300', 'border-sky-500');
+      });
+      const currentBtn = document.getElementById(`dart-btn-${mode}`);
+      if (currentBtn) {
+        currentBtn.classList.add('bg-sky-50', 'dark:bg-sky-950', 'text-sky-700', 'dark:text-sky-300', 'border-sky-500');
+      }
+
+      const conf = dartConfigs[mode];
+      document.getElementById('dartStatusTitle').innerText = conf.title;
+      document.getElementById('dartStatusDesc').innerText = conf.desc;
+      document.getElementById('dartStatusActions').innerText = conf.action;
+
+      const group = document.getElementById('dartShots');
+      group.innerHTML = conf.shots.map(s => `
+        <circle cx="${s.cx}" cy="${s.cy}" r="4.5" fill="#0284c7" stroke="#ffffff" stroke-width="1.5" class="transition-all duration-500 ease-out animate-pulse" />
+      `).join('');
+    }
+
+    // 4. Timeline Transcript Data
+    const transcriptsData = [
+      {
+        time: "00:00:00",
+        seconds: 0,
+        category: "01",
+        speaker: "韋哥老師",
+        title: "開場思考：銀行貸款審查被拒的情境題",
+        text: "我們今天來看這題：銀行使用 XGBoost 審查貸款，法規要求為每一筆被拒絕的申請給出可理解的理由，應該用哪種工具？混淆矩陣、特徵重要性、Grad-CAM 還是 SHAP？很多人會直覺選特徵重要性，但這恰恰是考古題最常設下的陷阱！特徵重要性只能看整體，無法說明『單一筆』客戶為何被拒，正確答案是 SHAP。"
+      },
+      {
+        time: "00:00:40",
+        seconds: 40,
+        category: "01",
+        speaker: "韋哥老師",
+        title: "重點一：任務與資料量配模型",
+        text: "選模型先問兩個核心問題：第一，你要預測什麼？第二，你有多少資料？要預測什麼決定了輸出層與損失函數的配置。如果資料少，卻選了參數量巨大的深度神經網路，模型會把所有隨機雜訊甚至輸入的次序都背下來，這就是經典的過擬合（Overfitting）。"
+      },
+      {
+        time: "00:01:25",
+        seconds: 85,
+        category: "01",
+        speaker: "韋哥老師",
+        title: "任務配模型：分類、回歸、分群與時間序列",
+        text: "分類任務：羅吉斯回歸適合線性白箱，SVM 在高維小樣本表現出色，樹模型（隨機森林、XGBoost）是表格資料首選，神經網路則適合影像與語音。回歸任務：線性回歸、決策樹與類神經網路皆可。分群任務：K-means 適合球狀且群數已知的資料；DBSCAN 能識別任意不規則形狀並過濾噪聲。降維任務：PCA 做線性無監督投影，自編碼器做非線性壓縮。時間序列：RNN、LSTM 捕捉時序，TCN 則具備更好的平行計算效率。"
+      },
+      {
+        time: "00:02:40",
+        seconds: 160,
+        category: "01",
+        speaker: "韋哥老師",
+        title: "資料量配模型：小資料 vs 中資料 vs 大資料",
+        text: "數百至數千筆的小資料，首選線性模型、羅吉斯回歸或 Lasso/Ridge 正則化，因為參數少不易過擬合；數千到數十萬筆的中型表格資料，隨機森林與 XGBoost/LightGBM 表現最均衡；超過百萬筆或文字、影像非結構化資料，才適合出動深度學習神經網路。"
+      },
+      {
+        time: "00:03:52",
+        seconds: 232,
+        category: "02",
+        speaker: "韋哥老師",
+        title: "重點二：解釋性需求 (白箱 vs 黑箱)",
+        text: "在醫療診斷、金融信用核貸與法遵稽核場景，AI 決策牽涉重大權益，法律規定必須說得出理由。白箱模型如線性回歸、邏輯回歸可以直接看係數權重，決策樹能直接畫出判斷樹狀分支。而黑箱模型如隨機森林、XGBoost、神經網路，就必須外掛可解釋性工具。"
+      },
+      {
+        time: "00:05:36",
+        seconds: 336,
+        category: "02",
+        speaker: "韋哥老師",
+        title: "核心工具解析：SHAP、LIME 與全域特徵重要性辨析",
+        text: "SHAP 來自博弈論的 Shapley 值，能同時勝任『單筆案件局部解釋』與『整體全域分析』；LIME 透過樣本擾動做局部線性逼近；PDP 呈現特定特徵變動對全體預測的平均趨勢；而隨機森林自帶的 Feature Importance 只能看全域宏觀重要性，無法為特定客戶的拒貸開立處分書。影像模型則用 Grad-CAM 繪製注意力熱力圖。"
+      },
+      {
+        time: "00:06:49",
+        seconds: 409,
+        category: "03",
+        speaker: "韋哥老師",
+        title: "重點三：部署限制 (邊緣端 vs 雲端 vs 毫秒即時)",
+        text: "上線環境反過來限制你能選什麼模型。邊緣設備（手機、IoT 感測器）受限於『記憶體小、算力弱、耗電緊』，必須採用輕量架構（如 MobileNet），並搭配剪枝（Pruning）與量化（Quantization，將 FP32 轉為 INT8）。"
+      },
+      {
+        time: "00:07:35",
+        seconds: 455,
+        category: "03",
+        speaker: "韋哥老師",
+        title: "低延遲即時推論策略：快取與知識蒸餾",
+        text: "如果是高頻金融交易或即時推薦，必須將延遲壓在 20ms 以下，這時要靠快取機制（Cache）儲存熱門預測結果，並透過知識蒸餾（Knowledge Distillation）讓小巧的學生模型繼承龐大教師模型的推論智慧。"
+      },
+      {
+        time: "00:08:09",
+        seconds: 489,
+        category: "04",
+        speaker: "韋哥老師",
+        title: "重點四：偏差（Bias）與變異（Variance）權衡",
+        text: "偏差是模型的系統性誤差，偏差高代表欠擬合（Underfitting），模型太簡單連訓練集都學不好；變異是模型對資料擾動的敏感度，變異高代表過擬合（Overfitting），換一份資料學出來的模型就劇烈漂移。請注意：這裡的 Bias 是系統誤差，跟神經元公式 y=Wx+b 裡面的常數項偏置（Bias）在概念上完全是兩回事！"
+      },
+      {
+        time: "00:10:15",
+        seconds: 615,
+        category: "04",
+        speaker: "韋哥老師",
+        title: "考古題診斷心法：AUC 0.97 與 0.72 代表什麼？",
+        text: "考古題情境：某信用卡詐欺偵測模型，訓練集 AUC 高達 0.97，但在驗證集只有 0.72，且 5-Fold 交叉驗證波動極大。這就是標準的『高變異（過擬合）』！對策是增加訓練資料、加強正則化、Dropout 或提早停止（Early Stopping）。"
+      },
+      {
+        time: "00:11:02",
+        seconds: 662,
+        category: "05",
+        speaker: "韋哥老師",
+        title: "重點五：AutoML 與遷移學習",
+        text: "AutoML 自動搜尋多種模型與超參數，適合專案時程緊迫、缺乏資深算法工程師，或需要快速打造可用基準模型（Baseline）的場合。如果團隊已經具備成熟 MLOps 流程與資深研發人員，手動精調能獲得更高的極限精度與客製化自由度。"
+      },
+      {
+        time: "00:12:41",
+        seconds: 761,
+        category: "06",
+        speaker: "韋哥老師",
+        title: "重點六：超出學習指引的 RAG 檢索考點",
+        text: "115 年考古題考了一題學習指引沒寫的題目：RAG（檢索增強生成）檢索方式比較。純語意向量搜尋擅長抓同義詞，但對合約編號、特定型號（如 A1024）容易抓錯；BM25 關鍵字搜尋精準比對字詞，但缺乏語意泛化；最佳解是結合兩者的『混合搜尋（Hybrid Search）』，最後再用 RRF（倒數排名融合）加權排序。"
+      },
+      {
+        time: "00:14:48",
+        seconds: 888,
+        category: "06",
+        speaker: "韋哥老師",
+        title: "本章總結與考前四大口訣",
+        text: "最後請記住四句話：第一，先問要預測什麼、有多少資料；第二，醫療、金融、法遵一定要說得出理由；第三，上手機、上雲端、要即時，選法各不同；第四，模型太簡單會偏（高偏差），太複雜會飄（高變異）。掌握這四點，本科目模型設計題型就能輕鬆過關！"
+      }
+    ];
+
+    let currentTranscriptFilter = "all";
+    let searchKeyword = "";
+
+    function renderTranscripts() {
+      const container = document.getElementById('transcriptList');
+      const filtered = transcriptsData.filter(item => {
+        const matchCategory = (currentTranscriptFilter === "all" || item.category === currentTranscriptFilter);
+        const matchKeyword = !searchKeyword || 
+          item.text.toLowerCase().includes(searchKeyword.toLowerCase()) || 
+          item.title.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+          item.speaker.toLowerCase().includes(searchKeyword.toLowerCase());
+        return matchCategory && matchKeyword;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="p-8 text-center text-slate-400">
+            <i class="fa-solid fa-file-circle-xmark text-3xl mb-2"></i>
+            <p class="text-sm">沒有找到符合條件的逐字稿段落。</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(item => {
+        let highlightedText = item.text;
+        let highlightedTitle = item.title;
+        if (searchKeyword.trim() !== "") {
+          const regex = new RegExp(`(${searchKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+          highlightedText = item.text.replace(regex, `<mark class="mark-highlight">$1</mark>`);
+          highlightedTitle = item.title.replace(regex, `<mark class="mark-highlight">$1</mark>`);
+        }
+
+        return `
+          <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 hover:border-sky-300 dark:hover:border-sky-700 transition space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <button onclick="jumpToTime(${item.seconds})" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-100 hover:bg-sky-200 dark:bg-sky-950 dark:hover:bg-sky-900 text-sky-700 dark:text-sky-300 font-mono text-xs font-bold transition" title="點擊跳轉至影片 ${item.time}">
+                  <i class="fa-solid fa-play text-[10px]"></i>
+                  <span>${item.time}</span>
+                </button>
+                <span class="text-xs font-bold text-slate-900 dark:text-white">${highlightedTitle}</span>
+              </div>
+              <span class="text-[11px] text-slate-400 font-semibold flex items-center gap-1">
+                <i class="fa-solid fa-user-tie text-[10px]"></i> ${item.speaker}
+              </span>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed pl-1 border-l-2 border-slate-200 dark:border-slate-700">
+              ${highlightedText}
+            </p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function filterTranscript() {
+      const input = document.getElementById('transcriptSearch');
+      searchKeyword = input.value.trim();
+      const clearBtn = document.getElementById('clearSearchBtn');
+      if (searchKeyword !== "") {
+        clearBtn.classList.remove('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+      }
+      renderTranscripts();
+    }
+
+    function clearTranscriptSearch() {
+      document.getElementById('transcriptSearch').value = "";
+      searchKeyword = "";
+      document.getElementById('clearSearchBtn').classList.add('hidden');
+      renderTranscripts();
+    }
+
+    function filterTranscriptCategory(cat) {
+      currentTranscriptFilter = cat;
+      document.querySelectorAll('.cat-filter-btn').forEach(btn => {
+        btn.classList.remove('bg-sky-600', 'text-white', 'active');
+        btn.classList.add('bg-slate-100', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-300');
+      });
+      event.target.classList.remove('bg-slate-100', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-300');
+      event.target.classList.add('bg-sky-600', 'text-white', 'active');
+      renderTranscripts();
+    }
+
+    // 5. Quiz Questions Database
+    const quizQuestions = [
+      {
+        id: 1,
+        title: "1. 銀行貸款拒貸審查解釋性",
+        stem: "某跨國數位銀行使用 XGBoost 模型進行個人信貸信用評等。金融監理法規明確要求：『凡拒絕客戶貸款申請時，必須向當事人說明影響該決策的主要具體特徵與成因』。身為 AI 系統架構師，應優先採用何種技術工具？",
+        options: [
+          { text: "A. 混淆矩陣 (Confusion Matrix) 評估準確率", correct: false },
+          { text: "B. XGBoost 自帶之全域特徵重要性 (Feature Importance)", correct: false },
+          { text: "C. SHAP (Shapley Additive exPlanations) 局部解釋分析", correct: true },
+          { text: "D. Grad-CAM (梯度加權類別活化映射圖)", correct: false }
+        ],
+        explanation: "【正確解答：C】特徵重要性 (B) 只能呈現全體訓練集特徵的宏觀重要程度，無法解釋『特定某一位被拒客戶』是因為負債比過高還是逾期次數過多被拒；Grad-CAM (D) 僅限於卷積神經網路之電腦視覺影像任務；混淆矩陣 (A) 為整體模型分類指標。唯有 SHAP (C) 或 LIME 能夠針對『單一樣本 (Local Instance)』拆解特徵邊際加減分貢獻。"
+      },
+      {
+        id: 2,
+        title: "2. 房地產成交價預測模型選型",
+        stem: "某不動產估價平台欲建立房屋成交價格預測模型。已知特徵包含坪數、屋齡、鄰近捷運距離等，具有顯著的非線性關係，且公司法遵稽核部門要求模型『必須能產出全域特徵重要性排名』以利向主管機關申報，最適合推薦之模型為何？",
+        options: [
+          { text: "A. 羅吉斯回歸 (Logistic Regression)", correct: false },
+          { text: "B. 多元線性回歸 (Multiple Linear Regression)", correct: false },
+          { text: "C. 隨機森林回歸 (Random Forest Regressor)", correct: true },
+          { text: "D. K-means 分群演算法", correct: false }
+        ],
+        explanation: "【正確解答：C】預測房價屬於連續數值之『回歸任務』，排除分類模型 (A) 與無監督分群 (D)；資料具有強烈非線性關係，多元線性回歸 (B) 擬合能力不足；隨機森林回歸 (C) 為集成決策樹，天生具備非線性映射能力，且內建特徵分割不純度計算，可直接輸出全域特徵重要性。"
+      },
+      {
+        id: 3,
+        title: "3. 信用卡詐欺偵測之偏差與變異診斷",
+        stem: "在建構信用卡詐欺預測模型時，訓練集的 AUC 達到 0.97，但測試集 AUC 僅有 0.72，且在 5-Fold 交叉驗證中各折的分數波動極大。依據機器學習理論，此模型目前面臨的主要問題為何？",
+        options: [
+          { text: "A. 高偏差 (High Bias) / 欠擬合", correct: false },
+          { text: "B. 高變異 (High Variance) / 過擬合", correct: true },
+          { text: "C. 神經元常數項偏置 (Bias b) 設定過小", correct: false },
+          { text: "D. 不可約誤差 (Irreducible Error) 過大", correct: false }
+        ],
+        explanation: "【正確解答：B】訓練集極高 (0.97) 但驗證集劇降 (0.72)，且各折切分結果波動不穩定，代表模型對訓練資料過度敏感、連雜訊都背起來，屬於典型的『高變異 (High Variance) / 過擬合 (Overfitting)』。選項 C 將系統誤差與神經元偏置項混為一談，為常見干擾題。"
+      },
+      {
+        id: 4,
+        title: "4. 工廠產線邊緣端瑕疵檢測部署",
+        stem: "傳統製造業欲在產線輸送帶上方加裝攝影機進行即時外觀瑕疵分類。由於現場僅有小型嵌入式 IoT 閘道器，無獨立高階 GPU，且記憶體上限僅 512MB。下列何種架構設計組合最符合邊緣部署規範？",
+        options: [
+          { text: "A. 採用 ResNet-152 搭配 FP32 精度雲端 API 呼叫", correct: false },
+          { text: "B. 採用 MobileNet 架構並進行模型剪枝與 INT8 量化", correct: true },
+          { text: "C. 採用 5 個大型 Vision Transformer 進行 Stacking 集成", correct: false },
+          { text: "D. 使用未正則化的大型多層感知機 (MLP)", correct: false }
+        ],
+        explanation: "【正確解答：B】邊緣終端受制於記憶體小、算力弱與低功耗限制。MobileNet 採用深度可分離卷積大幅縮減參數量；剪枝 (Pruning) 消除冗餘權重；INT8 量化將浮點數壓縮為 8 位元整數，體積縮減 75%，能在有限的 512MB 記憶體內順暢執行。"
+      },
+      {
+        id: 5,
+        title: "5. AutoML (自動機器學習) 之適用評估",
+        stem: "關於何時適合引進 AutoML 技術，下列哪一項敘述『最不恰當』？",
+        options: [
+          { text: "A. 專案開發週期緊迫，需在數日內快速建立 Baseline 基準模型時", correct: false },
+          { text: "B. 團隊內部缺乏專職資深機器學習工程師時", correct: false },
+          { text: "C. 需要自動化搜尋特徵工程組合與演算法超參數時", correct: false },
+          { text: "D. 企業已具備成熟 MLOps 維運體系與資深演算法團隊，需極度精細控制神經網路底層算子時", correct: true }
+        ],
+        explanation: "【正確解答：D】AutoML 擅長快速比較多種模型、自動調參並在短時間內產出基準模型 (A, B, C)；但當組織已有成熟 MLOps 流程與資深團隊，需針對特殊業務邏輯精細控制網路架構時，AutoML 黑盒化的搜尋反而是不適用的束縛。"
+      },
+      {
+        id: 6,
+        title: "6. RAG 檢索增強生成之混合檢索策略",
+        stem: "企業內部搭建法律合約 RAG 問答系統。同仁輸入查詢『合約編號 X8809 違約罰則條款』時，發現若僅採用向量資料庫語意向量檢索 (Dense Vector Search)，系統頻繁抓出其他無關合約的違約條款。應如何根本改善？",
+        options: [
+          { text: "A. 改採 BM25 關鍵字搜尋與語意向量搜尋之混合檢索 (Hybrid Search)，並以 RRF 進行排名融合", correct: true },
+          { text: "B. 直接將整份幾百頁的 PDF 原始文件不經切片餵給大型語言模型", correct: false },
+          { text: "C. 改用 K-means 演算法對所有合約段落做分群", correct: false },
+          { text: "D. 提高語意向量維度至 100,000 維", correct: false }
+        ],
+        explanation: "【正確解答：A】純語意向量搜尋擅長同義詞意圖，但對『X8809』這類代碼、料號極度不敏感；BM25 精準比對文字字元；結合兩者的混合搜尋 (Hybrid Search) 搭配 RRF 倒數排名融合，可確保代碼與語意條款同時命中最佳結果。"
+      }
+    ];
+
+    function renderQuiz() {
+      const container = document.getElementById('quizContainer');
+      container.innerHTML = quizQuestions.map(q => `
+        <div class="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <h4 class="font-bold text-sm sm:text-base text-slate-900 dark:text-white">${q.title}</h4>
+            <span class="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono px-2 py-0.5 rounded">QUESTION #${q.id}</span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">${q.stem}</p>
+          <div class="space-y-2">
+            ${q.options.map((opt, optIdx) => `
+              <button onclick="checkAnswer(${q.id}, ${optIdx})" id="q${q.id}-opt${optIdx}" class="w-full text-left p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs sm:text-sm font-medium transition flex items-center justify-between">
+                <span>${opt.text}</span>
+                <span class="status-icon hidden text-base"></span>
+              </button>
+            `).join('')}
+          </div>
+          <div id="q${q.id}-feedback" class="hidden p-3.5 rounded-2xl text-xs sm:text-sm"></div>
+        </div>
+      `).join('');
+    }
+
+    function checkAnswer(questionId, selectedIdx) {
+      const q = quizQuestions.find(item => item.id === questionId);
+      const feedbackBox = document.getElementById(`q${questionId}-feedback`);
+      
+      q.options.forEach((opt, idx) => {
+        const btn = document.getElementById(`q${questionId}-opt${idx}`);
+        const icon = btn.querySelector('.status-icon');
+        btn.disabled = true;
+        if (opt.correct) {
+          btn.className = "w-full text-left p-3 rounded-xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-100 text-xs sm:text-sm font-bold flex items-center justify-between";
+          icon.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-500"></i>';
+          icon.classList.remove('hidden');
+        } else if (idx === selectedIdx) {
+          btn.className = "w-full text-left p-3 rounded-xl border-2 border-rose-500 bg-rose-50 dark:bg-rose-950/60 text-rose-900 dark:text-rose-100 text-xs sm:text-sm font-bold flex items-center justify-between";
+          icon.innerHTML = '<i class="fa-solid fa-circle-xmark text-rose-500"></i>';
+          icon.classList.remove('hidden');
+        }
+      });
+
+      feedbackBox.classList.remove('hidden');
+      if (q.options[selectedIdx].correct) {
+        feedbackBox.className = "p-3.5 rounded-2xl text-xs sm:text-sm border-l-4 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200";
+        feedbackBox.innerHTML = `<strong>答對了！</strong><br>${q.explanation}`;
+      } else {
+        feedbackBox.className = "p-3.5 rounded-2xl text-xs sm:text-sm border-l-4 border-rose-500 bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200";
+        feedbackBox.innerHTML = `<strong>回答錯誤。</strong><br>${q.explanation}`;
+      }
+    }
+
+    // Initialize all components on window load
+    window.addEventListener('DOMContentLoaded', () => {
+      // 1. Initialize Task Switcher
+      switchTask('classification');
+
+      // 2. Initialize SHAP
+      setShapCase('approved');
+
+      // 3. Initialize Bias-Variance Dart
+      setDartMode('ideal');
+
+      // 4. Initialize Transcripts
+      renderTranscripts();
+
+      // 5. Initialize Quiz
+      renderQuiz();
+
+      // 6. Render KaTeX formulas
+      if (typeof renderMathInElement === 'function') {
+        const errorFormulaEl = document.getElementById('katexErrorFormula');
+        if (errorFormulaEl) {
+          katex.render("\\mathbb{E}\\big[(y - \\hat{f}(x))^2\\big] = \\text{Bias}^2 + \\text{Variance} + \\sigma^2", errorFormulaEl, { displayMode: true, throwOnError: false });
+        }
+        const rrfFormulaEl = document.getElementById('katexRrfFormula');
+        if (rrfFormulaEl) {
+          katex.render("\\text{RRF Score}(d) = \\sum_{m \\in M} \\frac{1}{k + r_m(d)} \\quad (k=60)", rrfFormulaEl, { displayMode: true, throwOnError: false });
+        }
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>【iPAS AI應用規劃師_中級科目三 系列 EP15】訓練與驗證｜帶你看懂怎麼切資料、什麼時候停、怎麼確認模型能用。</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- KaTeX for LaTeX formatting -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+          onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+
+  <style>
+    .curve-transition {
+      transition: d 0.45s ease-in-out;
+    }
+    .badge-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.15rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased leading-relaxed pb-16">
+
+  <!-- Header Section -->
+  <header class="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white py-10 px-4 sm:px-8 shadow-lg">
+    <div class="max-w-5xl mx-auto">
+      <div class="flex flex-wrap items-center gap-2 mb-3">
+        <span class="bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 text-xs px-2.5 py-1 rounded-full font-medium">iPAS AI 應用規劃師 中級科目三</span>
+        <span class="bg-amber-500/20 text-amber-300 border border-amber-400/30 text-xs px-2.5 py-1 rounded-full font-medium">考點累計 17 題</span>
+        <span class="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs px-2.5 py-1 rounded-full font-medium">核心精華</span>
+      </div>
+      <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight mb-4">
+        【iPAS AI應用規劃師_中級科目三 系列 EP15】訓練與驗證｜帶你看懂怎麼切資料、什麼時候停、怎麼確認模型能用。
+      </h1>
+      <p class="text-indigo-200 text-sm sm:text-base max-w-3xl">
+        全科最常考的核心架構：資料三切責任劃分、早停防線與排程技巧、5種交叉驗證秒選邏輯、杜絕資料洩漏，以及學習曲線判讀處方！
+      </p>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 sm:px-8 mt-8 space-y-10">
+
+    <!-- 投影片 1: 第十五章章節大綱與考點概況 SVG -->
+    <div class="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200 overflow-hidden">
+      <svg viewBox="0 0 960 480" class="w-full h-auto drop-shadow-sm select-none" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+        <!-- 頂部副標題 -->
+        <circle cx="28" cy="28" r="6" fill="#f97316"/>
+        <text x="44" y="33" font-size="16" fill="#4338ca" font-weight="700">iPAS 15 · 訓練與驗證</text>
+        <line x1="220" y1="28" x2="930" y2="28" stroke="#cbd5e1" stroke-width="1.5"/>
+
+        <!-- 大標題 -->
+        <text x="24" y="85" font-size="34" font-weight="900" fill="#1e1b4b">第十五章：</text>
+        <text x="175" y="85" font-size="34" font-weight="900" fill="#ea580c">模型訓練與驗證</text>
+
+        <!-- 橘色大方塊 17 題 -->
+        <rect x="24" y="115" width="180" height="150" rx="18" fill="url(#gradOrange01)" filter="drop-shadow(0 6px 12px rgba(249,115,22,0.25))"/>
+        <defs>
+          <linearGradient id="gradOrange01" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#f97316"/>
+            <stop offset="100%" stop-color="#ea580c"/>
+          </linearGradient>
+        </defs>
+        <text x="114" y="195" font-size="64" font-weight="900" fill="#ffffff" text-anchor="middle">17 題</text>
+        <text x="114" y="235" font-size="17" font-weight="700" fill="#fff7ed" text-anchor="middle">兩回考古題</text>
+
+        <!-- 右側說明 -->
+        <text x="230" y="195" font-size="22" font-weight="700" fill="#1e293b">全科最常考的考點，大多落在這一章和下一章的評估指標</text>
+
+        <!-- 四大目標卡片 2x2 -->
+        <!-- 目標 1 -->
+        <g transform="translate(24, 285)">
+          <rect width="445" height="60" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="16" y="14" width="34" height="32" rx="7" fill="#6366f1"/>
+          <text x="33" y="36" font-size="18" font-weight="800" fill="#ffffff" text-anchor="middle">1</text>
+          <text x="64" y="37" font-size="20" font-weight="700" fill="#1e293b">怎麼切資料</text>
+        </g>
+        <!-- 目標 2 -->
+        <g transform="translate(490, 285)">
+          <rect width="445" height="60" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="16" y="14" width="34" height="32" rx="7" fill="#6366f1"/>
+          <text x="33" y="36" font-size="18" font-weight="800" fill="#ffffff" text-anchor="middle">2</text>
+          <text x="64" y="37" font-size="20" font-weight="700" fill="#1e293b">怎麼訓練</text>
+        </g>
+        <!-- 目標 3 -->
+        <g transform="translate(24, 360)">
+          <rect width="445" height="60" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="16" y="14" width="34" height="32" rx="7" fill="#6366f1"/>
+          <text x="33" y="36" font-size="18" font-weight="800" fill="#ffffff" text-anchor="middle">3</text>
+          <text x="64" y="37" font-size="20" font-weight="700" fill="#1e293b">什麼時候停</text>
+        </g>
+        <!-- 目標 4 -->
+        <g transform="translate(490, 360)">
+          <rect width="445" height="60" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="16" y="14" width="34" height="32" rx="7" fill="#6366f1"/>
+          <text x="33" y="36" font-size="18" font-weight="800" fill="#ffffff" text-anchor="middle">4</text>
+          <text x="64" y="37" font-size="20" font-weight="700" fill="#1e293b">確認在新資料上真的能用</text>
+        </g>
+
+        <!-- 底部五個膠囊 -->
+        <g transform="translate(24, 436)">
+          <!-- 膠囊 1 -->
+          <g transform="translate(0, 0)">
+            <rect width="145" height="36" rx="18" fill="#ffffff" stroke="#c7d2fe" stroke-width="1.5"/>
+            <circle cx="20" cy="18" r="11" fill="#4f46e5"/>
+            <text x="20" y="23" font-size="13" font-weight="800" fill="#ffffff" text-anchor="middle">1</text>
+            <text x="40" y="23" font-size="15" font-weight="700" fill="#312e81">三份資料</text>
+          </g>
+          <!-- 膠囊 2 -->
+          <g transform="translate(160, 0)">
+            <rect width="115" height="36" rx="18" fill="#ffffff" stroke="#c7d2fe" stroke-width="1.5"/>
+            <circle cx="20" cy="18" r="11" fill="#4f46e5"/>
+            <text x="20" y="23" font-size="13" font-weight="800" fill="#ffffff" text-anchor="middle">2</text>
+            <text x="40" y="23" font-size="15" font-weight="700" fill="#312e81">早停</text>
+          </g>
+          <!-- 膠囊 3 -->
+          <g transform="translate(290, 0)">
+            <rect width="145" height="36" rx="18" fill="#ffffff" stroke="#c7d2fe" stroke-width="1.5"/>
+            <circle cx="20" cy="18" r="11" fill="#4f46e5"/>
+            <text x="20" y="23" font-size="13" font-weight="800" fill="#ffffff" text-anchor="middle">3</text>
+            <text x="40" y="23" font-size="15" font-weight="700" fill="#312e81">交叉驗證</text>
+          </g>
+          <!-- 膠囊 4 -->
+          <g transform="translate(450, 0)">
+            <rect width="145" height="36" rx="18" fill="#ffffff" stroke="#c7d2fe" stroke-width="1.5"/>
+            <circle cx="20" cy="18" r="11" fill="#4f46e5"/>
+            <text x="20" y="23" font-size="13" font-weight="800" fill="#ffffff" text-anchor="middle">4</text>
+            <text x="40" y="23" font-size="15" font-weight="700" fill="#312e81">資料洩漏</text>
+          </g>
+          <!-- 膠囊 5 -->
+          <g transform="translate(610, 0)">
+            <rect width="145" height="36" rx="18" fill="#ffffff" stroke="#c7d2fe" stroke-width="1.5"/>
+            <circle cx="20" cy="18" r="11" fill="#4f46e5"/>
+            <text x="20" y="23" font-size="13" font-weight="800" fill="#ffffff" text-anchor="middle">5</text>
+            <text x="40" y="23" font-size="15" font-weight="700" fill="#312e81">學習曲線</text>
+          </g>
+        </g>
+      </svg>
+    </div>
+
+    <!-- 開場解題思考題 -->
+    <section class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+      <div class="flex items-start gap-4">
+        <div class="p-3 bg-amber-100 text-amber-800 rounded-xl font-bold text-lg">Q</div>
+        <div class="space-y-3 flex-1">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-bold text-slate-900">開場思考題：這是不是標準流程？</h2>
+            <span class="text-xs text-slate-400">點選選項立即驗證</span>
+          </div>
+          <p class="text-slate-600 text-sm sm:text-base">
+            研究人員先把全部的鳶尾花資料做了一步預處理：<span class="font-semibold text-slate-800">LDA 降維</span>，接著採用 <span class="font-semibold text-slate-800">五折交叉驗證（5-Fold CV）</span> 評估模型，得到準確率高達 <span class="text-indigo-600 font-bold">$0.97$</span>。
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-sm">
+            <button onclick="revealAns(1)" class="p-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-left transition font-medium">
+              A. 這是標準流程
+            </button>
+            <button onclick="revealAns(2)" class="p-3 rounded-lg border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-900 font-semibold text-left transition">
+              B. 這裡有資料洩漏 (Data Leakage)
+            </button>
+            <button onclick="revealAns(3)" class="p-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-left transition font-medium">
+              C. 流程不嚴謹，但分數仍可信
+            </button>
+          </div>
+          <div id="quiz-explanation" class="hidden mt-4 p-4 rounded-xl text-sm transition-all duration-300"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 重點一：三份資料各司其職 -->
+    <section class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+      <div class="border-l-4 border-indigo-600 pl-4 mb-4">
+        <h2 class="text-xl font-bold text-slate-900">重點一：三份資料各司其職</h2>
+        <p class="text-slate-500 text-sm">訓練集、驗證集與測試集的明確分工與校園考試比喻</p>
+      </div>
+
+      <!-- 投影片 2: 重點一 SVG 向量重現 -->
+      <div class="mb-6 bg-slate-50 p-3 sm:p-5 rounded-2xl border border-slate-200 overflow-hidden">
+        <svg viewBox="0 0 960 410" class="w-full h-auto select-none" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+          <circle cx="24" cy="24" r="5" fill="#f97316"/>
+          <text x="38" y="28" font-size="14" fill="#4338ca" font-weight="700">iPAS 15 · 訓練與驗證</text>
+          <line x1="185" y1="24" x2="930" y2="24" stroke="#cbd5e1" stroke-width="1.5"/>
+
+          <text x="20" y="65" font-size="28" font-weight="900" fill="#1e1b4b">重點一：</text>
+          <text x="135" y="65" font-size="28" font-weight="900" fill="#4338ca">三份資料</text>
+          <text x="250" y="65" font-size="28" font-weight="900" fill="#ea580c">各司其職</text>
+
+          <!-- 三大欄位卡片 -->
+          <!-- 訓練集 -->
+          <g transform="translate(20, 85)">
+            <rect width="285" height="150" rx="14" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1.8"/>
+            <text x="22" y="42" font-size="22" font-weight="800" fill="#1e1b4b">訓練集</text>
+            <text x="22" y="80" font-size="18" font-weight="700" fill="#4b5563">學參數</text>
+          </g>
+
+          <!-- 驗證集 -->
+          <g transform="translate(325, 85)">
+            <rect width="310" height="150" rx="14" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+            <text x="22" y="42" font-size="22" font-weight="800" fill="#1e1b4b">驗證集</text>
+            <text x="22" y="80" font-size="17" font-weight="700" fill="#374151">調超參數、監控過擬合、決定什麼</text>
+            <text x="22" y="112" font-size="17" font-weight="700" fill="#374151">時候停</text>
+          </g>
+
+          <!-- 測試集 -->
+          <g transform="translate(655, 85)">
+            <rect width="285" height="150" rx="14" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+            <text x="22" y="42" font-size="22" font-weight="800" fill="#1e1b4b">測試集</text>
+            <text x="22" y="80" font-size="17" font-weight="700" fill="#374151">最後才用一次，評估真實表現</text>
+          </g>
+
+          <!-- 下方對比方塊 1：過擬合 vs 欠擬合 -->
+          <g transform="translate(20, 255)">
+            <rect width="445" height="64" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <rect x="18" y="18" width="68" height="28" rx="6" fill="#ea580c"/>
+            <text x="52" y="38" font-size="15" font-weight="800" fill="#ffffff" text-anchor="middle">過擬合</text>
+            <text x="96" y="38" font-size="16" font-weight="700" fill="#1e293b">連雜訊都背起來：訓練很好，新資料變差</text>
+          </g>
+
+          <g transform="translate(485, 255)">
+            <rect width="455" height="64" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <rect x="18" y="18" width="68" height="28" rx="6" fill="#64748b"/>
+            <text x="52" y="38" font-size="15" font-weight="800" fill="#ffffff" text-anchor="middle">欠擬合</text>
+            <text x="96" y="38" font-size="16" font-weight="700" fill="#1e293b">模型太簡單：兩邊都差</text>
+          </g>
+
+          <!-- 下方對比方塊 2：參數 vs 超參數 -->
+          <g transform="translate(20, 332)">
+            <rect width="445" height="64" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <rect x="18" y="18" width="52" height="28" rx="6" fill="#6366f1"/>
+            <text x="44" y="38" font-size="15" font-weight="800" fill="#ffffff" text-anchor="middle">參數</text>
+            <text x="80" y="38" font-size="16" font-weight="700" fill="#1e293b">模型自己從資料學出來的，例如權重</text>
+          </g>
+
+          <g transform="translate(485, 332)">
+            <rect width="455" height="64" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <rect x="18" y="18" width="68" height="28" rx="6" fill="#0d9488"/>
+            <text x="52" y="38" font-size="15" font-weight="800" fill="#ffffff" text-anchor="middle">超參數</text>
+            <text x="96" y="38" font-size="16" font-weight="700" fill="#1e293b">訓練前人先設好的，例如學習率、樹的深度</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- 互動式切換卡片 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div onclick="selectDataSplit('train')" id="card-train" class="cursor-pointer p-4 rounded-xl border-2 border-indigo-500 bg-indigo-50/50 transition">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-bold text-indigo-900">訓練集 (Training Set)</span>
+            <span class="badge-chip bg-indigo-200 text-indigo-800">練習本 / 課本題</span>
+          </div>
+          <p class="text-xs text-slate-600">用來學習模型內部<span class="font-semibold text-indigo-700">參數（如權重 $W$、偏置 $b$）</span>。</p>
+        </div>
+
+        <div onclick="selectDataSplit('val')" id="card-val" class="cursor-pointer p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-amber-400 transition">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-bold text-slate-800">驗證集 (Validation Set)</span>
+            <span class="badge-chip bg-amber-100 text-amber-800">模擬考</span>
+          </div>
+          <p class="text-xs text-slate-600">調整<span class="font-semibold text-amber-700">超參數</span>、監控過擬合與決定早停（Early Stopping）。</p>
+        </div>
+
+        <div onclick="selectDataSplit('test')" id="card-test" class="cursor-pointer p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-emerald-400 transition">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-bold text-slate-800">測試集 (Test Set)</span>
+            <span class="badge-chip bg-emerald-100 text-emerald-800">正式考 / 會考</span>
+          </div>
+          <p class="text-xs text-slate-600"><span class="font-semibold text-emerald-700">最後僅使用一次</span>，客觀評估模型面對未知新資料的泛化實力。</p>
+        </div>
+      </div>
+
+      <!-- 動態說明面板 -->
+      <div id="split-detail-panel" class="bg-indigo-50/60 border border-indigo-200 rounded-xl p-4 text-sm mb-6">
+        <p class="font-semibold text-indigo-900">📌 訓練集 (Training Set) 核心觀念：</p>
+        <p class="text-indigo-800 mt-1">參數是模型自動由訓練資料優化求解出來的；若只看訓練集容易產生「過擬合（Overfitting）」——把雜訊也硬背下來。</p>
+      </div>
+
+      <!-- 警示紅框 -->
+      <div class="p-4 bg-rose-50 border-l-4 border-rose-500 rounded-r-xl space-y-2 text-sm text-rose-900 mb-4">
+        <div class="font-bold flex items-center gap-1.5">
+          <span>⚠️ 考點高頻陷阱（出現即為錯誤選項）</span>
+        </div>
+        <ul class="list-disc list-inside space-y-1 text-rose-800 pl-1">
+          <li><strong>用測試集決定何時早停 / 調超參數</strong>：等於一邊看正式會考考卷、一邊修改作答策略，分數失真虛高。</li>
+          <li><strong>將驗證集併入訓練集，完全不使用驗證集</strong>：喪失獨立監控過擬合的指標依據。</li>
+        </ul>
+      </div>
+
+      <!-- 經典場景一 -->
+      <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+        <span class="font-bold text-slate-800">場景一解析：為什麼上線準確率掉了 7%？</span>
+        <p class="text-slate-600 mt-1">
+          某團隊切分 $70\%$ 訓練、$15\%$ 驗證、$15\%$ 測試，拿測試集從 20 組超參數中挑出最佳組合，回報準確率高達 $92\%$，上線後跌落至 $85\%$。<br>
+          <span class="text-slate-800 font-medium">原因：</span>測試集被拿來挑超參數就已退化成驗證集，高分中包含了對該份資料特定雜訊的隨機運氣，換成未知新資料即失效。正確做法是使用驗證集挑超參數，測試集只在最後評估一次。
+        </p>
+      </div>
+    </section>
+
+    <!-- 重點二：早停機制與學習率排程 -->
+    <section class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+      <div class="border-l-4 border-amber-500 pl-4 mb-4">
+        <h2 class="text-xl font-bold text-slate-900">重點二：早停機制 (Early Stopping) 與學習率排程</h2>
+        <p class="text-slate-500 text-sm">監控驗證損失，設定合理的容忍度與退火排程</p>
+      </div>
+
+      <!-- 投影片 3: 重點二 SVG 向量重現 -->
+      <div class="mb-6 bg-slate-50 p-3 sm:p-5 rounded-2xl border border-slate-200 overflow-hidden">
+        <svg viewBox="0 0 960 430" class="w-full h-auto select-none" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+          <circle cx="24" cy="24" r="5" fill="#f97316"/>
+          <text x="38" y="28" font-size="14" fill="#4338ca" font-weight="700">iPAS 15 · 訓練與驗證</text>
+          <line x1="185" y1="24" x2="930" y2="24" stroke="#cbd5e1" stroke-width="1.5"/>
+
+          <text x="20" y="65" font-size="28" font-weight="900" fill="#1e1b4b">重點二：</text>
+          <text x="135" y="65" font-size="28" font-weight="900" fill="#1e1b4b">早停和</text>
+          <text x="225" y="65" font-size="28" font-weight="900" fill="#ea580c">學習率排程</text>
+
+          <!-- 三大長條定義 -->
+          <!-- 損失 -->
+          <g transform="translate(20, 85)">
+            <rect width="920" height="52" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <rect x="16" y="11" width="60" height="30" rx="6" fill="#64748b"/>
+            <text x="46" y="32" font-size="15" font-weight="800" fill="#ffffff" text-anchor="middle">損失</text>
+            <text x="88" y="32" font-size="17" font-weight="700" fill="#1e293b">模型預測錯了多少的分數，越低越好</text>
+          </g>
+
+          <!-- 早停 -->
+          <g transform="translate(20, 147)">
+            <rect width="920" height="52" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <rect x="16" y="11" width="60" height="30" rx="6" fill="#6366f1"/>
+            <text x="46" y="32" font-size="15" font-weight="800" fill="#ffffff" text-anchor="middle">早停</text>
+            <text x="88" y="32" font-size="17" font-weight="700" fill="#1e293b">監控驗證集的損失，連續好幾輪沒進步就停止訓練</text>
+          </g>
+
+          <!-- 一輪 -->
+          <g transform="translate(20, 209)">
+            <rect width="920" height="52" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <rect x="16" y="11" width="60" height="30" rx="6" fill="#0d9488"/>
+            <text x="46" y="32" font-size="15" font-weight="800" fill="#ffffff" text-anchor="middle">一輪</text>
+            <text x="88" y="32" font-size="17" font-weight="700" fill="#1e293b">把整份訓練資料從頭到尾看過一遍（epoch）</text>
+          </g>
+
+          <!-- 早停損失曲線圖表 -->
+          <g transform="translate(20, 275)">
+            <rect width="920" height="135" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            
+            <!-- 訓練損失曲線 (紫色) -->
+            <path d="M 30 25 Q 300 75 880 100" fill="none" stroke="#a5b4fc" stroke-width="4.5" stroke-linecap="round"/>
+            
+            <!-- 驗證損失曲線 (橘色) 先降後升 -->
+            <path d="M 30 20 Q 300 95 440 95 T 880 65" fill="none" stroke="#f97316" stroke-width="4.5" stroke-linecap="round"/>
+
+            <!-- 虛線標示 (該停的地方) -->
+            <line x1="440" y1="12" x2="440" y2="108" stroke="#10b981" stroke-width="2.5" stroke-dasharray="5,5"/>
+
+            <text x="25" y="122" font-size="15" font-weight="700" fill="#4f46e5">訓練損失一直降；</text>
+            <text x="145" y="122" font-size="15" font-weight="700" fill="#334155">訓練太久，</text>
+            <text x="215" y="122" font-size="15" font-weight="700" fill="#ea580c">驗證損失</text>
+            <text x="280" y="122" font-size="15" font-weight="700" fill="#334155">開始往上（虛線 = 該停的地方，示意）</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <!-- 早停兩大設定 -->
+        <div class="bg-amber-50/50 border border-amber-200 rounded-xl p-5 space-y-3">
+          <h3 class="font-bold text-amber-900 text-base flex items-center gap-2">
+            <span>⏱️ 早停 (Early Stopping) 兩大關鍵設定</span>
+          </h3>
+          <div class="space-y-2 text-sm text-slate-700">
+            <div class="bg-white p-3 rounded-lg border border-amber-100 shadow-sm">
+              <span class="font-bold text-amber-800">1. 耐心值 (Patience)：</span>
+              <p class="text-xs text-slate-600 mt-1">連續幾輪（Epochs）驗證損失沒改善才停止。設太小會因單次震盪提早停（欠擬合）；設太大會太晚停（過擬合）。如模擬考連續 3 次沒進步就停課，耐心值就是 3。</p>
+            </div>
+            <div class="bg-white p-3 rounded-lg border border-amber-100 shadow-sm">
+              <span class="font-bold text-amber-800">2. 改善閾值 (min_delta)：</span>
+              <p class="text-xs text-slate-600 mt-1">進步幅度需大於此值才算有效改善。設太小一點點震盪也算進步導致停不下來，設太大容易忽略微小改善。</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 學習率排程 -->
+        <div class="bg-blue-50/50 border border-blue-200 rounded-xl p-5 space-y-3">
+          <h3 class="font-bold text-blue-900 text-base flex items-center gap-2">
+            <span>📉 學習率排程 (Learning Rate Scheduler)</span>
+          </h3>
+          <ul class="space-y-2 text-xs sm:text-sm text-slate-700">
+            <li class="bg-white p-2.5 rounded-lg border border-blue-100 shadow-sm">
+              <strong>階梯式 (StepLR)：</strong>固定間隔週期按固定比例下調。
+            </li>
+            <li class="bg-white p-2.5 rounded-lg border border-blue-100 shadow-sm">
+              <strong>餘弦退火 (Cosine Annealing)：</strong>依照餘弦波形平滑連續下調至谷底。
+            </li>
+            <li class="bg-white p-2.5 rounded-lg border border-blue-100 shadow-sm">
+              <strong>ReduceLROnPlateau：</strong>當驗證指標停滯在高原期（Plateau）時自動下調。
+            </li>
+            <li class="bg-white p-2.5 rounded-lg border border-blue-100 shadow-sm">
+              <strong>預熱 (Warmup)：</strong>初始權重隨機、梯度方向極不穩定，先以微小學習率起步再逐步放大，避免破壞性大步邁出引發梯度爆炸。
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 綠色對策框：場景二 -->
+      <div class="p-4 bg-emerald-50 border-l-4 border-emerald-500 rounded-r-xl text-sm text-emerald-950">
+        <span class="font-bold">✅ 場景二考題對策（長期電力需求波動與早停）：</span>
+        <p class="text-emerald-900 mt-1">
+          當驗證損失在 80 輪後因季節性雜訊呈現週期性上下波動時，不可因單次上升就喊停，正確做法為：<span class="font-semibold underline">監控「驗證損失」並設定合理的「耐心值 (Patience)」</span>，連續多輪確認無改善才停止訓練。
+        </p>
+      </div>
+    </section>
+
+    <!-- 重點三：五種交叉驗證 -->
+    <section class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+      <div class="border-l-4 border-purple-600 pl-4 mb-4">
+        <h2 class="text-xl font-bold text-slate-900">重點三：五種交叉驗證 (Cross-Validation)</h2>
+        <p class="text-slate-500 text-sm">避免單次切分運氣偏差，依據不同數據結構選擇適當的切分驗證策略</p>
+      </div>
+
+      <!-- 投影片 4: 重點三 SVG 向量重現 -->
+      <div class="mb-6 bg-slate-50 p-3 sm:p-5 rounded-2xl border border-slate-200 overflow-hidden">
+        <svg viewBox="0 0 960 410" class="w-full h-auto select-none" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+          <circle cx="24" cy="24" r="5" fill="#f97316"/>
+          <text x="38" y="28" font-size="14" fill="#4338ca" font-weight="700">iPAS 15 · 訓練與驗證</text>
+          <line x1="185" y1="24" x2="930" y2="24" stroke="#cbd5e1" stroke-width="1.5"/>
+
+          <text x="20" y="65" font-size="28" font-weight="900" fill="#1e1b4b">重點三：</text>
+          <text x="135" y="65" font-size="28" font-weight="900" fill="#1e1b4b">五種</text>
+          <text x="195" y="65" font-size="28" font-weight="900" fill="#ea580c">交叉驗證</text>
+
+          <text x="20" y="110" font-size="19" font-weight="700" fill="#1e293b">只切一次訓練集和驗證集</text>
+
+          <!-- 切法一卡片 -->
+          <g transform="translate(20, 130)">
+            <rect width="445" height="115" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <!-- 訓練長條 -->
+            <rect x="24" y="22" width="310" height="34" rx="8" fill="#6366f1"/>
+            <text x="179" y="45" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle">訓練</text>
+            <!-- 驗證長條 -->
+            <rect x="338" y="22" width="80" height="34" rx="8" fill="#0d9488"/>
+            <text x="378" y="45" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle">驗證</text>
+            <text x="24" y="90" font-size="18" font-weight="800" fill="#1e293b">切法一 → 分數？</text>
+          </g>
+
+          <!-- 切法二卡片 -->
+          <g transform="translate(485, 130)">
+            <rect width="455" height="115" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <!-- 驗證長條在左 -->
+            <rect x="24" y="22" width="80" height="34" rx="8" fill="#0d9488"/>
+            <text x="64" y="45" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle">驗證</text>
+            <!-- 訓練長條在右 -->
+            <rect x="108" y="22" width="320" height="34" rx="8" fill="#6366f1"/>
+            <text x="268" y="45" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle">訓練</text>
+            <text x="24" y="90" font-size="18" font-weight="800" fill="#1e293b">切法二 → 分數？</text>
+          </g>
+
+          <text x="20" y="285" font-size="21" font-weight="800" fill="#1e293b">分數會受到剛好切到哪些資料影響</text>
+
+          <text x="20" y="335" font-size="18" font-weight="700" fill="#334155">交叉驗證：切好幾份，輪流當驗證集</text>
+
+          <!-- 5折小卡圖示與箭頭 -->
+          <g transform="translate(20, 355)">
+            <rect x="0" y="0" width="56" height="36" rx="8" fill="#fff7ed" stroke="#f97316" stroke-width="1.5"/>
+            <rect x="68" y="0" width="56" height="36" rx="8" fill="#fff7ed" stroke="#f97316" stroke-width="1.5"/>
+            <rect x="136" y="0" width="56" height="36" rx="8" fill="#fff7ed" stroke="#f97316" stroke-width="1.5"/>
+            <rect x="204" y="0" width="56" height="36" rx="8" fill="#fff7ed" stroke="#f97316" stroke-width="1.5"/>
+            <rect x="272" y="0" width="56" height="36" rx="8" fill="#fff7ed" stroke="#f97316" stroke-width="1.5"/>
+
+            <text x="345" y="24" font-size="20" font-weight="900" fill="#1e1b4b">→</text>
+            <text x="375" y="24" font-size="19" font-weight="800" fill="#1e1b4b">最後取平均，評估更穩定</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <div class="p-4 rounded-xl border border-purple-200 bg-purple-50/40">
+          <div class="font-bold text-purple-900 mb-1">1. K 折交叉驗證 (K-Fold)</div>
+          <p class="text-xs text-slate-600">均勻切為 $K$ 份（常見 $K=5$ 或 $10$），輪流以 1 份驗證、其餘訓練，做 $K$ 次後取平均值。</p>
+        </div>
+
+        <div class="p-4 rounded-xl border border-purple-300 bg-purple-100/50">
+          <div class="font-bold text-purple-900 mb-1">2. 分層 K 折 (Stratified K-Fold)</div>
+          <p class="text-xs text-slate-600"><strong>類別不平衡專用</strong>。確保每一折的標籤比例與母體一致，防止陽性樣本過少導致某折完全無陽性。</p>
+        </div>
+
+        <div class="p-4 rounded-xl border border-purple-200 bg-purple-50/40">
+          <div class="font-bold text-purple-900 mb-1">3. 留一法 (LOOCV)</div>
+          <p class="text-xs text-slate-600">每次僅留 $1$ 筆驗證，其餘全部訓練。適用於<strong>樣本數極端稀少且珍貴</strong>情境（$N$ 筆做 $N$ 次）。</p>
+        </div>
+
+        <div class="p-4 rounded-xl border border-purple-200 bg-purple-50/40">
+          <div class="font-bold text-purple-900 mb-1">4. 重複折 (Repeated K-Fold)</div>
+          <p class="text-xs text-slate-600">將 $K$ 折交叉驗證隨機重複執行多次，用來觀察效能穩定性並<strong>回報標準差</strong>。</p>
+        </div>
+
+        <div class="p-4 rounded-xl border border-amber-300 bg-amber-50/60 sm:col-span-2">
+          <div class="font-bold text-amber-900 mb-1">5. 時間序列切分 / 滾動視窗 (Rolling Window)</div>
+          <p class="text-xs text-slate-700">
+            <strong>時序資料嚴禁隨機打亂切分！</strong>永遠使用「過去」訓練、「未來」驗證。隨機切分會導致拿未來的資料預測過去（偷看未來），上線即失效。<br>
+            <span class="text-amber-800 font-medium">關鍵記法：「不能用明天的報紙預測昨天」。</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- 快速關鍵字信號對照表 -->
+      <div class="overflow-x-auto rounded-xl border border-slate-200 text-sm">
+        <table class="w-full text-left">
+          <thead class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+            <tr>
+              <th class="p-3">考題關鍵字訊號</th>
+              <th class="p-3">秒選切分策略</th>
+              <th class="p-3">實務與考試筆記</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 text-xs sm:text-sm text-slate-700">
+            <tr>
+              <td class="p-3 font-semibold text-slate-900">類別比例一致 / 不平衡分類</td>
+              <td class="p-3 text-purple-700 font-bold">分層 K 折 (Stratified K-Fold)</td>
+              <td class="p-3">Scikit-learn 分類模型 <code>cv=5</code> 預設即為 StratifiedKFold</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-semibold text-slate-900">樣本極少（如 150 筆心臟病資料）</td>
+              <td class="p-3 text-purple-700 font-bold">留一法 (LOOCV) / 分層留一法</td>
+              <td class="p-3">官方考古題公告解為「分層留一法」</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-semibold text-slate-900">時間演進 / 週次零售銷售 / 顧客行為改變</td>
+              <td class="p-3 text-amber-700 font-bold">滾動視窗驗證 (Rolling Window)</td>
+              <td class="p-3">固定或擴展視窗前進，反映最新概念漂移</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-semibold text-slate-900">評估穩定性 / 報告標準差</td>
+              <td class="p-3 text-purple-700 font-bold">重複折 (Repeated K-Fold)</td>
+              <td class="p-3">多次重洗分割驗證模型穩健度</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 重點四：資料洩漏 (Data Leakage) -->
+    <section class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+      <div class="border-l-4 border-rose-600 pl-4 mb-4">
+        <h2 class="text-xl font-bold text-slate-900">重點四：防範資料洩漏 (Data Leakage)</h2>
+        <p class="text-slate-500 text-sm">任何會從資料學習參數的步驟，嚴格限制只能在訓練集上學習！</p>
+      </div>
+
+      <!-- 投影片 5: 重點四 SVG 向量重現 -->
+      <div class="mb-6 bg-slate-50 p-3 sm:p-5 rounded-2xl border border-slate-200 overflow-hidden">
+        <svg viewBox="0 0 960 410" class="w-full h-auto select-none" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+          <circle cx="24" cy="24" r="5" fill="#f97316"/>
+          <text x="38" y="28" font-size="14" fill="#4338ca" font-weight="700">iPAS 15 · 訓練與驗證</text>
+          <line x1="185" y1="24" x2="930" y2="24" stroke="#cbd5e1" stroke-width="1.5"/>
+
+          <text x="20" y="65" font-size="28" font-weight="900" fill="#1e1b4b">重點四：</text>
+          <text x="135" y="65" font-size="28" font-weight="900" fill="#ea580c">資料洩漏</text>
+          <text x="250" y="65" font-size="28" font-weight="900" fill="#1e1b4b">（開場那題的答案）</text>
+
+          <!-- 左側訓練過程卡片 -->
+          <g transform="translate(20, 85)">
+            <rect width="445" height="230" rx="16" fill="#f5f3ff" stroke="#ddd6fe" stroke-width="1.8"/>
+            <text x="222" y="125" font-size="26" font-weight="900" fill="#1e1b4b" text-anchor="middle">訓練過程</text>
+            <!-- 資訊紅色膠囊偷渡 -->
+            <rect x="187" y="150" width="70" height="34" rx="17" fill="#ef4444"/>
+            <text x="222" y="172" font-size="15" font-weight="800" fill="#ffffff" text-anchor="middle">資訊</text>
+          </g>
+
+          <!-- 右側驗證測試卡片 (虛線綠框) -->
+          <g transform="translate(485, 85)">
+            <rect width="455" height="230" rx="16" fill="#f0fdf4" stroke="#86efac" stroke-width="2" stroke-dasharray="6,6"/>
+            <text x="430" y="32" font-size="16" font-weight="700" fill="#b91c1c" text-anchor="end">分數虛高，上線才露餡</text>
+            <text x="227" y="125" font-size="26" font-weight="900" fill="#1e1b4b" text-anchor="middle">驗證、測試資料</text>
+          </g>
+
+          <!-- 底部紫色橫條 -->
+          <g transform="translate(20, 335)">
+            <rect width="920" height="60" rx="12" fill="#5b21b6"/>
+            <text x="30" y="37" font-size="19" font-weight="800" fill="#ffffff">最重要的一句話：任何會<tspan fill="#facc15">從資料學東西</tspan>的步驟，都只能在<tspan fill="#facc15">訓練那一份</tspan>上學</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="p-4 bg-slate-900 text-white rounded-xl mb-4 font-mono text-xs sm:text-sm shadow-inner flex items-center justify-between">
+        <span>💡 核心金句：任何會從資料學東西的步驟，都只能在「訓練」那一份上學。</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
+        <div class="p-4 bg-rose-50 border border-rose-200 rounded-xl space-y-2">
+          <div class="font-bold text-rose-900">哪些步驟會「從資料學東西」？</div>
+          <ul class="list-disc list-inside space-y-1 text-slate-700 text-xs sm:text-sm">
+            <li><strong>標準化 / 正規化：</strong>學習整體平均值 $\mu$ 與標準差 $\sigma$。</li>
+            <li><strong>PCA：</strong>學習投影變異最大的方向。</li>
+            <li><strong>LDA：</strong>利用<strong>標籤</strong>學習類別分離度最大的方向。</li>
+            <li><strong>特徵選擇 (Feature Selection)：</strong>學習重要特徵子集。</li>
+            <li><strong>目標編碼 (Target Encoding)：</strong>計算各類別之平均標籤值。</li>
+          </ul>
+        </div>
+
+        <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
+          <div class="font-bold text-emerald-900">正確解法：封裝成流水線 (Pipeline)</div>
+          <p class="text-slate-700 text-xs sm:text-sm">
+            把前處理器（Scaler, LDA, Imputer）與模型串接成單一 <code>Pipeline</code>，將整個流水線納入交叉驗證。<br><br>
+            確保每折僅使用<strong>該折的訓練資料</strong>調用 <code>fit()</code>，驗證折只調用 <code>transform()</code>，徹底阻絕資訊外洩。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 重點五：SVG 互動學習曲線診斷器 -->
+    <section class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+      <div class="border-l-4 border-indigo-600 pl-4 mb-4">
+        <h2 class="text-xl font-bold text-slate-900">重點五：看懂學習曲線 (Learning Curves)</h2>
+        <p class="text-slate-500 text-sm">藉由訓練與驗證曲線走勢，掌握過擬合與欠擬合的診斷特徵</p>
+      </div>
+
+      <!-- 投影片 6: 重點五 SVG 向量重現 (兩條線的長相就是診斷書) -->
+      <div class="mb-6 bg-slate-50 p-3 sm:p-5 rounded-2xl border border-slate-200 overflow-hidden">
+        <svg viewBox="0 0 960 450" class="w-full h-auto select-none" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+          <circle cx="24" cy="24" r="5" fill="#f97316"/>
+          <text x="38" y="28" font-size="14" fill="#4338ca" font-weight="700">iPAS 15 · 訓練與驗證</text>
+          <line x1="185" y1="24" x2="930" y2="24" stroke="#cbd5e1" stroke-width="1.5"/>
+
+          <text x="20" y="65" font-size="28" font-weight="900" fill="#1e1b4b">重點五：</text>
+          <text x="135" y="65" font-size="28" font-weight="900" fill="#1e1b4b">兩條線的長相就是</text>
+          <text x="365" y="65" font-size="28" font-weight="900" fill="#ea580c">診斷書</text>
+
+          <!-- 左圖：損失曲線 -->
+          <g transform="translate(20, 85)">
+            <rect width="445" height="340" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <text x="24" y="32" font-size="18" font-weight="800" fill="#1e1b4b">損失曲線</text>
+            
+            <!-- 圖例 -->
+            <line x1="300" y1="27" x2="325" y2="27" stroke="#818cf8" stroke-width="3"/>
+            <text x="335" y="31" font-size="14" font-weight="700" fill="#475569">訓練</text>
+            <line x1="380" y1="27" x2="405" y2="27" stroke="#f97316" stroke-width="3"/>
+            <text x="415" y="31" font-size="14" font-weight="700" fill="#475569">驗證</text>
+
+            <!-- 座標軸 -->
+            <line x1="35" y1="50" x2="35" y2="250" stroke="#cbd5e1" stroke-width="1.5"/>
+            <line x1="35" y1="250" x2="420" y2="250" stroke="#cbd5e1" stroke-width="1.5"/>
+            <text x="420" y="270" font-size="13" font-weight="600" fill="#64748b" text-anchor="end">輪數 →</text>
+
+            <!-- 訓練曲線 (紫色) -->
+            <path d="M 35 80 Q 180 200 410 230" fill="none" stroke="#818cf8" stroke-width="3.5" stroke-linecap="round"/>
+            <!-- 驗證曲線 (橘色) 先降後升 -->
+            <path d="M 35 80 Q 150 180 190 200 L 410 160" fill="none" stroke="#f97316" stroke-width="3.5" stroke-linecap="round"/>
+
+            <text x="12" y="305" font-size="15" font-weight="700" fill="#1e293b">訓練一路降，驗證先降後升 → <tspan fill="#ea580c">過擬合</tspan></text>
+          </g>
+
+          <!-- 右圖：準確率曲線 -->
+          <g transform="translate(485, 85)">
+            <rect width="455" height="340" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <text x="24" y="32" font-size="18" font-weight="800" fill="#1e1b4b">準確率曲線</text>
+
+            <!-- 座標軸 -->
+            <line x1="35" y1="50" x2="35" y2="250" stroke="#cbd5e1" stroke-width="1.5"/>
+            <line x1="35" y1="250" x2="430" y2="250" stroke="#cbd5e1" stroke-width="1.5"/>
+            <text x="430" y="270" font-size="13" font-weight="600" fill="#64748b" text-anchor="end">輪數 →</text>
+
+            <!-- 訓練準確率 (紫色) 一路上升 -->
+            <path d="M 35 220 Q 160 100 420 70" fill="none" stroke="#818cf8" stroke-width="3.5" stroke-linecap="round"/>
+            <!-- 驗證準確率 (橘色) 水平波動停滯 -->
+            <path d="M 35 240 Q 140 120 180 120 Q 220 122 250 118 Q 280 123 320 119 Q 360 122 420 120" fill="none" stroke="#f97316" stroke-width="3.5" stroke-linecap="round"/>
+
+            <text x="12" y="305" font-size="15" font-weight="700" fill="#1e293b">訓練明顯高於驗證，差距擴大 → <tspan fill="#ea580c">過擬合</tspan></text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- 控制按鈕組 -->
+      <div class="flex flex-wrap gap-2 mb-6">
+        <button onclick="setCurveState('overfitting')" id="btn-overfitting" class="px-3.5 py-1.5 rounded-lg text-sm font-semibold border border-indigo-400 bg-indigo-100 text-indigo-900 shadow-sm transition">
+          1. 過擬合 (Overfitting)
+        </button>
+        <button onclick="setCurveState('underfitting')" id="btn-underfitting" class="px-3.5 py-1.5 rounded-lg text-sm font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition">
+          2. 欠擬合 (Underfitting)
+        </button>
+        <button onclick="setCurveState('high-lr')" id="btn-high-lr" class="px-3.5 py-1.5 rounded-lg text-sm font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition">
+          3. 學習率過大 (High LR)
+        </button>
+        <button onclick="setCurveState('ideal')" id="btn-ideal" class="px-3.5 py-1.5 rounded-lg text-sm font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition">
+          4. 理想收斂 (Ideal)
+        </button>
+      </div>
+
+      <!-- SVG 畫布展示 -->
+      <div class="bg-slate-900 rounded-xl p-4 sm:p-6 shadow-inner flex flex-col items-center">
+        <div class="w-full flex items-center justify-between text-xs text-slate-400 mb-2 px-2">
+          <span class="flex items-center gap-2">
+            <span class="inline-block w-4 h-1 bg-blue-400 rounded"></span> 訓練損失 (Train Loss)
+          </span>
+          <span class="flex items-center gap-2">
+            <span class="inline-block w-4 h-1 bg-amber-400 rounded"></span> 驗證損失 (Val Loss)
+          </span>
+        </div>
+        
+        <svg id="learningCurveSvg" viewBox="0 0 500 240" class="w-full max-w-xl h-64">
+          <!-- 座標網格與軸線 -->
+          <line x1="45" y1="20" x2="45" y2="200" stroke="#334155" stroke-width="2"/>
+          <line x1="45" y1="200" x2="480" y2="200" stroke="#334155" stroke-width="2"/>
+          <line x1="45" y1="60" x2="480" y2="60" stroke="#1e293b" stroke-width="1" stroke-dasharray="4"/>
+          <line x1="45" y1="110" x2="480" y2="110" stroke="#1e293b" stroke-width="1" stroke-dasharray="4"/>
+          <line x1="45" y1="155" x2="480" y2="155" stroke="#1e293b" stroke-width="1" stroke-dasharray="4"/>
+
+          <!-- 座標標籤 -->
+          <text x="25" y="30" fill="#94a3b8" font-size="11" text-anchor="middle">損失 Loss</text>
+          <text x="470" y="220" fill="#94a3b8" font-size="11" text-anchor="end">輪數 Epochs</text>
+
+          <!-- 訓練損失路徑 (初始為過擬合：訓練損失大幅下降至底部) -->
+          <path id="trainCurve" class="curve-transition" fill="none" stroke="#60a5fa" stroke-width="3.5" 
+                d="M 50 45 Q 160 140 460 185" />
+
+          <!-- 驗證損失路徑 (初始為過擬合：降到一半反彈上升) -->
+          <path id="valCurve" class="curve-transition" fill="none" stroke="#fbbf24" stroke-width="3.5" stroke-dasharray="6,4"
+                d="M 50 55 Q 160 120 250 125 T 460 65" />
+        </svg>
+      </div>
+
+      <!-- 動態診斷說明與處方簽 -->
+      <div id="curveDiagnosisBox" class="mt-4 p-4 rounded-xl border border-rose-200 bg-rose-50/70 text-sm space-y-2 transition-all duration-300">
+        <!-- ... existing content ... -->
+      </div>
+
+      <!-- 投影片 7: 最容易搞混的兩組與三種曲線在晃 SVG -->
+      <div class="mt-8 bg-slate-50 p-3 sm:p-5 rounded-2xl border border-slate-200 overflow-hidden">
+        <svg viewBox="0 0 960 450" class="w-full h-auto select-none" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+          <circle cx="24" cy="24" r="5" fill="#f97316"/>
+          <text x="38" y="28" font-size="14" fill="#4338ca" font-weight="700">iPAS 15 · 訓練與驗證</text>
+          <line x1="185" y1="24" x2="930" y2="24" stroke="#cbd5e1" stroke-width="1.5"/>
+
+          <text x="20" y="65" font-size="28" font-weight="900" fill="#1e1b4b">最容易搞混的兩組</text>
+
+          <!-- 第一組與第二組標籤 -->
+          <text x="20" y="98" font-size="16" font-weight="700" fill="#475569">第一組</text>
+          <text x="485" y="98" font-size="16" font-weight="700" fill="#475569">第二組</text>
+
+          <!-- 第一組：驗證集 vs 測試集 -->
+          <g transform="translate(20, 110)">
+            <rect width="215" height="110" rx="12" fill="#fff7ed" stroke="#fdba74" stroke-width="1.5"/>
+            <text x="107" y="42" font-size="18" font-weight="800" fill="#ea580c" text-anchor="middle">驗證集</text>
+            <text x="107" y="75" font-size="15" font-weight="700" fill="#1e293b" text-anchor="middle">調超參數、決定早停</text>
+          </g>
+
+          <g transform="translate(250, 110)">
+            <rect width="215" height="110" rx="12" fill="#fff7ed" stroke="#fdba74" stroke-width="1.5"/>
+            <text x="107" y="42" font-size="18" font-weight="800" fill="#475569" text-anchor="middle">測試集</text>
+            <text x="107" y="75" font-size="15" font-weight="700" fill="#1e293b" text-anchor="middle">最後只用一次</text>
+          </g>
+
+          <!-- 第二組：過擬合 vs 欠擬合 -->
+          <g transform="translate(485, 110)">
+            <rect width="220" height="110" rx="12" fill="#fff7ed" stroke="#fdba74" stroke-width="1.5"/>
+            <text x="110" y="42" font-size="18" font-weight="800" fill="#ea580c" text-anchor="middle">過擬合</text>
+            <text x="110" y="75" font-size="15" font-weight="700" fill="#1e293b" text-anchor="middle">訓練好、驗證差</text>
+          </g>
+
+          <g transform="translate(720, 110)">
+            <rect width="220" height="110" rx="12" fill="#fff7ed" stroke="#fdba74" stroke-width="1.5"/>
+            <text x="110" y="42" font-size="18" font-weight="800" fill="#ea580c" text-anchor="middle">欠擬合</text>
+            <text x="110" y="75" font-size="15" font-weight="700" fill="#1e293b" text-anchor="middle">兩個都差</text>
+          </g>
+
+          <!-- 下方：三種曲線在晃，要分清楚 -->
+          <text x="20" y="255" font-size="18" font-weight="800" fill="#1e1b4b">三種曲線在晃，要分清楚</text>
+
+          <!-- 曲線 1: 驗證損失週期性上下波動 -->
+          <g transform="translate(20, 270)">
+            <rect width="295" height="160" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <!-- 訓練紫色底線 -->
+            <path d="M 20 60 Q 90 90 275 90" fill="none" stroke="#c7d2fe" stroke-width="2.5"/>
+            <!-- 橘色鋸齒波動線 -->
+            <path d="M 20 40 Q 70 75 100 75 L 120 68 L 140 76 L 160 69 L 180 77 L 200 68 L 220 76 L 245 70 L 275 72" fill="none" stroke="#f97316" stroke-width="2.5"/>
+            <text x="14" y="122" font-size="13" font-weight="700" fill="#1e293b">驗證損失週期性上下波動 →</text>
+            <text x="14" y="144" font-size="13" font-weight="700" fill="#ea580c">耐心值設寬一點</text>
+          </g>
+
+          <!-- 曲線 2: 損失大起大落甚至發散 -->
+          <g transform="translate(332, 270)">
+            <rect width="295" height="160" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <!-- 橘色劇烈上下折線 -->
+            <path d="M 20 60 L 50 40 L 75 80 L 105 30 L 135 90 L 170 20 L 210 100 L 245 15 L 275 15" fill="none" stroke="#f97316" stroke-width="3"/>
+            <text x="14" y="132" font-size="13" font-weight="700" fill="#1e293b">損失大起大落、甚至發散 → <tspan fill="#ea580c">學習率太大</tspan></text>
+          </g>
+
+          <!-- 曲線 3: 訓練一路往上、驗證停住 -->
+          <g transform="translate(645, 270)">
+            <rect width="295" height="160" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <!-- 訓練準確率上升 (紫色) -->
+            <path d="M 20 85 Q 90 40 275 25" fill="none" stroke="#818cf8" stroke-width="2.5"/>
+            <!-- 驗證準確率停住微波 (橘色) -->
+            <path d="M 20 90 Q 90 55 140 55 L 275 55" fill="none" stroke="#f97316" stroke-width="2.5"/>
+            <text x="14" y="122" font-size="13" font-weight="700" fill="#1e293b">訓練準確率一路往上、驗證停住 →</text>
+            <text x="14" y="144" font-size="13" font-weight="700" fill="#ea580c">過擬合</text>
+          </g>
+        </svg>
+      </div>
+    </section>
+
+    <!-- 投影片 8: 五個重點，各收成一句 SVG -->
+    <div class="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200 overflow-hidden">
+      <svg viewBox="0 0 960 480" class="w-full h-auto select-none" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+        <circle cx="24" cy="24" r="5" fill="#f97316"/>
+        <text x="38" y="28" font-size="14" fill="#4338ca" font-weight="700">iPAS 15 · 訓練與驗證</text>
+        <line x1="185" y1="24" x2="930" y2="24" stroke="#cbd5e1" stroke-width="1.5"/>
+
+        <text x="20" y="68" font-size="32" font-weight="900" fill="#1e1b4b">五個重點，</text>
+        <text x="180" y="68" font-size="32" font-weight="900" fill="#ea580c">各收成一句</text>
+
+        <!-- 第 1 條 -->
+        <g transform="translate(20, 95)">
+          <rect width="920" height="52" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="16" y="11" width="34" height="30" rx="7" fill="#6366f1"/>
+          <text x="33" y="32" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle">1</text>
+          <text x="64" y="33" font-size="18" font-weight="700" fill="#1e293b">測試集只用一次</text>
+        </g>
+
+        <!-- 第 2 條 -->
+        <g transform="translate(20, 160)">
+          <rect width="920" height="52" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="16" y="11" width="34" height="30" rx="7" fill="#6366f1"/>
+          <text x="33" y="32" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle">2</text>
+          <text x="64" y="33" font-size="18" font-weight="700" fill="#1e293b">驗證損失沒進步就停</text>
+        </g>
+
+        <!-- 第 3 條 -->
+        <g transform="translate(20, 225)">
+          <rect width="920" height="52" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="16" y="11" width="34" height="30" rx="7" fill="#6366f1"/>
+          <text x="33" y="32" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle">3</text>
+          <text x="64" y="33" font-size="18" font-weight="700" fill="#1e293b">照資料特性選切法</text>
+        </g>
+
+        <!-- 第 4 條 (橘色框強調) -->
+        <g transform="translate(20, 290)">
+          <rect width="920" height="56" rx="12" fill="#fff7ed" stroke="#f97316" stroke-width="2"/>
+          <rect x="16" y="13" width="34" height="30" rx="7" fill="#ea580c"/>
+          <text x="33" y="34" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle">4</text>
+          <text x="64" y="35" font-size="18" font-weight="800" fill="#1e1b4b">會從資料學東西的步驟，只能在訓練那一份上學</text>
+        </g>
+
+        <!-- 第 5 條 -->
+        <g transform="translate(20, 360)">
+          <rect width="920" height="52" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="16" y="11" width="34" height="30" rx="7" fill="#6366f1"/>
+          <text x="33" y="32" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle">5</text>
+          <text x="64" y="33" font-size="18" font-weight="700" fill="#1e293b">看兩條曲線，判斷過擬合還是欠擬合</text>
+        </g>
+
+        <!-- 底部結語 -->
+        <text x="20" y="450" font-size="18" font-weight="700" fill="#64748b">下次讀到情境題：<tspan fill="#1e1b4b" font-weight="800">先找這集講的訊號，再看選項</tspan></text>
+      </svg>
+    </div>
+
+    <!-- 重點總結記憶口訣 -->
+    <section class="bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-2xl p-6 sm:p-8 shadow-md">
+      <h3 class="text-lg font-bold text-indigo-300 mb-4">🎯 五大重點一句話總結口訣</h3>
+      <div class="space-y-3 text-sm sm:text-base text-slate-200">
+        <div class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center font-bold mt-0.5 shrink-0">1</span>
+          <span><strong>測試集只用一次</strong>：嚴禁用於調超參數或決定早停，防止評估虛高。</span>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center font-bold mt-0.5 shrink-0">2</span>
+          <span><strong>驗證損失沒進步就停</strong>：早停監控驗證集，搭配耐心值（Patience）抗隨機波動。</span>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center font-bold mt-0.5 shrink-0">3</span>
+          <span><strong>照資料特性選切法</strong>：不平衡選分層、小樣本選留一、時序嚴禁隨機切（滾動視窗）。</span>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center font-bold mt-0.5 shrink-0">4</span>
+          <span><strong>會學參數的步驟只能在訓練集學</strong>：特徵工程與前處理串成 Pipeline，嚴防資料洩漏。</span>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center font-bold mt-0.5 shrink-0">5</span>
+          <span><strong>看雙曲線診斷病因</strong>：差距擴大是過擬合、雙雙停滯是欠擬合、大起大落是學習率過大。</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 時間軸逐字稿專區 (Timeline Transcript) -->
+    <section id="transcript-section" class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200">
+      <div class="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-200 gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-indigo-600 animate-pulse"></span>
+            <h2 class="text-xl sm:text-2xl font-bold text-slate-900">時間軸完整逐字稿 (Timeline Transcript)</h2>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-500 mt-1">點擊時間節點快速定位，支援全文搜尋過濾與 YouTube 時間戳對齊</p>
+        </div>
+        
+        <!-- 搜尋與過濾器 -->
+        <div class="flex items-center gap-2">
+          <div class="relative w-full sm:w-64">
+            <input type="text" id="transcript-search" oninput="filterTranscript()" placeholder="搜尋關鍵字（如：早停、LDA、Pipeline...）" 
+                   class="w-full text-xs sm:text-sm pl-8 pr-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+          <button onclick="resetSearch()" class="px-2.5 py-2 text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition">重設</button>
+        </div>
+      </div>
+
+      <!-- 快速段落導航按鈕 -->
+      <div class="flex flex-wrap gap-2 py-4 border-b border-slate-100 text-xs">
+        <span class="text-slate-400 self-center font-medium">快速跳轉：</span>
+        <button onclick="jumpToTimeline('ts-0000')" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-md transition">00:00 開場題目</button>
+        <button onclick="jumpToTimeline('ts-0042')" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-md transition">00:42 三份資料</button>
+        <button onclick="jumpToTimeline('ts-0230')" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-md transition">02:30 早停與排程</button>
+        <button onclick="jumpToTimeline('ts-0514')" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-md transition">05:14 交叉驗證</button>
+        <button onclick="jumpToTimeline('ts-0830')" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-md transition">08:30 資料洩漏</button>
+        <button onclick="jumpToTimeline('ts-1013')" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-md transition">10:13 學習曲線</button>
+        <button onclick="jumpToTimeline('ts-1146')" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-md transition">11:46 總結回顧</button>
+      </div>
+
+      <!-- 直立式時間軸本體 -->
+      <div class="relative pl-6 sm:pl-8 mt-6 space-y-8 before:absolute before:left-3 sm:before:left-4 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+
+        <!-- 00:00:00 -->
+        <div id="ts-0000" class="timeline-item relative group">
+          <div class="absolute -left-6 sm:-left-8 top-1.5 w-6 h-6 rounded-full bg-amber-500 border-4 border-white shadow flex items-center justify-center text-white text-[10px] font-bold">1</div>
+          <div class="bg-slate-50/70 hover:bg-slate-50 p-5 rounded-xl border border-slate-200 transition">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <span class="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                00:00:00
+              </span>
+              <span class="text-xs font-semibold text-slate-500">章節前導與思考題</span>
+            </div>
+            <h4 class="font-bold text-slate-800 text-sm sm:text-base mb-2">開場思考題與章節簡介</h4>
+            <p class="text-xs sm:text-sm text-slate-600 leading-relaxed mb-3">
+              先問你一題：研究人員先把全部的鳶尾花資料做了一步處理，叫 LDA 降維，接著採用五折交叉驗證評估模型，準確率 0.97。有人說這是標準流程，有人說這裡有資料洩漏，也有人說流程不嚴謹、但分數還是可信。你選哪一個？先停下來想一下，答案在這集後半揭曉。
+            </p>
+            <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              這集講第 15 章「模型訓練與驗證」，這是全科最常考的考點。兩回考古題裡，這個考點一共 17 題，大多落在這一章和下一章的評估指標。這章教的是怎麼切資料、怎麼訓練、什麼時候停，還有怎麼確認模型真的能用在新資料上。一共五個重點，我們一個一個來。
+            </p>
+          </div>
+        </div>
+
+        <!-- 00:00:42 -->
+        <div id="ts-0042" class="timeline-item relative group">
+          <div class="absolute -left-6 sm:-left-8 top-1.5 w-6 h-6 rounded-full bg-indigo-600 border-4 border-white shadow flex items-center justify-center text-white text-[10px] font-bold">2</div>
+          <div class="bg-indigo-50/40 hover:bg-indigo-50/60 p-5 rounded-xl border border-indigo-200 transition">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <span class="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                00:00:42
+              </span>
+              <span class="badge-chip bg-indigo-100 text-indigo-800">重點一：三份資料</span>
+            </div>
+            <h4 class="font-bold text-indigo-950 text-sm sm:text-base mb-2">重點一：三份資料各司其職</h4>
+            <div class="text-xs sm:text-sm text-slate-700 space-y-2 mb-3">
+              <p>• <strong>訓練集（Training Set）</strong>：用來學參數。模型自己從資料學出的權重 $W$ 與偏置 $b$。</p>
+              <p>• <strong>驗證集（Validation Set）</strong>：用來調超參數（人為先決定的如學習率、樹深）、監控過擬合，還有決定什麼時候停。</p>
+              <p>• <strong>測試集（Test Set）</strong>：最後才用一次，客觀評估真實未知表現。</p>
+              <p class="text-slate-600 italic">校園比喻：訓練集是平時作業與課本題；驗證集是模擬考；測試集是正式會考。絕不能拿會考卷來調整平日讀書計畫！</p>
+            </div>
+            <!-- 場景一盒子 -->
+            <div class="p-3 bg-white rounded-lg border border-indigo-100 text-xs text-slate-700">
+              <span class="font-bold text-indigo-900">經典情境（上線準確率掉了 7%）：</span>
+              團隊用測試集從 20 組超參數裡挑出最佳組合回報 92%，上線只剩 85%。原因在於測試集被拿來選超參數，退化為驗證集，高分包含了碰巧符合測試集的隨機運氣，分數被過度高估。
+            </div>
+          </div>
+        </div>
+
+        <!-- 00:02:30 -->
+        <div id="ts-0230" class="timeline-item relative group">
+          <div class="absolute -left-6 sm:-left-8 top-1.5 w-6 h-6 rounded-full bg-amber-500 border-4 border-white shadow flex items-center justify-center text-white text-[10px] font-bold">3</div>
+          <div class="bg-amber-50/40 hover:bg-amber-50/60 p-5 rounded-xl border border-amber-200 transition">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <span class="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                00:02:30
+              </span>
+              <span class="badge-chip bg-amber-100 text-amber-800">重點二：早停與排程</span>
+            </div>
+            <h4 class="font-bold text-amber-950 text-sm sm:text-base mb-2">重點二：早停 (Early Stopping) 與學習率排程</h4>
+            <div class="text-xs sm:text-sm text-slate-700 space-y-2 mb-3">
+              <p>損失（Loss）越低越好。過擬合時模型會硬背訓練集雜訊，使驗證損失惡化。</p>
+              <p><strong>早停必備兩參數：</strong></p>
+              <ul class="list-disc list-inside pl-1 space-y-1">
+                <li><strong>耐心值 (Patience)</strong>：連續幾輪沒改善才終止（如模擬考連續 3 次沒進步就停）。</li>
+                <li><strong>改善閾值 (min_delta)</strong>：進步幅度必須跨過門檻才視為有效進步。</li>
+              </ul>
+              <p><strong>學習率排程：</strong>前期大步快速逼近、後期小步探勘谷底。常用階梯式、餘弦退火 (Cosine Annealing) 與 ReduceLROnPlateau；大語言模型常見 <strong>Warmup（預熱）</strong>，先小步前進穩固權重，避免初期隨機梯度過大引發發散。</p>
+            </div>
+            <div class="p-3 bg-white rounded-lg border border-amber-100 text-xs text-slate-700">
+              <span class="font-bold text-amber-900">場景二（電力需求波動）：</span>
+              80 輪後驗證損失上下波動，應監控「驗證損失」並設定合理的「耐心值」，連續多輪無進步才喊停，避免被單次雜訊波谷誤導。
+            </div>
+          </div>
+        </div>
+
+        <!-- 00:05:14 -->
+        <div id="ts-0514" class="timeline-item relative group">
+          <div class="absolute -left-6 sm:-left-8 top-1.5 w-6 h-6 rounded-full bg-purple-600 border-4 border-white shadow flex items-center justify-center text-white text-[10px] font-bold">4</div>
+          <div class="bg-purple-50/40 hover:bg-purple-50/60 p-5 rounded-xl border border-purple-200 transition">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <span class="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-purple-800 bg-purple-100 px-2 py-0.5 rounded">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                00:05:14
+              </span>
+              <span class="badge-chip bg-purple-100 text-purple-800">重點三：五種交叉驗證</span>
+            </div>
+            <h4 class="font-bold text-purple-950 text-sm sm:text-base mb-2">重點三：五種交叉驗證詳解</h4>
+            <div class="text-xs sm:text-sm text-slate-700 space-y-2 mb-3">
+              <p>交叉驗證藉由多次輪換切分計算平均值，消除切分隨機運氣：</p>
+              <ul class="list-disc list-inside pl-1 space-y-1">
+                <li><strong>K-Fold</strong>：切 $K$ 份取平均（常見 $K=5$ 或 $10$）。</li>
+                <li><strong>Stratified K-Fold（分層）</strong>：類別不平衡專用，維持各類比例。</li>
+                <li><strong>LOOCV（留一法）</strong>：每次留 1 筆，樣本極少且珍貴時用。</li>
+                <li><strong>Repeated K-Fold</strong>：隨機多次重切，回報穩定性與標準差。</li>
+                <li><strong>滾動視窗 (Rolling Window)</strong>：時序資料絕對禁止隨機打亂，永遠以過去預測未來。</li>
+              </ul>
+            </div>
+            <div class="p-3 bg-white rounded-lg border border-purple-100 text-xs text-slate-700 space-y-1">
+              <p><strong>場景三（零售時序預測）：</strong>半年後準度下降代表顧客行為模式飄移，選用<strong>滾動視窗驗證</strong>。</p>
+              <p><strong>場景四（150 筆心臟病資料）：</strong>樣本極端珍貴且陽性率低於 8%，官方考古題解答採<strong>分層留一法</strong>。</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 00:08:30 -->
+        <div id="ts-0830" class="timeline-item relative group">
+          <div class="absolute -left-6 sm:-left-8 top-1.5 w-6 h-6 rounded-full bg-rose-600 border-4 border-white shadow flex items-center justify-center text-white text-[10px] font-bold">5</div>
+          <div class="bg-rose-50/40 hover:bg-rose-50/60 p-5 rounded-xl border border-rose-200 transition">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <span class="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                00:08:30
+              </span>
+              <span class="badge-chip bg-rose-100 text-rose-800">重點四：資料洩漏</span>
+            </div>
+            <h4 class="font-bold text-rose-950 text-sm sm:text-base mb-2">重點四：資料洩漏 (Data Leakage)</h4>
+            <p class="text-xs sm:text-sm text-slate-700 leading-relaxed mb-3">
+              <strong>鐵則：任何會從資料學習參數的步驟，只能在訓練那份上進行。</strong><br>
+              包含標準化（學 $\mu, \sigma$）、PCA（學變異方向）、LDA（學標籤分離方向）、特徵選擇與目標編碼。若全體一起做就是資料洩漏。
+            </p>
+            <div class="p-3 bg-white rounded-lg border border-rose-100 text-xs text-slate-700">
+              <span class="font-bold text-rose-900">開場白揭曉：</span>
+              鳶尾花資料先全體做 LDA 再做 5 折 CV，準確率 0.97 是因驗證集標籤已洩漏，造成指標虛高。<br>
+              <strong>正確解法：</strong>將前處理與模型封裝在 <code>Pipeline</code> 內放入交叉驗證，每折只對訓練資料調用 <code>fit()</code>。
+            </div>
+          </div>
+        </div>
+
+        <!-- 00:10:13 -->
+        <div id="ts-1013" class="timeline-item relative group">
+          <div class="absolute -left-6 sm:-left-8 top-1.5 w-6 h-6 rounded-full bg-blue-600 border-4 border-white shadow flex items-center justify-center text-white text-[10px] font-bold">6</div>
+          <div class="bg-blue-50/40 hover:bg-blue-50/60 p-5 rounded-xl border border-blue-200 transition">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <span class="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                00:10:13
+              </span>
+              <span class="badge-chip bg-blue-100 text-blue-800">重點五：學習曲線</span>
+            </div>
+            <h4 class="font-bold text-blue-950 text-sm sm:text-base mb-2">重點五：看懂學習曲線</h4>
+            <div class="text-xs sm:text-sm text-slate-700 space-y-1 mb-3">
+              <p>• <strong>過擬合</strong>：訓練損失降、驗證損失反彈回升，兩線差距拉大。解法：早停、正則化、Dropout、擴增資料。</p>
+              <p>• <strong>欠擬合</strong>：雙曲線損失居高不下且水平停滯。解法：提高模型容量、增加特徵。</p>
+              <p>• <strong>學習率過大</strong>：震盪劇烈甚至發散。解法：調降學習率、梯度裁剪。</p>
+              <p>• <strong>理想狀態</strong>：兩條線平滑下降且緊密靠攏。</p>
+            </div>
+            <div class="p-3 bg-white rounded-lg border border-blue-100 text-xs text-slate-700">
+              <span class="font-bold text-blue-900">場景五（CNN 影像分類）：</span>
+              第 6 輪後訓練準確率持續攀升至 0.81 以上，驗證準確率卻卡在 0.72 左右打轉，兩者差距拉開——典型<strong>過擬合</strong>。
+            </div>
+          </div>
+        </div>
+
+        <!-- 00:11:46 -->
+        <div id="ts-1146" class="timeline-item relative group">
+          <div class="absolute -left-6 sm:-left-8 top-1.5 w-6 h-6 rounded-full bg-slate-700 border-4 border-white shadow flex items-center justify-center text-white text-[10px] font-bold">7</div>
+          <div class="bg-slate-100/70 hover:bg-slate-100 p-5 rounded-xl border border-slate-200 transition">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <span class="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-slate-700 bg-slate-200 px-2 py-0.5 rounded">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                00:11:46
+              </span>
+              <span class="badge-chip bg-slate-200 text-slate-700">複習與下集預告</span>
+            </div>
+            <h4 class="font-bold text-slate-900 text-sm sm:text-base mb-2">總結複習與下集預告</h4>
+            <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              五大重點一句話掌握：<strong>測試集只用一次、驗證損失沒進步就停、照資料特性選切法、會從資料學東西的步驟只能在訓練集上學、看兩條曲線判斷過擬合或欠擬合。</strong><br><br>
+              下一集將進入第 16 章：模型評估指標（深入解析 Precision 精確率與 Recall 召回率的核心辨析與取捨）。
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // 時間軸平滑跳轉並高亮
+    function jumpToTimeline(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-2', 'ring-indigo-500', 'ring-offset-2', 'rounded-xl');
+        setTimeout(() => {
+          el.classList.remove('ring-2', 'ring-indigo-500', 'ring-offset-2');
+        }, 1800);
+      }
+    }
+
+    // 搜尋與過濾時間軸逐字稿
+    function filterTranscript() {
+      const input = document.getElementById('transcript-search').value.toLowerCase().trim();
+      const items = document.querySelectorAll('.timeline-item');
+      items.forEach(item => {
+        const text = item.innerText.toLowerCase();
+        if (text.includes(input)) {
+          item.style.display = '';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    }
+
+    function resetSearch() {
+      document.getElementById('transcript-search').value = '';
+      filterTranscript();
+    }
+
+    // 開場思考題反饋
+    function revealAns(choice) {
+      const box = document.getElementById('quiz-explanation');
+      box.classList.remove('hidden');
+      if (choice === 2) {
+        box.className = 'mt-4 p-4 rounded-xl text-sm bg-rose-50 border border-rose-300 text-rose-950';
+        box.innerHTML = '<strong>🎯 正確答案！這裡存在嚴重的「資料洩漏 (Data Leakage)」。</strong><br>LDA 是監督式降維，會利用資料標籤尋找最佳分離軸。若提前對「全體資料」做 LDA，等於驗證集的標籤資訊已提前洩漏給前處理器，算出來的 $0.97$ 是虛高不可信的！正解必須把 LDA 封裝進交叉驗證 Pipeline 中。';
+      } else {
+        box.className = 'mt-4 p-4 rounded-xl text-sm bg-amber-50 border border-amber-300 text-amber-950';
+        box.innerHTML = '<strong>❌ 觀念偏差！</strong><br>LDA 會從資料標籤中學習投影方向。提前對全體資料做 LDA 會讓驗證集資訊洩漏，因此既不是標準流程，分數也毫無參考價值。答案是<strong>資料洩漏</strong>。';
+      }
+      if (window.renderMathInElement) {
+        renderMathInElement(box, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});
+      }
+    }
+
+    // 重點一資料切分切換
+    function selectDataSplit(type) {
+      const panel = document.getElementById('split-detail-panel');
+      const cards = ['train', 'val', 'test'];
+      cards.forEach(c => {
+        const el = document.getElementById(`card-${c}`);
+        el.className = 'cursor-pointer p-4 rounded-xl border-2 transition ' + (c === type ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200 bg-slate-50 hover:border-slate-300');
+      });
+
+      if (type === 'train') {
+        panel.innerHTML = '<p class="font-semibold text-indigo-900">📌 訓練集 (Training Set) 核心觀念：</p><p class="text-indigo-800 mt-1">負責學習模型權重與偏置參數。練習題做多了容易「死記答案」（過擬合），因此不能單靠訓練集衡量模型好壞。</p>';
+      } else if (type === 'val') {
+        panel.innerHTML = '<p class="font-semibold text-amber-900">📌 驗證集 (Validation Set) 核心觀念：</p><p class="text-amber-800 mt-1">模擬考性質。用來搜尋最佳超參數（如樹深、學習率）、設定早停臨界點。注意：不能讓訓練集直接覆蓋驗證集！</p>';
+      } else if (type === 'test') {
+        panel.innerHTML = '<p class="font-semibold text-emerald-900">📌 測試集 (Test Set) 核心觀念：</p><p class="text-emerald-800 mt-1">正式會考性質。全流程「僅能在最後評估時使用一次」，絕不可參與任何超參數挑選或早停判斷，否則分數將喪失公信力。</p>';
+      }
+    }
+
+    // 重點五曲線動態切換 (SVG 座標中，Y 軸越大表示損失越低)
+    const curveStates = {
+      overfitting: {
+        trainD: "M 50 45 Q 160 140 460 185", // 訓練損失一路探底 (接近 y=185)
+        valD: "M 50 55 Q 160 120 250 125 T 460 65", // 驗證損失先降後升 (升回 y=65)
+        btn: "btn-overfitting",
+        borderClass: "border-rose-200 bg-rose-50/70",
+        titleClass: "text-rose-900",
+        title: "過擬合 (Overfitting)",
+        desc: "<strong>特徵表現：</strong>訓練損失持續探底，但驗證損失在抵達低點後轉折向上回升；兩條線差距不斷放大。模型將訓練集噪聲死記硬背，喪失泛化能力。",
+        cure: "<strong>對應處方：</strong>啟用早停機制 (Early Stopping)、L1/L2 正則化限制模型容量、加入 Dropout、擴增更多訓練樣本。"
+      },
+      underfitting: {
+        trainD: "M 50 45 Q 150 70 460 75", // 停留在高損失
+        valD: "M 50 55 Q 150 65 460 70",
+        btn: "btn-underfitting",
+        borderClass: "border-slate-300 bg-slate-100/70",
+        titleClass: "text-slate-900",
+        title: "欠擬合 (Underfitting)",
+        desc: "<strong>特徵表現：</strong>訓練與驗證損失都高居不下，且過早陷入水平停滯。代表模型根本沒學會數據內在規律（模型容量太小或學習不足）。",
+        cure: "<strong>對應處方：</strong>加大模型複雜度、增加特徵數量/組合特徵、增加訓練輪數、降低正則化強度。"
+      },
+      'high-lr': {
+        trainD: "M 50 60 Q 120 180 200 40 T 320 190 T 460 25", // 劇烈震盪
+        valD: "M 50 50 Q 130 190 210 30 T 330 200 T 460 15",
+        btn: "btn-high-lr",
+        borderClass: "border-amber-200 bg-amber-50/70",
+        titleClass: "text-amber-900",
+        title: "學習率過大 (High Learning Rate)",
+        desc: "<strong>特徵表現：</strong>損失曲線大起大落、劇烈震盪甚至數值發散 (NaN/Inf)。模型步伐過大，反覆越過最佳低谷。",
+        cure: "<strong>對應處方：</strong>降低初始學習率、引入學習率排程衰減、使用梯度裁剪 (Gradient Clipping) 限制每步更新上限。"
+      },
+      ideal: {
+        trainD: "M 50 45 Q 160 145 460 185", // 平滑下降至低位
+        valD: "M 50 55 Q 170 135 460 175", // 貼近且穩定
+        btn: "btn-ideal",
+        borderClass: "border-emerald-200 bg-emerald-50/70",
+        titleClass: "text-emerald-900",
+        title: "理想收斂狀態 (Ideal Convergence)",
+        desc: "<strong>特徵表現：</strong>訓練與驗證損失平滑下降並緊密靠攏，最終在低位平穩收斂，無顯著泛化差距。",
+        cure: "<strong>對應處方：</strong>模型訓練良好，可保存最佳權重進行最後測試集評估與上線部署。"
+      }
+    };
+
+    function setCurveState(stateKey) {
+      const state = curveStates[stateKey];
+      
+      // 更新按鈕樣式
+      ['overfitting', 'underfitting', 'high-lr', 'ideal'].forEach(k => {
+        const b = document.getElementById(curveStates[k].btn);
+        if (k === stateKey) {
+          b.className = 'px-3.5 py-1.5 rounded-lg text-sm font-semibold border border-indigo-400 bg-indigo-100 text-indigo-900 shadow-sm transition';
+        } else {
+          b.className = 'px-3.5 py-1.5 rounded-lg text-sm font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition';
+        }
+      });
+
+      // 切換 SVG 路徑
+      document.getElementById('trainCurve').setAttribute('d', state.trainD);
+      document.getElementById('valCurve').setAttribute('d', state.valD);
+
+      // 更新下方診斷框
+      const box = document.getElementById('curveDiagnosisBox');
+      box.className = `mt-4 p-4 rounded-xl border ${state.borderClass} text-sm space-y-2 transition-all duration-300`;
+      box.innerHTML = `
+        <div class="font-bold ${state.titleClass} flex items-center gap-1.5">
+          <span>🩺 診斷結果：${state.title}</span>
+        </div>
+        <p class="text-slate-700 text-xs sm:text-sm">${state.desc}</p>
+        <p class="${state.titleClass} text-xs sm:text-sm font-semibold">${state.cure}</p>
+      `;
+    }
+  </script>
+</body>
+</html>

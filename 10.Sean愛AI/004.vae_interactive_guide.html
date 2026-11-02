@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>【iPAS｜J1_043】Variational Autoencoder (VAE)｜AI怎麼在看不見的潛在空間裡生成新東西？</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- KaTeX CSS & JS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+          onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+  <style>
+    /* 滑桿自訂美化 */
+    input[type=range]::-webkit-slider-thumb {
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+  <!-- 頂部導覽與大標題 -->
+  <header class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white py-10 px-4 sm:px-8 border-b border-indigo-500/20 shadow-xl">
+    <div class="max-w-5xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <div class="inline-flex items-center gap-2 bg-indigo-500/20 border border-indigo-400/30 px-3.5 py-1 rounded-full text-xs font-semibold text-indigo-300 tracking-wider mb-3">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          iPAS AI 應用規劃師・初級科目一・考前衝刺筆記
+        </div>
+        <h1 class="text-2xl sm:text-4xl font-extrabold tracking-tight text-white mb-2 leading-tight">
+          【iPAS｜J1_043】Variational Autoencoder (VAE)
+        </h1>
+        <p class="text-indigo-200 text-base sm:text-lg font-medium">
+          AI 怎麼在看不見的潛在空間裡生成新東西？
+        </p>
+      </div>
+      <div>
+        <a href="../index.html" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-semibold border border-white/20 transition shadow-sm" title="返回全站首頁">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          回首頁
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主要內容區 -->
+  <main class="max-w-5xl mx-auto px-4 sm:px-8 py-8 space-y-8 flex-1">
+
+    <!-- 考前衝刺核心口訣 (琥珀色/金黃重點框) -->
+    <section class="border-l-4 border-amber-500 bg-amber-50/90 rounded-r-2xl p-6 shadow-sm border border-slate-200/60">
+      <div class="flex items-center gap-2 text-amber-800 font-bold text-sm tracking-wide uppercase">
+        <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+        考前必背核心口訣
+      </div>
+      <p class="text-amber-950 text-2xl font-black tracking-wide my-2">
+        👉「先壓進潛在空間，再從空間生成！」
+      </p>
+      <p class="text-amber-900 text-sm leading-relaxed">
+        真正的生成式 AI 不會死記硬背照片！變分自編碼器（VAE）的精髓在於將複雜維度的圖像資料濃縮為連續的<strong>「特徵分佈旋鈕」</strong>，只要在合理區間內任意旋轉取樣，就能合成出世界上未曾存在過的全新實體。
+      </p>
+    </section>
+
+    <!-- 原圖 1:1 向量重繪對照區 (同時包含圖一與圖二) -->
+    <section class="bg-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-800">
+      <div class="text-center mb-8">
+        <span class="text-xs font-mono font-semibold tracking-widest text-indigo-400 uppercase bg-indigo-950/80 px-3.5 py-1 rounded-full border border-indigo-800">
+          Architecture Comparison
+        </span>
+        <h2 class="text-xl sm:text-3xl font-extrabold text-white mt-2.5">
+          變分自編碼器 (VAE) 核心流程對照圖
+        </h2>
+        <p class="text-xs sm:text-sm text-slate-400 mt-1.5">
+          100% 向量化還原：無損縮放 SVG，清楚對照基礎結構與兩大階段劃分
+        </p>
+      </div>
+
+      <!-- 雙欄響應式網格：圖一 與 圖二 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+        
+        <!-- 【圖一】：基礎架構流程圖 (無大括號) -->
+        <div class="flex flex-col items-center bg-slate-950/60 p-4 sm:p-5 rounded-2xl border border-slate-800">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="w-2.5 h-2.5 rounded-full bg-blue-400"></span>
+            <span class="text-sm font-bold text-slate-200">圖一：完整資料流結構 (無括號)</span>
+          </div>
+          
+          <svg viewBox="0 0 400 740" class="w-full max-w-[340px] h-auto drop-shadow-xl" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="bgGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#2c3844"/>
+                <stop offset="50%" stop-color="#24313d"/>
+                <stop offset="100%" stop-color="#1b252e"/>
+              </linearGradient>
+              <linearGradient id="encGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#4a5b6e" stop-opacity="0.9"/>
+                <stop offset="100%" stop-color="#32404e" stop-opacity="0.95"/>
+              </linearGradient>
+              <marker id="arrow1" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 1 2 L 7 5 L 1 8 z" fill="#94A3B8"/>
+              </marker>
+            </defs>
+
+            <!-- 圓角背景板 -->
+            <rect width="400" height="740" rx="20" fill="url(#bgGrad1)"/>
+
+            <!-- 標題 -->
+            <text x="200" y="55" text-anchor="middle" fill="#FFFFFF" font-size="26" font-weight="900" letter-spacing="1">變分自編碼器 (VAE)</text>
+
+            <!-- 1. 輸入人臉 (頂部) -->
+            <g transform="translate(200, 122)">
+              <path d="M -28 -36 C -28 -54, 28 -54, 28 -36 C 28 -14, 24 10, 16 26 C 10 38, -10 38, -16 26 C -24 10, -28 -14, -28 -36 Z" fill="#D6E3E8" stroke="#334155" stroke-width="1.8"/>
+              <path d="M -16 26 C -10 38, 10 38, 16 26 C 8 30, -8 30, -16 26 Z" fill="#9FB5C1"/>
+              <path d="M -18 -14 Q -10 -17 -4 -14" fill="none" stroke="#1E293B" stroke-width="2.2" stroke-linecap="round"/>
+              <path d="M 4 -14 Q 10 -17 18 -14" fill="none" stroke="#1E293B" stroke-width="2.2" stroke-linecap="round"/>
+              <ellipse cx="-11" cy="-7" rx="4" ry="3" fill="#1E293B"/>
+              <ellipse cx="11" cy="-7" rx="4" ry="3" fill="#1E293B"/>
+              <path d="M 0 -10 L -3 6 L 3 6" fill="none" stroke="#334155" stroke-width="1.8" stroke-linejoin="round"/>
+              <path d="M -9 18 Q 0 15 9 18" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+            </g>
+
+            <!-- 箭頭 1 -->
+            <line x1="200" y1="168" x2="200" y2="198" stroke="#94A3B8" stroke-width="2" marker-end="url(#arrow1)"/>
+
+            <!-- 2. 編碼器 (倒梯形) -->
+            <g>
+              <polygon points="125,204 275,204 245,280 155,280" fill="url(#encGrad1)" stroke="#8193A5" stroke-width="2"/>
+              <text x="200" y="250" text-anchor="middle" fill="#FFFFFF" font-size="22" font-weight="bold" letter-spacing="1">編碼器</text>
+            </g>
+
+            <!-- 箭頭 2 -->
+            <line x1="200" y1="288" x2="200" y2="318" stroke="#94A3B8" stroke-width="2" marker-end="url(#arrow1)"/>
+
+            <!-- 3. 分佈表示 (4條鐘形曲線) -->
+            <g>
+              <path d="M 70 368 C 82 368, 84 330, 91 330 C 98 330, 100 368, 112 368" fill="#445667" stroke="#CBD5E1" stroke-width="2" stroke-linecap="round"/>
+              <path d="M 122 368 C 134 368, 136 330, 143 330 C 150 330, 152 368, 164 368" fill="#445667" stroke="#CBD5E1" stroke-width="2" stroke-linecap="round"/>
+              <path d="M 174 368 C 186 368, 188 330, 195 330 C 202 330, 204 368, 216 368" fill="#445667" stroke="#CBD5E1" stroke-width="2" stroke-linecap="round"/>
+              <path d="M 226 368 C 238 368, 240 330, 247 330 C 254 330, 256 368, 268 368" fill="#445667" stroke="#CBD5E1" stroke-width="2" stroke-linecap="round"/>
+              <text x="286" y="358" fill="#9FB5C6" font-size="18" font-weight="bold">分佈表示</text>
+            </g>
+
+            <!-- 4. 隨機取樣 (4個橘色方塊) -->
+            <g transform="translate(0, 420)">
+              <rect x="70" y="0" width="40" height="42" rx="6" fill="#E67E22" stroke="#D35400" stroke-width="1.5"/>
+              <rect x="122" y="0" width="40" height="42" rx="6" fill="#E67E22" stroke="#D35400" stroke-width="1.5"/>
+              <rect x="174" y="0" width="40" height="42" rx="6" fill="#E67E22" stroke="#D35400" stroke-width="1.5"/>
+              <rect x="226" y="0" width="40" height="42" rx="6" fill="#E67E22" stroke="#D35400" stroke-width="1.5"/>
+              <text x="286" y="28" fill="#E67E22" font-size="18" font-weight="bold">隨機取樣</text>
+            </g>
+
+            <!-- 箭頭 3 -->
+            <line x1="200" y1="472" x2="200" y2="502" stroke="#94A3B8" stroke-width="2" marker-end="url(#arrow1)"/>
+
+            <!-- 5. 解碼器 (正梯形，外框橙色) -->
+            <g>
+              <polygon points="155,510 245,510 275,585 125,585" fill="url(#encGrad1)" stroke="#E67E22" stroke-width="2.5"/>
+              <text x="200" y="555" text-anchor="middle" fill="#FFFFFF" font-size="22" font-weight="bold" letter-spacing="1">解碼器</text>
+            </g>
+
+            <!-- 箭頭 4 -->
+            <line x1="200" y1="594" x2="200" y2="624" stroke="#94A3B8" stroke-width="2" marker-end="url(#arrow1)"/>
+
+            <!-- 6. 輸出人臉 (底部) -->
+            <g transform="translate(200, 668)">
+              <path d="M -28 -36 C -28 -54, 28 -54, 28 -36 C 28 -14, 24 10, 16 26 C 10 38, -10 38, -16 26 C -24 10, -28 -14, -28 -36 Z" fill="#CFE7E6" stroke="#1E293B" stroke-width="1.8"/>
+              <path d="M -16 26 C -10 38, 10 38, 16 26 C 8 30, -8 30, -16 26 Z" fill="#9CC5C6"/>
+              <path d="M -18 -14 Q -10 -16 -4 -14" fill="none" stroke="#1E293B" stroke-width="2.2" stroke-linecap="round"/>
+              <path d="M 4 -14 Q 10 -16 18 -14" fill="none" stroke="#1E293B" stroke-width="2.2" stroke-linecap="round"/>
+              <ellipse cx="-11" cy="-7" rx="4" ry="3" fill="#1E293B"/>
+              <ellipse cx="11" cy="-7" rx="4" ry="3" fill="#1E293B"/>
+              <path d="M 0 -10 L -3 6 L 3 6" fill="none" stroke="#334155" stroke-width="1.8" stroke-linejoin="round"/>
+              <path d="M -9 18 Q 0 16 9 18" fill="none" stroke="#D97706" stroke-width="2.5" stroke-linecap="round"/>
+            </g>
+          </svg>
+        </div>
+
+        <!-- 【圖二】：帶括號分段圖 (1. 壓縮 / 2. 生成) -->
+        <div class="flex flex-col items-center bg-slate-950/60 p-4 sm:p-5 rounded-2xl border border-slate-800">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            <span class="text-sm font-bold text-slate-200">圖二：兩大階段切分 (含左右大括號)</span>
+          </div>
+
+          <svg viewBox="0 0 460 740" class="w-full max-w-[390px] h-auto drop-shadow-xl" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="bgGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#2c3844"/>
+                <stop offset="50%" stop-color="#24313d"/>
+                <stop offset="100%" stop-color="#1b252e"/>
+              </linearGradient>
+              <linearGradient id="encGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#4a5b6e" stop-opacity="0.9"/>
+                <stop offset="100%" stop-color="#32404e" stop-opacity="0.95"/>
+              </linearGradient>
+              <marker id="arrow2" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 1 2 L 7 5 L 1 8 z" fill="#94A3B8"/>
+              </marker>
+            </defs>
+
+            <!-- 圓角背景板 -->
+            <rect width="460" height="740" rx="20" fill="url(#bgGrad2)"/>
+
+            <!-- 標題 -->
+            <text x="245" y="55" text-anchor="middle" fill="#FFFFFF" font-size="26" font-weight="900" letter-spacing="1">變分自編碼器 (VAE)</text>
+
+            <!-- ========== 左側大括號標示 ========== -->
+            <!-- 1. 壓縮 -->
+            <g transform="translate(10, 0)">
+              <text x="70" y="270" text-anchor="end" fill="#FFFFFF" font-size="18" font-weight="bold">1. 壓縮</text>
+              <path d="M 98 96 Q 84 96 84 180 Q 84 265 76 265 Q 84 265 84 350 Q 84 430 98 430" fill="none" stroke="#94A3B8" stroke-width="2.5" stroke-linecap="round"/>
+            </g>
+
+            <!-- 2. 生成 -->
+            <g transform="translate(10, 0)">
+              <text x="70" y="575" text-anchor="end" fill="#FFFFFF" font-size="18" font-weight="bold">2. 生成</text>
+              <path d="M 98 475 Q 84 475 84 530 Q 84 570 76 570 Q 84 570 84 610 Q 84 715 98 715" fill="none" stroke="#94A3B8" stroke-width="2.5" stroke-linecap="round"/>
+            </g>
+
+            <!-- 1. 輸入人臉 (頂部) -->
+            <g transform="translate(245, 122)">
+              <path d="M -28 -36 C -28 -54, 28 -54, 28 -36 C 28 -14, 24 10, 16 26 C 10 38, -10 38, -16 26 C -24 10, -28 -14, -28 -36 Z" fill="#D6E3E8" stroke="#334155" stroke-width="1.8"/>
+              <path d="M -16 26 C -10 38, 10 38, 16 26 C 8 30, -8 30, -16 26 Z" fill="#9FB5C1"/>
+              <path d="M -18 -14 Q -10 -17 -4 -14" fill="none" stroke="#1E293B" stroke-width="2.2" stroke-linecap="round"/>
+              <path d="M 4 -14 Q 10 -17 18 -14" fill="none" stroke="#1E293B" stroke-width="2.2" stroke-linecap="round"/>
+              <ellipse cx="-11" cy="-7" rx="4" ry="3" fill="#1E293B"/>
+              <ellipse cx="11" cy="-7" rx="4" ry="3" fill="#1E293B"/>
+              <path d="M 0 -10 L -3 6 L 3 6" fill="none" stroke="#334155" stroke-width="1.8" stroke-linejoin="round"/>
+              <path d="M -9 18 Q 0 15 9 18" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+            </g>
+
+            <!-- 箭頭 1 -->
+            <line x1="245" y1="168" x2="245" y2="198" stroke="#94A3B8" stroke-width="2" marker-end="url(#arrow2)"/>
+
+            <!-- 2. 編碼器 (倒梯形) -->
+            <g>
+              <polygon points="170,204 320,204 290,280 200,280" fill="url(#encGrad2)" stroke="#8193A5" stroke-width="2"/>
+              <text x="245" y="250" text-anchor="middle" fill="#FFFFFF" font-size="22" font-weight="bold" letter-spacing="1">編碼器</text>
+            </g>
+
+            <!-- 箭頭 2 -->
+            <line x1="245" y1="288" x2="245" y2="318" stroke="#94A3B8" stroke-width="2" marker-end="url(#arrow2)"/>
+
+            <!-- 3. 分佈表示 (4條鐘形曲線) -->
+            <g>
+              <path d="M 130 368 C 142 368, 144 330, 151 330 C 158 330, 160 368, 172 368" fill="#445667" stroke="#CBD5E1" stroke-width="2" stroke-linecap="round"/>
+              <path d="M 182 368 C 194 368, 196 330, 203 330 C 210 330, 212 368, 224 368" fill="#445667" stroke="#CBD5E1" stroke-width="2" stroke-linecap="round"/>
+              <path d="M 234 368 C 246 368, 248 330, 255 330 C 262 330, 264 368, 276 368" fill="#445667" stroke="#CBD5E1" stroke-width="2" stroke-linecap="round"/>
+              <path d="M 286 368 C 298 368, 300 330, 307 330 C 314 330, 316 368, 328 368" fill="#445667" stroke="#CBD5E1" stroke-width="2" stroke-linecap="round"/>
+              <text x="345" y="358" fill="#9FB5C6" font-size="18" font-weight="bold">分佈表示</text>
+            </g>
+
+            <!-- 4. 隨機取樣 (4個橘色方塊) -->
+            <g transform="translate(0, 420)">
+              <rect x="130" y="0" width="40" height="42" rx="6" fill="#E67E22" stroke="#D35400" stroke-width="1.5"/>
+              <rect x="182" y="0" width="40" height="42" rx="6" fill="#E67E22" stroke="#D35400" stroke-width="1.5"/>
+              <rect x="234" y="0" width="40" height="42" rx="6" fill="#E67E22" stroke="#D35400" stroke-width="1.5"/>
+              <rect x="286" y="0" width="40" height="42" rx="6" fill="#E67E22" stroke="#D35400" stroke-width="1.5"/>
+              <text x="345" y="28" fill="#E67E22" font-size="18" font-weight="bold">隨機取樣</text>
+            </g>
+
+            <!-- 箭頭 3 -->
+            <line x1="245" y1="472" x2="245" y2="502" stroke="#94A3B8" stroke-width="2" marker-end="url(#arrow2)"/>
+
+            <!-- 5. 解碼器 (正梯形，外框橙色) -->
+            <g>
+              <polygon points="200,510 290,510 320,585 170,585" fill="url(#encGrad2)" stroke="#E67E22" stroke-width="2.5"/>
+              <text x="245" y="555" text-anchor="middle" fill="#FFFFFF" font-size="22" font-weight="bold" letter-spacing="1">解碼器</text>
+            </g>
+
+            <!-- 箭頭 4 -->
+            <line x1="245" y1="594" x2="245" y2="624" stroke="#94A3B8" stroke-width="2" marker-end="url(#arrow2)"/>
+
+            <!-- 6. 輸出人臉 (底部) -->
+            <g transform="translate(245, 668)">
+              <path d="M -28 -36 C -28 -54, 28 -54, 28 -36 C 28 -14, 24 10, 16 26 C 10 38, -10 38, -16 26 C -24 10, -28 -14, -28 -36 Z" fill="#CFE7E6" stroke="#1E293B" stroke-width="1.8"/>
+              <path d="M -16 26 C -10 38, 10 38, 16 26 C 8 30, -8 30, -16 26 Z" fill="#9CC5C6"/>
+              <path d="M -18 -14 Q -10 -16 -4 -14" fill="none" stroke="#1E293B" stroke-width="2.2" stroke-linecap="round"/>
+              <path d="M 4 -14 Q 10 -16 18 -14" fill="none" stroke="#1E293B" stroke-width="2.2" stroke-linecap="round"/>
+              <ellipse cx="-11" cy="-7" rx="4" ry="3" fill="#1E293B"/>
+              <ellipse cx="11" cy="-7" rx="4" ry="3" fill="#1E293B"/>
+              <path d="M 0 -10 L -3 6 L 3 6" fill="none" stroke="#334155" stroke-width="1.8" stroke-linejoin="round"/>
+              <path d="M -9 18 Q 0 16 9 18" fill="none" stroke="#D97706" stroke-width="2.5" stroke-linecap="round"/>
+            </g>
+          </svg>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- VAE 三大關鍵階段 (顏色分級卡片) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      <!-- 階段 1：編碼器 Encoder (藍色邊框) -->
+      <div class="bg-white border-2 border-blue-500 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-blue-700 bg-blue-100 px-3 py-0.5 rounded-full">Step 1</span>
+            <span class="text-xs font-mono font-semibold text-blue-500">Encoder $q_\phi(z|x)$</span>
+          </div>
+          <h3 class="text-lg font-bold text-slate-800 mb-2">編碼階段：特徵壓縮</h3>
+          <p class="text-xs sm:text-sm text-slate-600 leading-relaxed mb-4">
+            將原始高維圖像 $x$ 壓縮，模型不是直接記住圖像像素，而是學習預測出特徵分佈的<strong>平均值 ($\mu$)</strong> 與<strong>變異數 ($\sigma$)</strong>。
+          </p>
+        </div>
+        <div class="bg-blue-50/70 border border-blue-100 rounded-xl p-3 text-center text-xs font-mono text-blue-900">
+          $$q_\phi(z|x) = \mathcal{N}(z; \mu, \sigma^2 I)$$
+        </div>
+      </div>
+
+      <!-- 階段 2：潛在空間 Latent Space (紫色邊框) -->
+      <div class="bg-white border-2 border-purple-500 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-purple-700 bg-purple-100 px-3 py-0.5 rounded-full">Step 2</span>
+            <span class="text-xs font-mono font-semibold text-purple-500">Latent Space</span>
+          </div>
+          <h3 class="text-lg font-bold text-slate-800 mb-2">潛在空間：取樣魔力</h3>
+          <p class="text-xs sm:text-sm text-slate-600 leading-relaxed mb-4">
+            潛在空間界定了旋鈕的合理取值區間。利用<strong>重參數化技巧</strong>隨機抽取噪聲 $\epsilon$，兼顧隨機取樣與梯度反向傳播。
+          </p>
+        </div>
+        <div class="bg-purple-50/70 border border-purple-100 rounded-xl p-3 text-center text-xs font-mono text-purple-900">
+          $$z = \mu + \sigma \odot \epsilon, \;\; \epsilon \sim \mathcal{N}(0, I)$$
+        </div>
+      </div>
+
+      <!-- 階段 3：解碼器 Decoder (綠色邊框) -->
+      <div class="bg-white border-2 border-emerald-500 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-100 px-3 py-0.5 rounded-full">Step 3</span>
+            <span class="text-xs font-mono font-semibold text-emerald-500">Decoder $p_\theta(x|z)$</span>
+          </div>
+          <h3 class="text-lg font-bold text-slate-800 mb-2">解碼階段：重建生成</h3>
+          <p class="text-xs sm:text-sm text-slate-600 leading-relaxed mb-4">
+            解碼器讀取潛在向量 $z$ 的數值組合，反向擴展解構，產生全新高解析度的圖像實體 $\hat{x}$。
+          </p>
+        </div>
+        <div class="bg-emerald-50/70 border border-emerald-100 rounded-xl p-3 text-center text-xs font-mono text-emerald-900">
+          $$\hat{x} \sim p_\theta(x|z)$$
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 互動實驗室：SVG 潛在特徵旋鈕 -->
+    <section class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-6 mb-6 border-b border-slate-100 gap-4">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-indigo-600"></span>
+            互動實驗室：潛在空間特徵旋鈕控制
+          </h2>
+          <p class="text-sm text-slate-500 mt-1">
+            調整下方數值旋鈕 $z_1, z_2$，觀察右側解碼器如何即時重構人臉特徵
+          </p>
+        </div>
+        <button id="randomSampleBtn" class="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm px-4 py-2.5 rounded-xl transition shadow-md hover:shadow-lg active:scale-95">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          隨機取樣特徵 (Sample $z$)
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        <!-- 控制面板 (左側) -->
+        <div class="lg:col-span-5 space-y-6 bg-slate-50/90 p-5 rounded-2xl border border-slate-200">
+          <!-- 旋鈕 1 -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-sm font-bold text-slate-700">特徵維度 $z_1$：微笑與表情弧度</label>
+              <span id="labelZ1" class="text-xs font-mono font-bold text-indigo-700 bg-indigo-100 px-2.5 py-0.5 rounded-md">0.00</span>
+            </div>
+            <input id="sliderZ1" type="range" min="-1" max="1" step="0.05" value="0.2" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+            <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+              <span>嚴肅撇嘴 (-1.0)</span>
+              <span>中性 (0.0)</span>
+              <span>燦爛微笑 (+1.0)</span>
+            </div>
+          </div>
+
+          <!-- 旋鈕 2 -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-sm font-bold text-slate-700">特徵維度 $z_2$：臉頰形狀與眼距</label>
+              <span id="labelZ2" class="text-xs font-mono font-bold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-md">0.00</span>
+            </div>
+            <input id="sliderZ2" type="range" min="-1" max="1" step="0.05" value="0.0" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-purple-600">
+            <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+              <span>瘦長窄臉 (-1.0)</span>
+              <span>標準 (0.0)</span>
+              <span>圓潤寬臉 (+1.0)</span>
+            </div>
+          </div>
+
+          <!-- 數值向量預覽 -->
+          <div class="p-3 bg-white rounded-xl border border-slate-200 text-xs font-mono space-y-1">
+            <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">當前潛在向量 (Latent Vector)</div>
+            <div class="text-slate-800 text-sm">
+              $\mathbf{z} = [ \text{微笑: } <span id="valVecZ1" class="text-indigo-600 font-bold">0.20</span>, \; \text{臉寬: } <span id="valVecZ2" class="text-purple-600 font-bold">0.00</span> ]^T$
+            </div>
+          </div>
+        </div>
+
+        <!-- 即時 SVG 解碼渲染視窗 (右側) -->
+        <div class="lg:col-span-7 flex flex-col items-center justify-center p-6 bg-gradient-to-b from-slate-100 to-indigo-50/40 rounded-2xl border border-slate-200/80">
+          <span class="text-xs font-bold text-slate-400 tracking-wider uppercase mb-3">解碼器即時重構畫布 (Decoder Output)</span>
+          
+          <svg id="avatarSvg" width="260" height="260" viewBox="0 0 200 200" class="drop-shadow-lg transition-all duration-150">
+            <!-- 臉型主體 -->
+            <ellipse id="svgFace" cx="100" cy="100" rx="66" ry="76" fill="#FDE68A" stroke="#F59E0B" stroke-width="3"/>
+            
+            <!-- 臉頰紅暈 -->
+            <circle id="blushL" cx="64" cy="116" r="10" fill="#FB7185" opacity="0.25"/>
+            <circle id="blushR" cx="136" cy="116" r="10" fill="#FB7185" opacity="0.25"/>
+
+            <!-- 眼睛 (左/右) -->
+            <ellipse id="eyeL" cx="72" cy="86" rx="8" ry="8" fill="#1E293B"/>
+            <ellipse id="eyeR" cx="128" cy="86" rx="8" ry="8" fill="#1E293B"/>
+            
+            <!-- 瞳孔反光 -->
+            <circle id="sparkleL" cx="74" cy="84" r="2.5" fill="#FFFFFF"/>
+            <circle id="sparkleR" cx="130" cy="84" r="2.5" fill="#FFFFFF"/>
+
+            <!-- 鼻子 -->
+            <path d="M 100 90 L 96 102 L 102 102" fill="none" stroke="#D97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+            <!-- 嘴巴曲線 (二次貝茲曲線連動) -->
+            <path id="svgMouth" d="M 80 126 Q 100 132 120 126" fill="none" stroke="#BE123C" stroke-width="3.5" stroke-linecap="round"/>
+          </svg>
+
+          <p class="text-xs text-slate-500 mt-4 text-center">
+            ✨ 所有的表情變化均由連續空間內的一組浮點數向量驅動解碼
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 考試重點知識卡：VAE 損失函數解析 (深色高對比框) -->
+    <section class="bg-white border-2 border-slate-800 rounded-2xl p-6 sm:p-7 shadow-sm">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+        <h3 class="text-lg font-bold text-slate-900">必考公式拆解：證據下界 (ELBO Objective)</h3>
+      </div>
+      <p class="text-sm text-slate-600 leading-relaxed mb-4">
+        VAE 的損失函數由兩部分組成，平衡<strong>「還原清晰度」</strong>與<strong>「潛在空間平滑連續性」</strong>：
+      </p>
+
+      <div class="bg-slate-950 text-slate-100 p-4 sm:p-5 rounded-xl text-center text-sm sm:text-base font-mono overflow-x-auto shadow-inner mb-5">
+        $$\mathcal{L}_{\text{VAE}}(\theta, \phi; x) = -\underbrace{\mathbb{E}_{q_\phi(z|x)}[\log p_\theta(x|z)]}_{\text{重建誤差 (Reconstruction Loss)}} + \underbrace{D_{\text{KL}}(q_\phi(z|x) \parallel p(z))}_{\text{KL 散度正則化項 (KL Divergence)}}$$
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+        <div class="p-4 bg-indigo-50/70 border border-indigo-100 rounded-xl">
+          <strong class="text-indigo-900 block font-bold mb-1">1. 重建誤差 (Reconstruction Loss)</strong>
+          <span class="text-slate-600">衡量解碼器輸出的圖像 $\hat{x}$ 與原始輸入 $x$ 之間的差異（例如 MSE 或 Binary Cross-Entropy），確保生成的內容清楚且符合特徵。</span>
+        </div>
+        <div class="p-4 bg-purple-50/70 border border-purple-100 rounded-xl">
+          <strong class="text-purple-900 block font-bold mb-1">2. KL 散度正則化 (KL Divergence)</strong>
+          <span class="text-slate-600">約束潛在特徵分佈趨近標準常態分佈 $\mathcal{N}(0, I)$。防止潛在空間出現孤島與空隙，確保任意取樣都能合成出合理的全新產物。</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 時間軸逐字稿 Section (互動式影片時間軸) -->
+    <section class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-6 border-b border-slate-100 gap-2">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            影片時間軸逐字稿與重點精析
+          </h2>
+          <p class="text-sm text-slate-500 mt-1">
+            點擊各階段時間標籤，可直接連動上方「特徵旋鈕實驗室」模擬生成對應特徵
+          </p>
+        </div>
+        <span class="text-xs bg-slate-100 text-slate-600 font-semibold px-3 py-1 rounded-full self-start sm:self-center">
+          Sean愛AI 精選講義
+        </span>
+      </div>
+
+      <!-- 時間軸主體 -->
+      <div class="relative border-l-2 border-indigo-100 ml-4 sm:ml-6 space-y-6">
+
+        <!-- 00:00:03 -->
+        <div class="relative pl-6 sm:pl-8 group">
+          <span class="absolute -left-[9px] top-1.5 w-4 h-4 rounded-full bg-white border-2 border-indigo-600 group-hover:bg-indigo-600 transition"></span>
+          <div class="p-4 rounded-xl bg-slate-50 hover:bg-indigo-50/40 border border-slate-200/80 transition cursor-pointer" onclick="applyPreset(0.0, 0.0)">
+            <div class="flex flex-wrap items-center gap-2 mb-1.5">
+              <span class="font-mono text-xs font-bold text-white bg-indigo-600 px-2.5 py-0.5 rounded-md shadow-sm">00:00:03</span>
+              <span class="text-xs font-bold text-indigo-900 bg-indigo-100 px-2 py-0.5 rounded">概念破題</span>
+              <span class="text-xs text-slate-400">點擊模擬：標準中性人臉</span>
+            </div>
+            <h4 class="font-bold text-slate-800 text-sm sm:text-base">AI 怎麼在看不見的空間裡生成全新內容？VAE 核心概念</h4>
+            <p class="text-slate-600 text-xs sm:text-sm mt-1 leading-relaxed">
+              真正的生成式 AI 不會死記硬背照片！變分自編碼器（VAE）的原理，是把人臉等高維複雜資料的關鍵特徵濃縮，轉化成數個可自由調校的「控制旋鈕」。
+            </p>
+          </div>
+        </div>
+
+        <!-- 00:00:18 -->
+        <div class="relative pl-6 sm:pl-8 group">
+          <span class="absolute -left-[9px] top-1.5 w-4 h-4 rounded-full bg-white border-2 border-blue-500 group-hover:bg-blue-500 transition"></span>
+          <div class="p-4 rounded-xl bg-slate-50 hover:bg-blue-50/40 border border-slate-200/80 transition cursor-pointer" onclick="applyPreset(-0.6, -0.4)">
+            <div class="flex flex-wrap items-center gap-2 mb-1.5">
+              <span class="font-mono text-xs font-bold text-white bg-blue-600 px-2.5 py-0.5 rounded-md shadow-sm">00:00:18</span>
+              <span class="text-xs font-bold text-blue-900 bg-blue-100 px-2 py-0.5 rounded">編碼階段</span>
+              <span class="text-xs text-slate-400">點擊模擬：嚴肅修長臉特徵</span>
+            </div>
+            <h4 class="font-bold text-slate-800 text-sm sm:text-base">特徵壓縮與潛在空間建立</h4>
+            <p class="text-slate-600 text-xs sm:text-sm mt-1 leading-relaxed">
+              輸入真實影像後，編碼器會將其特徵壓縮並儲存在「潛在空間（Latent Space）」。它學習的不是固定死板的像素，而是界定特徵旋鈕合理數值範圍的分佈曲線。
+            </p>
+          </div>
+        </div>
+
+        <!-- 00:00:42 -->
+        <div class="relative pl-6 sm:pl-8 group">
+          <span class="absolute -left-[9px] top-1.5 w-4 h-4 rounded-full bg-white border-2 border-purple-500 group-hover:bg-purple-500 transition"></span>
+          <div class="p-4 rounded-xl bg-slate-50 hover:bg-purple-50/40 border border-slate-200/80 transition cursor-pointer" onclick="applyPreset(0.75, 0.5)">
+            <div class="flex flex-wrap items-center gap-2 mb-1.5">
+              <span class="font-mono text-xs font-bold text-white bg-purple-600 px-2.5 py-0.5 rounded-md shadow-sm">00:00:42</span>
+              <span class="text-xs font-bold text-purple-900 bg-purple-100 px-2 py-0.5 rounded">潛在取樣</span>
+              <span class="text-xs text-slate-400">點擊模擬：開朗圓潤笑臉取樣</span>
+            </div>
+            <h4 class="font-bold text-slate-800 text-sm sm:text-base">潛在空間取樣：隨機轉動旋鈕的魔法</h4>
+            <p class="text-slate-600 text-xs sm:text-sm mt-1 leading-relaxed">
+              生成關鍵就在「取樣」。只要在特徵分佈的合理區間內任意隨機設定旋鈕數值，就能自然搭配出世界上未曾存在過的全新特徵向量組合。
+            </p>
+          </div>
+        </div>
+
+        <!-- 00:00:51 -->
+        <div class="relative pl-6 sm:pl-8 group">
+          <span class="absolute -left-[9px] top-1.5 w-4 h-4 rounded-full bg-white border-2 border-emerald-500 group-hover:bg-emerald-500 transition"></span>
+          <div class="p-4 rounded-xl bg-slate-50 hover:bg-emerald-50/40 border border-slate-200/80 transition cursor-pointer" onclick="applyPreset(0.9, -0.2)">
+            <div class="flex flex-wrap items-center gap-2 mb-1.5">
+              <span class="font-mono text-xs font-bold text-white bg-emerald-600 px-2.5 py-0.5 rounded-md shadow-sm">00:00:51</span>
+              <span class="text-xs font-bold text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded">解碼階段</span>
+              <span class="text-xs text-slate-400">點擊模擬：反向解碼生成全新人物</span>
+            </div>
+            <h4 class="font-bold text-slate-800 text-sm sm:text-base">解碼階段：反向擴張繪出全新面貌</h4>
+            <p class="text-slate-600 text-xs sm:text-sm mt-1 leading-relaxed">
+              解碼器接收剛剛取樣出來的新數值，反向擴張還原，繪製出兼具細膩結構、但世界上從未真正存在過的全新型態人臉。
+            </p>
+          </div>
+        </div>
+
+        <!-- 00:01:05 -->
+        <div class="relative pl-6 sm:pl-8 group">
+          <span class="absolute -left-[9px] top-1.5 w-4 h-4 rounded-full bg-white border-2 border-amber-500 group-hover:bg-amber-500 transition"></span>
+          <div class="p-4 rounded-xl bg-amber-50/50 hover:bg-amber-100/50 border border-amber-200/80 transition cursor-pointer" onclick="applyPreset(0.3, 0.0)">
+            <div class="flex flex-wrap items-center gap-2 mb-1.5">
+              <span class="font-mono text-xs font-bold text-white bg-amber-600 px-2.5 py-0.5 rounded-md shadow-sm">00:01:05</span>
+              <span class="text-xs font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded">考前衝刺</span>
+              <span class="text-xs text-amber-600 font-semibold">必考口訣總結</span>
+            </div>
+            <h4 class="font-bold text-amber-950 text-sm sm:text-base">「先壓進潛在空間，再從空間生成」</h4>
+            <p class="text-amber-900 text-xs sm:text-sm mt-1 leading-relaxed">
+              考試只需記牢此核心邏輯：<strong>編碼壓縮特徵分佈 $\rightarrow$ 潛在空間連續取樣 $\rightarrow$ 解碼器反向生成</strong>。
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 頁尾 -->
+  <footer class="text-center py-6 text-slate-400 text-xs border-t border-slate-200 mt-6">
+    © iPAS AI 應用規劃師複習筆記・生成式 AI 演算法單元
+  </footer>
+
+  <!-- 互動邏輯 -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      // 確保 KaTeX 渲染
+      if (window.renderMathInElement) {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ]
+        });
+      }
+
+      const sZ1 = document.getElementById('sliderZ1');
+      const sZ2 = document.getElementById('sliderZ2');
+      const lblZ1 = document.getElementById('labelZ1');
+      const lblZ2 = document.getElementById('labelZ2');
+      const vecZ1 = document.getElementById('valVecZ1');
+      const vecZ2 = document.getElementById('valVecZ2');
+      const randomBtn = document.getElementById('randomSampleBtn');
+
+      // SVG 元素
+      const face = document.getElementById('svgFace');
+      const mouth = document.getElementById('svgMouth');
+      const eyeL = document.getElementById('eyeL');
+      const eyeR = document.getElementById('eyeR');
+      const sparkL = document.getElementById('sparkleL');
+      const sparkR = document.getElementById('sparkleR');
+      const blushL = document.getElementById('blushL');
+      const blushR = document.getElementById('blushR');
+
+      function updateRender() {
+        const z1 = parseFloat(sZ1.value); // -1 到 +1 (微笑)
+        const z2 = parseFloat(sZ2.value); // -1 到 +1 (臉寬)
+
+        // 更新數據標籤
+        lblZ1.textContent = (z1 >= 0 ? '+' : '') + z1.toFixed(2);
+        lblZ2.textContent = (z2 >= 0 ? '+' : '') + z2.toFixed(2);
+        vecZ1.textContent = (z1 >= 0 ? '+' : '') + z1.toFixed(2);
+        vecZ2.textContent = (z2 >= 0 ? '+' : '') + z2.toFixed(2);
+
+        // 臉型寬度與高度變化
+        const rx = 66 + z2 * 14;
+        const ry = 76 - z2 * 6;
+        face.setAttribute('rx', rx);
+        face.setAttribute('ry', ry);
+
+        // 眼睛間距與開闔
+        const eyeOffset = 28 + z2 * 7;
+        const eyeHeight = Math.max(3.5, 8 - Math.abs(z1) * 2.5); // 笑或癟嘴時眼睛微瞇
+        eyeL.setAttribute('cx', 100 - eyeOffset);
+        eyeR.setAttribute('cx', 100 + eyeOffset);
+        eyeL.setAttribute('ry', eyeHeight);
+        eyeR.setAttribute('ry', eyeHeight);
+
+        // 瞳孔反光點
+        sparkL.setAttribute('cx', 100 - eyeOffset + 2);
+        sparkR.setAttribute('cx', 100 + eyeOffset + 2);
+
+        // 腮紅
+        blushL.setAttribute('cx', 100 - eyeOffset - 8);
+        blushR.setAttribute('cx', 100 + eyeOffset + 8);
+        blushL.setAttribute('opacity', Math.max(0.1, 0.2 + z1 * 0.2));
+        blushR.setAttribute('opacity', Math.max(0.1, 0.2 + z1 * 0.2));
+
+        // 嘴型曲線計算 (貝茲曲線)
+        const mouthCenterY = 126 + z1 * 20;
+        mouth.setAttribute('d', `M ${78 - z2 * 3} 126 Q 100 ${mouthCenterY} ${122 + z2 * 3} 126`);
+      }
+
+      sZ1.addEventListener('input', updateRender);
+      sZ2.addEventListener('input', updateRender);
+
+      randomBtn.addEventListener('click', function() {
+        const r1 = (Math.random() * 1.7 - 0.85).toFixed(2);
+        const r2 = (Math.random() * 1.7 - 0.85).toFixed(2);
+        sZ1.value = r1;
+        sZ2.value = r2;
+        updateRender();
+      });
+
+      // 初始化
+      updateRender();
+
+      // 時間軸連動函數 (掛載至 window 供 onclick 呼叫)
+      window.applyPreset = function(z1, z2) {
+        sZ1.value = z1;
+        sZ2.value = z2;
+        updateRender();
+        // 平滑滾動至互動旋鈕實驗室區塊
+        const labElement = document.querySelector('section:nth-of-type(3)');
+        if (labElement) {
+          labElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      };
+    });
+  </script>
+</body>
+</html>
