@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>【iPAS AI應用規劃師_中級科目三 系列 EP17】ROC 與迴歸指標｜帶你看懂 ROC、AUC、macro 與 micro 和迴歸指標。</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #111827;
+      --card-border: #1f293d;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --accent-amber: #f59e0b;
+      --accent-emerald: #10b981;
+      --accent-purple: #a855f7;
+      --accent-rose: #f43f5e;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.65;
+      padding-bottom: 60px;
+    }
+
+    header {
+      background: linear-gradient(135deg, #0e172a 0%, #171d36 50%, #0d1222 100%);
+      border-bottom: 1px solid var(--card-border);
+      padding: 36px 20px 30px 20px;
+      text-align: center;
+    }
+    .badge {
+      display: inline-block;
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--primary);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 4px 14px;
+      border-radius: 9999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-size: 1.65rem;
+      font-weight: 800;
+      color: #ffffff;
+      max-width: 880px;
+      margin: 0 auto 10px auto;
+      line-height: 1.45;
+    }
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    main {
+      max-width: 920px;
+      margin: 28px auto;
+      padding: 0 16px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 26px;
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 12px;
+    }
+
+    .callout {
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin: 16px 0;
+      font-size: 0.95rem;
+    }
+    .callout-title {
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .callout-amber {
+      background: rgba(245, 158, 11, 0.1);
+      border-left: 4px solid var(--accent-amber);
+      border-top: 1px solid rgba(245, 158, 11, 0.2);
+      border-right: 1px solid rgba(245, 158, 11, 0.2);
+      border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+    }
+    .callout-amber .callout-title { color: #fbbf24; }
+    
+    .callout-blue {
+      background: rgba(56, 189, 248, 0.08);
+      border-left: 4px solid var(--primary);
+      border-top: 1px solid rgba(56, 189, 248, 0.2);
+      border-right: 1px solid rgba(56, 189, 248, 0.2);
+      border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+    }
+    .callout-blue .callout-title { color: #38bdf8; }
+
+    .callout-emerald {
+      background: rgba(16, 185, 129, 0.1);
+      border-left: 4px solid var(--accent-emerald);
+      border-top: 1px solid rgba(16, 185, 129, 0.2);
+      border-right: 1px solid rgba(16, 185, 129, 0.2);
+      border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+    }
+    .callout-emerald .callout-title { color: #34d399; }
+
+    .callout-purple {
+      background: rgba(168, 85, 247, 0.1);
+      border-left: 4px solid var(--accent-purple);
+      border-top: 1px solid rgba(168, 85, 247, 0.2);
+      border-right: 1px solid rgba(168, 85, 247, 0.2);
+      border-bottom: 1px solid rgba(168, 85, 247, 0.2);
+    }
+    .callout-purple .callout-title { color: #c084fc; }
+
+    .callout-rose {
+      background: rgba(244, 63, 94, 0.1);
+      border-left: 4px solid var(--accent-rose);
+      border-top: 1px solid rgba(244, 63, 94, 0.2);
+      border-right: 1px solid rgba(244, 63, 94, 0.2);
+      border-bottom: 1px solid rgba(244, 63, 94, 0.2);
+    }
+    .callout-rose .callout-title { color: #fb7185; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn:hover { background: #1d4ed8; }
+
+    .math-formula {
+      display: inline-flex;
+      align-items: center;
+      font-family: "Cambria Math", "Times New Roman", serif;
+      font-style: italic;
+      padding: 4px 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+      color: #e0f2fe;
+    }
+    .math-fraction {
+      display: inline-flex;
+      flex-direction: column;
+      vertical-align: middle;
+      text-align: center;
+      padding: 0 4px;
+      font-style: normal;
+    }
+    .math-num {
+      border-bottom: 1px solid #7dd3fc;
+      padding-bottom: 1px;
+    }
+    .math-den {
+      padding-top: 1px;
+    }
+
+    .slide-svg-box {
+      margin: 18px 0;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #334155;
+      background: #ffffff;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+    }
+
+    .chart-panel {
+      background: #060911;
+      border: 1px solid #1e293b;
+      border-radius: 14px;
+      padding: 20px;
+      margin-top: 16px;
+    }
+    .slider-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #1e293b;
+    }
+    .slider-label {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+    .range-input {
+      flex: 1;
+      min-width: 180px;
+      height: 6px;
+      background: #334155;
+      border-radius: 4px;
+      outline: none;
+      accent-color: #38bdf8;
+      cursor: pointer;
+    }
+    .stat-pill {
+      background: #1e293b;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-family: monospace;
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      margin: 16px 0;
+    }
+    @media (min-width: 768px) {
+      .grid-2 {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .calc-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 14px;
+    }
+    @media (min-width: 640px) {
+      .calc-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+    .calc-box {
+      background: #090e1a;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 14px 10px;
+      text-align: center;
+    }
+    .calc-box-title {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .calc-box-val {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #38bdf8;
+      margin: 4px 0;
+    }
+    .calc-box-sub {
+      font-size: 0.78rem;
+      color: #64748b;
+    }
+
+    .faq-item {
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      background: #060911;
+      overflow: hidden;
+    }
+    .faq-btn {
+      width: 100%;
+      text-align: left;
+      padding: 12px 16px;
+      background: transparent;
+      color: #f1f5f9;
+      font-size: 0.92rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .faq-ans {
+      display: none;
+      padding: 12px 16px;
+      border-top: 1px solid #1e293b;
+      color: #94a3b8;
+      font-size: 0.88rem;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .timeline {
+      position: relative;
+      margin-top: 24px;
+      padding-left: 20px;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 78px;
+      top: 10px;
+      bottom: 20px;
+      width: 2px;
+      background: #1f293d;
+    }
+    .timeline-item {
+      position: relative;
+      display: flex;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .timeline-timestamp {
+      width: 68px;
+      min-width: 68px;
+      font-family: monospace;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #38bdf8;
+      background: #060911;
+      padding: 4px 6px;
+      border-radius: 6px;
+      border: 1px solid #1e293b;
+      text-align: center;
+      height: fit-content;
+      z-index: 1;
+    }
+    .timeline-node {
+      position: absolute;
+      left: 74px;
+      top: 10px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #38bdf8;
+      border: 2px solid var(--card-bg);
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.7);
+      z-index: 2;
+    }
+    .timeline-bubble {
+      flex: 1;
+      background: #060911;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-left: 14px;
+      font-size: 0.92rem;
+      line-height: 1.65;
+      color: #cbd5e1;
+    }
+    .tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+    .tag-quiz { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .tag-concept { background: rgba(56, 189, 248, 0.2); color: #60a5fa; }
+    .tag-formula { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .tag-exam { background: rgba(244, 63, 94, 0.2); color: #fb7185; }
+    .tag-biz { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      background: #060911;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #1e293b;
+    }
+    th, td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid #1e293b;
+      font-size: 0.9rem;
+    }
+    th {
+      background: #1e293b;
+      color: #38bdf8;
+      font-weight: 600;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    code {
+      background: rgba(255,255,255,0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, monospace;
+      color: #38bdf8;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="badge">韋哥科技教室 ｜ iPAS AI應用規劃師 中級科目三 系列</div>
+    <h1>【iPAS AI應用規劃師_中級科目三 系列 EP17】ROC 與迴歸指標</h1>
+    <p class="subtitle">帶你看懂 ROC、AUC、macro 與 micro 和迴歸指標。完整圖解、手算公式與逐字稿</p>
+  </header>
+
+  <main>
+
+    <!-- 1. 開場思考題 -->
+    <section class="card">
+      <div class="card-title">
+        <span>🎯</span> 開場思考題：模型跨語言衰退分析
+      </div>
+      <div class="callout callout-amber">
+        <div class="callout-title">❓ 思考情境</div>
+        <p>情感模型判斷一段評論是「正面」還是「負面」。在英文資料上 Micro F1 為 <strong>0.91</strong>，部署到西班牙文資料後掉到 <strong>0.58</strong>，哪個說法最合理？</p>
+        <div style="margin-top: 10px; padding-left: 6px; font-size: 0.9rem;">
+          <div>1. 模型在西班牙文上過擬合 (Overfitting)</div>
+          <div>2. 應該改用 Macro F1 評估</div>
+          <div>3. <strong>語言轉移造成召回率下降</strong></div>
+          <div>4. 應該改用 MSE 來評估</div>
+        </div>
+      </div>
+
+      <button class="btn" onclick="toggleAnswer()">點擊展開解析</button>
+
+      <div id="quiz-explanation" style="display: none; margin-top: 14px;" class="callout callout-emerald">
+        <div class="callout-title">💡 解析揭曉：答案是 (3) 語言轉移造成召回率下降</div>
+        <p>• <strong>模型沒在西班牙文上訓練：</strong>談不上在西班牙文上過擬合。<br>
+        • <strong>召回率崩跌：</strong>換了語言，模型認不出關鍵情緒特徵，容易偏向看成同一類，造成另一類的情緒被大量漏抓（召回率下降），進而將整體 F1-score 拉低。<br>
+        • <strong>干擾選項排除：</strong>改用 Micro F1 只是換算法，不能解決問題；MSE 是迴歸指標，根本不能用於分類任務！</p>
+      </div>
+    </section>
+
+    <!-- 2. 章節架構 SVG 1 -->
+    <section class="card">
+      <div class="card-title">
+        <span>📑</span> 第十六章：評估指標（後半）架構圖
+      </div>
+      <div class="slide-svg-box">
+        <svg viewBox="0 0 960 400" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; font-family:'Noto Sans TC', sans-serif;">
+          <circle cx="28" cy="32" r="6" fill="#f97316"/>
+          <text x="44" y="38" fill="#6366f1" font-size="19" font-weight="600">iPAS 17 · ROC 與迴歸指標</text>
+          <line x1="285" y1="33" x2="930" y2="33" stroke="#818cf8" stroke-width="2"/>
+          <text x="25" y="105" fill="#1e1b4b" font-size="38" font-weight="800">第十六章：<tspan fill="#ea580c">評估指標（後半）</tspan></text>
+          
+          <rect x="25" y="135" width="910" height="58" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+          <rect x="42" y="147" width="85" height="34" rx="6" fill="#64748b"/>
+          <text x="54" y="171" fill="#ffffff" font-size="18" font-weight="700">上一集</text>
+          <text x="145" y="172" fill="#334155" font-size="20" font-weight="600">一、混淆矩陣　二、不平衡資料　三、F1 與門檻</text>
+
+          <rect x="25" y="210" width="910" height="58" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+          <rect x="42" y="222" width="42" height="34" rx="6" fill="#0d9488"/>
+          <text x="51" y="246" fill="#ffffff" font-size="20" font-weight="700">四</text>
+          <text x="100" y="247" fill="#1e293b" font-size="22" font-weight="700">ROC、AUC、macro 與 micro</text>
+
+          <rect x="25" y="285" width="910" height="58" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+          <rect x="42" y="297" width="42" height="34" rx="6" fill="#ea580c"/>
+          <text x="51" y="321" fill="#ffffff" font-size="20" font-weight="700">五</text>
+          <text x="100" y="322" fill="#1e293b" font-size="22" font-weight="700">迴歸指標</text>
+
+          <text x="25" y="380" fill="#475569" font-size="19" font-weight="600">看整體區分能力、看每一類 ｜ 誤差平方、絕對值、解釋比例</text>
+        </svg>
+      </div>
+    </section>
+
+    <!-- 3. 重點四：ROC 曲線與 AUC 指標 + 模擬器 -->
+    <section class="card">
+      <div class="card-title">
+        <span>📈</span> 重點四：ROC 曲線與 AUC 指標
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.95rem;">
+        ROC 曲線把門檻（Threshold）從高調到低，畫出每個門檻下的表現。
+      </p>
+
+      <div class="grid-2">
+        <div class="callout callout-blue">
+          <div class="callout-title">橫軸：假正率 (FPR / 冤枉好人比例)</div>
+          <p style="font-size: 0.88rem; color: #94a3b8; margin-bottom: 8px;">分母是全部好人，分子是被冤枉抓錯的人：</p>
+          <div class="math-formula">
+            FPR = 
+            <span class="math-fraction">
+              <span class="math-num">FP</span>
+              <span class="math-den">FP + TN</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="callout callout-emerald">
+          <div class="callout-title">縱軸：真正率 (TPR / 抓到壞人比例 / 召回率)</div>
+          <p style="font-size: 0.88rem; color: #94a3b8; margin-bottom: 8px;">分母是全部壞人，分子是成功抓到的人：</p>
+          <div class="math-formula">
+            TPR = Recall = 
+            <span class="math-fraction">
+              <span class="math-num">TP</span>
+              <span class="math-den">TP + FN</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 互動式 ROC 模擬器 -->
+      <div class="chart-panel">
+        <div class="slider-row">
+          <span class="slider-label">滑動調節門檻 (Threshold)：</span>
+          <input type="range" id="thresholdSlider" class="range-input" min="0" max="100" value="35" oninput="handleSlider(this.value)">
+          <div style="display: flex; gap: 8px;">
+            <span class="stat-pill" id="dispThreshold">門檻: 0.65</span>
+            <span class="stat-pill" id="dispFPR" style="color:#fb7185;">FPR: 0.12</span>
+            <span class="stat-pill" id="dispTPR" style="color:#34d399;">TPR: 0.86</span>
+          </div>
+        </div>
+
+        <svg viewBox="0 0 500 320" style="display:block; margin:0 auto; max-width:100%; height:auto;">
+          <line x1="50" y1="20" x2="50" y2="260" stroke="#334155" stroke-width="2" />
+          <line x1="50" y1="260" x2="450" y2="260" stroke="#334155" stroke-width="2" />
+          <line x1="50" y1="20" x2="450" y2="20" stroke="#1e293b" stroke-dasharray="3,3" />
+          <line x1="450" y1="20" x2="450" y2="260" stroke="#1e293b" stroke-dasharray="3,3" />
+          <line x1="50" y1="140" x2="450" y2="140" stroke="#1e293b" stroke-dasharray="3,3" />
+          <line x1="250" y1="20" x2="250" y2="260" stroke="#1e293b" stroke-dasharray="3,3" />
+
+          <line x1="50" y1="260" x2="450" y2="20" stroke="#64748b" stroke-width="1.8" stroke-dasharray="6,6" />
+          <text x="290" y="180" fill="#64748b" font-size="11" transform="rotate(-31 290 180)">AUC = 0.5 (隨機亂猜)</text>
+
+          <path d="M 50 260 Q 75 40 450 20 L 450 260 Z" fill="rgba(56, 189, 248, 0.1)" />
+          <path d="M 50 260 Q 75 40 450 20" fill="none" stroke="#38bdf8" stroke-width="3.5" />
+
+          <circle id="rocMarker" cx="110" cy="55" r="7" fill="#f59e0b" stroke="#ffffff" stroke-width="2.5" />
+
+          <text x="180" y="295" fill="#94a3b8" font-size="12">橫軸：假正率 FPR (好人被冤枉比例)</text>
+          <text x="-180" y="18" fill="#94a3b8" font-size="12" transform="rotate(-90)">縱軸：真正率 TPR (抓到壞人比例)</text>
+          <text x="44" y="275" fill="#64748b" font-size="10">0</text>
+          <text x="442" y="275" fill="#64748b" font-size="10">1.0</text>
+          <text x="32" y="25" fill="#64748b" font-size="10">1.0</text>
+          <text x="120" y="115" fill="#38bdf8" font-size="12" font-weight="bold">優良模型 (貼近左上角，AUC 接近 1.0)</text>
+        </svg>
+
+        <div style="margin-top: 14px; font-size: 0.88rem; color: #94a3b8; background: #0b1120; padding: 12px; border-radius: 8px;">
+          📌 <strong>AUC 白話意義：</strong> 隨機挑一個壞人、一個好人，模型給壞人的分數比給好人高的機率。0.5 表示跟擲銅板盲猜一樣；ROC 的好處在於不綁定特定門檻，能綜觀整體的區分能力。
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Macro vs Micro -->
+    <section class="card">
+      <div class="card-title">
+        <span>⚖️</span> 多類別指標聚合策略：Macro vs. Micro
+      </div>
+      <div class="grid-2">
+        <div class="callout callout-purple">
+          <div class="callout-title">🟣 Macro Average (宏觀平均)</div>
+          <p style="margin-bottom: 8px; font-weight: 600; color: #e9d5ff;">「每類一樣重要，小類別表現差會被看見」</p>
+          <ul style="padding-left: 18px; font-size: 0.88rem; color: #cbd5e1; line-height: 1.6;">
+            <li><strong>算法：</strong>各類別分開算一次指標再平均。</li>
+            <li><strong>例：</strong>三類 F1 為 0.9、0.9、0.3，Macro F1 = 0.70（小類別拉低平均）。</li>
+            <li><strong>比喻：</strong>各班分開算再平均，小班表現差會被看見。</li>
+          </ul>
+        </div>
+
+        <div class="callout callout-emerald">
+          <div class="callout-title">🟢 Micro Average (微觀平均)</div>
+          <p style="margin-bottom: 8px; font-weight: 600; color: #a7f3d0;">「全部樣本一起算，大類別主導」</p>
+          <ul style="padding-left: 18px; font-size: 0.88rem; color: #cbd5e1; line-height: 1.6;">
+            <li><strong>算法：</strong>所有類別的 TP、FP、FN 各自加總後再算一次。</li>
+            <li><strong>例：</strong>大類別樣本數多、貢獻最多 TP/FP，由大類說了算。</li>
+            <li><strong>比喻：</strong>全校學生打散一起算，大班說了算。</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout callout-rose">
+        <div class="callout-title">⚠️ iPAS 程式題細節：Scikit-learn cross_validate</div>
+        <p style="font-size: 0.9rem;">
+          多類別分類寫 <code>scoring='f1'</code> 跑不出有效結果！因為 F1 預設只算二元分類（需指定正類），多類別任務務必明確寫出平均方式：<code>scoring='f1_macro'</code> 或 <code>scoring='f1_micro'</code>。（Accuracy 算全體答對率，不用分正負類，所以不受影響）。
+        </p>
+      </div>
+    </section>
+
+    <!-- 5. 重點五：迴歸指標 SVG 2 + 表格 + 手算 -->
+    <section class="card">
+      <div class="card-title">
+        <span>📐</span> 重點五：迴歸四大指標總覽
+      </div>
+      <div class="slide-svg-box">
+        <svg viewBox="0 0 960 440" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; font-family:'Noto Sans TC', sans-serif;">
+          <circle cx="28" cy="32" r="6" fill="#f97316"/>
+          <text x="44" y="38" fill="#6366f1" font-size="19" font-weight="600">iPAS 17 · ROC 與迴歸指標</text>
+          <line x1="285" y1="33" x2="930" y2="33" stroke="#818cf8" stroke-width="2"/>
+          <text x="25" y="105" fill="#1e1b4b" font-size="38" font-weight="800">重點五：<tspan fill="#ea580c">迴歸指標</tspan></text>
+
+          <rect x="25" y="130" width="910" height="66" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+          <text x="48" y="172" fill="#1e293b" font-size="24" font-weight="800">MSE</text>
+          <text x="135" y="159" fill="#1e293b" font-size="18" font-weight="600">誤差平方的平均：放大誤差</text>
+          <text x="135" y="183" fill="#ea580c" font-size="15" font-weight="600">大錯特別不能接受</text>
+
+          <rect x="25" y="206" width="910" height="66" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+          <text x="40" y="248" fill="#1e293b" font-size="24" font-weight="800">RMSE</text>
+          <text x="135" y="235" fill="#1e293b" font-size="18" font-weight="600">MSE 開根號：單位和目標相同，好解讀</text>
+          <text x="135" y="259" fill="#ea580c" font-size="15" font-weight="600">報告給人看</text>
+
+          <rect x="25" y="282" width="910" height="66" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+          <text x="45" y="324" fill="#1e293b" font-size="24" font-weight="800">MAE</text>
+          <text x="135" y="311" fill="#1e293b" font-size="18" font-weight="600">誤差絕對值的平均：比較不怕極端值</text>
+          <text x="135" y="335" fill="#ea580c" font-size="15" font-weight="600">有離群值</text>
+
+          <rect x="25" y="358" width="910" height="66" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+          <text x="48" y="400" fill="#1e293b" font-size="24" font-weight="800">R²</text>
+          <text x="135" y="387" fill="#1e293b" font-size="18" font-weight="600">解釋了幾成變異</text>
+          <text x="135" y="411" fill="#ea580c" font-size="15" font-weight="600">看模型解釋力</text>
+        </svg>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>指標</th>
+            <th>公式</th>
+            <th>特性與適用情境</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>MAE</strong></td>
+            <td>$$\frac{1}{n}\sum |y_i - \hat{y}_i|$$</td>
+            <td>單位相同、抗離群值，直觀好懂（報告平均誤差幾分鐘）。</td>
+          </tr>
+          <tr>
+            <td><strong>MSE</strong></td>
+            <td>$$\frac{1}{n}\sum (y_i - \hat{y}_i)^2$$</td>
+            <td>單位為平方，會放大較大誤差，用於大錯特別不能被接受時。</td>
+          </tr>
+          <tr>
+            <td><strong>RMSE</strong></td>
+            <td>$$\sqrt{\text{MSE}}$$</td>
+            <td>開根號回到原單位，同時具備放大懲罰大誤差的特點。</td>
+          </tr>
+          <tr>
+            <td><strong>$R^2$</strong></td>
+            <td>$$1 - \frac{\text{RSS}}{\text{TSS}}$$</td>
+            <td>解釋變異比例。=1 為完美；=0 跟猜平均一樣；&lt;0 比猜平均還差。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 手算範例 -->
+      <div style="margin-top: 18px; background: #060911; border: 1px solid #1e293b; padding: 18px; border-radius: 12px;">
+        <div style="font-weight: 700; font-size: 0.95rem; color: #f1f5f9; margin-bottom: 6px;">🧮 逐字稿數值手算演練</div>
+        <p style="font-size: 0.85rem; color: #94a3b8;">
+          實際值 $y = [10, 20, 30]$（平均 20）；預測值 $\hat{y} = [12, 18, 33]$。<br>
+          誤差為：$[-2, +2, -3]$。$\text{TSS} = (-10)^2 + 0^2 + 10^2 = 200$，$\text{RSS} = 4 + 4 + 9 = 17$。
+        </p>
+        <div class="calc-grid">
+          <div class="calc-box">
+            <div class="calc-box-title">MAE</div>
+            <div class="calc-box-val">2.33</div>
+            <div class="calc-box-sub">(2 + 2 + 3) / 3</div>
+          </div>
+          <div class="calc-box">
+            <div class="calc-box-title">MSE</div>
+            <div class="calc-box-val" style="color: #fb7185;">5.67</div>
+            <div class="calc-box-sub">(4 + 4 + 9) / 3</div>
+          </div>
+          <div class="calc-box">
+            <div class="calc-box-title">RMSE</div>
+            <div class="calc-box-val" style="color: #34d399;">2.38</div>
+            <div class="calc-box-sub">√5.67</div>
+          </div>
+          <div class="calc-box">
+            <div class="calc-box-title">R² (判定係數)</div>
+            <div class="calc-box-val" style="color: #fbbf24;">0.915</div>
+            <div class="calc-box-sub">1 - (17 / 200)</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. 業務導向指標與情境題 -->
+    <section class="card">
+      <div class="card-title">
+        <span>💼</span> 業務導向指標與情境決策
+      </div>
+      <div class="callout callout-emerald">
+        <div class="callout-title">🏢 特殊情境指標</div>
+        <ul style="margin-left: 20px; line-height: 1.8; font-size: 0.9rem;">
+          <li><strong>醫療診斷：</strong>自訂誤判成本矩陣（如漏診扣 100 分、誤報扣 5 分），選總代價最低者。</li>
+          <li><strong>推薦/搜尋排序：</strong>採用 <strong>NDCG</strong>，越相關的項目排越前面分數越高（滿分 1）。</li>
+          <li><strong>商業決策：</strong>直接看收益，預測結果換算為賺賠金額進行比較。</li>
+        </ul>
+      </div>
+
+      <div style="margin-top: 14px;">
+        <div style="font-weight: 700; font-size: 0.95rem; color: #f59e0b; margin-bottom: 8px;">🛵 外送平台送達時間：主管三問決策演練</div>
+        <div class="faq-item">
+          <button class="faq-btn" onclick="toggleFaq(1)">
+            <span>問題 1：外送時間「平均差幾分鐘」？</span>
+            <span id="faq-sign-1">＋</span>
+          </button>
+          <div class="faq-ans" id="faq-1">
+            👉 <strong>看 MAE</strong>。單位為分鐘且最直觀；RMSE 雖然單位也是分鐘，但會放大差很多的那幾筆，不能直接說成平均差幾分鐘。
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-btn" onclick="toggleFaq(2)">
+            <span>問題 2：「遲到很久」的情況多不多？</span>
+            <span id="faq-sign-2">＋</span>
+          </button>
+          <div class="faq-ans" id="faq-2">
+            👉 <strong>看 RMSE 或 MSE</strong>。因為平方項會倍數放大較大的誤差，極端遲到越多，數值會被明顯拉高。
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-btn" onclick="toggleFaq(3)">
+            <span>問題 3：模型到底「有沒有比亂猜好」？</span>
+            <span id="faq-sign-3">＋</span>
+          </button>
+          <div class="faq-ans" id="faq-3">
+            👉 <strong>看 R² (判定係數)</strong>。大於 0 才比直接猜平均好；若小於 0 則代表預測能力比猜平均還糟糕。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. 最容易搞混的 SVG 3 -->
+    <section class="card">
+      <div class="card-title">
+        <span>⚡</span> 最容易搞混的指標對比
+      </div>
+      <div class="slide-svg-box">
+        <svg viewBox="0 0 960 440" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; font-family:'Noto Sans TC', sans-serif;">
+          <circle cx="28" cy="32" r="6" fill="#f97316"/>
+          <text x="44" y="38" fill="#6366f1" font-size="19" font-weight="600">iPAS 17 · ROC 與迴歸指標</text>
+          <line x1="285" y1="33" x2="930" y2="33" stroke="#818cf8" stroke-width="2"/>
+          <text x="25" y="105" fill="#1e1b4b" font-size="38" font-weight="800">最容易搞混的</text>
+
+          <rect x="25" y="130" width="410" height="58" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+          <text x="42" y="166" fill="#1e293b" font-size="19" font-weight="700">MSE <tspan font-size="17" font-weight="500">單位是平方</tspan></text>
+          <text x="456" y="166" fill="#64748b" font-size="16" font-weight="700">vs</text>
+          <rect x="495" y="130" width="440" height="58" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+          <text x="512" y="166" fill="#ea580c" font-size="19" font-weight="700">RMSE <tspan fill="#1e293b" font-size="17" font-weight="500">開根號回到原單位</tspan></text>
+
+          <rect x="25" y="202" width="410" height="58" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+          <text x="42" y="238" fill="#1e293b" font-size="19" font-weight="700">macro <tspan font-size="17" font-weight="500">每類平均</tspan></text>
+          <text x="456" y="238" fill="#64748b" font-size="16" font-weight="700">vs</text>
+          <rect x="495" y="202" width="440" height="58" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+          <text x="512" y="238" fill="#ea580c" font-size="19" font-weight="700">micro <tspan fill="#1e293b" font-size="17" font-weight="500">全部樣本一起</tspan></text>
+
+          <rect x="25" y="274" width="410" height="58" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+          <text x="42" y="310" fill="#1e293b" font-size="19" font-weight="700">R² <tspan font-size="17" font-weight="500">解釋變異的比例</tspan></text>
+          <text x="456" y="310" fill="#64748b" font-size="16" font-weight="700">vs</text>
+          <rect x="495" y="274" width="440" height="58" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+          <text x="512" y="310" fill="#ea580c" font-size="19" font-weight="700">準確率 <tspan fill="#1e293b" font-size="17" font-weight="500">分類猜對的比例</tspan></text>
+
+          <rect x="25" y="346" width="410" height="58" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+          <text x="42" y="382" fill="#1e293b" font-size="18" font-weight="700">ROC <tspan font-size="16" font-weight="500">橫 FPR、縱 TPR</tspan></text>
+          <text x="456" y="382" fill="#64748b" font-size="16" font-weight="700">vs</text>
+          <rect x="495" y="346" width="440" height="58" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+          <text x="512" y="382" fill="#ea580c" font-size="18" font-weight="700">PR 曲線 <tspan fill="#1e293b" font-size="16" font-weight="500">橫召回率、縱精確率，不平衡更敏感</tspan></text>
+        </svg>
+      </div>
+    </section>
+
+    <!-- 8. 這集帶走兩句話 SVG 4 -->
+    <section class="card">
+      <div class="card-title">
+        <span>💡</span> 這集帶走兩句話
+      </div>
+      <div class="slide-svg-box">
+        <svg viewBox="0 0 960 310" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; font-family:'Noto Sans TC', sans-serif;">
+          <circle cx="28" cy="32" r="6" fill="#f97316"/>
+          <text x="44" y="38" fill="#6366f1" font-size="19" font-weight="600">iPAS 17 · ROC 與迴歸指標</text>
+          <line x1="285" y1="33" x2="930" y2="33" stroke="#818cf8" stroke-width="2"/>
+          <text x="25" y="105" fill="#1e1b4b" font-size="38" font-weight="800">這集帶走<tspan fill="#ea580c">兩句話</tspan></text>
+
+          <rect x="25" y="130" width="910" height="66" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+          <rect x="45" y="145" width="34" height="36" rx="6" fill="#6366f1"/>
+          <text x="56" y="171" fill="#ffffff" font-size="22" font-weight="800">1</text>
+          <text x="96" y="171" fill="#1e1b4b" font-size="21" font-weight="700">ROC 和 AUC 看整體區分能力，macro 看每一類</text>
+
+          <rect x="25" y="210" width="910" height="66" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+          <rect x="45" y="225" width="34" height="36" rx="6" fill="#6366f1"/>
+          <text x="56" y="251" fill="#ffffff" font-size="22" font-weight="800">2</text>
+          <text x="96" y="251" fill="#1e1b4b" font-size="21" font-weight="700">迴歸指標：誤差平方、絕對值、解釋比例</text>
+        </svg>
+      </div>
+    </section>
+
+    <!-- 9. 完整時間軸逐字稿模組 -->
+    <section class="card">
+      <div class="card-title">
+        <span>⏱️</span> 完整時間軸逐字稿模組
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">
+        包含影片每一句教學的完整逐字稿紀錄與專業段落標籤：
+      </p>
+
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-timestamp">00:00:00</div>
+          <div class="timeline-node"></div>
+          <div class="timeline-bubble">
+            <span class="tag tag-quiz">開場思考題</span>
+            <p>先問你一題：情感模型判斷一段評論是正面還是負面，他在英文資料上 micro F1 是 0.91，部署到西班牙文資料後掉到 0.58，哪個說法最合理？<br>
+            第一、模型在西班牙文上過擬合。<br>
+            第二、應該改用 macro F1。<br>
+            第三、語言轉移造成召回率下降。<br>
+            第四、應該改用 MSE 來評估。<br>
+            先停下來想一下，答案在這集前半揭曉。</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-timestamp">00:00:26</div>
+          <div class="timeline-node"></div>
+          <div class="timeline-bubble">
+            <span class="tag tag-concept">單元概述</span>
+            <p>這是第 16 章評估指標的後半。第 16 章有五個重點，上一集講了前三個：混淆矩陣、不平衡資料，還有 F1 與門檻。這集講後兩個：ROC、AUC、macro 與 micro，還有迴歸指標。<br>
+            這兩個重點的一句話是：看整體區分能力、看每一類，還有誤差平方、絕對值、解釋比例。</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-timestamp">00:00:47</div>
+          <div class="timeline-node"></div>
+          <div class="timeline-bubble">
+            <span class="tag tag-concept">ROC 曲線原理</span>
+            <p>重點四：ROC、AUC、macro 與 micro。<br>
+            ROC 曲線把門檻從高調到低，畫出每個門檻下的表現。橫軸是假正率，好人被冤枉的比例，假正率是 FP / (FP + TN)，分母是全部好人；縱軸是真正率，壞人被抓到的比例，也就是召回率。<br>
+            門檻很高時，幾乎誰都不抓，點在左下角；門檻一路調低，抓到的壞人和冤枉的好人都變多，點往右上走，最後到右上角。好模型會先往上衝，壞人抓很多、好人冤枉很少，曲線貼近左上角，下面的面積就大。</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-timestamp">00:01:23</div>
+          <div class="timeline-node"></div>
+          <div class="timeline-bubble">
+            <span class="tag tag-concept">AUC 白話意涵</span>
+            <p>AUC 是曲線下面積，0.5 表示分辨能力和亂猜一樣，越接近 1 越好。<br>
+            AUC 的白話是：隨機挑一個壞人、一個好人，模型給壞人的分數比給好人高的機率。0.5 就是對半，跟丟銅板一樣，所以分辨能力等於亂猜。ROC 的用途是不綁特定門檻，看整體的區分能力。</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-timestamp">00:01:43</div>
+          <div class="timeline-node"></div>
+          <div class="timeline-bubble">
+            <span class="tag tag-formula">Macro vs Micro</span>
+            <p>多類別時指標要怎麼平均？<br>
+            Macro 是每個類別各算一次 F1 再平均，每類一樣重要，小類別表現差會被看見。例如三類的 F1 分別是 0.9、0.9、0.3，Macro F1 是三個加起來除以 3 等於 0.7；第三類很差，平均就被明顯拉下來。<br>
+            Micro 是全部樣本一起算，大類別主導。做法是先把所有類別的 TP、FP、FN 各自加總，再用加總後的數字算一次。樣本多的類別貢獻的 TP、FP 多，所以大類別說了算。<br>
+            學校版的比喻是：各班分開算再平均是 Macro，小班表現差會被看見；全校學生一起算是在 Micro，大班說了算。</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-timestamp">00:02:26</div>
+          <div class="timeline-node"></div>
+          <div class="timeline-bubble">
+            <span class="tag tag-exam">考試考點：Scikit-learn</span>
+            <p>考過一題程式細節：Scikit-learn 是程式題常用的套件，做交叉驗證時用 <code>scoring</code> 指定哪個指標打分。多類別分類用 <code>scoring='f1'</code> 跑不出有效結果，因為 F1 預設只算二元分類，要指定哪一類是正類；多類別沒有唯一的正類，要寫 <code>f1_macro</code> 這類指定平均方式的寫法。Accuracy 是準確率，只數對比，不用分正負類，所以沒問題。</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-timestamp">00:02:53</div>
+          <div class="timeline-node"></div>
+          <div class="timeline-bubble">
+            <span class="tag tag-quiz">解答開場題</span>
+            <p>回到開場那一題：模型沒在西班牙文上訓練，談不上在西班牙文上過擬合；換了語言，模型認不出關鍵情緒，容易偏向看成同一類，另一類的情緒大量被漏掉，召回率就下降。召回率下降會把 F1 拉低，所以答案是第三個「語言轉移造成召回率下降」。改 micro F1 只是換個算法，不會解決問題；MSE 是迴歸指標，不能用在分類。</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-timestamp">00:03:20</div>
+          <div class="timeline-node"></div>
+          <div class="timeline-bubble">
+            <span class="tag tag-concept">迴歸指標概述</span>
+            <p>重點五：迴歸指標。<br>
+            MSE 是誤差平方的平均，會放大誤差，用在大錯特別不能接受的時候。<br>
+            RMSE 是 MSE 開根號，單位和目標相同、好解讀，適合報告給人看。<br>
+            MAE 是誤差絕對值的平均，比較不怕極端值，適合有離群值的資料。<br>
+            R平方看模型解釋了幾成變異。<br>
+            MSE 為什麼放大誤差？誤差 10 平方後變 100，誤差 2 平方後只有 4，大誤差在 MSE 裡被放大好幾倍。MAE 只取絕對值，誤差 10 就算 10，一個離群值不會把分數拉爆。</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-timestamp">00:03:58</div>
+          <div class="timeline-node"></div>
+          <div class="timeline-bubble">
+            <span class="tag tag-formula">R平方算法</span>
+            <p>R 平方的算法要用到兩個數：RSS 是模型預測的誤差平方和，TSS 是直接猜平均的誤差平方和。R² = 1 - (RSS / TSS)。<br>
+            RSS / TSS 是模型還剩多少錯佔猜平均會錯的比例，1 減掉它就是模型解釋掉的比例。<br>
+            R² = 0.85 的意思是 85% 的變異可以被模型解釋，不能說成準確率 85%。R² 通常在 0 到 1，最高 1；等於 0 表示跟猜平均一樣；小於 0 表示比猜平均還差。</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-timestamp">00:04:34</div>
+          <div class="timeline-node"></div>
+          <div class="timeline-bubble">
+            <span class="tag tag-formula">手算推導演練</span>
+            <p>來算一次：實際值 10、20、30，預測值 12、18、33。誤差是 -2、+2、-3。<br>
+            • MAE 是 2、2、3 加起來除以 3，大約 2.33。<br>
+            • MSE 是 4、4、9 加起來除以 3，大約 5.67。<br>
+            • RMSE 是 5.67 開根號，大約 2.38。<br>
+            • R 平方要先算 TSS：實際值平均是 20，直接猜 20 的誤差是 -10、0、+10，平方和是 100 + 0 + 100 = 200。模型的 RSS 是 4 + 4 + 9 = 17。R² = 1 - (17 / 200) ≈ 0.915。</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-timestamp">00:05:13</div>
+          <div class="timeline-node"></div>
+          <div class="timeline-bubble">
+            <span class="tag tag-concept">會考分數比喻</span>
+            <p>學校版的比喻是預測會考分數：MSE 的單位是分的平方，開根號成 RMSE 才回到「分」這個單位。RMSE 等於 8 分不等於平均差 8 分，它會放大差很多的那幾個人；要說平均差幾分，用 MAE。R² = 0.85 是成績差異有 85% 被模型解釋。</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-timestamp">00:05:37</div>
+          <div class="timeline-node"></div>
+          <div class="timeline-bubble">
+            <span class="tag tag-exam">114年考題剖析</span>
+            <p>114 年那回的第 38 題：給一段程式要你認出是 MSE。講義整理了三種長相：誤差的平方加總再除以筆數是 MSE；上面再開根號是 RMSE；誤差取絕對值再平均是 MAE。</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-timestamp">00:05:54</div>
+          <div class="timeline-node"></div>
+          <div class="timeline-bubble">
+            <span class="tag tag-biz">業務導向指標</span>
+            <p>講義另外列了業務導向的指標：<br>
+            • 醫療用自訂的誤判成本矩陣／漏診成本矩陣，是替每一種錯訂一個代價。例如漏診一次扣 100 分，誤報一次扣 5 分，再看哪個模型總代價最低。<br>
+            • 推薦搜尋排序用 NDCG，這是給排序結果打分的指標，越相關的項目排得越前面分數越高，滿分 1。<br>
+            • 商業決策用收益，直接把預測結果換算成賺多少錢、賠多少錢來比較模型。</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-timestamp">00:06:24</div>
+          <div class="timeline-node"></div>
+          <div class="timeline-bubble">
+            <span class="tag tag-biz">外送平台送達時間</span>
+            <p>來看一個場景：外送平台預測送達時間，主管問了三個問題：平均差幾分鐘？遲到很久的情況多不多？模型到底有沒有比亂猜好？這三個問題各看哪個指標？先想一下。<br>
+            平均差幾分鐘看 MAE（單位是分鐘；RMSE 單位也是分鐘，但會放大差很多的那幾筆，不能直接說成平均差幾分鐘）；遲到很久的情況多不多看 RMSE 或 MSE（大誤差會被放大）；有沒有比猜平均好看 R 平方（大於 0 才比猜平均好）。</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-timestamp">00:07:01</div>
+          <div class="timeline-node"></div>
+          <div class="timeline-bubble">
+            <span class="tag tag-concept">易混淆大對照</span>
+            <p>最後分辨這集最容易搞混的：<br>
+            • MSE 的單位是平方，RMSE 開根號回到原單位。<br>
+            • Macro 是每類平均，Micro 是全部樣本一起。<br>
+            • R² 是解釋變異的比例，準確率是分類猜對的比例。<br>
+            • ROC 曲線橫軸假正率、縱軸真正率；PR 曲線橫軸召回率、縱軸精確率，在不平衡資料更敏感。</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-timestamp">00:07:25</div>
+          <div class="timeline-node"></div>
+          <div class="timeline-bubble">
+            <span class="tag tag-concept">核心結語</span>
+            <p>這集帶走兩句話：ROC 和 AUC 看整體區分能力，Macro 看每一類；迴歸指標看誤差平方、絕對值、解釋比例。下一集進入第 17 章：超參數與優化器調整。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    function toggleAnswer() {
+      const exp = document.getElementById('quiz-explanation');
+      exp.style.display = (exp.style.display === 'none' || exp.style.display === '') ? 'block' : 'none';
+    }
+
+    function toggleFaq(index) {
+      const ans = document.getElementById('faq-' + index);
+      const sign = document.getElementById('faq-sign-' + index);
+      const isVisible = ans.style.display === 'block';
+      ans.style.display = isVisible ? 'none' : 'block';
+      sign.innerText = isVisible ? '＋' : '−';
+    }
+
+    function handleSlider(sliderVal) {
+      const t = sliderVal / 100;
+      const threshold = (1 - t * 0.95).toFixed(2);
+      
+      const fpr = Math.max(0, Math.min(1, Math.pow(t, 2.2) * 0.85 + t * 0.15));
+      const tpr = Math.max(0, Math.min(1, Math.pow(t, 0.32) * 0.95 + t * 0.05));
+
+      document.getElementById('dispThreshold').innerText = '門檻: ' + threshold;
+      document.getElementById('dispFPR').innerText = 'FPR: ' + fpr.toFixed(2);
+      document.getElementById('dispTPR').innerText = 'TPR: ' + tpr.toFixed(2);
+
+      const svgX = 50 + fpr * (450 - 50);
+      const svgY = 260 - tpr * (260 - 20);
+
+      const marker = document.getElementById('rocMarker');
+      if (marker) {
+        marker.setAttribute('cx', svgX);
+        marker.setAttribute('cy', svgY);
+      }
+    }
+
+    handleSlider(35);
+  </script>
+</body>
+</html>
