@@ -1,0 +1,1543 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iPAS AI 應用規劃師 - 超參數與優化器調整 (含 LoRA 微調)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts Inter & Noto Sans TC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      scroll-behavior: smooth;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .slide-svg-container {
+      width: 100%;
+      filter: drop-shadow(0 4px 6px -1px rgb(0 0 0 / 0.07)) drop-shadow(0 2px 4px -2px rgb(0 0 0 / 0.07));
+    }
+    .badge-math {
+      font-family: 'Times New Roman', serif;
+      font-style: italic;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col">
+
+  <!-- Toast Notification Box -->
+  <div id="toast" class="fixed top-5 right-5 z-50 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 transition-all duration-300 opacity-0 pointer-events-none translate-y-[-10px]">
+    <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toast-msg" class="text-sm font-medium">訊息提示</span>
+  </div>
+
+  <!-- Header Navigation -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm backdrop-blur-md bg-white/95">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md">
+          <i class="fa-solid fa-sliders text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">iPAS AI 應用規劃師 · 中級科目三</h1>
+          <p class="text-xs text-slate-500 font-medium">第 17 章：超參數與優化器調整 (含 LoRA 高效微調)</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="#section-slides" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition">
+          <i class="fa-solid fa-images"></i> 投影片卡片
+        </a>
+        <a href="#section-simulators" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition border border-purple-200">
+          <i class="fa-solid fa-gamepad"></i> 互動模擬器專區
+        </a>
+        <a href="#section-transcript" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition">
+          <i class="fa-solid fa-file-lines"></i> 逐字稿
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+
+    <!-- Top Video & Chapter Overview Banner -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <!-- YouTube Video Player -->
+      <div class="lg:col-span-7 bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+        <div class="relative w-full rounded-xl overflow-hidden aspect-video bg-black shadow-inner">
+          <div id="player" class="w-full h-full"></div>
+        </div>
+        <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center gap-1 text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded">
+              <i class="fa-solid fa-circle-play"></i> 播放器已連動時間軸
+            </span>
+            <span id="player-status" class="text-slate-400">目前時間: 00:00</span>
+          </div>
+          <a href="https://www.youtube.com/watch?v=wKUyx1rN0UM" target="_blank" rel="noopener noreferrer" class="hover:text-indigo-600 flex items-center gap-1">
+            <i class="fa-brands fa-youtube text-red-500"></i> 開啟 YouTube 原片
+          </a>
+        </div>
+      </div>
+
+      <!-- Quick Info & Warmup Quiz -->
+      <div class="lg:col-span-5 space-y-4">
+        <div class="bg-gradient-to-br from-indigo-900 via-indigo-800 to-purple-900 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
+          <span class="px-2.5 py-1 bg-white/20 rounded-md text-[11px] font-bold uppercase tracking-wider">iPAS 18 · 重點精華</span>
+          <h2 class="text-xl font-bold mt-2 mb-1 text-white">第 17 章：超參數與優化器調整</h2>
+          <p class="text-xs text-indigo-200 leading-relaxed mb-4">
+            超參數是工程師事先設定、<strong>不會被資料學出來的旋鈕</strong>。包含 6 大互動模擬器，深入體驗真實調參動態！
+          </p>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="bg-white/10 rounded-lg p-2.5">
+              <span class="text-indigo-300 block text-[10px]">調參雙旋鈕</span>
+              <span class="font-bold">學習率 η ＋ 批次大小</span>
+            </div>
+            <div class="bg-white/10 rounded-lg p-2.5">
+              <span class="text-indigo-300 block text-[10px]">高頻考點</span>
+              <span class="font-bold">網格模型計算、LoRA 降秩</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Warmup Question -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="w-6 h-6 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-xs font-bold">考</span>
+            <h3 class="text-sm font-bold text-slate-800">開場暖身題 (115 年第 8 題原型)</h3>
+          </div>
+          <p class="text-xs text-slate-600 mb-3 leading-relaxed">
+            深層 CNN 訓練到第 15 輪驗證損失開始上升，工程師把學習率調高，訓練損失反而開始明顯震盪。<strong>學習率過大最直接導致什麼？</strong>
+          </p>
+          <div class="space-y-1.5" id="warmup-options">
+            <button onclick="checkWarmupAnswer(1, this)" class="w-full text-left px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-700 hover:bg-slate-50 transition flex items-center justify-between">
+              <span>(A) 梯度消失 (Vanishing Gradient)</span>
+              <i class="fa-regular fa-circle text-slate-300"></i>
+            </button>
+            <button onclick="checkWarmupAnswer(2, this)" class="w-full text-left px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-700 hover:bg-slate-50 transition flex items-center justify-between">
+              <span>(B) 過擬合 (Overfitting)</span>
+              <i class="fa-regular fa-circle text-slate-300"></i>
+            </button>
+            <button onclick="checkWarmupAnswer(3, this)" class="w-full text-left px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-700 hover:bg-slate-50 transition flex items-center justify-between">
+              <span>(C) 損失震盪或發散 (Loss Oscillation / Divergence)</span>
+              <i class="fa-regular fa-circle text-slate-300"></i>
+            </button>
+            <button onclick="checkWarmupAnswer(4, this)" class="w-full text-left px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-700 hover:bg-slate-50 transition flex items-center justify-between">
+              <span>(D) Dying ReLU 神經元壞死</span>
+              <i class="fa-regular fa-circle text-slate-300"></i>
+            </button>
+          </div>
+          <div id="warmup-explain" class="hidden mt-3 p-3 bg-slate-50 rounded-lg text-xs leading-relaxed text-slate-600 border border-slate-200"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: 8 向量 SVG 投影片展示區 -->
+    <section id="section-slides" class="space-y-8">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div>
+          <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-chalkboard-user text-indigo-600"></i> 原片 8 張精華投影片 ＋ 圖文並茂深度解析
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">每張投影片均具備專屬圖解、逐字稿考點說明與對應的實作互動模擬器</p>
+        </div>
+      </div>
+
+      <!-- ==================== SLIDE 1 ==================== -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+        <div class="flex items-center justify-between">
+          <span class="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg flex items-center gap-1.5">
+            <i class="fa-solid fa-list-ol"></i> 投影片 1 / 8：課程綱要導讀
+          </span>
+          <button onclick="seekToTime(24)" class="px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-indigo-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition flex items-center gap-1">
+            <i class="fa-solid fa-play text-[10px]"></i> 跳轉 00:24
+          </button>
+        </div>
+
+        <div class="slide-svg-container">
+          <svg viewBox="0 0 1000 480" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1000" height="480" fill="#f8fafc" rx="16"/>
+            <circle cx="36" cy="38" r="8" fill="#f97316"/>
+            <text x="56" y="44" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="700" fill="#4f46e5">iPAS 18 · 超參數與優化器調整</text>
+            <line x1="390" y1="38" x2="960" y2="38" stroke="#a5b4fc" stroke-width="2"/>
+            <text x="36" y="105" font-family="'Noto Sans TC', sans-serif" font-size="34" font-weight="900" fill="#1e1b4b">第十七章：</text>
+            <text x="210" y="105" font-family="'Noto Sans TC', sans-serif" font-size="34" font-weight="900" fill="#ea580c">超參數與優化器調整</text>
+            <text x="36" y="145" font-family="'Noto Sans TC', sans-serif" font-size="19" font-weight="600" fill="#334155">超參數：你事先設定、不會被資料學出來的旋鈕</text>
+            <rect x="36" y="170" width="928" height="46" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <rect x="48" y="178" width="76" height="30" rx="8" fill="#475569"/>
+            <text x="86" y="198" font-family="'Noto Sans TC', sans-serif" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">這章教</text>
+            <text x="140" y="200" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="600" fill="#1e293b">每個旋鈕轉了會怎樣、怎麼有效率地找最佳組合</text>
+            <g transform="translate(36, 226)"><rect width="928" height="42" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><rect x="12" y="8" width="38" height="26" rx="6" fill="#0d9488"/><text x="31" y="26" font-family="'Noto Sans TC', sans-serif" font-size="14" font-weight="800" fill="#ffffff" text-anchor="middle">一</text><text x="65" y="27" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="700" fill="#1e293b">參數與超參數</text></g>
+            <g transform="translate(36, 276)"><rect width="928" height="42" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><rect x="12" y="8" width="38" height="26" rx="6" fill="#0d9488"/><text x="31" y="26" font-family="'Noto Sans TC', sans-serif" font-size="14" font-weight="800" fill="#ffffff" text-anchor="middle">二</text><text x="65" y="27" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="700" fill="#1e293b">學習率與批次大小</text></g>
+            <g transform="translate(36, 326)"><rect width="928" height="42" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><rect x="12" y="8" width="38" height="26" rx="6" fill="#0d9488"/><text x="31" y="26" font-family="'Noto Sans TC', sans-serif" font-size="14" font-weight="800" fill="#ffffff" text-anchor="middle">三</text><text x="65" y="27" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="700" fill="#1e293b">網路深度、寬度與正則化係數</text></g>
+            <g transform="translate(36, 376)"><rect width="928" height="42" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><rect x="12" y="8" width="38" height="26" rx="6" fill="#0d9488"/><text x="31" y="26" font-family="'Noto Sans TC', sans-serif" font-size="14" font-weight="800" fill="#ffffff" text-anchor="middle">四</text><text x="65" y="27" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="700" fill="#1e293b">三種搜尋方法</text></g>
+            <g transform="translate(36, 426)"><rect width="928" height="42" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><rect x="12" y="8" width="38" height="26" rx="6" fill="#0d9488"/><text x="31" y="26" font-family="'Noto Sans TC', sans-serif" font-size="14" font-weight="800" fill="#ffffff" text-anchor="middle">五</text><text x="65" y="27" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="700" fill="#1e293b">LoRA 微調</text></g>
+          </svg>
+        </div>
+
+        <div class="bg-indigo-50/70 rounded-xl p-4 sm:p-5 border border-indigo-100 text-xs text-indigo-950 leading-relaxed">
+          <strong class="font-bold text-indigo-900 block mb-1 flex items-center gap-1.5 text-sm">
+            <i class="fa-solid fa-compass text-indigo-600"></i> 本集調參心法總綱
+          </strong>
+          在機器學習與深度學習中，「超參數」決定了模型學習的環境與節奏，而「參數」則是模型學習後的智慧結晶。掌握兩者的界限，並學會如何在硬體記憶體（GPU VRAM）與訓練時間的限制下，搭配最佳搜尋方法與微調技術，是通過 iPAS 中級科目三的關鍵得分點！
+        </div>
+      </div>
+
+      <!-- ==================== SLIDE 2 ==================== -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+        <div class="flex items-center justify-between">
+          <span class="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg flex items-center gap-1.5">
+            <i class="fa-solid fa-book-bookmark"></i> 投影片 2 / 8：重點一 參數 vs 超參數
+          </span>
+          <button onclick="seekToTime(47)" class="px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-indigo-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition flex items-center gap-1">
+            <i class="fa-solid fa-play text-[10px]"></i> 跳轉 00:47
+          </button>
+        </div>
+
+        <div class="slide-svg-container">
+          <svg viewBox="0 0 1000 420" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1000" height="420" fill="#f8fafc" rx="16"/>
+            <circle cx="36" cy="38" r="8" fill="#f97316"/>
+            <text x="56" y="44" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="700" fill="#4f46e5">iPAS 18 · 超參數與優化器調整</text>
+            <line x1="390" y1="38" x2="960" y2="38" stroke="#a5b4fc" stroke-width="2"/>
+            <text x="36" y="105" font-family="'Noto Sans TC', sans-serif" font-size="34" font-weight="900" fill="#1e1b4b">重點一：</text>
+            <text x="175" y="105" font-family="'Noto Sans TC', sans-serif" font-size="34" font-weight="900" fill="#ea580c">參數 vs 超參數</text>
+            <rect x="36" y="130" width="445" height="260" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <text x="60" y="180" font-family="'Noto Sans TC', sans-serif" font-size="26" font-weight="900" fill="#1e1b4b">參數</text>
+            <text x="60" y="225" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="600" fill="#1e293b">訓練時從資料學出來</text>
+            <text x="60" y="265" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="600" fill="#334155">例：權重、偏置</text>
+            <text x="60" y="305" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="500" fill="#64748b">比喻：學生學到的知識</text>
+            <rect x="519" y="130" width="445" height="260" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+            <text x="543" y="180" font-family="'Noto Sans TC', sans-serif" font-size="26" font-weight="900" fill="#1e1b4b">超參數</text>
+            <text x="543" y="225" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="600" fill="#1e293b">你事先設定</text>
+            <text x="543" y="265" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="600" fill="#334155">例：學習率、批次大小、層數、正則化係數、</text>
+            <text x="543" y="295" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="700" fill="#1e293b">KNN 的 K</text>
+            <text x="543" y="335" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="500" fill="#64748b">比喻：老師排的讀書計畫</text>
+            <text x="543" y="365" font-family="'Noto Sans TC', sans-serif" font-size="16" font-weight="500" fill="#64748b">（例如每天讀多久、一次寫幾題）</text>
+          </svg>
+        </div>
+
+        <!-- 模擬器一：參數 vs 超參數 8 項互動分類測驗遊戲 -->
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+            <div>
+              <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider block">實作互動體驗</span>
+              <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                <i class="fa-solid fa-gamepad text-indigo-600"></i> 【模擬器一】參數 vs 超參數 8 項即時分類挑戰
+              </h4>
+            </div>
+            <button onclick="resetClassifyQuiz()" class="px-2.5 py-1 text-xs text-slate-600 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition flex items-center gap-1 self-start sm:self-auto">
+              <i class="fa-solid fa-rotate-right"></i> 重置測驗
+            </button>
+          </div>
+
+          <p class="text-xs text-slate-600">
+            請點擊下方 8 個項目標籤，系統將自動依據性質放入對應的收集箱，並即時給予正誤回饋（含 114 年考古題考點）：
+          </p>
+
+          <!-- 待分類卡片池 -->
+          <div id="quiz-pool" class="flex flex-wrap gap-2">
+            <button onclick="handleItemClick(this, 'param')" class="px-3 py-2 bg-white border border-slate-300 hover:border-emerald-500 rounded-xl text-xs font-medium text-slate-800 shadow-sm transition hover:scale-105 active:scale-95 flex items-center gap-1.5">
+              <span>神經網路權重 (Weights, W)</span>
+            </button>
+            <button onclick="handleItemClick(this, 'hyper')" class="px-3 py-2 bg-white border border-slate-300 hover:border-indigo-500 rounded-xl text-xs font-medium text-slate-800 shadow-sm transition hover:scale-105 active:scale-95 flex items-center gap-1.5">
+              <span>學習率 (Learning Rate, η)</span>
+            </button>
+            <button onclick="handleItemClick(this, 'param')" class="px-3 py-2 bg-white border border-slate-300 hover:border-emerald-500 rounded-xl text-xs font-medium text-slate-800 shadow-sm transition hover:scale-105 active:scale-95 flex items-center gap-1.5">
+              <span>偏置偏差 (Biases, b)</span>
+            </button>
+            <button onclick="handleItemClick(this, 'hyper')" class="px-3 py-2 bg-white border border-slate-300 hover:border-indigo-500 rounded-xl text-xs font-medium text-slate-800 shadow-sm transition hover:scale-105 active:scale-95 flex items-center gap-1.5">
+              <span>批次大小 (Batch Size)</span>
+            </button>
+            <button onclick="handleItemClick(this, 'param')" class="px-3 py-2 bg-white border border-slate-300 hover:border-emerald-500 rounded-xl text-xs font-medium text-slate-800 shadow-sm transition hover:scale-105 active:scale-95 flex items-center gap-1.5">
+              <span>線性回歸係數 (Regression Coefficients)</span>
+            </button>
+            <button onclick="handleItemClick(this, 'hyper')" class="px-3 py-2 bg-white border border-slate-300 hover:border-indigo-500 rounded-xl text-xs font-medium text-slate-800 shadow-sm transition hover:scale-105 active:scale-95 flex items-center gap-1.5">
+              <span>KNN 近鄰數 K</span>
+            </button>
+            <button onclick="handleItemClick(this, 'param')" class="px-3 py-2 bg-white border border-slate-300 hover:border-emerald-500 rounded-xl text-xs font-medium text-slate-800 shadow-sm transition hover:scale-105 active:scale-95 flex items-center gap-1.5">
+              <span>反向傳播梯度 (Gradients)</span>
+            </button>
+            <button onclick="handleItemClick(this, 'hyper')" class="px-3 py-2 bg-white border border-slate-300 hover:border-indigo-500 rounded-xl text-xs font-medium text-slate-800 shadow-sm transition hover:scale-105 active:scale-95 flex items-center gap-1.5">
+              <span>決策樹最大深度 (max_depth)</span>
+            </button>
+          </div>
+
+          <!-- 分類收集箱 -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            <!-- 參數箱 -->
+            <div class="p-4 bg-emerald-50/60 border-2 border-dashed border-emerald-300 rounded-xl min-h-[110px]">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-emerald-800 flex items-center gap-1">
+                  <i class="fa-solid fa-brain"></i> 【參數箱】資料學習而來
+                </span>
+                <span id="param-count" class="text-[11px] font-mono bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded font-bold">0 / 4</span>
+              </div>
+              <div id="param-box" class="flex flex-wrap gap-1.5">
+                <span class="text-xs text-emerald-600/70 italic placeholder-text">點擊上方項目放入此處...</span>
+              </div>
+            </div>
+
+            <!-- 超參數箱 -->
+            <div class="p-4 bg-indigo-50/60 border-2 border-dashed border-indigo-300 rounded-xl min-h-[110px]">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-indigo-800 flex items-center gap-1">
+                  <i class="fa-solid fa-sliders"></i> 【超參數箱】事先人為設定
+                </span>
+                <span id="hyper-count" class="text-[11px] font-mono bg-indigo-200 text-indigo-900 px-2 py-0.5 rounded font-bold">0 / 4</span>
+              </div>
+              <div id="hyper-box" class="flex flex-wrap gap-1.5">
+                <span class="text-xs text-indigo-600/70 italic placeholder-text">點擊上方項目放入此處...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SLIDE 3 ==================== -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+        <div class="flex items-center justify-between">
+          <span class="px-3 py-1 bg-orange-50 text-orange-700 text-xs font-bold rounded-lg flex items-center gap-1.5">
+            <i class="fa-solid fa-shoe-prints"></i> 投影片 3 / 8：重點二 學習率與批次大小
+          </span>
+          <button onclick="seekToTime(94)" class="px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-indigo-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition flex items-center gap-1">
+            <i class="fa-solid fa-play text-[10px]"></i> 跳轉 01:34
+          </button>
+        </div>
+
+        <div class="slide-svg-container">
+          <svg viewBox="0 0 1000 450" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1000" height="450" fill="#f8fafc" rx="16"/>
+            <circle cx="36" cy="38" r="8" fill="#f97316"/>
+            <text x="56" y="44" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="700" fill="#4f46e5">iPAS 18 · 超參數與優化器調整</text>
+            <line x1="390" y1="38" x2="960" y2="38" stroke="#a5b4fc" stroke-width="2"/>
+            <text x="36" y="105" font-family="'Noto Sans TC', sans-serif" font-size="32" font-weight="900" fill="#1e1b4b">重點二：</text>
+            <text x="175" y="105" font-family="'Noto Sans TC', sans-serif" font-size="32" font-weight="900" fill="#ea580c">學習率決定每一步走多大</text>
+            <g transform="translate(36, 128)"><rect width="430" height="48" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><rect x="10" y="9" width="46" height="30" rx="8" fill="#ea580c"/><text x="33" y="30" font-family="'Noto Sans TC', sans-serif" font-size="14" font-weight="800" fill="#ffffff" text-anchor="middle">太大</text><text x="68" y="30" font-family="'Noto Sans TC', sans-serif" font-size="14" font-weight="600" fill="#1e293b">損失震盪、發散：在谷底兩側來回跳過頭</text></g>
+            <g transform="translate(36, 186)"><rect width="430" height="48" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><rect x="10" y="9" width="46" height="30" rx="8" fill="#6366f1"/><text x="33" y="30" font-family="'Noto Sans TC', sans-serif" font-size="14" font-weight="800" fill="#ffffff" text-anchor="middle">太小</text><text x="68" y="30" font-family="'Noto Sans TC', sans-serif" font-size="14" font-weight="600" fill="#1e293b">很慢，可能卡在局部最小值：每步都很小，走不動</text></g>
+            <g transform="translate(36, 244)"><rect width="430" height="48" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><rect x="10" y="9" width="82" height="30" rx="8" fill="#475569"/><text x="51" y="29" font-family="'Noto Sans TC', sans-serif" font-size="13" font-weight="700" fill="#ffffff" text-anchor="middle">局部最小值</text><text x="102" y="30" font-family="'Noto Sans TC', sans-serif" font-size="13.5" font-weight="600" fill="#334155">山區裡的小坑：周圍都比它高，但不是整座山最低</text></g>
+            <g transform="translate(36, 302)"><rect width="430" height="52" rx="10" fill="#f0fdf4" stroke="#86efac" stroke-width="2"/><circle cx="26" cy="26" r="14" fill="#0d9488"/><path d="M19 26 l5 5 l10 -10" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round"/><text x="50" y="32" font-family="'Noto Sans TC', sans-serif" font-size="15" font-weight="800" fill="#065f46">剛好：穩定下降，前期大步、後期小步最理想</text></g>
+            <g transform="translate(490, 120)"><rect width="474" height="290" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><path d="M 20 70 Q 60 72, 80 120 Q 95 155, 115 120 Q 145 70, 200 135 Q 260 215, 305 240 Q 365 240, 435 80" fill="none" stroke="#475569" stroke-width="3.5" stroke-linecap="round"/><path d="M 40 68 Q 65 70, 80 110" fill="none" stroke="#6366f1" stroke-width="4.5" stroke-linecap="round"/><circle cx="95" cy="133" r="7.5" fill="#6366f1"/><circle cx="158" cy="138" r="7.5" fill="#ea580c"/><polyline points="158,138 395,170 190,178 370,210 220,218 340,240" fill="none" stroke="#ea580c" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M 425 90 Q 375 220, 310 240" fill="none" stroke="#0d9488" stroke-width="4.5" stroke-linecap="round"/><circle cx="310" cy="240" r="8" fill="#0d9488"/><text x="95" y="275" font-family="'Noto Sans TC', sans-serif" font-size="13" font-weight="700" fill="#475569" text-anchor="middle">小坑</text><text x="305" y="275" font-family="'Noto Sans TC', sans-serif" font-size="13" font-weight="700" fill="#475569" text-anchor="middle">整座山最低</text></g>
+          </svg>
+        </div>
+
+        <!-- 模擬器二：學習率動態 SVG 損失曲面模擬器 -->
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+            <div>
+              <span class="text-xs font-bold text-orange-600 uppercase tracking-wider block">實作互動體驗</span>
+              <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                <i class="fa-solid fa-chart-line text-orange-600"></i> 【模擬器二】學習率動態損失曲面（山谷小坑）下降模擬
+              </h4>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button id="sim-btn-good" onclick="setSimMode('good')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 text-white shadow-sm transition">
+                適中 (穩定收斂)
+              </button>
+              <button id="sim-btn-large" onclick="setSimMode('large')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-600 transition">
+                過大 (震盪發散)
+              </button>
+              <button id="sim-btn-small" onclick="setSimMode('small')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-amber-50 hover:text-amber-600 transition">
+                過小 (卡在小坑)
+              </button>
+            </div>
+          </div>
+
+          <div class="relative bg-white rounded-xl border border-slate-200 p-4 overflow-hidden">
+            <svg id="valley-svg" viewBox="0 0 600 240" class="w-full h-48">
+              <!-- 山谷曲線：包含左側局部小坑與中央全域最低 -->
+              <path d="M 20 60 Q 70 65, 100 110 Q 120 145, 145 110 Q 180 60, 240 120 Q 300 200, 360 215 Q 430 215, 580 60" 
+                    fill="none" stroke="#64748b" stroke-width="3" stroke-linecap="round"/>
+              <text x="120" y="170" font-size="11" font-weight="700" fill="#94a3b8" text-anchor="middle">局部小坑 (Local Min)</text>
+              <text x="360" y="235" font-size="11" font-weight="700" fill="#0d9488" text-anchor="middle">全域最低 (Global Min)</text>
+              <!-- 軌跡折線 -->
+              <polyline id="sim-trail" points="480,70" fill="none" stroke="#f97316" stroke-width="2.5" stroke-dasharray="4" stroke-linecap="round"/>
+              <!-- 移動小球 -->
+              <circle id="sim-ball" cx="480" cy="70" r="9" fill="#f97316" stroke="#ffffff" stroke-width="2.5" class="shadow-lg"/>
+            </svg>
+            <div id="sim-desc" class="mt-2 p-3 bg-emerald-50 rounded-lg text-xs text-emerald-900 border border-emerald-200 leading-relaxed">
+              <strong>適中學習率：</strong> 步長控制合理，初期大步快速下降，後期微幅調整，順利收斂至整座山最低點。
+            </div>
+          </div>
+        </div>
+
+        <!-- 模擬器三：批次大小（Batch Size）與梯度穩定度/顯存模擬器 -->
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+          <div class="border-b border-slate-200 pb-2">
+            <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider block">實作互動體驗</span>
+            <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+              <i class="fa-solid fa-server text-indigo-600"></i> 【模擬器三】批次大小 (Batch Size) 梯度穩定度與 GPU 顯存關聯模擬
+            </h4>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+            <div class="md:col-span-5 space-y-3">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-bold text-slate-700">調整批次大小 (Batch Size)：</span>
+                <span id="bs-val" class="font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">64</span>
+              </div>
+              <input type="range" id="bs-slider" min="16" max="512" step="16" value="64" oninput="updateBatchSim()" class="w-full accent-indigo-600 cursor-pointer">
+              <div class="flex justify-between text-[10px] text-slate-400">
+                <span>16 (小批次/高隨機)</span>
+                <span>512 (大批次/吃顯存)</span>
+              </div>
+            </div>
+
+            <div class="md:col-span-7 bg-white p-3.5 rounded-xl border border-slate-200 space-y-2.5 text-xs">
+              <div>
+                <div class="flex justify-between mb-1">
+                  <span class="text-slate-600">GPU 顯存佔用 (VRAM)：</span>
+                  <span id="vram-percent" class="font-bold text-slate-800">25% (安全)</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                  <div id="vram-bar" class="bg-emerald-500 h-2.5 rounded-full transition-all duration-300" style="width: 25%"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between mb-1">
+                  <span class="text-slate-600">梯度估計雜訊度 (晃動能力)：</span>
+                  <span id="noise-percent" class="font-bold text-purple-700">高 (容易晃出小坑)</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                  <div id="noise-bar" class="bg-purple-500 h-2.5 rounded-full transition-all duration-300" style="width: 75%"></div>
+                </div>
+              </div>
+
+              <p id="bs-tip" class="text-[11px] text-slate-500 italic pt-1">
+                提示：批次適中，梯度自帶適度抖動能避免卡在小坑；若訓練出現「CUDA Out of Memory」應優先調小此項。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SLIDE 4 ==================== -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+        <div class="flex items-center justify-between">
+          <span class="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg flex items-center gap-1.5">
+            <i class="fa-solid fa-network-wired"></i> 投影片 4 / 8：重點三 深度、寬度與正則化係數
+          </span>
+          <button onclick="seekToTime(252)" class="px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-indigo-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition flex items-center gap-1">
+            <i class="fa-solid fa-play text-[10px]"></i> 跳轉 04:12
+          </button>
+        </div>
+
+        <div class="slide-svg-container">
+          <svg viewBox="0 0 1000 450" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1000" height="450" fill="#f8fafc" rx="16"/>
+            <circle cx="36" cy="38" r="8" fill="#f97316"/>
+            <text x="56" y="44" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="700" fill="#4f46e5">iPAS 18 · 超參數與優化器調整</text>
+            <line x1="390" y1="38" x2="960" y2="38" stroke="#a5b4fc" stroke-width="2"/>
+            <text x="36" y="105" font-family="'Noto Sans TC', sans-serif" font-size="32" font-weight="900" fill="#1e1b4b">重點三：</text>
+            <text x="175" y="105" font-family="'Noto Sans TC', sans-serif" font-size="32" font-weight="900" fill="#ea580c">深度、寬度、正則化係數</text>
+            <text x="36" y="142" font-family="'Noto Sans TC', sans-serif" font-size="16" font-weight="700" fill="#ea580c">控制模型容量</text>
+            <text x="155" y="142" font-family="'Noto Sans TC', sans-serif" font-size="15" font-weight="600" fill="#475569">容量 = 模型能記住多少東西</text>
+            <rect x="36" y="160" width="180" height="44" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><text x="126" y="188" font-family="'Noto Sans TC', sans-serif" font-size="16" font-weight="700" fill="#1e293b" text-anchor="middle">超參數</text>
+            <rect x="226" y="160" width="365" height="44" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><text x="408" y="188" font-family="'Noto Sans TC', sans-serif" font-size="16" font-weight="700" fill="#1e293b" text-anchor="middle">調大</text>
+            <rect x="601" y="160" width="365" height="44" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><text x="783" y="188" font-family="'Noto Sans TC', sans-serif" font-size="16" font-weight="700" fill="#1e293b" text-anchor="middle">調小</text>
+            <g transform="translate(36, 212)"><rect width="180" height="66" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><text x="24" y="32" font-family="'Noto Sans TC', sans-serif" font-size="16" font-weight="800" fill="#1e1b4b">網路深度</text><text x="24" y="52" font-family="'Noto Sans TC', sans-serif" font-size="13" font-weight="500" fill="#64748b">層數</text><rect x="190" y="0" width="365" height="66" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><text x="210" y="39" font-family="'Noto Sans TC', sans-serif" font-size="15" font-weight="600" fill="#1e293b">表達力強，但可能梯度消失</text><rect x="565" y="0" width="365" height="66" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><text x="585" y="39" font-family="'Noto Sans TC', sans-serif" font-size="15" font-weight="600" fill="#1e293b">太淺會欠擬合</text></g>
+            <g transform="translate(36, 286)"><rect width="180" height="66" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><text x="24" y="32" font-family="'Noto Sans TC', sans-serif" font-size="16" font-weight="800" fill="#1e1b4b">網路寬度</text><text x="24" y="52" font-family="'Noto Sans TC', sans-serif" font-size="13" font-weight="500" fill="#64748b">每層神經元數</text><rect x="190" y="0" width="365" height="66" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><text x="210" y="39" font-family="'Noto Sans TC', sans-serif" font-size="15" font-weight="600" fill="#1e293b">特徵更豐富，但容易過擬合</text><rect x="565" y="0" width="365" height="66" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><text x="585" y="39" font-family="'Noto Sans TC', sans-serif" font-size="15" font-weight="600" fill="#1e293b">表達力不足</text></g>
+            <g transform="translate(36, 360)"><rect width="180" height="66" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><text x="24" y="32" font-family="'Noto Sans TC', sans-serif" font-size="16" font-weight="800" fill="#1e1b4b">正則化係數 λ</text><text x="24" y="52" font-family="'Noto Sans TC', sans-serif" font-size="13" font-weight="500" fill="#64748b">懲罰項前面乘的數字</text><rect x="190" y="0" width="365" height="66" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><text x="210" y="39" font-family="'Noto Sans TC', sans-serif" font-size="15" font-weight="600" fill="#1e293b">限制強，可能欠擬合</text><rect x="565" y="0" width="365" height="66" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><text x="585" y="39" font-family="'Noto Sans TC', sans-serif" font-size="15" font-weight="600" fill="#1e293b">限制弱，可能過擬合</text></g>
+          </svg>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div class="bg-rose-50 border border-rose-200 p-4 rounded-xl space-y-1">
+            <span class="font-bold text-rose-900 flex items-center gap-1.5 text-sm">
+              <i class="fa-solid fa-triangle-exclamation text-rose-600"></i> 病情一：欠擬合 (Underfitting)
+            </span>
+            <p class="text-rose-950">訓練損失與驗證損失都居高不下，模型完全學不動。</p>
+            <p class="text-rose-800 font-semibold pt-1">
+              處方：<strong>調小正則化係數 λ</strong>，放鬆懲罰項給模型發揮空間；或增加層數與神經元數量。
+            </p>
+          </div>
+          <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl space-y-1">
+            <span class="font-bold text-amber-900 flex items-center gap-1.5 text-sm">
+              <i class="fa-solid fa-triangle-exclamation text-amber-600"></i> 病情二：過擬合 (Overfitting)
+            </span>
+            <p class="text-amber-950">訓練集表現近乎滿分，但驗證集誤差極大（死記硬背）。</p>
+            <p class="text-amber-800 font-semibold pt-1">
+              處方：<strong>調大正則化係數 λ</strong> 懲罰極端權重；或加入 Dropout、減少層數與寬度。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SLIDE 5 ==================== -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+        <div class="flex items-center justify-between">
+          <span class="px-3 py-1 bg-purple-50 text-purple-700 text-xs font-bold rounded-lg flex items-center gap-1.5">
+            <i class="fa-solid fa-magnifying-glass-chart"></i> 投影片 5 / 8：重點四 三種搜尋方法
+          </span>
+          <button onclick="seekToTime(333)" class="px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-indigo-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition flex items-center gap-1">
+            <i class="fa-solid fa-play text-[10px]"></i> 跳轉 05:33
+          </button>
+        </div>
+
+        <div class="slide-svg-container">
+          <svg viewBox="0 0 1000 420" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1000" height="420" fill="#f8fafc" rx="16"/>
+            <circle cx="36" cy="38" r="8" fill="#f97316"/>
+            <text x="56" y="44" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="700" fill="#4f46e5">iPAS 18 · 超參數與優化器調整</text>
+            <line x1="390" y1="38" x2="960" y2="38" stroke="#a5b4fc" stroke-width="2"/>
+            <text x="36" y="105" font-family="'Noto Sans TC', sans-serif" font-size="34" font-weight="900" fill="#1e1b4b">重點四：</text>
+            <text x="175" y="105" font-family="'Noto Sans TC', sans-serif" font-size="34" font-weight="900" fill="#ea580c">三種搜尋方法</text>
+            <g transform="translate(36, 130)"><rect width="928" height="74" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/><text x="24" y="34" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="900" fill="#1e1b4b">網格搜尋</text><text x="24" y="55" font-family="'Noto Sans TC', sans-serif" font-size="13" font-weight="600" fill="#64748b">Grid Search</text><text x="180" y="36" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="700" fill="#1e293b">所有組合全部試一遍 ｜ 保證不漏，組合一多就爆炸</text><text x="180" y="58" font-family="'Noto Sans TC', sans-serif" font-size="15" font-weight="700" fill="#ea580c">每一格都踩過</text></g>
+            <g transform="translate(36, 218)"><rect width="928" height="74" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/><text x="24" y="34" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="900" fill="#1e1b4b">隨機搜尋</text><text x="24" y="55" font-family="'Noto Sans TC', sans-serif" font-size="13" font-weight="600" fill="#64748b">Random Search</text><text x="180" y="36" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="700" fill="#1e293b">範圍內隨機抽組合 ｜ 高維參數空間更有效率</text><text x="180" y="58" font-family="'Noto Sans TC', sans-serif" font-size="15" font-weight="700" fill="#ea580c">隨機丟飛鏢</text></g>
+            <g transform="translate(36, 306)"><rect width="928" height="74" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/><text x="24" y="44" font-family="'Noto Sans TC', sans-serif" font-size="22" font-weight="900" fill="#1e1b4b">AutoML</text><text x="180" y="36" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="700" fill="#1e293b">自動挑模型和超參數 ｜ 快，但控制較少</text><text x="180" y="58" font-family="'Noto Sans TC', sans-serif" font-size="15" font-weight="700" fill="#ea580c">請代辦</text></g>
+          </svg>
+        </div>
+
+        <!-- 模擬器四：網格搜尋 vs 隨機搜尋高維度探索 2D 模擬畫布 -->
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+            <div>
+              <span class="text-xs font-bold text-purple-600 uppercase tracking-wider block">實作互動體驗 (114 年第 11 題考念)</span>
+              <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                <i class="fa-solid fa-bullseye text-purple-600"></i> 【模擬器四】為什麼隨機搜尋在高維空間更有效率？9 次預算動態畫布
+              </h4>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="search-grid-btn" onclick="drawSearchSimulation('grid')" class="px-3 py-1.5 text-xs font-semibold bg-purple-600 text-white rounded-lg shadow-sm transition">
+                網格搜尋 (3×3 踩點)
+              </button>
+              <button id="search-rand-btn" onclick="drawSearchSimulation('random')" class="px-3 py-1.5 text-xs font-semibold bg-slate-200 text-slate-700 hover:bg-purple-100 hover:text-purple-700 rounded-lg transition">
+                隨機搜尋 (9 次丟飛鏢)
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+            <div class="md:col-span-6 bg-white p-3 rounded-xl border border-slate-200 flex justify-center">
+              <svg id="search-svg" viewBox="0 0 280 260" class="w-full max-w-[280px] h-60"></svg>
+            </div>
+            <div class="md:col-span-6 space-y-3 text-xs leading-relaxed">
+              <div id="search-explain-box" class="p-3.5 bg-white rounded-xl border border-purple-200">
+                <!-- 動態注入說明 -->
+              </div>
+              <p class="text-slate-500 text-[11px]">
+                💡 考點解析：真實模型通常只有學習率這 1 個關鍵維度，網格搜尋 9 次只試了 3 種學習率；隨機搜尋 9 次則試了 9 種不同的學習率，大幅提高命中全域最優解的機率！
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 模擬器五：115 年第 34 題 XGBoost 網格搜尋模型總數計算機 -->
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+          <div class="border-b border-slate-200 pb-2">
+            <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider block">實作互動體驗 (115 年第 34 題)</span>
+            <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+              <i class="fa-solid fa-calculator text-indigo-600"></i> 【模擬器五】XGBoost 網格搜尋模型總訓練數即時計算機
+            </h4>
+          </div>
+
+          <p class="text-xs text-slate-600">
+            調整以下 5 個超參數的候選值數量與交叉驗證（K-Fold）折數，系統將動態計算出總共需要訓練的模型數：
+          </p>
+
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+            <div class="bg-white p-2.5 rounded-xl border border-slate-200">
+              <label class="text-[11px] text-slate-500 block">學習率候選</label>
+              <input type="number" id="calc-lr" value="3" min="1" oninput="calcGridModels()" class="w-full font-bold text-sm text-indigo-600 outline-none">
+            </div>
+            <div class="bg-white p-2.5 rounded-xl border border-slate-200">
+              <label class="text-[11px] text-slate-500 block">最大樹深度</label>
+              <input type="number" id="calc-depth" value="4" min="1" oninput="calcGridModels()" class="w-full font-bold text-sm text-indigo-600 outline-none">
+            </div>
+            <div class="bg-white p-2.5 rounded-xl border border-slate-200">
+              <label class="text-[11px] text-slate-500 block">總樹數 (trees)</label>
+              <input type="number" id="calc-trees" value="5" min="1" oninput="calcGridModels()" class="w-full font-bold text-sm text-indigo-600 outline-none">
+            </div>
+            <div class="bg-white p-2.5 rounded-xl border border-slate-200">
+              <label class="text-[11px] text-slate-500 block">資料抽樣比</label>
+              <input type="number" id="calc-sub" value="3" min="1" oninput="calcGridModels()" class="w-full font-bold text-sm text-indigo-600 outline-none">
+            </div>
+            <div class="bg-white p-2.5 rounded-xl border border-slate-200">
+              <label class="text-[11px] text-slate-500 block">特徵抽樣比</label>
+              <input type="number" id="calc-col" value="3" min="1" oninput="calcGridModels()" class="w-full font-bold text-sm text-indigo-600 outline-none">
+            </div>
+            <div class="bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-200">
+              <label class="text-[11px] text-indigo-700 font-bold block">交叉驗證 (K-Fold)</label>
+              <input type="number" id="calc-kfold" value="5" min="2" oninput="calcGridModels()" class="w-full font-bold text-sm text-indigo-800 outline-none bg-transparent">
+            </div>
+          </div>
+
+          <div class="p-4 bg-indigo-900 text-white rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+            <div>
+              <span class="text-xs text-indigo-300 block">計算公式歷程：</span>
+              <span id="grid-formula" class="font-mono text-xs sm:text-sm text-indigo-100 font-medium">3 × 4 × 5 × 3 × 3 = 540 組 × 5 折</span>
+            </div>
+            <div class="text-right">
+              <span class="text-xs text-indigo-300 block">需要訓練的模型總數：</span>
+              <span id="grid-total" class="font-mono text-2xl font-black text-amber-400">= 2,700 個模型</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SLIDE 6 ==================== -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+        <div class="flex items-center justify-between">
+          <span class="px-3 py-1 bg-amber-50 text-amber-700 text-xs font-bold rounded-lg flex items-center gap-1.5">
+            <i class="fa-solid fa-microchip"></i> 投影片 6 / 8：重點五 LoRA 高效微調
+          </span>
+          <button onclick="seekToTime(450)" class="px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-indigo-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition flex items-center gap-1">
+            <i class="fa-solid fa-play text-[10px]"></i> 跳轉 07:30
+          </button>
+        </div>
+
+        <div class="slide-svg-container">
+          <svg viewBox="0 0 1000 420" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1000" height="420" fill="#f8fafc" rx="16"/>
+            <circle cx="36" cy="38" r="8" fill="#f97316"/>
+            <text x="56" y="44" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="700" fill="#4f46e5">iPAS 18 · 超參數與優化器調整</text>
+            <line x1="390" y1="38" x2="960" y2="38" stroke="#a5b4fc" stroke-width="2"/>
+            <text x="36" y="105" font-family="'Noto Sans TC', sans-serif" font-size="34" font-weight="900" fill="#1e1b4b">重點五：</text>
+            <text x="175" y="105" font-family="'Noto Sans TC', sans-serif" font-size="34" font-weight="900" fill="#ea580c">LoRA 微調</text>
+            <text x="36" y="145" font-family="'Noto Sans TC', sans-serif" font-size="16" font-weight="600" fill="#475569">超出學習指引，但 115-35 有考</text>
+            <g transform="translate(36, 168)"><rect width="928" height="52" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><rect x="16" y="10" width="70" height="32" rx="8" fill="#475569"/><text x="51" y="32" font-family="'Noto Sans TC', sans-serif" font-size="15" font-weight="700" fill="#ffffff" text-anchor="middle">LoRA</text><text x="100" y="33" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="700" fill="#1e293b">Low-Rank Adaptation：微調大型語言模型的方法</text></g>
+            <g transform="translate(36, 234)"><rect width="928" height="52" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><rect x="16" y="10" width="60" height="32" rx="8" fill="#6366f1"/><text x="46" y="32" font-family="'Noto Sans TC', sans-serif" font-size="15" font-weight="700" fill="#ffffff" text-anchor="middle">微調</text><text x="90" y="33" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="700" fill="#1e293b">拿別人訓練好的模型，用自己的資料再訓練一下</text></g>
+            <g transform="translate(36, 300)"><rect width="928" height="88" rx="14" fill="#f0fdf4" stroke="#86efac" stroke-width="2"/><circle cx="36" cy="34" r="16" fill="#0d9488"/><path d="M28 34 l6 6 l11 -12" stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linecap="round"/><text x="68" y="36" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="800" fill="#065f46">大權重凍結，只訓練旁邊加上去的兩個小矩陣</text><text x="68" y="66" font-family="'Noto Sans TC', sans-serif" font-size="16" font-weight="600" fill="#047857">凍結：訓練時不更新，維持原樣</text></g>
+          </svg>
+        </div>
+
+        <!-- 模擬器六：LoRA 低秩分解與顯存策略計算模擬器 (115 年第 35 題) -->
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+          <div class="border-b border-slate-200 pb-2">
+            <span class="text-xs font-bold text-amber-600 uppercase tracking-wider block">實作互動體驗 (115 年第 35 題)</span>
+            <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+              <i class="fa-solid fa-layer-group text-amber-600"></i> 【模擬器六】LoRA 參數量節省率與「降 Rank 擴多層」顯存調優策略模擬
+            </h4>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+            <div class="md:col-span-5 space-y-3">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-bold text-slate-700">調整低秩分解 Rank (r)：</span>
+                <span id="rank-val" class="font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">Rank = 8</span>
+              </div>
+              <input type="range" id="lora-rank" min="1" max="64" value="8" oninput="calcLoRA()" class="w-full accent-indigo-600 cursor-pointer">
+              <div class="flex justify-between text-[10px] text-slate-400">
+                <span>Rank 1 (極省顯存)</span>
+                <span>Rank 64 (表達力更強)</span>
+              </div>
+
+              <div class="flex items-center justify-between text-xs pt-1">
+                <span class="font-bold text-slate-700">套用層數 (Layers)：</span>
+                <span id="layers-val" class="font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">4 層</span>
+              </div>
+              <input type="range" id="lora-layers" min="1" max="32" value="4" oninput="calcLoRA()" class="w-full accent-amber-600 cursor-pointer">
+            </div>
+
+            <div class="md:col-span-7 bg-white p-4 rounded-xl border border-slate-200 space-y-3 text-xs">
+              <div class="grid grid-cols-2 gap-2 text-center">
+                <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                  <span class="text-slate-400 text-[10px] block">全權重凍結基準</span>
+                  <span class="font-mono font-bold text-slate-700 text-sm">1,000,000 參數</span>
+                </div>
+                <div class="bg-emerald-50 p-2.5 rounded-lg border border-emerald-200">
+                  <span class="text-emerald-700 text-[10px] block font-bold">LoRA 可訓練參數 (每層)</span>
+                  <span id="lora-params" class="font-mono font-bold text-emerald-800 text-sm">16,000 參數</span>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between text-xs bg-indigo-50/70 p-2.5 rounded-lg border border-indigo-100">
+                <span class="text-indigo-900 font-medium">總可訓練參數（含層數）：</span>
+                <span id="lora-total-params" class="font-mono font-bold text-indigo-700">64,000 參數</span>
+              </div>
+
+              <div class="flex items-center justify-between text-xs bg-emerald-50/70 p-2.5 rounded-lg border border-emerald-100">
+                <span class="text-emerald-900 font-medium">單層記憶體節省率：</span>
+                <span id="lora-saving" class="font-mono font-bold text-emerald-700">98.40% 節省</span>
+              </div>
+
+              <div class="p-2.5 bg-amber-50 rounded-lg border border-amber-200 text-[11px] text-amber-950 leading-relaxed">
+                <strong class="text-amber-800">115-35 實戰策略驗證：</strong><br>
+                • 方案 A：Rank 16 套用 4 層 = 128,000 參數<br>
+                • 方案 B：<strong>Rank 8 套用 8 層 = 128,000 參數</strong><br>
+                顯存完全不增加，但調適層數增加一倍，有效解決法律長文常漏條款的問題！
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SLIDE 7 ==================== -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+        <div class="flex items-center justify-between">
+          <span class="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg flex items-center gap-1.5">
+            <i class="fa-solid fa-code-compare"></i> 投影片 7 / 8：最容易搞混的三大對比
+          </span>
+          <button onclick="seekToTime(612)" class="px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-indigo-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition flex items-center gap-1">
+            <i class="fa-solid fa-play text-[10px]"></i> 跳轉 10:12
+          </button>
+        </div>
+
+        <div class="slide-svg-container">
+          <svg viewBox="0 0 1000 420" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1000" height="420" fill="#f8fafc" rx="16"/>
+            <circle cx="36" cy="38" r="8" fill="#f97316"/>
+            <text x="56" y="44" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="700" fill="#4f46e5">iPAS 18 · 超參數與優化器調整</text>
+            <line x1="390" y1="38" x2="960" y2="38" stroke="#a5b4fc" stroke-width="2"/>
+            <text x="36" y="105" font-family="'Noto Sans TC', sans-serif" font-size="34" font-weight="900" fill="#1e1b4b">最容易搞混的</text>
+            <g transform="translate(36, 130)"><rect width="445" height="64" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><text x="24" y="38" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="900" fill="#1e1b4b">參數</text><text x="75" y="38" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="600" fill="#334155">學出來的權重</text><text x="474" y="40" font-family="'Noto Sans TC', sans-serif" font-size="14" font-weight="700" fill="#94a3b8" text-anchor="middle">VS</text><rect x="502" y="0" width="445" height="64" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><text x="526" y="38" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="900" fill="#ea580c">超參數</text><text x="590" y="38" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="600" fill="#334155">事先設定的旋鈕</text></g>
+            <g transform="translate(36, 210)"><rect width="445" height="64" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><text x="24" y="38" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="900" fill="#1e1b4b">網格搜尋</text><text x="110" y="38" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="600" fill="#334155">全部組合，維度高就爆炸</text><text x="474" y="40" font-family="'Noto Sans TC', sans-serif" font-size="14" font-weight="700" fill="#94a3b8" text-anchor="middle">VS</text><rect x="502" y="0" width="445" height="64" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><text x="526" y="38" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="900" fill="#ea580c">隨機搜尋</text><text x="610" y="38" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="600" fill="#334155">隨機抽，高維更有效率</text></g>
+            <g transform="translate(36, 290)"><rect width="445" height="64" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><text x="24" y="38" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="900" fill="#1e1b4b">學習率太大</text><text x="130" y="38" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="600" fill="#334155">震盪、發散</text><text x="474" y="40" font-family="'Noto Sans TC', sans-serif" font-size="14" font-weight="700" fill="#94a3b8" text-anchor="middle">VS</text><rect x="502" y="0" width="445" height="64" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><text x="526" y="38" font-family="'Noto Sans TC', sans-serif" font-size="18" font-weight="900" fill="#ea580c">學習率太小</text><text x="630" y="38" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="600" fill="#334155">慢、卡住</text></g>
+          </svg>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div class="bg-slate-50 border border-slate-200 p-3.5 rounded-xl">
+            <span class="font-bold text-slate-800 block mb-1">Q1：決策樹深度算什麼？</span>
+            <p class="text-slate-600">是<strong>超參數</strong>。雖然樹由資料生長，但限制最多長幾層（max_depth）是人為在訓練前指定的約束。</p>
+          </div>
+          <div class="bg-slate-50 border border-slate-200 p-3.5 rounded-xl">
+            <span class="font-bold text-slate-800 block mb-1">Q2：網格搜尋一定比較好？</span>
+            <p class="text-slate-600">只有在<strong>超參數少於 3 個</strong>時推薦。維度一高會有維度詛咒，算力呈幾何級數爆炸。</p>
+          </div>
+          <div class="bg-slate-50 border border-slate-200 p-3.5 rounded-xl">
+            <span class="font-bold text-slate-800 block mb-1">Q3：學習率太小只是練得慢？</span>
+            <p class="text-slate-600">不只慢！在非凸曲面上，學習率太小非常容易<strong>永久卡在局部小坑 (Local Minimum)</strong> 而無法抵達最佳點。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SLIDE 8 ==================== -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+        <div class="flex items-center justify-between">
+          <span class="px-3 py-1 bg-purple-50 text-purple-700 text-xs font-bold rounded-lg flex items-center gap-1.5">
+            <i class="fa-solid fa-key"></i> 投影片 8 / 8：這集帶走五句話
+          </span>
+          <button onclick="seekToTime(630)" class="px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-indigo-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition flex items-center gap-1">
+            <i class="fa-solid fa-play text-[10px]"></i> 跳轉 10:30
+          </button>
+        </div>
+
+        <div class="slide-svg-container">
+          <svg viewBox="0 0 1000 440" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1000" height="440" fill="#f8fafc" rx="16"/>
+            <circle cx="36" cy="38" r="8" fill="#f97316"/>
+            <text x="56" y="44" font-family="'Noto Sans TC', sans-serif" font-size="20" font-weight="700" fill="#4f46e5">iPAS 18 · 超參數與優化器調整</text>
+            <line x1="390" y1="38" x2="960" y2="38" stroke="#a5b4fc" stroke-width="2"/>
+            <text x="36" y="105" font-family="'Noto Sans TC', sans-serif" font-size="34" font-weight="900" fill="#1e1b4b">這集帶走</text>
+            <text x="180" y="105" font-family="'Noto Sans TC', sans-serif" font-size="34" font-weight="900" fill="#ea580c">五句話</text>
+            <g transform="translate(36, 130)"><rect width="928" height="46" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><rect x="12" y="8" width="30" height="30" rx="6" fill="#6366f1"/><text x="27" y="29" font-family="'Noto Sans TC', sans-serif" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle">1</text><text x="58" y="29" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="700" fill="#1e293b">參數學出來，超參數事先訂</text></g>
+            <g transform="translate(36, 186)"><rect width="928" height="46" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><rect x="12" y="8" width="30" height="30" rx="6" fill="#6366f1"/><text x="27" y="29" font-family="'Noto Sans TC', sans-serif" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle">2</text><text x="58" y="29" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="700" fill="#1e293b">學習率與批次大小：最敏感，而且綁在一起</text></g>
+            <g transform="translate(36, 242)"><rect width="928" height="46" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><rect x="12" y="8" width="30" height="30" rx="6" fill="#6366f1"/><text x="27" y="29" font-family="'Noto Sans TC', sans-serif" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle">3</text><text x="58" y="29" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="700" fill="#1e293b">深度、寬度、λ 控制模型容量</text></g>
+            <g transform="translate(36, 298)"><rect width="928" height="46" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><rect x="12" y="8" width="30" height="30" rx="6" fill="#6366f1"/><text x="27" y="29" font-family="'Noto Sans TC', sans-serif" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle">4</text><text x="58" y="29" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="700" fill="#1e293b">搜尋方法：全踩、亂丟、請代辦</text></g>
+            <g transform="translate(36, 354)"><rect width="928" height="46" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/><rect x="12" y="8" width="30" height="30" rx="6" fill="#6366f1"/><text x="27" y="29" font-family="'Noto Sans TC', sans-serif" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle">5</text><text x="58" y="29" font-family="'Noto Sans TC', sans-serif" font-size="17" font-weight="700" fill="#1e293b">LoRA：顯存不夠時怎麼調</text></g>
+          </svg>
+        </div>
+
+        <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-950 text-white p-5 rounded-2xl shadow-md">
+          <span class="text-xs font-bold text-indigo-300 uppercase tracking-widest block mb-3">
+            <i class="fa-solid fa-award"></i> 考前 3 分鐘速記總口訣
+          </span>
+          <div class="grid grid-cols-1 sm:grid-cols-5 gap-2 text-xs">
+            <div class="bg-white/10 p-3 rounded-xl border border-white/10 text-center">
+              <span class="text-indigo-400 font-bold block mb-1">① 身份</span>
+              <span>參數學出來<br>超參數事先訂</span>
+            </div>
+            <div class="bg-white/10 p-3 rounded-xl border border-white/10 text-center">
+              <span class="text-amber-400 font-bold block mb-1">② 雙旋鈕</span>
+              <span>批次放大時<br>學習率跟著大</span>
+            </div>
+            <div class="bg-white/10 p-3 rounded-xl border border-white/10 text-center">
+              <span class="text-emerald-400 font-bold block mb-1">③ 容量</span>
+              <span>深寬λ控容量<br>過擬合加大λ</span>
+            </div>
+            <div class="bg-white/10 p-3 rounded-xl border border-white/10 text-center">
+              <span class="text-purple-400 font-bold block mb-1">④ 搜尋</span>
+              <span>低維網格全踩<br>高維隨機勝出</span>
+            </div>
+            <div class="bg-white/10 p-3 rounded-xl border border-white/10 text-center">
+              <span class="text-rose-400 font-bold block mb-1">⑤ LoRA</span>
+              <span>顯存滿又漏法條<br>降 Rank 擴多層</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section: 完整時間軸逐字稿模組 -->
+    <section id="section-transcript" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-file-waveform text-indigo-600"></i> 完整時間軸逐字稿檢索
+          </h2>
+          <p class="text-xs text-slate-500">點擊任意時間戳可精確跳轉上方 YouTube 播放對應段落</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="copyFullTranscript()" class="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition flex items-center gap-1.5">
+            <i class="fa-solid fa-copy"></i> 複製全文逐字稿
+          </button>
+        </div>
+      </div>
+
+      <!-- Search & Filters -->
+      <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+        <div class="sm:col-span-8 relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+          <input type="text" id="transcript-search" oninput="filterTranscript()" placeholder="搜尋關鍵字，例如：學習率、批次大小、網格、LoRA、局部最小值..." 
+                 class="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div class="sm:col-span-4">
+          <select id="section-filter" onchange="filterTranscript()" class="w-full py-2 px-3 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700">
+            <option value="all">全部章節段落</option>
+            <option value="warmup">開場暖身考題</option>
+            <option value="p1">重點一：參數與超參數</option>
+            <option value="p2">重點二：學習率與批次大小</option>
+            <option value="p3">重點三：深度、寬度與正則化</option>
+            <option value="p4">重點四：三種搜尋方法</option>
+            <option value="p5">重點五：LoRA 微調</option>
+            <option value="summary">結尾總整理五句話</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Transcript Item List Container -->
+      <div id="transcript-container" class="space-y-3 custom-scrollbar max-h-[580px] overflow-y-auto pr-1"></div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4">
+      <p>iPAS AI 應用規劃師 - 互動式教學筆記 · 完整整合 YouTube 時間軸與 1:1 投影片</p>
+      <p class="mt-1 text-slate-400">© 2026 AI Study Hub. 內容取材自公開教材與歷屆考古題精解</p>
+    </div>
+  </footer>
+
+  <!-- YouTube IFrame API Script -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+
+  <script>
+    /* ========================================================
+       1. YouTube Player API Integration
+       ======================================================== */
+    let ytPlayer = null;
+    let timeTrackingTimer = null;
+
+    function onYouTubeIframeAPIReady() {
+      ytPlayer = new YT.Player('player', {
+        videoId: 'wKUyx1rN0UM',
+        playerVars: {
+          playsinline: 1,
+          rel: 0,
+          modestbranding: 1
+        },
+        events: {
+          'onReady': onPlayerReady,
+          'onStateChange': onPlayerStateChange
+        }
+      });
+    }
+
+    function onPlayerReady(event) {
+      startTimeTracking();
+    }
+
+    function onPlayerStateChange(event) {
+      if (event.data === YT.PlayerState.PLAYING) {
+        startTimeTracking();
+      } else {
+        clearInterval(timeTrackingTimer);
+      }
+    }
+
+    function startTimeTracking() {
+      clearInterval(timeTrackingTimer);
+      timeTrackingTimer = setInterval(() => {
+        if (ytPlayer && ytPlayer.getCurrentTime) {
+          const sec = Math.floor(ytPlayer.getCurrentTime());
+          const m = String(Math.floor(sec / 60)).padStart(2, '0');
+          const s = String(sec % 60).padStart(2, '0');
+          const statusElem = document.getElementById('player-status');
+          if (statusElem) statusElem.innerText = `目前時間: ${m}:${s}`;
+        }
+      }, 1000);
+    }
+
+    function seekToTime(seconds) {
+      if (ytPlayer && ytPlayer.seekTo) {
+        ytPlayer.seekTo(seconds, true);
+        ytPlayer.playVideo();
+        showToast(`已跳轉至 ${formatSeconds(seconds)}`, 'fa-circle-play');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        showToast('播放器準備中，請稍候再試', 'fa-triangle-exclamation');
+      }
+    }
+
+    function formatSeconds(totalSec) {
+      const m = String(Math.floor(totalSec / 60)).padStart(2, '0');
+      const s = String(totalSec % 60).padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    function parseTimestamp(timeStr) {
+      const parts = timeStr.split(':').map(Number);
+      if (parts.length === 3) {
+        return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      } else if (parts.length === 2) {
+        return parts[0] * 60 + parts[1];
+      }
+      return 0;
+    }
+
+    /* ========================================================
+       2. Toast Helper
+       ======================================================== */
+    function showToast(msg, icon = 'fa-circle-check') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-msg');
+      const toastIcon = document.getElementById('toast-icon');
+      toastMsg.innerText = msg;
+      toastIcon.className = `fa-solid ${icon} text-emerald-400`;
+      toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-[-10px]');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-[-10px]');
+      }, 2500);
+    }
+
+    /* ========================================================
+       3. Warmup Quiz Handling
+       ======================================================== */
+    function checkWarmupAnswer(choice, btn) {
+      const explainBox = document.getElementById('warmup-explain');
+      const allBtns = document.querySelectorAll('#warmup-options button');
+      allBtns.forEach(b => {
+        b.classList.remove('bg-emerald-50', 'border-emerald-500', 'text-emerald-800', 'bg-rose-50', 'border-rose-400', 'text-rose-800');
+        b.querySelector('i').className = 'fa-regular fa-circle text-slate-300';
+      });
+
+      if (choice === 3) {
+        btn.classList.add('bg-emerald-50', 'border-emerald-500', 'text-emerald-800');
+        btn.querySelector('i').className = 'fa-solid fa-circle-check text-emerald-600';
+        explainBox.classList.remove('hidden');
+        explainBox.innerHTML = `
+          <strong class="text-emerald-700 block mb-1">🎉 答對了！(同 115 年第 8 題考點)</strong>
+          學習率決定步伐大小。學習率過大，參數會在最佳谷底兩側反覆橫跳跳過頭，最直接導致<strong>「損失震盪或發散」</strong>。
+          <ul class="mt-1.5 list-disc pl-4 space-y-0.5 text-[11px] text-slate-500">
+            <li>梯度消失：是網路過深與激活函數不當的問題。</li>
+            <li>過擬合：是模型過度擬合訓練集之泛化問題。</li>
+            <li>Dying ReLU：是神經元輸入恆為負、輸出恆為零學不動。</li>
+          </ul>
+        `;
+        showToast('回答正確！損失震盪或發散', 'fa-circle-check');
+      } else {
+        btn.classList.add('bg-rose-50', 'border-rose-400', 'text-rose-800');
+        btn.querySelector('i').className = 'fa-solid fa-circle-xmark text-rose-600';
+        explainBox.classList.remove('hidden');
+        explainBox.innerHTML = `
+          <strong class="text-rose-600 block mb-1">❌ 答錯了，請再想想看！</strong>
+          調大學習率步伐變大，在碗狀山谷最容易發生在兩端跳來跳去無法收斂的情況。正解為 <strong>(C) 損失震盪或發散</strong>。
+        `;
+      }
+    }
+
+    /* ========================================================
+       4. Classification Quiz (模擬器一)
+       ======================================================== */
+    let correctParams = 0;
+    let correctHypers = 0;
+
+    function handleItemClick(btn, type) {
+      if (btn.classList.contains('opacity-30')) return;
+
+      const pBox = document.getElementById('param-box');
+      const hBox = document.getElementById('hyper-box');
+
+      if (type === 'param') {
+        const pPlaceholder = pBox.querySelector('.placeholder-text');
+        if (pPlaceholder) pPlaceholder.remove();
+        
+        btn.classList.add('opacity-30', 'cursor-not-allowed');
+        const badge = document.createElement('span');
+        badge.className = 'px-2.5 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-medium flex items-center gap-1';
+        badge.innerHTML = `<i class="fa-solid fa-check text-emerald-600"></i> ${btn.innerText}`;
+        pBox.appendChild(badge);
+        correctParams++;
+        document.getElementById('param-count').innerText = `${correctParams} / 4`;
+        showToast(`正確！${btn.innerText} 是訓練時學得的【參數】`, 'fa-circle-check');
+      } else {
+        const hPlaceholder = hBox.querySelector('.placeholder-text');
+        if (hPlaceholder) hPlaceholder.remove();
+
+        btn.classList.add('opacity-30', 'cursor-not-allowed');
+        const badge = document.createElement('span');
+        badge.className = 'px-2.5 py-1 bg-indigo-100 text-indigo-800 border border-indigo-300 rounded-lg text-xs font-medium flex items-center gap-1';
+        badge.innerHTML = `<i class="fa-solid fa-check text-indigo-600"></i> ${btn.innerText}`;
+        hBox.appendChild(badge);
+        correctHypers++;
+        document.getElementById('hyper-count').innerText = `${correctHypers} / 4`;
+        showToast(`正確！${btn.innerText} 是事先設定的【超參數】`, 'fa-circle-check');
+      }
+
+      if (correctParams === 4 && correctHypers === 4) {
+        showToast('太厲害了！8 項分類全數通關！', 'fa-award');
+      }
+    }
+
+    function resetClassifyQuiz() {
+      correctParams = 0;
+      correctHypers = 0;
+      document.getElementById('param-count').innerText = `0 / 4`;
+      document.getElementById('hyper-count').innerText = `0 / 4`;
+      document.getElementById('param-box').innerHTML = `<span class="text-xs text-emerald-600/70 italic placeholder-text">點擊上方項目放入此處...</span>`;
+      document.getElementById('hyper-box').innerHTML = `<span class="text-xs text-indigo-600/70 italic placeholder-text">點擊上方項目放入此處...</span>`;
+      const buttons = document.querySelectorAll('#quiz-pool button');
+      buttons.forEach(b => {
+        b.classList.remove('opacity-30', 'cursor-not-allowed');
+      });
+      showToast('測驗已重置', 'fa-rotate-right');
+    }
+
+    /* ========================================================
+       5. Gradient Descent Simulation (模擬器二)
+       ======================================================== */
+    let simMode = 'good';
+    let animFrame = null;
+
+    const paths = {
+      good: [
+        {x: 480, y: 70}, {x: 440, y: 150}, {x: 400, y: 195}, {x: 375, y: 212}, {x: 360, y: 215}
+      ],
+      large: [
+        {x: 240, y: 120}, {x: 450, y: 130}, {x: 270, y: 180}, {x: 430, y: 160}, {x: 290, y: 200}, {x: 490, y: 70}
+      ],
+      small: [
+        {x: 40, y: 60}, {x: 70, y: 65}, {x: 95, y: 90}, {x: 105, y: 110}, {x: 115, y: 130}, {x: 120, y: 140}
+      ]
+    };
+
+    function setSimMode(mode) {
+      simMode = mode;
+      const bGood = document.getElementById('sim-btn-good');
+      const bLarge = document.getElementById('sim-btn-large');
+      const bSmall = document.getElementById('sim-btn-small');
+      const desc = document.getElementById('sim-desc');
+
+      bGood.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold ' + (mode === 'good' ? 'bg-emerald-500 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200');
+      bLarge.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold ' + (mode === 'large' ? 'bg-rose-500 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-600');
+      bSmall.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold ' + (mode === 'small' ? 'bg-amber-500 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-amber-50 hover:text-amber-600');
+
+      if (mode === 'good') {
+        desc.className = 'p-3 bg-emerald-50 rounded-lg text-xs text-emerald-900 border border-emerald-200 leading-relaxed';
+        desc.innerHTML = '<strong>適中學習率：</strong> 步長控制合理，初期大步快速下降，後期微幅調整，順利收斂至整座山最低點。';
+      } else if (mode === 'large') {
+        desc.className = 'p-3 bg-rose-50 rounded-lg text-xs text-rose-900 border border-rose-200 leading-relaxed';
+        desc.innerHTML = '<strong>學習率過大：</strong> 更新步伐太大，在谷底兩側劇烈跳躍橫跨，損失不降反升，出現嚴重<strong>震盪甚至發散</strong>。';
+      } else {
+        desc.className = 'p-3 bg-amber-50 rounded-lg text-xs text-amber-900 border border-amber-200 leading-relaxed';
+        desc.innerHTML = '<strong>學習率過小：</strong> 步伐太保守，每步只動一點點，遇到前方隆起就爬不過去，<strong>卡在局部小坑 (Local Minimum)</strong>。';
+      }
+
+      runSimulation();
+    }
+
+    function runSimulation() {
+      cancelAnimationFrame(animFrame);
+      const points = paths[simMode];
+      const ball = document.getElementById('sim-ball');
+      const trail = document.getElementById('sim-trail');
+      let stepIndex = 0;
+      let progress = 0;
+      let trailPoints = `${points[0].x},${points[0].y}`;
+      trail.setAttribute('points', trailPoints);
+
+      function step() {
+        if (stepIndex < points.length - 1) {
+          const p1 = points[stepIndex];
+          const p2 = points[stepIndex + 1];
+          progress += 0.035;
+          if (progress >= 1) {
+            progress = 0;
+            stepIndex++;
+            trailPoints += ` ${p2.x},${p2.y}`;
+            trail.setAttribute('points', trailPoints);
+          }
+          const curX = p1.x + (p2.x - p1.x) * progress;
+          const curY = p1.y + (p2.y - p1.y) * progress;
+          ball.setAttribute('cx', curX);
+          ball.setAttribute('cy', curY);
+          animFrame = requestAnimationFrame(step);
+        }
+      }
+      step();
+    }
+
+    /* ========================================================
+       6. Batch Size Simulator (模擬器三)
+       ======================================================== */
+    function updateBatchSim() {
+      const bs = parseInt(document.getElementById('bs-slider').value);
+      document.getElementById('bs-val').innerText = bs;
+
+      const vramPct = Math.min(100, Math.round((bs / 512) * 100));
+      const vramBar = document.getElementById('vram-bar');
+      const vramText = document.getElementById('vram-percent');
+
+      vramBar.style.width = `${vramPct}%`;
+      if (vramPct > 80) {
+        vramBar.className = 'bg-rose-500 h-2.5 rounded-full transition-all duration-300';
+        vramText.innerText = `${vramPct}% (警告：極易顯存不足 OOM)`;
+        vramText.className = 'font-bold text-rose-600';
+      } else if (vramPct > 50) {
+        vramBar.className = 'bg-amber-500 h-2.5 rounded-full transition-all duration-300';
+        vramText.innerText = `${vramPct}% (中高佔用)`;
+        vramText.className = 'font-bold text-amber-600';
+      } else {
+        vramBar.className = 'bg-emerald-500 h-2.5 rounded-full transition-all duration-300';
+        vramText.innerText = `${vramPct}% (安全充裕)`;
+        vramText.className = 'font-bold text-emerald-600';
+      }
+
+      const noisePct = Math.max(10, Math.round(100 - (bs / 512) * 85));
+      const noiseBar = document.getElementById('noise-bar');
+      const noiseText = document.getElementById('noise-percent');
+      noiseBar.style.width = `${noisePct}%`;
+
+      if (noisePct > 60) {
+        noiseText.innerText = '高 (隨機性佳，極易晃出局部小坑)';
+        noiseText.className = 'font-bold text-purple-700';
+      } else if (noisePct > 35) {
+        noiseText.innerText = '適中 (平穩兼顧探索)';
+        noiseText.className = 'font-bold text-indigo-700';
+      } else {
+        noiseText.innerText = '極低 (梯度方向極穩，但易卡在銳利小坑)';
+        noiseText.className = 'font-bold text-slate-600';
+      }
+
+      const tip = document.getElementById('bs-tip');
+      if (bs <= 32) {
+        tip.innerText = '小批次狀態：每次更新只看少數筆，損失曲線波動較大，但訓練時非常省顯存，且較容易逃脫局部最小值。';
+      } else if (bs >= 256) {
+        tip.innerText = '大批次狀態：梯度估計極準確，但大量資料同時常駐 GPU 記憶體，建議同步調大學習率以維持最佳效率。';
+      } else {
+        tip.innerText = '中等批次：平衡顯存使用與梯度震盪，為一般深度學習任務中最常用的起手值。';
+      }
+    }
+
+    /* ========================================================
+       7. Grid vs Random Search Visualizer (模擬器四)
+       ======================================================== */
+    function drawSearchSimulation(type) {
+      const svg = document.getElementById('search-svg');
+      const gBtn = document.getElementById('search-grid-btn');
+      const rBtn = document.getElementById('search-rand-btn');
+      const box = document.getElementById('search-explain-box');
+
+      if (type === 'grid') {
+        gBtn.className = 'px-3 py-1.5 text-xs font-semibold bg-purple-600 text-white rounded-lg shadow-sm transition';
+        rBtn.className = 'px-3 py-1.5 text-xs font-semibold bg-slate-200 text-slate-700 hover:bg-purple-100 hover:text-purple-700 rounded-lg transition';
+        
+        let circles = '';
+        const coords = [50, 140, 230];
+        coords.forEach(x => {
+          coords.forEach(y => {
+            circles += `<circle cx="${x}" cy="${y}" r="6.5" fill="#4f46e5" stroke="#ffffff" stroke-width="2"/>`;
+          });
+        });
+
+        svg.innerHTML = `
+          <rect width="280" height="260" fill="#f8fafc" rx="10"/>
+          <!-- 座標軸 -->
+          <line x1="30" y1="230" x2="260" y2="230" stroke="#94a3b8" stroke-width="2"/>
+          <line x1="30" y1="230" x2="30" y2="20" stroke="#94a3b8" stroke-width="2"/>
+          <text x="145" y="250" font-size="11" font-weight="700" fill="#1e293b" text-anchor="middle">學習率 (關鍵超參數)</text>
+          <text x="15" y="125" font-size="11" font-weight="700" fill="#64748b" transform="rotate(-90 15,125)" text-anchor="middle">不重要超參數</text>
+          <!-- 投影線 -->
+          <line x1="50" y1="20" x2="50" y2="230" stroke="#c7d2fe" stroke-dasharray="3"/>
+          <line x1="140" y1="20" x2="140" y2="230" stroke="#c7d2fe" stroke-dasharray="3"/>
+          <line x1="230" y1="20" x2="230" y2="230" stroke="#c7d2fe" stroke-dasharray="3"/>
+          ${circles}
+          <!-- X軸投影點標示 -->
+          <circle cx="50" cy="230" r="4.5" fill="#ea580c"/>
+          <circle cx="140" cy="230" r="4.5" fill="#ea580c"/>
+          <circle cx="230" cy="230" r="4.5" fill="#ea580c"/>
+        `;
+
+        box.innerHTML = `
+          <strong class="text-purple-900 block mb-1">網格搜尋 (3 × 3 = 9 次預算)：</strong>
+          所有測試點整齊排列。雖然總共試了 9 次，但在真正起作用的<strong>「學習率」軸上，只試了 3 個截然不同的數值</strong>（下方橘點）。另外 6 次都在重複測試相同的學習率！
+        `;
+      } else {
+        rBtn.className = 'px-3 py-1.5 text-xs font-semibold bg-purple-600 text-white rounded-lg shadow-sm transition';
+        gBtn.className = 'px-3 py-1.5 text-xs font-semibold bg-slate-200 text-slate-700 hover:bg-purple-100 hover:text-purple-700 rounded-lg transition';
+
+        const randPts = [
+          {x: 45, y: 70}, {x: 68, y: 190}, {x: 92, y: 110}, {x: 120, y: 40}, 
+          {x: 155, y: 170}, {x: 180, y: 90}, {x: 205, y: 210}, {x: 228, y: 130}, {x: 250, y: 55}
+        ];
+
+        let circles = '';
+        let proj = '';
+        randPts.forEach(p => {
+          proj += `<line x1="${p.x}" y1="${p.y}" x2="${p.x}" y2="230" stroke="#fbcfe8" stroke-dasharray="2"/>`;
+          circles += `<circle cx="${p.x}" cy="${p.y}" r="6.5" fill="#db2777" stroke="#ffffff" stroke-width="2"/>`;
+          circles += `<circle cx="${p.x}" cy="230" r="4" fill="#0d9488"/>`;
+        });
+
+        svg.innerHTML = `
+          <rect width="280" height="260" fill="#f8fafc" rx="10"/>
+          <line x1="30" y1="230" x2="260" y2="230" stroke="#94a3b8" stroke-width="2"/>
+          <line x1="30" y1="230" x2="30" y2="20" stroke="#94a3b8" stroke-width="2"/>
+          <text x="145" y="250" font-size="11" font-weight="700" fill="#1e293b" text-anchor="middle">學習率 (關鍵超參數)</text>
+          <text x="15" y="125" font-size="11" font-weight="700" fill="#64748b" transform="rotate(-90 15,125)" text-anchor="middle">不重要超參數</text>
+          ${proj}
+          ${circles}
+        `;
+
+        box.innerHTML = `
+          <strong class="text-pink-900 block mb-1">隨機搜尋 (9 次丟飛鏢預算)：</strong>
+          每次抽樣在橫軸上的位置皆不相同。同樣是 9 次預算，隨機搜尋在關鍵的<strong>「學習率」軸上探索了 9 個完全不同的數值</strong>（下方綠點），大幅提高踩到最優超參數的機率！
+        `;
+      }
+    }
+
+    /* ========================================================
+       8. Grid Model Calculator (模擬器五)
+       ======================================================== */
+    function calcGridModels() {
+      const lr = Math.max(1, parseInt(document.getElementById('calc-lr').value) || 1);
+      const depth = Math.max(1, parseInt(document.getElementById('calc-depth').value) || 1);
+      const trees = Math.max(1, parseInt(document.getElementById('calc-trees').value) || 1);
+      const sub = Math.max(1, parseInt(document.getElementById('calc-sub').value) || 1);
+      const col = Math.max(1, parseInt(document.getElementById('calc-col').value) || 1);
+      const kfold = Math.max(2, parseInt(document.getElementById('calc-kfold').value) || 2);
+
+      const combos = lr * depth * trees * sub * col;
+      const total = combos * kfold;
+
+      document.getElementById('grid-formula').innerText = `${lr} × ${depth} × ${trees} × ${sub} × ${col} = ${combos.toLocaleString()} 組 × ${kfold} 折`;
+      document.getElementById('grid-total').innerText = `= ${total.toLocaleString()} 個模型`;
+    }
+
+    /* ========================================================
+       9. LoRA Calculator (模擬器六)
+       ======================================================== */
+    function calcLoRA() {
+      const r = parseInt(document.getElementById('lora-rank').value) || 8;
+      const layers = parseInt(document.getElementById('lora-layers').value) || 4;
+      
+      document.getElementById('rank-val').innerText = `Rank = ${r}`;
+      document.getElementById('layers-val').innerText = `${layers} 層`;
+
+      const originalParams = 1000 * 1000;
+      const singleLayerTrainable = 2 * 1000 * r;
+      const totalTrainable = singleLayerTrainable * layers;
+      const saving = ((1 - (singleLayerTrainable / originalParams)) * 100).toFixed(2);
+
+      document.getElementById('lora-params').innerText = `${singleLayerTrainable.toLocaleString()} 參數`;
+      document.getElementById('lora-total-params').innerText = `${totalTrainable.toLocaleString()} 參數`;
+      document.getElementById('lora-saving').innerText = `${saving}% 節省`;
+    }
+
+    /* ========================================================
+       10. Transcript Data & Interactive Search
+       ======================================================== */
+    const transcriptData = [
+      {
+        tag: 'warmup',
+        section: '開場暖身考題',
+        time: '00:00:00',
+        text: '先問你一題：一個有殘差連接的深層 CNN 訓練到第 15 輪，驗證損失開始上升，工程師把學習率調高，訓練損失反而開始明顯震盪。學習率過大最直接導致什麼？'
+      },
+      {
+        tag: 'warmup',
+        section: '開場暖身考題',
+        time: '00:00:12',
+        text: '第一、梯度消失；第二、過擬合；第三、損失震盪或發散；第四、Dying ReLU。'
+      },
+      {
+        tag: 'warmup',
+        section: '開場暖身考題',
+        time: '00:00:20',
+        text: '先停下來想一下答案，等一下講完學習率與批次大小時揭曉。'
+      },
+      {
+        tag: 'warmup',
+        section: '開場暖身考題',
+        time: '00:00:24',
+        text: '這是第 17 章：超參數與優化器調整。超參數是你事先設定、不會被資料學出來的旋鈕。這章教你每個旋鈕轉了會怎樣，還有怎麼有效率地找最佳組合。'
+      },
+      {
+        tag: 'warmup',
+        section: '開場暖身考題',
+        time: '00:00:36',
+        text: '這章有五個重點：1. 參數與超參數、2. 學習率與批次大小、3. 網路深度寬度與正則化係數、4. 三種搜尋方法、5. LoRA 微調。'
+      },
+      {
+        tag: 'p1',
+        section: '重點一：參數與超參數',
+        time: '00:00:47',
+        text: '重點一：參數與超參數。參數是訓練時從資料學出來的，例如權重、偏置。超參數是你事先設定的，例如學習率、批次大小、層數、正則化係數、KNN 的 K 值。'
+      },
+      {
+        tag: 'p1',
+        section: '重點一：參數與超參數',
+        time: '00:00:59',
+        text: '比喻是：學生學到的知識是參數，老師事先排好的讀書計畫是超參數（例如每天讀幾次、寫幾題）。'
+      },
+      {
+        tag: 'p1',
+        section: '重點一：參數與超參數',
+        time: '00:01:07',
+        text: '來看看一個場景：KNN 的 K、決策樹的最大深度、線性回歸的係數、神經網路訓練後的權重，哪些是超參數？'
+      },
+      {
+        tag: 'p1',
+        section: '重點一：參數與超參數',
+        time: '00:01:17',
+        text: 'K 是要找幾個鄰居、最大深度是決策樹最多長幾層，這兩個訓練前就要人填好，是超參數。係數和權重是訓練中從資料學出來的，是參數。'
+      },
+      {
+        tag: 'p1',
+        section: '重點一：參數與超參數',
+        time: '00:01:29',
+        text: '選項裡如果出現權重值、梯度值、神經元輸出，都屬於訓練中產生的數值，不算超參數。'
+      },
+      {
+        tag: 'p2',
+        section: '重點二：學習率與批次大小',
+        time: '00:01:34',
+        text: '重點二：學習率與批次大小。學習率決定每一步走多大：學習率太大，損失會震盪、發散，因為步伐太大在谷底兩側來回跳過頭。'
+      },
+      {
+        tag: 'p2',
+        section: '重點二：學習率與批次大小',
+        time: '00:01:48',
+        text: '學習率太小，訓練很慢，可能卡在局部最小值（Local Minimum）。因為每步都很小走不動。局部最小值就像山區裡的小坑，周圍都比它高但不是整座山最低的地方，步伐太小掉進小坑就爬不出來。'
+      },
+      {
+        tag: 'p2',
+        section: '重點二：學習率與批次大小',
+        time: '00:02:00',
+        text: '學習率剛好：損失穩定下降，前期大步、後期小步最理想。'
+      },
+      {
+        tag: 'p2',
+        section: '重點二：學習率與批次大小',
+        time: '00:02:05',
+        text: '批次大小（Batch Size）決定每走一步前要參考多少筆資料。例如訓練資料 1,000 筆，批次大小 100，就是每看 100 筆算一次梯度、更新一次權重，一輪走 10 步。'
+      },
+      {
+        tag: 'p2',
+        section: '重點二：學習率與批次大小',
+        time: '00:02:18',
+        text: '大批次：梯度穩，因為一次拿越多筆資料平均，算出來的梯度越接近整份資料的方向。代價是吃記憶體，且大批次的泛化能力也可能變差。'
+      },
+      {
+        tag: 'p2',
+        section: '重點二：學習率與批次大小',
+        time: '00:02:30',
+        text: '小批次：隨機性高，每次只看少數幾筆，梯度方向帶點雜訊，這種晃動有時會把參數從小坑裡晃出來。代價是損失曲線上下抖動。'
+      },
+      {
+        tag: 'p2',
+        section: '重點二：學習率與批次大小',
+        time: '00:02:42',
+        text: '學習率和批次大小搭配：批次放大，梯度估得更準，通常可以配稍大的學習率。只改一個不改另一個，訓練可能變不穩。'
+      },
+      {
+        tag: 'p2',
+        section: '重點二：學習率與批次大小',
+        time: '00:02:53',
+        text: '學校版比喻：每次訂正改太多，會在兩種錯法之間來回擺盪（學習率太大）；改太少，一學期都沒進步（學習率太小）；批次大小則是累積幾份考卷才檢討一次。'
+      },
+      {
+        tag: 'p2',
+        section: '重點二：學習率與批次大小',
+        time: '00:03:05',
+        text: '考題常見訊號：收斂速度不穩定，有時太快、有時練不上 wage：要調學習率；調高學習率後損失明顯震盪：是學習率過大；GPU 記憶體不足：先縮小批次大小。'
+      },
+      {
+        tag: 'p2',
+        section: '重點二：學習率與批次大小',
+        time: '00:03:22',
+        text: '114 年考古題第 12 題考點：深度神經網路收斂速度不穩定，有時過快導致過擬合，有時遲遲達不到最佳準確率。選項裡只有學習率是超參數，其他是權重、梯度、神經元輸出，答案是學習率。'
+      },
+      {
+        tag: 'p2',
+        section: '重點二：學習率與批次大小',
+        time: '00:03:37',
+        text: '回題解答開場提問（同 115 年第 8 題）：答案是第三個「損失震盪或發散」。每次更新步伐過大，參數在最優點兩側反覆跳躍。梯度消失是網路太深；過擬合是泛化問題；Dying ReLU 是激活函數問題。'
+      },
+      {
+        tag: 'p3',
+        section: '重點三：網路深度、寬度與正則化係數',
+        time: '00:04:12',
+        text: '重點三：網路深度、寬度與正則化係數。這三個控制模型容量（容量即模型能記住多少東西）。深度加深建議搭配批次正規化與殘差連接，否則容易練不動。'
+      },
+      {
+        tag: 'p3',
+        section: '重點三：網路深度、寬度與正則化係數',
+        time: '00:04:30',
+        text: '寬度調大特徵更豐富但容易過擬合；正則化係數 λ 越大懲罰越重，權重被壓得越小。調大限制強可能欠擬合，調小限制弱可能過擬合。'
+      },
+      {
+        tag: 'p3',
+        section: '重點三：網路深度、寬度與正則化係數',
+        time: '00:04:53',
+        text: '實戰情境分析：模型訓練和驗證都很差且 λ 設很大，是限制太強欠擬合，處方是調小 λ；20 層每層 1024 神經元且訓練完美驗證很差，是過擬合，要縮小容量或加大正則化。'
+      },
+      {
+        tag: 'p4',
+        section: '重點四：三種搜尋方法',
+        time: '00:05:33',
+        text: '重點四：三種搜尋方法。1. 網格搜尋：把所有組合全部試一遍，保證不漏但計算量易爆炸；2. 隨機搜尋：在範圍內隨機抽，在高維參數空間更有效率；3. AutoML：自動挑模型與超參數。'
+      },
+      {
+        tag: 'p4',
+        section: '重點四：三種搜尋方法',
+        time: '00:05:53',
+        text: '為什麼隨機搜尋在高維空間更有效率？因為通常只有少數幾個超參數真的重要。網格搜尋在不重要的維度浪費組合，隨機搜尋每次抽樣都會在重要維度試到不同值（114 年第 11 題考點）。'
+      },
+      {
+        tag: 'p4',
+        section: '重點四：三種搜尋方法',
+        time: '00:06:25',
+        text: '網格搜尋計算題（同 115 年第 34 題）：XGBoost 5 個超參數（候選數 3, 4, 5, 3, 3），每組做 5 折交叉驗證：組合數為 3 × 4 × 5 × 3 × 3 = 540 組，總訓練模型數為 540 × 5 = 2,700 個模型。'
+      },
+      {
+        tag: 'p4',
+        section: '重點四：三種搜尋方法',
+        time: '00:07:14',
+        text: '如何挑選搜尋方法？超參數少且候選少選網格搜尋；8 個超參數但只有 6 小時預算，選隨機搜尋或交給 AutoML。'
+      },
+      {
+        tag: 'p5',
+        section: '重點五：LoRA 微調',
+        time: '00:07:30',
+        text: '重點五：LoRA 微調（Low-Rank Adaptation）。微調是大語言模型拿別人訓練好的模型，用自己的資料再訓練。LoRA 的作法是將原本大權重凍結，只訓練旁邊加上去的兩個低秩小矩陣。'
+      },
+      {
+        tag: 'p5',
+        section: '重點五：LoRA 微調',
+        time: '00:07:58',
+        text: '矩陣原理：原本 1,000 × 1,000（100 萬參數），加上 1,000 × 8 和 8 × 1,000 的小矩陣相乘，要訓練的參數量只有 8,000 + 8,000 = 16,000 個參數。'
+      },
+      {
+        tag: 'p5',
+        section: '重點五：LoRA 微調',
+        time: '00:08:18',
+        text: 'Rank（秩）就像補丁貼片的寬度：越大表達力越強但吃顯存，越小越省顯存。完整微調所有參數都訓，記憶體需求最大。'
+      },
+      {
+        tag: 'p5',
+        section: '重點五：LoRA 微調',
+        time: '00:08:39',
+        text: 'LoRA 記憶體策略：課本不重印只貼補充頁；換成窄一點的補充頁（降 Rank），但貼到更多頁（套用到更多層）。Rank=16 訓 4 層與 Rank=8 訓 8 層參數量完全相同（都是 128,000 參數），但層數覆蓋多一倍！'
+      },
+      {
+        tag: 'p5',
+        section: '重點五：LoRA 微調',
+        time: '00:09:19',
+        text: '實戰題（同 115 年第 35 題）：LoRA 微調法律摘要複雜條款常漏內容，但顯存已達上限，答案是「降低 Rank 但套用到更多層」。保持總參數不變，把調整機會分給更多層。'
+      },
+      {
+        tag: 'summary',
+        section: '結尾總整理',
+        time: '00:10:12',
+        text: '核心觀念快速複習：參數是學出來的權重；超參數是事先設定的旋鈕；網格搜尋是全踩，隨機搜尋是隨機抽；學習率過大震盪，過小太慢或卡死。'
+      },
+      {
+        tag: 'summary',
+        section: '結尾總整理',
+        time: '00:10:30',
+        text: '五句精華帶走：1. 參數學出來，超參數事先定。2. 學習率與批次敏感且綁在一起。3. 深度寬度與 λ 控制模型容量。4. 三搜尋方法：全踩、亂丟、請代辦。5. LoRA：顯存不夠時降低 Rank 套用到更多層。'
+      }
+    ];
+
+    function renderTranscript(items) {
+      const container = document.getElementById('transcript-container');
+      container.innerHTML = '';
+      if (items.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-10 text-slate-400">
+            <i class="fa-regular fa-folder-open text-3xl mb-2"></i>
+            <p class="text-xs">未找到符合條件的逐字稿內容</p>
+          </div>
+        `;
+        return;
+      }
+
+      items.forEach(item => {
+        const sec = parseTimestamp(item.time);
+        const card = document.createElement('div');
+        card.className = 'group p-3 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/40 transition flex items-start gap-3 text-xs leading-relaxed';
+        card.innerHTML = `
+          <button onclick="seekToTime(${sec})" class="shrink-0 font-mono font-bold px-2 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-lg transition text-[11px] flex items-center gap-1 shadow-sm">
+            <i class="fa-solid fa-play text-[9px]"></i> ${item.time}
+          </button>
+          <div class="flex-1">
+            <span class="inline-block text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded mr-1.5 uppercase">${item.section}</span>
+            <span class="text-slate-700 group-hover:text-slate-900">${item.text}</span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function filterTranscript() {
+      const q = document.getElementById('transcript-search').value.trim().toLowerCase();
+      const sec = document.getElementById('section-filter').value;
+
+      const filtered = transcriptData.filter(item => {
+        const matchSec = (sec === 'all' || item.tag === sec);
+        const matchQ = (q === '' || item.text.toLowerCase().includes(q) || item.section.toLowerCase().includes(q));
+        return matchSec && matchQ;
+      });
+      renderTranscript(filtered);
+    }
+
+    function copyFullTranscript() {
+      const fullText = transcriptData.map(d => `[${d.time}] ${d.section}：\n${d.text}`).join('\n\n');
+      const tempInput = document.createElement('textarea');
+      tempInput.value = fullText;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
+      showToast('全文逐字稿已成功複製到剪貼簿！', 'fa-copy');
+    }
+
+    // Initialize on page load
+    window.onload = function() {
+      renderTranscript(transcriptData);
+      runSimulation();
+      updateBatchSim();
+      drawSearchSimulation('grid');
+      calcGridModels();
+      calcLoRA();
+    };
+  </script>
+</body>
+</html>

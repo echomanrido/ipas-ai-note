@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>【iPAS AI應用規劃師_中級科目三 系列 EP19】正則化與重取樣｜帶你看懂 L1 與 L2、Dropout 與早停、重取樣</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f5ff',
+              100: '#e0ebff',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              900: '#1e293b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- KaTeX for Math Equations -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+  <style>
+    .math-font { font-family: 'KaTeX_Main', 'Times New Roman', serif; }
+    .transition-all-custom { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- 頂部導航與原片按鈕 -->
+  <header class="sticky top-0 z-50 bg-slate-900/95 backdrop-blur border-b border-slate-800 text-white">
+    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span class="px-2.5 py-1 rounded bg-indigo-600 font-bold text-xs tracking-wider uppercase">iPAS 中級科目三</span>
+        <span class="font-medium text-sm sm:text-base text-slate-200 hidden sm:inline">EP19 正規化與重取樣</span>
+      </div>
+      <a href="https://www.youtube.com/watch?v=tDDhuSVbYkU&list=PLC0AIqDG72yo&index=33" 
+         target="_blank" 
+         rel="noopener noreferrer" 
+         class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm font-semibold px-4 py-2 rounded-lg shadow-sm transition hover:scale-105 active:scale-95">
+        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+        </svg>
+        <span>觀看 YouTube 原片</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- 主橫幅 Banner -->
+  <section class="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white py-12 px-4 border-b border-indigo-950">
+    <div class="max-w-4xl mx-auto text-center space-y-4">
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full text-xs font-semibold">
+        AI 應用規劃師 · 核心考點整理
+      </div>
+      <h1 class="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-snug">
+        【iPAS AI應用規劃師_中級科目三 系列 EP19】<br class="hidden sm:inline" />
+        正則化與重取樣｜帶你看懂 L1 與 L2、Dropout 與早停、重取樣。
+      </h1>
+      <p class="text-slate-300 text-sm sm:text-base max-w-2xl mx-auto">
+        深入掌握過擬合防治機制、損失函數懲罰項原理、幾何解空間特性，以及不平衡樣本的正確評估指標。
+      </p>
+    </div>
+  </section>
+
+  <!-- 主要內容區塊 -->
+  <main class="max-w-5xl mx-auto px-4 py-10 space-y-12">
+
+    <!-- 0. 開場思考題 (互動測驗) -->
+    <section class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 font-bold flex items-center justify-center">Q</span>
+        <h2 class="text-xl font-bold text-slate-900">開場挑戰題：高維共線性情境的模型選擇</h2>
+      </div>
+      <p class="text-slate-700 text-sm sm:text-base mb-6 leading-relaxed">
+        某多元線性迴歸模型擁有 <strong>150 個特徵</strong>，且特徵間存在大量<strong>高度共線性</strong>（例如月薪與年薪）。
+        專案團隊希望<strong>防止過擬合</strong>，同時<strong>完整保留所有 150 個特徵的預測解釋能力</strong>，絕不希望任何特徵係數歸零。應選擇下列哪一種方法？
+      </p>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-5" id="quiz-options">
+        <button onclick="handleQuiz('A')" id="btn-A" class="p-4 rounded-xl border-2 border-slate-200 hover:border-indigo-400 bg-slate-50 hover:bg-indigo-50/40 text-left transition text-sm">
+          <div class="font-bold text-slate-800 mb-1">A. Lasso 迴歸 (L1 正規化)</div>
+          <div class="text-xs text-slate-500">引入絕對值懲罰項，促使非關鍵特徵係數歸零。</div>
+        </button>
+        <button onclick="handleQuiz('B')" id="btn-B" class="p-4 rounded-xl border-2 border-slate-200 hover:border-indigo-400 bg-slate-50 hover:bg-indigo-50/40 text-left transition text-sm">
+          <div class="font-bold text-slate-800 mb-1">B. Ridge 迴歸 (L2 正規化)</div>
+          <div class="text-xs text-slate-500">引入平方和懲罰項，全體縮小特徵係數但維持非零。</div>
+        </button>
+        <button onclick="handleQuiz('C')" id="btn-C" class="p-4 rounded-xl border-2 border-slate-200 hover:border-indigo-400 bg-slate-50 hover:bg-indigo-50/40 text-left transition text-sm">
+          <div class="font-bold text-slate-800 mb-1">C. Elastic Net</div>
+          <div class="text-xs text-slate-500">融合 L1 與 L2 懲罰項之混和模型。</div>
+        </button>
+        <button onclick="handleQuiz('D')" id="btn-D" class="p-4 rounded-xl border-2 border-slate-200 hover:border-indigo-400 bg-slate-50 hover:bg-indigo-50/40 text-left transition text-sm">
+          <div class="font-bold text-slate-800 mb-1">D. 普通最小平方法 (OLS)</div>
+          <div class="text-xs text-slate-500">不加入任何正則化約束直接求逆矩陣求解。</div>
+        </button>
+      </div>
+
+      <div id="quiz-result" class="p-4 rounded-xl bg-slate-100 border border-slate-200 text-sm text-slate-700">
+        👉 請點選上方選項測試你的觀念！
+      </div>
+    </section>
+
+    <!-- [SVG Slide 1] 第十八章：正規化、重取樣與模型壓縮 (image_dcbb37.png 還原) -->
+    <section class="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm overflow-hidden">
+      <div class="text-xs font-semibold text-slate-400 mb-2 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-indigo-500"></span> 原始簡報高清還原 · 課程架構總覽
+      </div>
+      <div class="w-full overflow-x-auto">
+        <svg viewBox="0 0 960 410" class="w-full min-w-[700px] h-auto font-sans rounded-xl bg-[#fafaff] border border-slate-200 select-none">
+          <!-- 頂部小標 -->
+          <circle cx="34" cy="30" r="5" fill="#f97316"/>
+          <text x="48" y="34" fill="#6366f1" font-size="15" font-weight="600">iPAS 19 · 正則化與重取樣</text>
+          <line x1="260" y1="30" x2="930" y2="30" stroke="#cbd5e1" stroke-width="1.5"/>
+
+          <!-- 大標題 -->
+          <text x="30" y="80" fill="#1e1b4b" font-size="33" font-weight="900">第十八章：<tspan fill="#ea580c">正則化、重取樣與模型壓縮</tspan></text>
+          <text x="30" y="115" fill="#475569" font-size="15" font-weight="600">三組工具：防過擬合的正則化 ｜ 處理不平衡的重取樣 ｜ 讓模型變小變快的壓縮</text>
+
+          <!-- 項目 1 -->
+          <rect x="30" y="140" width="900" height="48" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="42" y="150" width="34" height="28" rx="6" fill="#0d9488"/>
+          <text x="50" y="169" fill="#ffffff" font-size="14" font-weight="bold">一</text>
+          <text x="90" y="170" fill="#1e293b" font-size="17" font-weight="700">L1 與 L2</text>
+
+          <!-- 項目 2 -->
+          <rect x="30" y="200" width="900" height="48" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="42" y="210" width="34" height="28" rx="6" fill="#0d9488"/>
+          <text x="50" y="229" fill="#ffffff" font-size="14" font-weight="bold">二</text>
+          <text x="90" y="230" fill="#1e293b" font-size="17" font-weight="700">Elastic Net、Dropout、早停</text>
+
+          <!-- 項目 3 -->
+          <rect x="30" y="260" width="900" height="48" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="42" y="270" width="34" height="28" rx="6" fill="#0d9488"/>
+          <text x="50" y="289" fill="#ffffff" font-size="14" font-weight="bold">三</text>
+          <text x="90" y="290" fill="#1e293b" font-size="17" font-weight="700">什麼不算正則化</text>
+
+          <!-- 項目 4 -->
+          <rect x="30" y="320" width="900" height="48" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="42" y="330" width="34" height="28" rx="6" fill="#0d9488"/>
+          <text x="50" y="349" fill="#ffffff" font-size="14" font-weight="bold">四</text>
+          <text x="90" y="350" fill="#1e293b" font-size="17" font-weight="700">重取樣與類別權重</text>
+
+          <!-- 底部重點備註 -->
+          <text x="30" y="395" fill="#334155" font-size="15" font-weight="800">L1、L2 每回必考 <tspan fill="#64748b" font-weight="normal">｜ 本章兩回考古題 9 題，另有 1 題相關</tspan></text>
+        </svg>
+      </div>
+    </section>
+
+    <!-- 1. L1 vs L2 正規化剖析 -->
+    <section class="space-y-6">
+      <div class="flex items-center gap-3">
+        <span class="px-2.5 py-1 bg-indigo-600 text-white rounded-md text-xs font-bold">單元 1</span>
+        <h2 class="text-2xl font-bold text-slate-900">L1 (Lasso) vs L2 (Ridge) 正規化完整對比</h2>
+      </div>
+
+      <!-- [SVG Slide 2] 重點一：正則化是什麼 (image_dcbafc.png 還原) -->
+      <div class="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm overflow-hidden">
+        <div class="text-xs font-semibold text-slate-400 mb-2 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-indigo-500"></span> 原始簡報高清還原 · 重點一
+        </div>
+        <div class="w-full overflow-x-auto">
+          <svg viewBox="0 0 960 410" class="w-full min-w-[700px] h-auto font-sans rounded-xl bg-[#fafaff] border border-slate-200 select-none">
+            <!-- 頂部小標 -->
+            <circle cx="34" cy="30" r="5" fill="#f97316"/>
+            <text x="48" y="34" fill="#6366f1" font-size="15" font-weight="600">iPAS 19 · 正則化與重取樣</text>
+            <line x1="260" y1="30" x2="930" y2="30" stroke="#cbd5e1" stroke-width="1.5"/>
+
+            <!-- 大標題 -->
+            <text x="30" y="85" fill="#1e1b4b" font-size="34" font-weight="900">重點一：<tspan fill="#ea580c">正則化是什麼</tspan></text>
+
+            <!-- 狹義框 -->
+            <rect x="30" y="112" width="900" height="48" rx="10" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"/>
+            <rect x="42" y="122" width="50" height="28" rx="6" fill="#6366f1"/>
+            <text x="52" y="141" fill="#ffffff" font-size="13" font-weight="bold">狹義</text>
+            <text x="105" y="142" fill="#1e293b" font-size="15" font-weight="600">損失函數後面加懲罰項：權重越大罰越多 → 逼模型用比較簡單的方式擬合，減少過擬合</text>
+
+            <!-- 公式框 -->
+            <rect x="30" y="172" width="900" height="52" rx="10" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1.5"/>
+            <text x="48" y="205" fill="#1e1b4b" font-size="19" font-weight="800">新的損失 ＝ 預測誤差 ＋ <tspan fill="#ea580c">λ × 懲罰</tspan></text>
+
+            <!-- 為什麼框 -->
+            <rect x="30" y="236" width="900" height="48" rx="10" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"/>
+            <rect x="42" y="246" width="65" height="28" rx="6" fill="#64748b"/>
+            <text x="50" y="265" fill="#ffffff" font-size="13" font-weight="bold">為什麼</text>
+            <text x="120" y="266" fill="#1e293b" font-size="15" font-weight="600">要讓總和變小 → 誤差和權重都得壓小</text>
+
+            <!-- 說明細字 -->
+            <text x="32" y="312" fill="#475569" font-size="15" font-weight="600">權重越大 → 對資料的細小變動越敏感 → 越容易把雜訊學進去</text>
+
+            <!-- 廣義框 -->
+            <rect x="30" y="332" width="900" height="48" rx="10" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"/>
+            <rect x="42" y="342" width="50" height="28" rx="6" fill="#f97316"/>
+            <text x="52" y="361" fill="#ffffff" font-size="13" font-weight="bold">廣義</text>
+            <text x="105" y="362" fill="#1e293b" font-size="16" font-weight="700">所有限制模型能力的做法：Dropout、早停、簡化架構也算</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- 數學公式框 -->
+      <div class="p-6 bg-slate-900 text-white rounded-2xl shadow-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <span class="text-xs font-semibold text-indigo-400 uppercase tracking-widest">目標損失函數 (Objective Loss)</span>
+          <span class="text-xs text-slate-400 font-mono">Loss = MSE + Penalty</span>
+        </div>
+        <div class="text-center py-2 text-base sm:text-lg overflow-x-auto">
+          $$\text{Loss} = \frac{1}{n}\sum_{i=1}^{n}(y_i - \hat{y}_i)^2 + \lambda \cdot \Omega(w)$$
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-800 text-sm">
+          <div class="p-3 bg-slate-800/60 rounded-xl border border-amber-500/20">
+            <span class="text-amber-400 font-bold block mb-1">L1 懲罰項 (Lasso)：</span>
+            $$\Omega_{\text{L1}}(w) = \sum_{j=1}^{p} |w_j|$$
+            <p class="text-xs text-slate-300 mt-2">絕對值總和：斜率為常數 $\pm 1$，能將不重要權重完全推向 0。</p>
+          </div>
+          <div class="p-3 bg-slate-800/60 rounded-xl border border-emerald-500/20">
+            <span class="text-emerald-400 font-bold block mb-1">L2 懲罰項 (Ridge / Weight Decay)：</span>
+            $$\Omega_{\text{L2}}(w) = \sum_{j=1}^{p} w_j^2$$
+            <p class="text-xs text-slate-300 mt-2">平方總和：權重愈小梯度愈小，全體係數等比壓縮但絕不歸零。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 互動幾何 SVG 圖形 -->
+      <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base sm:text-lg">幾何約束空間互動模擬 (Geometric Contours)</h3>
+            <p class="text-xs text-slate-500">點擊切換約束型態，觀察等高線與約束邊界的最優交點</p>
+          </div>
+          <div class="inline-flex rounded-lg p-1 bg-slate-100 border border-slate-200">
+            <button onclick="setConstraintMode('l1')" id="tab-l1" class="px-3 py-1.5 rounded-md text-xs font-bold bg-amber-500 text-white shadow-sm transition">
+              L1 菱形約束 (稀疏解)
+            </button>
+            <button onclick="setConstraintMode('l2')" id="tab-l2" class="px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 transition">
+              L2 圓形約束 (平滑解)
+            </button>
+            <button onclick="setConstraintMode('both')" id="tab-both" class="px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 transition">
+              疊加對照
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col items-center">
+          <svg viewBox="0 0 520 280" class="w-full max-w-xl h-auto select-none font-mono">
+            <!-- 網格與軸線 -->
+            <defs>
+              <linearGradient id="grad-amber" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.3"/>
+                <stop offset="1%" stop-color="#d97706" stop-opacity="0.1"/>
+              </linearGradient>
+              <linearGradient id="grad-emerald" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#10b981" stop-opacity="0.3"/>
+                <stop offset="1%" stop-color="#059669" stop-opacity="0.1"/>
+              </linearGradient>
+            </defs>
+
+            <!-- 座標軸 -->
+            <line x1="50" y1="140" x2="470" y2="140" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3 3"/>
+            <line x1="260" y1="20" x2="260" y2="260" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3 3"/>
+            <text x="475" y="145" fill="#64748b" font-size="11">w₁</text>
+            <text x="265" y="30" fill="#64748b" font-size="11">w₂</text>
+
+            <!-- L2 圓形約束區域 (預設淡出) -->
+            <circle id="svg-circle" cx="260" cy="140" r="75" fill="url(#grad-emerald)" stroke="#10b981" stroke-width="2.5" opacity="0.3" class="transition-all-custom"/>
+
+            <!-- L1 菱形約束區域 -->
+            <polygon id="svg-poly" points="260,65 335,140 260,215 185,140" fill="url(#grad-amber)" stroke="#f59e0b" stroke-width="3" opacity="1" class="transition-all-custom"/>
+
+            <!-- 誤差函數等高線 (橢圓) -->
+            <ellipse cx="380" cy="65" rx="100" ry="50" fill="none" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="4 4" transform="rotate(-25 380 65)"/>
+            <ellipse cx="380" cy="65" rx="65" ry="30" fill="none" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="4 4" transform="rotate(-25 380 65)"/>
+            <circle cx="380" cy="65" r="3.5" fill="#4f46e5"/>
+            <text x="388" y="60" fill="#4f46e5" font-size="10" font-weight="bold">OLS 無約束最小點</text>
+
+            <!-- 交點指示 -->
+            <g id="svg-hit-l1" class="transition-all-custom" opacity="1">
+              <circle cx="335" cy="140" r="6" fill="#d97706"/>
+              <text x="345" y="136" fill="#b45309" font-size="11" font-weight="bold">L1 最優解：落在頂點 (w₂ = 0)</text>
+            </g>
+
+            <g id="svg-hit-l2" class="transition-all-custom" opacity="0">
+              <circle cx="323" cy="98" r="6" fill="#059669"/>
+              <text x="332" y="94" fill="#047857" font-size="11" font-weight="bold">L2 最優解：落在圓弧切點 (w₁, w₂ ≠ 0)</text>
+            </g>
+          </svg>
+          <div id="svg-caption" class="text-xs text-center text-slate-600 mt-2 max-w-lg">
+            <strong>L1 菱形約束特性：</strong>菱形具有尖銳的稜角頂點。等高線向外膨脹時最容易最先碰觸軸上的頂點，因此該維度權重直接變為 0，具備特徵選擇功能。
+          </div>
+        </div>
+
+        <!-- 雙對比卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="p-5 rounded-xl border border-amber-200 bg-amber-50/40 space-y-2">
+            <div class="flex items-center justify-between">
+              <h4 class="font-bold text-amber-900">L1 Lasso (斷捨離)</h4>
+              <span class="text-xs bg-amber-200 text-amber-800 font-semibold px-2 py-0.5 rounded">稀疏化 Sparse</span>
+            </div>
+            <ul class="text-xs sm:text-sm text-amber-950 space-y-1.5 list-disc list-inside">
+              <li><strong>自動特徵篩選</strong>：不重要維度直接歸零，降低模型雜訊。</li>
+              <li><strong>優勢</strong>：高解釋性、大幅節省推論特徵工程算力。</li>
+              <li><strong>劣勢</strong>：面對高度共線性群組時隨機挑選 1 個，訓練結果較不穩定。</li>
+            </ul>
+          </div>
+
+          <div class="p-5 rounded-xl border border-emerald-200 bg-emerald-50/40 space-y-2">
+            <div class="flex items-center justify-between">
+              <h4 class="font-bold text-emerald-900">L2 Ridge (全面打折)</h4>
+              <span class="text-xs bg-emerald-200 text-emerald-800 font-semibold px-2 py-0.5 rounded">權重衰減 Weight Decay</span>
+            </div>
+            <ul class="text-xs sm:text-sm text-emerald-950 space-y-1.5 list-disc list-inside">
+              <li><strong>保留全部特徵</strong>：等比縮減係數，但微小至小數點後多位仍不為零。</li>
+              <li><strong>優勢</strong>：完美抵抗多重共線性，保留所有特徵變異解釋力。</li>
+              <li><strong>劣勢</strong>：模型複雜度無法透過特徵剔除減少。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Elastic Net、Dropout 與 Early Stopping -->
+    <section class="space-y-6">
+      <div class="flex items-center gap-3">
+        <span class="px-2.5 py-1 bg-indigo-600 text-white rounded-md text-xs font-bold">單元 2</span>
+        <h2 class="text-2xl font-bold text-slate-900">進階防治：Elastic Net、Dropout 與早停</h2>
+      </div>
+
+      <!-- [SVG Slide 3] 重點二：Elastic Net、Dropout、早停 (image_dcba7e.png 還原) -->
+      <div class="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm overflow-hidden">
+        <div class="text-xs font-semibold text-slate-400 mb-2 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-indigo-500"></span> 原始簡報高清還原 · 重點二
+        </div>
+        <div class="w-full overflow-x-auto">
+          <svg viewBox="0 0 960 410" class="w-full min-w-[700px] h-auto font-sans rounded-xl bg-[#fafaff] border border-slate-200 select-none">
+            <!-- 頂部小標 -->
+            <circle cx="34" cy="30" r="5" fill="#f97316"/>
+            <text x="48" y="34" fill="#6366f1" font-size="15" font-weight="600">iPAS 19 · 正則化與重取樣</text>
+            <line x1="260" y1="30" x2="930" y2="30" stroke="#cbd5e1" stroke-width="1.5"/>
+
+            <!-- 大標題 -->
+            <text x="30" y="85" fill="#1e1b4b" font-size="34" font-weight="900">重點二：<tspan fill="#ea580c">Elastic Net、Dropout、早停</tspan></text>
+
+            <!-- 卡片 1: Elastic Net -->
+            <rect x="30" y="110" width="900" height="74" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <text x="48" y="145" fill="#1e1b4b" font-size="18" font-weight="800">Elastic Net</text>
+            <text x="180" y="142" fill="#1e293b" font-size="16" font-weight="700">L1 ＋ L2 一起用</text>
+            <text x="180" y="166" fill="#64748b" font-size="13.5" font-weight="600">兼顧稀疏與穩定，共線性下比單用 L1 穩</text>
+
+            <!-- 卡片 2: Dropout -->
+            <rect x="30" y="196" width="900" height="74" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <text x="48" y="231" fill="#1e1b4b" font-size="18" font-weight="800">Dropout</text>
+            <text x="180" y="228" fill="#1e293b" font-size="16" font-weight="700">訓練時隨機關掉部分神經元</text>
+            <text x="180" y="252" fill="#64748b" font-size="13.5" font-weight="600">不能依賴特定夥伴 → 學到更通用的特徵</text>
+
+            <!-- 卡片 3: 早停 -->
+            <rect x="30" y="282" width="900" height="74" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <text x="48" y="317" fill="#1e1b4b" font-size="18" font-weight="800">早停</text>
+            <text x="180" y="314" fill="#1e293b" font-size="16" font-weight="700">驗證不再進步就停</text>
+            <text x="180" y="338" fill="#64748b" font-size="13.5" font-weight="600">在開始背雜訊之前收手</text>
+
+            <!-- 底部註記 -->
+            <rect x="30" y="366" width="900" height="34" rx="6" fill="#f8fafc" stroke="#e2e8f0"/>
+            <text x="48" y="388" fill="#1e1b4b" font-size="14.5" font-weight="700">Dropout 只在<tspan fill="#ea580c">訓練時啟用</tspan>，測試時全部神經元都上場</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <!-- Elastic Net -->
+        <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-3">
+          <div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-lg">
+            E
+          </div>
+          <h3 class="font-bold text-slate-900 text-base">Elastic Net 彈性網路</h3>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            同時混合 L1 與 L2 懲罰項：
+            $$\lambda_1 \sum |w_j| + \lambda_2 \sum w_j^2$$
+            兼具 <strong>L1 特徵挑選</strong> 與 <strong>L2 群組穩定性</strong>，解決高相關變數隨機抽樣跳動的缺陷。
+          </p>
+        </div>
+
+        <!-- Dropout -->
+        <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-3">
+          <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-lg">
+            D
+          </div>
+          <h3 class="font-bold text-slate-900 text-base">Dropout 隨機丟棄</h3>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            訓練期間隨機讓神經元以機率 $p$ 失活，打破節點共適應（Co-adaptation）。
+          </p>
+          <div class="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-[11px] text-rose-800">
+            <strong>⚠️ 考點必防：</strong>測試評估時必須關閉 Dropout（PyTorch 務必執行 <code>model.eval()</code>），否則推論具隨機性。
+          </div>
+        </div>
+
+        <!-- Early Stopping -->
+        <div class="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-lg">
+            S
+          </div>
+          <h3 class="font-bold text-slate-900 text-base">Early Stopping 早停機制</h3>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            持續監測<strong>驗證集損失 (Val Loss)</strong>，當驗證集指標不再進步甚至反向惡化達預設耐心值 (Patience)，立即終止訓練以防止死記雜訊。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 什麼不屬於正規化？ (高頻易錯陷阱) -->
+    <section class="space-y-6">
+      <!-- [SVG Slide 4] 重點三：什麼不算正則化 (image_dcba3c.png 還原) -->
+      <div class="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm overflow-hidden">
+        <div class="text-xs font-semibold text-slate-400 mb-2 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-rose-500"></span> 原始簡報高清還原 · 重點三
+        </div>
+        <div class="w-full overflow-x-auto">
+          <svg viewBox="0 0 960 430" class="w-full min-w-[700px] h-auto font-sans rounded-xl bg-[#fafaff] border border-slate-200 select-none">
+            <!-- 頂部小標 -->
+            <circle cx="34" cy="30" r="5" fill="#f97316"/>
+            <text x="48" y="34" fill="#6366f1" font-size="15" font-weight="600">iPAS 19 · 正則化與重取樣</text>
+            <line x1="260" y1="30" x2="930" y2="30" stroke="#cbd5e1" stroke-width="1.5"/>
+
+            <!-- 大標題 -->
+            <text x="30" y="85" fill="#1e1b4b" font-size="34" font-weight="900">重點三：<tspan fill="#ea580c">什麼不算正則化</tspan></text>
+
+            <!-- 共同點提示框 -->
+            <rect x="30" y="108" width="900" height="54" rx="10" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"/>
+            <text x="48" y="132" fill="#1e1b4b" font-size="16" font-weight="800">共同點：限制模型的學習能力</text>
+            <text x="48" y="152" fill="#64748b" font-size="13.5" font-weight="600">讓模型更複雜、更能背資料的做法，都不屬於</text>
+
+            <!-- 左卡片：屬於 -->
+            <rect x="30" y="174" width="440" height="236" rx="12" fill="#f0fdfa" stroke="#0d9488" stroke-width="1.5"/>
+            <text x="50" y="208" fill="#0f766e" font-size="20" font-weight="900">屬於</text>
+            <text x="50" y="246" fill="#134e4a" font-size="16" font-weight="700">L1、L2、Elastic Net</text>
+            <text x="50" y="284" fill="#134e4a" font-size="16" font-weight="700">Dropout</text>
+            <text x="50" y="322" fill="#134e4a" font-size="16" font-weight="700">早停</text>
+            <text x="50" y="360" fill="#134e4a" font-size="16" font-weight="700">簡化模型架構</text>
+
+            <!-- 右卡片：不屬於 -->
+            <rect x="490" y="174" width="440" height="236" rx="12" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+            <text x="510" y="208" fill="#b45309" font-size="20" font-weight="900">不屬於</text>
+            <text x="510" y="246" fill="#78350f" font-size="16" font-weight="700">擴增輸入特徵提升表達力</text>
+            <text x="510" y="284" fill="#78350f" font-size="16" font-weight="700">增加層數、神經元</text>
+            <text x="510" y="322" fill="#78350f" font-size="16" font-weight="700">增加訓練輪數</text>
+            <text x="510" y="360" fill="#78350f" font-size="16" font-weight="700">提高學習率（只改步伐）</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="p-6 sm:p-8 bg-rose-50/70 border-2 border-rose-200 rounded-2xl space-y-4">
+        <div class="flex items-center gap-2.5">
+          <svg class="w-6 h-6 text-rose-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+          <h3 class="font-bold text-rose-950 text-base sm:text-lg">考題最高頻誘答陷阱解密</h3>
+        </div>
+        <p class="text-xs sm:text-sm text-rose-900 leading-relaxed">
+          正則化的本質是<strong>「約束模型自由度」</strong>以降低過擬合。題目最常出現的混淆選項是<strong>「擴增輸入特徵 (Feature Expansion)」</strong>，這會讓特徵空間維度暴增，反而賦予模型更多死背雜訊的空間；而<strong>「增加訓練輪數 (Epochs)」</strong>只會加劇過擬合；<strong>「調整學習率 (Learning Rate)」</strong>僅僅控制參數更新的單步距離，並未對權重空間設置邊界，這些通通不屬於正規化。
+        </p>
+      </div>
+    </section>
+
+    <!-- 4. 不平衡資料處理與評估指標 -->
+    <section class="space-y-6">
+      <div class="flex items-center gap-3">
+        <span class="px-2.5 py-1 bg-indigo-600 text-white rounded-md text-xs font-bold">單元 4</span>
+        <h2 class="text-2xl font-bold text-slate-900">不平衡資料重取樣與評估指標</h2>
+      </div>
+
+      <!-- [SVG Slide 5] 重點四：重取樣與類別權重 (image_dcb775.png 還原) -->
+      <div class="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm overflow-hidden">
+        <div class="text-xs font-semibold text-slate-400 mb-2 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-indigo-500"></span> 原始簡報高清還原 · 重點四
+        </div>
+        <div class="w-full overflow-x-auto">
+          <svg viewBox="0 0 960 440" class="w-full min-w-[700px] h-auto font-sans rounded-xl bg-[#fafaff] border border-slate-200 select-none">
+            <!-- 頂部小標 -->
+            <circle cx="34" cy="30" r="5" fill="#f97316"/>
+            <text x="48" y="34" fill="#6366f1" font-size="15" font-weight="600">iPAS 19 · 正則化與重取樣</text>
+            <line x1="260" y1="30" x2="930" y2="30" stroke="#cbd5e1" stroke-width="1.5"/>
+
+            <!-- 大標題 -->
+            <text x="30" y="85" fill="#1e1b4b" font-size="34" font-weight="900">重點四：<tspan fill="#ea580c">重取樣與類別權重</tspan></text>
+            <text x="30" y="115" fill="#475569" font-size="14.5" font-weight="600">不平衡時猜多數類就有高準確率 → 少數類被忽略 → 重取樣讓少數類被看見</text>
+
+            <!-- 項目 1: 過採樣 -->
+            <rect x="30" y="130" width="900" height="66" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <text x="48" y="162" fill="#1e1b4b" font-size="17" font-weight="800">過採樣</text>
+            <text x="175" y="156" fill="#1e293b" font-size="15" font-weight="700">複製少數類，或用 SMOTE 合成新樣本 ｜ <tspan fill="#0f766e">優點：不丟資料</tspan></text>
+            <text x="175" y="180" fill="#ea580c" font-size="13" font-weight="600">缺點：單純複製易過擬合；合成樣本可能不自然</text>
+
+            <!-- 項目 2: 欠採樣 -->
+            <rect x="30" y="206" width="900" height="66" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <text x="48" y="238" fill="#1e1b4b" font-size="17" font-weight="800">欠採樣</text>
+            <text x="175" y="232" fill="#1e293b" font-size="15" font-weight="700">減少多數類 ｜ 簡單、省運算</text>
+            <text x="175" y="256" fill="#ea580c" font-size="13" font-weight="600">缺點：丟掉有用資料</text>
+
+            <!-- 項目 3: 類別權重 -->
+            <rect x="30" y="282" width="900" height="66" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <text x="48" y="314" fill="#1e1b4b" font-size="17" font-weight="800">類別權重</text>
+            <text x="175" y="308" fill="#1e293b" font-size="15" font-weight="700">損失函數裡，少數類分錯罰得比較重 ｜ 不用動資料</text>
+            <text x="175" y="332" fill="#ea580c" font-size="13" font-weight="600">缺點：權重要細調</text>
+
+            <!-- 項目 4: 改成異常偵測 -->
+            <rect x="30" y="358" width="900" height="66" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <text x="48" y="390" fill="#1e1b4b" font-size="17" font-weight="800">改成異常偵測</text>
+            <text x="175" y="384" fill="#1e293b" font-size="15" font-weight="700">只學正常樣本（孤立森林、One-Class SVM）</text>
+            <text x="175" y="408" fill="#64748b" font-size="13" font-weight="600">極端不平衡也能用 ｜ <tspan fill="#ea580c">抓不到和正常很像的異常</tspan></text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm space-y-1.5">
+          <span class="text-xs font-bold text-indigo-600 uppercase">策略 1</span>
+          <h4 class="font-bold text-slate-800 text-sm">過採樣 (Oversampling)</h4>
+          <p class="text-xs text-slate-600 leading-normal">
+            <strong>SMOTE</strong>：相鄰少數類樣本點之間以線性插值生成全新虛擬點，解決簡單複製帶來的過擬合問題。
+          </p>
+        </div>
+        <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm space-y-1.5">
+          <span class="text-xs font-bold text-indigo-600 uppercase">策略 2</span>
+          <h4 class="font-bold text-slate-800 text-sm">欠採樣 (Undersampling)</h4>
+          <p class="text-xs text-slate-600 leading-normal">
+            縮減多數類樣本規模以達成數量均衡。缺點是可能直接丟失包含決策邊界的多數類關鍵特徵。
+          </p>
+        </div>
+        <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm space-y-1.5">
+          <span class="text-xs font-bold text-indigo-600 uppercase">策略 3</span>
+          <h4 class="font-bold text-slate-800 text-sm">類別權重 (Class Weights)</h4>
+          <p class="text-xs text-slate-600 leading-normal">
+            不更改原始資料分佈，直接在 Loss function 中對少數類的誤判賦予 5~10 倍的懲罰加權。
+          </p>
+        </div>
+        <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm space-y-1.5">
+          <span class="text-xs font-bold text-indigo-600 uppercase">策略 4</span>
+          <h4 class="font-bold text-slate-800 text-sm">異常偵測 (Anomaly)</h4>
+          <p class="text-xs text-slate-600 leading-normal">
+            使用 <strong>One-Class SVM</strong> 或 <strong>Isolation Forest</strong>，只建立多數正常樣本邊界，適合極端比例。
+          </p>
+        </div>
+      </div>
+
+      <!-- 不平衡評估指標禁忌警示 -->
+      <div class="p-5 bg-amber-50 rounded-xl border-l-4 border-amber-500 text-amber-900 text-sm space-y-1">
+        <div class="font-bold text-amber-950 flex items-center gap-2">
+          <span>🚨 評估指標禁忌：嚴禁使用「準確率 (Accuracy)」！</span>
+        </div>
+        <p class="text-xs sm:text-sm">
+          當正負樣本比例為 99:1 時，模型只要完全無腦猜負類即可獲得高達 99% 的表面準確率，但真正需要被捕捉的 1% 正類將全數漏抓。評估必須改採 <strong>Recall（召回率 / 敏感度）</strong>、<strong>F1-Score</strong> 或 <strong>PR-AUC</strong>。
+        </p>
+      </div>
+    </section>
+
+    <!-- 4.5 最容易搞混的考點對比 -->
+    <section class="space-y-6">
+      <!-- [SVG Slide 6] 最容易搞混的 (image_dcb736.png 還原) -->
+      <div class="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm overflow-hidden">
+        <div class="text-xs font-semibold text-slate-400 mb-2 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-amber-500"></span> 原始簡報高清還原 · 盲點對照
+        </div>
+        <div class="w-full overflow-x-auto">
+          <svg viewBox="0 0 960 410" class="w-full min-w-[700px] h-auto font-sans rounded-xl bg-[#fafaff] border border-slate-200 select-none">
+            <!-- 頂部小標 -->
+            <circle cx="34" cy="30" r="5" fill="#f97316"/>
+            <text x="48" y="34" fill="#6366f1" font-size="15" font-weight="600">iPAS 19 · 正則化與重取樣</text>
+            <line x1="260" y1="30" x2="930" y2="30" stroke="#cbd5e1" stroke-width="1.5"/>
+
+            <!-- 大標題 -->
+            <text x="30" y="85" fill="#1e1b4b" font-size="34" font-weight="900">最容易搞混的</text>
+
+            <!-- 列 1: L1 vs L2 -->
+            <rect x="30" y="110" width="410" height="56" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <text x="48" y="145" fill="#1e293b" font-size="16" font-weight="700">L1 <tspan fill="#334155" font-weight="600">絕對值，會歸零，選特徵</tspan></text>
+            <text x="475" y="145" fill="#64748b" font-size="14" font-weight="bold">vs</text>
+            <rect x="520" y="110" width="410" height="56" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <text x="538" y="145" fill="#ea580c" font-size="16" font-weight="700">L2 <tspan fill="#334155" font-weight="600">平方，只縮小，穩共線</tspan></text>
+
+            <!-- 列 2: 過採樣 vs 欠採樣 -->
+            <rect x="30" y="180" width="410" height="56" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <text x="48" y="215" fill="#1e293b" font-size="16" font-weight="700">過採樣 <tspan fill="#334155" font-weight="600">增加少數類</tspan></text>
+            <text x="475" y="215" fill="#64748b" font-size="14" font-weight="bold">vs</text>
+            <rect x="520" y="180" width="410" height="56" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <text x="538" y="215" fill="#ea580c" font-size="16" font-weight="700">欠採樣 <tspan fill="#334155" font-weight="600">減少多數類</tspan></text>
+
+            <!-- 列 3: SMOTE vs 複製 -->
+            <rect x="30" y="250" width="410" height="56" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <text x="48" y="285" fill="#1e293b" font-size="16" font-weight="700">SMOTE <tspan fill="#334155" font-weight="600">內插合成新樣本</tspan></text>
+            <text x="475" y="285" fill="#64748b" font-size="14" font-weight="bold">vs</text>
+            <rect x="520" y="250" width="410" height="56" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <text x="538" y="285" fill="#ea580c" font-size="16" font-weight="700">複製 <tspan fill="#334155" font-weight="600">原樣複製，易過擬合</tspan></text>
+
+            <!-- 列 4: 程式的 p vs Keras Dropout -->
+            <rect x="30" y="320" width="410" height="56" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <text x="48" y="355" fill="#1e293b" font-size="16" font-weight="700">程式的 p <tspan fill="#334155" font-weight="600">保留機率</tspan></text>
+            <text x="475" y="355" fill="#64748b" font-size="14" font-weight="bold">vs</text>
+            <rect x="520" y="320" width="410" height="56" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <text x="538" y="355" fill="#ea580c" font-size="16" font-weight="700">Keras Dropout(0.25) <tspan fill="#334155" font-weight="600">丟棄比例</tspan></text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- [SVG Slide 7] 這集帶走四句話 (image_dcb6fe.png 還原) -->
+      <div class="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm overflow-hidden">
+        <div class="text-xs font-semibold text-slate-400 mb-2 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-indigo-500"></span> 原始簡報高清還原 · 考前四句口訣
+        </div>
+        <div class="w-full overflow-x-auto">
+          <svg viewBox="0 0 960 410" class="w-full min-w-[700px] h-auto font-sans rounded-xl bg-[#fafaff] border border-slate-200 select-none">
+            <!-- 頂部小標 -->
+            <circle cx="34" cy="30" r="5" fill="#f97316"/>
+            <text x="48" y="34" fill="#6366f1" font-size="15" font-weight="600">iPAS 19 · 正則化與重取樣</text>
+            <line x1="260" y1="30" x2="930" y2="30" stroke="#cbd5e1" stroke-width="1.5"/>
+
+            <!-- 大標題 -->
+            <text x="30" y="85" fill="#1e1b4b" font-size="34" font-weight="900">這集帶走<tspan fill="#ea580c">四句話</tspan></text>
+
+            <!-- 口訣 1 -->
+            <rect x="30" y="110" width="900" height="56" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <rect x="42" y="121" width="34" height="34" rx="8" fill="#4f46e5"/>
+            <text x="54" y="144" fill="#ffffff" font-size="17" font-weight="bold">1</text>
+            <text x="92" y="145" fill="#1e293b" font-size="17" font-weight="700">L1 斷捨離，會歸零；L2 全部打折，只縮小</text>
+
+            <!-- 口訣 2 -->
+            <rect x="30" y="180" width="900" height="56" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <rect x="42" y="191" width="34" height="34" rx="8" fill="#4f46e5"/>
+            <text x="54" y="214" fill="#ffffff" font-size="17" font-weight="bold">2</text>
+            <text x="92" y="215" fill="#1e293b" font-size="17" font-weight="700">Elastic Net、Dropout、早停：其他防過擬合工具</text>
+
+            <!-- 口訣 3 -->
+            <rect x="30" y="250" width="900" height="56" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <rect x="42" y="261" width="34" height="34" rx="8" fill="#4f46e5"/>
+            <text x="54" y="284" fill="#ffffff" font-size="17" font-weight="bold">3</text>
+            <text x="92" y="285" fill="#1e293b" font-size="17" font-weight="700">增加特徵讓模型更複雜，不算正則化</text>
+
+            <!-- 口訣 4 -->
+            <rect x="30" y="320" width="900" height="56" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <rect x="42" y="331" width="34" height="34" rx="8" fill="#4f46e5"/>
+            <text x="54" y="354" fill="#ffffff" font-size="17" font-weight="bold">4</text>
+            <text x="92" y="355" fill="#1e293b" font-size="17" font-weight="700">重取樣與類別權重：讓少數類被看見</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. 完整影音時間軸逐字稿 (放在最下方) -->
+    <section class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6" id="transcript-section">
+      <!-- 標題與操作控制列 -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-150 pb-5">
+        <div>
+          <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 mb-1.5">
+            🎙️ 全片精準還原
+          </div>
+          <h3 class="font-extrabold text-slate-900 text-xl sm:text-2xl tracking-tight">完整影音時間軸逐字稿</h3>
+          <p class="text-xs sm:text-sm text-slate-500 mt-0.5">點擊時間戳可連結至原片秒數，支援即時關鍵字搜尋與一鍵全展開</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- 關鍵字搜尋欄 -->
+          <div class="relative min-w-[220px]">
+            <input 
+              type="text" 
+              id="transcript-search" 
+              oninput="filterTranscripts()" 
+              placeholder="搜尋關鍵字（如：SMOTE, L1, eval）..." 
+              class="w-full text-xs sm:text-sm pl-8 pr-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
+            />
+            <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1010.5 18a7.5 7.5 0 006.15-4.35z"/>
+            </svg>
+          </div>
+          <button onclick="toggleAllTranscripts(true)" class="text-xs px-3 py-2 font-medium rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700">展開全部</button>
+          <button onclick="toggleAllTranscripts(false)" class="text-xs px-3 py-2 font-medium rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700">全部收合</button>
+        </div>
+      </div>
+
+      <!-- 分類標籤快速跳轉 -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-2 text-xs">
+        <span class="text-slate-400 font-medium whitespace-nowrap">主題跳轉：</span>
+        <button onclick="jumpToTimeline('ts-0000')" class="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 whitespace-nowrap transition">#00:00 開場題目</button>
+        <button onclick="jumpToTimeline('ts-0051')" class="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 whitespace-nowrap transition">#00:51 L1/L2原理</button>
+        <button onclick="jumpToTimeline('ts-0206')" class="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 whitespace-nowrap transition">#02:06 為何歸零</button>
+        <button onclick="jumpToTimeline('ts-0538')" class="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 whitespace-nowrap transition">#05:38 Dropout/早停</button>
+        <button onclick="jumpToTimeline('ts-0738')" class="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 whitespace-nowrap transition">#07:38 非正規化辨析</button>
+        <button onclick="jumpToTimeline('ts-0842')" class="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 whitespace-nowrap transition">#08:42 重取樣與SMOTE</button>
+        <button onclick="jumpToTimeline('ts-1026')" class="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 whitespace-nowrap transition">#10:26 四句口訣</button>
+      </div>
+
+      <!-- 逐字稿時間軸清單 -->
+      <div class="space-y-3.5" id="transcript-list">
+
+        <!-- 00:00:00 -->
+        <article class="timeline-item border border-slate-200 rounded-xl overflow-hidden transition" id="ts-0000">
+          <details class="group" open>
+            <summary class="flex items-center justify-between p-3.5 sm:p-4 bg-slate-50/80 cursor-pointer select-none group-open:bg-indigo-50/40">
+              <div class="flex items-center gap-3">
+                <a href="https://www.youtube.com/watch?v=tDDhuSVbYkU&t=0s" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-indigo-600 text-white font-mono text-xs font-bold hover:bg-indigo-700 transition" title="前往 YouTube 00:00">
+                  00:00
+                </a>
+                <span class="text-sm sm:text-base font-bold text-slate-800">
+                  開場題目與章節概述：多元迴歸高維共線性情境
+                </span>
+              </div>
+              <span class="text-slate-400 group-open:rotate-180 transition-transform text-xs">▼</span>
+            </summary>
+            <div class="p-4 sm:p-5 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-200 space-y-2.5 bg-white">
+              <p>
+                <strong>【影音逐字口述】</strong>「各位考生好，今天我們進入 iPAS AI 應用規劃師中級科目三的精選單元——第 18 章『正規化、重取樣與模型壓縮』。在考試中，過擬合與資料不平衡是必定會出現的情境題。」
+              </p>
+              <p>
+                「我們先來看一題開場思考題：某個多元線性迴歸模型擁有 150 個特徵，且變數之間存在嚴重的共線性。團隊的目標是控制過擬合、保留所有特徵的預測解釋能力，同時絕不希望任何一項係數歸零，應選擇何種方法？選項有 Lasso、Ridge、Elastic Net 與普通最小平方法。請大家帶著這個問題，我們一起從核心原理逐一拆解。」
+              </p>
+              <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-amber-50 text-amber-800 border border-amber-200 text-xs font-semibold">
+                🎯 本段核心考點：共線性條件下的模型約束需求判定（Ridge 特性）。
+              </div>
+            </div>
+          </details>
+        </article>
+
+        <!-- 00:00:51 -->
+        <article class="timeline-item border border-slate-200 rounded-xl overflow-hidden transition" id="ts-0051">
+          <details class="group" open>
+            <summary class="flex items-center justify-between p-3.5 sm:p-4 bg-slate-50/80 cursor-pointer select-none group-open:bg-indigo-50/40">
+              <div class="flex items-center gap-3">
+                <a href="https://www.youtube.com/watch?v=tDDhuSVbYkU&t=51s" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-indigo-600 text-white font-mono text-xs font-bold hover:bg-indigo-700 transition" title="前往 YouTube 00:51">
+                  00:51
+                </a>
+                <span class="text-sm sm:text-base font-bold text-slate-800">
+                  重點一：L1 與 L2 正規化核心機制比較
+                </span>
+              </div>
+              <span class="text-slate-400 group-open:rotate-180 transition-transform text-xs">▼</span>
+            </summary>
+            <div class="p-4 sm:p-5 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-200 space-y-2.5 bg-white">
+              <p>
+                <strong>【影音逐字口述】</strong>「正規化的根本機制，就是在原本的損失函數（例如均方誤差 MSE）後方加上一個懲罰項：$\text{Loss} = \text{預測誤差} + \lambda \times \text{懲罰項}$。利用超參數 $\lambda$ 去限制模型權重的大小，避免模型去硬背訓練集裡的雜訊。」
+              </p>
+              <p>
+                「其中 L1 正則化（Lasso）懲罰的是權重的絕對值總和（$\sum |w|$），就像『斷捨離』，會將非關鍵特徵的權重直接壓縮為 0，具備自動特徵選擇與稀疏化效果；而 L2 正則化（Ridge）懲罰的是權重的平方和（$\sum w^2$），就像『全體打折』，會將所有權重等比例縮小，但通常不歸零，能保留所有的特徵解釋力。」
+              </p>
+              <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-blue-50 text-blue-800 border border-blue-200 text-xs font-semibold">
+                🎯 本段核心考點：L1 懲罰絕對值（產生稀疏解/特徵選擇）；L2 懲罰平方和（等比縮小不歸零）。
+              </div>
+            </div>
+          </details>
+        </article>
+
+        <!-- 00:02:06 -->
+        <article class="timeline-item border border-slate-200 rounded-xl overflow-hidden transition" id="ts-0206">
+          <details class="group">
+            <summary class="flex items-center justify-between p-3.5 sm:p-4 bg-slate-50/80 cursor-pointer select-none group-open:bg-indigo-50/40">
+              <div class="flex items-center gap-3">
+                <a href="https://www.youtube.com/watch?v=tDDhuSVbYkU&t=126s" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-indigo-600 text-white font-mono text-xs font-bold hover:bg-indigo-700 transition" title="前往 YouTube 02:06">
+                  02:06
+                </a>
+                <span class="text-sm sm:text-base font-bold text-slate-800">
+                  數學原理探究：為什麼 L1 會歸零而 L2 不會？
+                </span>
+              </div>
+              <span class="text-slate-400 group-open:rotate-180 transition-transform text-xs">▼</span>
+            </summary>
+            <div class="p-4 sm:p-5 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-200 space-y-2.5 bg-white">
+              <p>
+                <strong>【影音逐字口述】</strong>「許多同學在考題中常會死記這個結論，但我們用梯度下降的導函數來看就很直覺。L2 是平方項 $w^2$，它的導函數是 $2w$。這意味著當權重已經很小（比如 $0.001$）的時候，懲罰帶來的梯度更新量微乎其微，它會停留在一個無限接近 0 但始終大於 0 的極小值，因此不會歸零。」
+              </p>
+              <p>
+                「但 L1 是絕對值 $|w|$，它的導數在正數區間恆為 $+1$、在負數區間恆為 $-1$。無論權重縮得再小，它向 0 靠攏時所受到的減法懲罰都是固定等額的，因此每一步都會強力把權重推進並鎖定在 0 點。」
+              </p>
+            </div>
+          </details>
+        </article>
+
+        <!-- 00:02:40 -->
+        <article class="timeline-item border border-slate-200 rounded-xl overflow-hidden transition" id="ts-0240">
+          <details class="group">
+            <summary class="flex items-center justify-between p-3.5 sm:p-4 bg-slate-50/80 cursor-pointer select-none group-open:bg-indigo-50/40">
+              <div class="flex items-center gap-3">
+                <a href="https://www.youtube.com/watch?v=tDDhuSVbYkU&t=160s" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-indigo-600 text-white font-mono text-xs font-bold hover:bg-indigo-700 transition" title="前往 YouTube 02:40">
+                  02:40
+                </a>
+                <span class="text-sm sm:text-base font-bold text-slate-800">
+                  面對高度共線性（Multicollinearity）的表現差異
+                </span>
+              </div>
+              <span class="text-slate-400 group-open:rotate-180 transition-transform text-xs">▼</span>
+            </summary>
+            <div class="p-4 sm:p-5 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-200 space-y-2.5 bg-white">
+              <p>
+                <strong>【影音逐字口述】</strong>「考題常出情境：當資料中存在高度共線性（例如月收入與年收入這兩根特徵相關係數高達 0.99）。此時若採用 L1，Lasso 會在兩者之中隨機保留一個，並將另一個直接壓到 0。當換一批資料或重新隨機分割訓練時，保留的特徵清單常會跳動，造成模型解釋上的不穩定。」
+              </p>
+              <p>
+                「相反地，L2 Ridge 面對這類高度共線性特徵時，會把相關的權重一起等比例壓縮保留下來，維持權重分配的平穩性。」
+              </p>
+            </div>
+          </details>
+        </article>
+
+        <!-- 00:03:06 -->
+        <article class="timeline-item border border-slate-200 rounded-xl overflow-hidden transition" id="ts-0306">
+          <details class="group">
+            <summary class="flex items-center justify-between p-3.5 sm:p-4 bg-slate-50/80 cursor-pointer select-none group-open:bg-indigo-50/40">
+              <div class="flex items-center gap-3">
+                <a href="https://www.youtube.com/watch?v=tDDhuSVbYkU&t=186s" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-indigo-600 text-white font-mono text-xs font-bold hover:bg-indigo-700 transition" title="前往 YouTube 03:06">
+                  03:06
+                </a>
+                <span class="text-sm sm:text-base font-bold text-slate-800">
+                  超參數 $\lambda$ 與深度學習別名（Weight Decay 權重衰減）
+                </span>
+              </div>
+              <span class="text-slate-400 group-open:rotate-180 transition-transform text-xs">▼</span>
+            </summary>
+            <div class="p-4 sm:p-5 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-200 space-y-2.5 bg-white">
+              <p>
+                <strong>【影音逐字口述】</strong>「超參數 $\lambda$（在部分套件中稱為 $\alpha$）控制約束強度。若 $\lambda = 0$，模型就退化成無約束的普通最小平方法；若 $\lambda$ 設得太大，模型權重全被壓成極小甚至為零，會導致嚴重的欠擬合（Underfitting）。實務上必須透過交叉驗證（Cross-Validation）尋找最佳值。」
+              </p>
+              <p>
+                「此外在深度學習神經網路中，L2 正則化在反向傳播的權重更新式中表現為每次扣除一個與權重成比例的量，因此在 PyTorch/TensorFlow 中直接被稱為 Weight Decay（權重衰減）。看到 Weight Decay 就要立刻聯想到 L2。」
+              </p>
+            </div>
+          </details>
+        </article>
+
+        <!-- 00:03:59 -->
+        <article class="timeline-item border border-slate-200 rounded-xl overflow-hidden transition" id="ts-0359">
+          <details class="group">
+            <summary class="flex items-center justify-between p-3.5 sm:p-4 bg-slate-50/80 cursor-pointer select-none group-open:bg-indigo-50/40">
+              <div class="flex items-center gap-3">
+                <a href="https://www.youtube.com/watch?v=tDDhuSVbYkU&t=239s" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-indigo-600 text-white font-mono text-xs font-bold hover:bg-indigo-700 transition" title="前往 YouTube 03:59">
+                  03:59
+                </a>
+                <span class="text-sm sm:text-base font-bold text-slate-800">
+                  實務情境考古題解析：電信流失、信貸評分與開場題揭曉
+                </span>
+              </div>
+              <span class="text-slate-400 group-open:rotate-180 transition-transform text-xs">▼</span>
+            </summary>
+            <div class="p-4 sm:p-5 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-200 space-y-2.5 bg-white">
+              <p>
+                <strong>【情境 1】電信客戶流失特徵篩選</strong>：「收集了幾百個特徵，管理層要求挑選最重要的 20 個特徵建構簡明模型。題目問要用哪種正規化？看到『篩選重要特徵』、『自動特徵選擇』，答案秒選 <strong>L1 (Lasso)</strong>。」
+              </p>
+              <p>
+                <strong>【情境 2】信貸審查模型係數漂移</strong>：「銀行團隊發現模型每次重新訓練，保留的特徵清單都大幅變動，主管質疑不穩定。問該如何改善？這是因為使用了 L1 面對高度共線性造成的，應改用 <strong>L2 (Ridge)</strong> 或 <strong>Elastic Net</strong>。」
+              </p>
+              <p>
+                <strong>【開場題解答】</strong>：「回到 150 個特徵且共線性，題目明確說『保留所有 150 個特徵的預測解釋能力、絕不讓任何係數歸零』，因此唯一解答就是 <strong>Ridge (L2)</strong>！」
+              </p>
+            </div>
+          </details>
+        </article>
+
+        <!-- 00:05:38 -->
+        <article class="timeline-item border border-slate-200 rounded-xl overflow-hidden transition" id="ts-0538">
+          <details class="group">
+            <summary class="flex items-center justify-between p-3.5 sm:p-4 bg-slate-50/80 cursor-pointer select-none group-open:bg-indigo-50/40">
+              <div class="flex items-center gap-3">
+                <a href="https://www.youtube.com/watch?v=tDDhuSVbYkU&t=338s" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-indigo-600 text-white font-mono text-xs font-bold hover:bg-indigo-700 transition" title="前往 YouTube 05:38">
+                  05:38
+                </a>
+                <span class="text-sm sm:text-base font-bold text-slate-800">
+                  重點二：Elastic Net、Dropout 與 Early Stopping 早停機制
+                </span>
+              </div>
+              <span class="text-slate-400 group-open:rotate-180 transition-transform text-xs">▼</span>
+            </summary>
+            <div class="p-4 sm:p-5 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-200 space-y-2.5 bg-white">
+              <p>
+                <strong>【影音逐字口述】</strong>「如果我們既想要 L1 的特徵選擇，又想要 L2 抵抗共線性的群組效應怎麼辦？這就是 <strong>Elastic Net（彈性網路）</strong>。它把 L1 絕對值和 L2 平方和同時放進損失函數，高度相關的特徵會整批被選中或一起被縮小。」
+              </p>
+              <p>
+                「在深度學習裡，<strong>Dropout</strong> 是極具代表性的手法。訓練時隨機讓神經元失活（斷開連結），避免特定節點互相產生過度依賴（共適應 Co-adaptation）。」
+              </p>
+              <p>
+                「而 <strong>Early Stopping（早停）</strong> 則是緊盯驗證集誤差（Validation Loss）。只要驗證集誤差開始反彈回升，就立即強制中斷訓練，防止模型繼續死記硬背訓練資料中的雜訊。」
+              </p>
+            </div>
+          </details>
+        </article>
+
+        <!-- 00:06:17 -->
+        <article class="timeline-item border border-slate-200 rounded-xl overflow-hidden transition" id="ts-0617">
+          <details class="group">
+            <summary class="flex items-center justify-between p-3.5 sm:p-4 bg-slate-50/80 cursor-pointer select-none group-open:bg-indigo-50/40">
+              <div class="flex items-center gap-3">
+                <a href="https://www.youtube.com/watch?v=tDDhuSVbYkU&t=377s" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-indigo-600 text-white font-mono text-xs font-bold hover:bg-indigo-700 transition" title="前往 YouTube 06:17">
+                  06:17
+                </a>
+                <span class="text-sm sm:text-base font-bold text-slate-800">
+                  考題深水區：Dropout 程式實作細節與 Inverted Dropout
+                </span>
+              </div>
+              <span class="text-slate-400 group-open:rotate-180 transition-transform text-xs">▼</span>
+            </summary>
+            <div class="p-4 sm:p-5 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-200 space-y-2.5 bg-white">
+              <p>
+                <strong>【影音逐字口述】</strong>「中級科目三偶爾會考出程式底層邏輯題：神經網路在做 Dropout 時，如果保留節點的機率是 $p$（例如 0.8），為了讓推論階段與訓練階段的期望值保持一致，通常會在訓練時將存活節點的輸出除以 $p$（稱為 <strong>Inverted Dropout 反向丟棄</strong>）。」
+              </p>
+              <p>
+                「另外要注意各框架的參數定義：在 Keras 裡面 `Dropout(0.2)` 的 0.2 代表的是『丟棄的比例（Drop rate）』，剩下的保留機率是 0.8；但在部分學術公式中 $p$ 定義為保留機率，審題時務必看清題目指涉的是丟棄比率還是保留比率。」
+              </p>
+            </div>
+          </details>
+        </article>
+
+        <!-- 00:06:53 -->
+        <article class="timeline-item border border-slate-200 rounded-xl overflow-hidden transition" id="ts-0653">
+          <details class="group">
+            <summary class="flex items-center justify-between p-3.5 sm:p-4 bg-slate-50/80 cursor-pointer select-none group-open:bg-indigo-50/40">
+              <div class="flex items-center gap-3">
+                <a href="https://www.youtube.com/watch?v=tDDhuSVbYkU&t=413s" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-indigo-600 text-white font-mono text-xs font-bold hover:bg-indigo-700 transition" title="前往 YouTube 06:53">
+                  06:53
+                </a>
+                <span class="text-sm sm:text-base font-bold text-slate-800">
+                  進階題型：基因分析選 Elastic Net、PyTorch 預測浮動忘記 model.eval()
+                </span>
+              </div>
+              <span class="text-slate-400 group-open:rotate-180 transition-transform text-xs">▼</span>
+            </summary>
+            <div class="p-4 sm:p-5 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-200 space-y-2.5 bg-white">
+              <p>
+                <strong>【情境 1】基因微陣列特徵篩選</strong>：「特徵數上萬且同組基因高度協同表達（強共線性），若要挑出病因基因群組，Lasso 會隨機砍掉有效基因，此時最佳解是 <strong>Elastic Net</strong>。」
+              </p>
+              <p>
+                <strong>【情境 2】測試集預測結果每次都在浮動</strong>：「某工程師部署模型後，發現同一張圖片輸入模型兩次，得到的預測機率居然不一致。題目問最可能的原因？答案是：<strong>推論評估時忘記關閉 Dropout（PyTorch 忘記呼叫 <code>model.eval()</code>）</strong>！」
+              </p>
+            </div>
+          </details>
+        </article>
+
+        <!-- 00:07:38 -->
+        <article class="timeline-item border border-slate-200 rounded-xl overflow-hidden transition" id="ts-0738">
+          <details class="group">
+            <summary class="flex items-center justify-between p-3.5 sm:p-4 bg-slate-50/80 cursor-pointer select-none group-open:bg-indigo-50/40">
+              <div class="flex items-center gap-3">
+                <a href="https://www.youtube.com/watch?v=tDDhuSVbYkU&t=458s" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-indigo-600 text-white font-mono text-xs font-bold hover:bg-indigo-700 transition" title="前往 YouTube 07:38">
+                  07:38
+                </a>
+                <span class="text-sm sm:text-base font-bold text-slate-800">
+                  重點三：辨別什麼「不屬於」正規化？（考題高頻反向陷阱）
+                </span>
+              </div>
+              <span class="text-slate-400 group-open:rotate-180 transition-transform text-xs">▼</span>
+            </summary>
+            <div class="p-4 sm:p-5 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-200 space-y-2.5 bg-white">
+              <p>
+                <strong>【影音逐字口述】</strong>「題目常問：『下列何者不是正規化手段？』掌握一個根本原則：正規化必須是<strong>限制模型容量、降低模型複雜度、約束參數自由度</strong>的手法。」
+              </p>
+              <p>
+                「常見的誘答選項包括：<strong>『擴增輸入特徵（Feature Expansion）』</strong>（這反而增加了擬合自由度與複雜度）、『增加網路層數或神經元寬度』、『增加訓練迭代輪數（Epochs）』、『調大學習率（Learning Rate）』。這些通通都不屬於正規化！」
+              </p>
+            </div>
+          </details>
+        </article>
+
+        <!-- 00:08:42 -->
+        <article class="timeline-item border border-slate-200 rounded-xl overflow-hidden transition" id="ts-0842">
+          <details class="group">
+            <summary class="flex items-center justify-between p-3.5 sm:p-4 bg-slate-50/80 cursor-pointer select-none group-open:bg-indigo-50/40">
+              <div class="flex items-center gap-3">
+                <a href="https://www.youtube.com/watch?v=tDDhuSVbYkU&t=522s" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-indigo-600 text-white font-mono text-xs font-bold hover:bg-indigo-700 transition" title="前往 YouTube 08:42">
+                  08:42
+                </a>
+                <span class="text-sm sm:text-base font-bold text-slate-800">
+                  重點四：不平衡資料重取樣（SMOTE、欠採樣、類別權重）
+                </span>
+              </div>
+              <span class="text-slate-400 group-open:rotate-180 transition-transform text-xs">▼</span>
+            </summary>
+            <div class="p-4 sm:p-5 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-200 space-y-2.5 bg-white">
+              <p>
+                <strong>【影音逐字口述】</strong>「面對正負樣本極度不均衡的資料（例如詐欺交易僅 0.1%），模型容易投機全猜多數類。常見解決策略有四種：」
+              </p>
+              <ul class="list-disc list-inside space-y-1.5 pl-2">
+                <li><strong>過採樣（Oversampling）</strong>：直接複製少數類容易導致過擬合，因此首選 <strong>SMOTE</strong> 演算法——在相鄰的少數類樣本點之間做線性插值生成全新虛擬樣本。</li>
+                <li><strong>欠採樣（Undersampling）</strong>：隨機刪除多數類，省運算時間但容易遺失重要多數類邊界。</li>
+                <li><strong>類別權重（Class Weights）</strong>：不改變原始資料，直接在損失函數中將少數類的猜錯代價調高 5 到 10 倍。</li>
+                <li><strong>單類別異常檢測（One-Class SVM / Isolation Forest）</strong>：若極端懸殊到幾萬筆只有幾筆，直接轉換問題定義為異常檢測。</li>
+              </ul>
+            </div>
+          </details>
+        </article>
+
+        <!-- 00:09:54 -->
+        <article class="timeline-item border border-slate-200 rounded-xl overflow-hidden transition" id="ts-0954">
+          <details class="group">
+            <summary class="flex items-center justify-between p-3.5 sm:p-4 bg-slate-50/80 cursor-pointer select-none group-open:bg-indigo-50/40">
+              <div class="flex items-center gap-3">
+                <a href="https://www.youtube.com/watch?v=tDDhuSVbYkU&t=594s" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-indigo-600 text-white font-mono text-xs font-bold hover:bg-indigo-700 transition" title="前往 YouTube 09:54">
+                  09:54
+                </a>
+                <span class="text-sm sm:text-base font-bold text-slate-800">
+                  不平衡資料評估指標禁忌：嚴禁使用 Accuracy（準確率）
+                </span>
+              </div>
+              <span class="text-slate-400 group-open:rotate-180 transition-transform text-xs">▼</span>
+            </summary>
+            <div class="p-4 sm:p-5 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-200 space-y-2.5 bg-white">
+              <p>
+                <strong>【影音逐字口述】</strong>「這題在歷屆考古題中出現頻率極高！題目若說資料集正負樣本為 98:2，某工程師訓練出一個準確率 98% 的模型，詢問成效如何？答案一定是『無效、有偏差』。」
+              </p>
+              <p>
+                「因為模型只要全猜陰性就有 98% 準確率，但少數類的陽性病患完全抓不到。不平衡資料的評估，<strong>絕對不能看 Accuracy</strong>，必須採用 <strong>Recall（召回率 / 敏感度）、Precision、F1-Score 或 PR-AUC</strong>。」
+              </p>
+            </div>
+          </details>
+        </article>
+
+        <!-- 00:10:26 -->
+        <article class="timeline-item border border-slate-200 rounded-xl overflow-hidden transition" id="ts-1026">
+          <details class="group">
+            <summary class="flex items-center justify-between p-3.5 sm:p-4 bg-slate-50/80 cursor-pointer select-none group-open:bg-indigo-50/40">
+              <div class="flex items-center gap-3">
+                <a href="https://www.youtube.com/watch?v=tDDhuSVbYkU&t=626s" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-indigo-600 text-white font-mono text-xs font-bold hover:bg-indigo-700 transition" title="前往 YouTube 10:26">
+                  10:26
+                </a>
+                <span class="text-sm sm:text-base font-bold text-slate-800">
+                  全集總結：考前四句話口訣速記
+                </span>
+              </div>
+              <span class="text-slate-400 group-open:rotate-180 transition-transform text-xs">▼</span>
+            </summary>
+            <div class="p-4 sm:p-5 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-200 space-y-2.5 bg-white">
+              <p>
+                <strong>【影音逐字口述】</strong>「最後我們用四句口訣做快速總結：」
+              </p>
+              <div class="p-4 rounded-xl bg-slate-900 text-white space-y-2 text-xs sm:text-sm font-mono">
+                <p>🔹 <span class="text-amber-400 font-bold">L1 Lasso</span>：絕對值、斷捨離、係數歸零選特徵。</p>
+                <p>🔹 <span class="text-emerald-400 font-bold">L2 Ridge</span>：平方和、全面打折、保留全部抗共線（Weight Decay）。</p>
+                <p>🔹 <span class="text-purple-400 font-bold">Dropout 與早停</span>：訓練隨機遮罩破依賴，推論切 eval，早停緊盯 Val Loss。</p>
+                <p>🔹 <span class="text-rose-400 font-bold">重取樣與評估</span>：擴增特徵非正規化，不平衡用 SMOTE / 權重，指標絕不能看 Accuracy！</p>
+              </div>
+              <p class="text-xs text-slate-500 pt-1">
+                祝各位考生考試順利，掌握這些考點即可在中級科目三的正規化題型中穩拿全部分數！
+              </p>
+            </div>
+          </details>
+        </article>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 頁腳 -->
+  <footer class="bg-slate-900 text-slate-400 py-8 border-t border-slate-800 text-center text-xs">
+    <div class="max-w-4xl mx-auto px-4 space-y-2">
+      <p>教材依據【iPAS AI應用規劃師_中級科目三 系列 EP19】影片整理製成</p>
+      <p class="text-slate-500">本教材僅供證照備考與教育研究使用</p>
+    </div>
+  </footer>
+
+  <!-- 互動腳本與 KaTeX 即時渲染初始化 -->
+  <script>
+    // 開場題目互動邏輯
+    function handleQuiz(choice) {
+      const res = document.getElementById('quiz-result');
+      const btnA = document.getElementById('btn-A');
+      const btnB = document.getElementById('btn-B');
+      const btnC = document.getElementById('btn-C');
+      const btnD = document.getElementById('btn-D');
+
+      // 重置邊框樣式
+      [btnA, btnB, btnC, btnD].forEach(b => {
+        b.className = "p-4 rounded-xl border-2 border-slate-200 hover:border-indigo-400 bg-slate-50 text-left transition text-sm";
+      });
+
+      if (choice === 'B') {
+        btnB.className = "p-4 rounded-xl border-2 border-emerald-500 bg-emerald-50/70 text-left transition text-sm shadow-sm";
+        res.className = "p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-sm";
+        res.innerHTML = "🎉 <strong>正確答案為 B. Ridge (L2 正規化)！</strong><br>解析：題目強調『要保留所有 150 個特徵的預測解釋能力，絕不希望任何係數歸零』，且存在『高度共線性』。L2 能等比例縮減係數、穩定解共線性，且權重絕不歸零。";
+      } else if (choice === 'A') {
+        btnA.className = "p-4 rounded-xl border-2 border-rose-400 bg-rose-50 text-left transition text-sm";
+        res.className = "p-4 rounded-xl bg-rose-50 border border-rose-300 text-rose-900 text-sm";
+        res.innerHTML = "❌ <strong>選項 A 不正確：</strong>Lasso (L1) 會強制將許多特徵係數直接壓縮為 0，違反『保留所有 150 個特徵』的條件，且共線性下特徵挑選不穩定。";
+      } else if (choice === 'C') {
+        btnC.className = "p-4 rounded-xl border-2 border-amber-400 bg-amber-50 text-left transition text-sm";
+        res.className = "p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-sm";
+        res.innerHTML = "⚠️ <strong>選項 C 未完全吻合：</strong>Elastic Net 雖然能兼顧共線性，但依然具備 L1 懲罰項，會導致部分特徵係數被篩選歸零。";
+      } else {
+        btnD.className = "p-4 rounded-xl border-2 border-rose-400 bg-rose-50 text-left transition text-sm";
+        res.className = "p-4 rounded-xl bg-rose-50 border border-rose-300 text-rose-900 text-sm";
+        res.innerHTML = "❌ <strong>選項 D 不正確：</strong>普通最小平方法在特徵高度相關（共線性）時，逆矩陣計算極不穩定，係數會發生劇烈振盪並嚴重過擬合。";
+      }
+    }
+
+    // 幾何約束切換控制
+    function setConstraintMode(mode) {
+      const circle = document.getElementById('svg-circle');
+      const poly = document.getElementById('svg-poly');
+      const hitL1 = document.getElementById('svg-hit-l1');
+      const hitL2 = document.getElementById('svg-hit-l2');
+      const caption = document.getElementById('svg-caption');
+      
+      const tabL1 = document.getElementById('tab-l1');
+      const tabL2 = document.getElementById('tab-l2');
+      const tabBoth = document.getElementById('tab-both');
+
+      // 重置按鈕樣式
+      [tabL1, tabL2, tabBoth].forEach(t => {
+        t.className = "px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 transition";
+      });
+
+      if (mode === 'l1') {
+        tabL1.className = "px-3 py-1.5 rounded-md text-xs font-bold bg-amber-500 text-white shadow-sm transition";
+        poly.setAttribute('opacity', '1');
+        circle.setAttribute('opacity', '0.08');
+        hitL1.setAttribute('opacity', '1');
+        hitL2.setAttribute('opacity', '0');
+        caption.innerHTML = "<strong>L1 菱形約束特性：</strong>菱形尖端剛好座落在座標軸上。等高線擴展時極易率先接觸頂點，導致 w₂ = 0，自動實現稀疏特徵選擇。";
+      } else if (mode === 'l2') {
+        tabL2.className = "px-3 py-1.5 rounded-md text-xs font-bold bg-emerald-600 text-white shadow-sm transition";
+        poly.setAttribute('opacity', '0.08');
+        circle.setAttribute('opacity', '1');
+        hitL1.setAttribute('opacity', '0');
+        hitL2.setAttribute('opacity', '1');
+        caption.innerHTML = "<strong>L2 圓形約束特性：</strong>圓球表面平滑無尖角。等高線切於圓周弧面上，因此 w₁ 與 w₂ 同時被等比壓縮，但極難精準落於 0。";
+      } else {
+        tabBoth.className = "px-3 py-1.5 rounded-md text-xs font-bold bg-indigo-600 text-white shadow-sm transition";
+        poly.setAttribute('opacity', '0.7');
+        circle.setAttribute('opacity', '0.7');
+        hitL1.setAttribute('opacity', '1');
+        hitL2.setAttribute('opacity', '1');
+        caption.innerHTML = "<strong>兩者重疊比對：</strong>直觀感受尖角（L1 造成特徵消除）與平滑圓弧（L2 造成全面縮小保留）之本質差異。";
+      }
+    }
+
+    // 展開/收合全部逐字稿
+    function toggleAllTranscripts(expand) {
+      const detailsList = document.querySelectorAll('#transcript-list details');
+      detailsList.forEach(d => d.open = expand);
+    }
+
+    // 主題錨點跳轉
+    function jumpToTimeline(id) {
+      const target = document.getElementById(id);
+      if (target) {
+        const details = target.querySelector('details');
+        if (details) details.open = true;
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.classList.add('ring-2', 'ring-indigo-500');
+        setTimeout(() => {
+          target.classList.remove('ring-2', 'ring-indigo-500');
+        }, 1800);
+      }
+    }
+
+    // 即時關鍵字搜尋過濾
+    function filterTranscripts() {
+      const query = document.getElementById('transcript-search').value.toLowerCase().trim();
+      const items = document.querySelectorAll('.timeline-item');
+      items.forEach(item => {
+        const text = item.innerText.toLowerCase();
+        if (!query || text.includes(query)) {
+          item.style.display = 'block';
+          if (query) {
+            item.querySelector('details').open = true;
+          }
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    }
+
+    // 確保 KaTeX 在頁面加載後自動渲染所有數學式
+    window.addEventListener('DOMContentLoaded', () => {
+      if (typeof renderMathInElement === 'function') {
+        renderMathInElement(document.body, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false }
+          ],
+          throwOnError: false
+        });
+      }
+    });
+  </script>
+</body>
+</html>
