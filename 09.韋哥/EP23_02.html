@@ -1,0 +1,1844 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>【iPAS AI應用規劃師_中級科目三 系列 EP23(下)】PyTorch 與 Matplotlib 教學筆記</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Inter & Noto Sans TC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- KaTeX CSS & JS for LaTeX Math Rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+          onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+            mono: ['Fira Code', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#075985',
+              900: '#0c4a6e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    pre code {
+      font-family: 'Fira Code', monospace;
+    }
+    .katex { font-size: 1.08em; }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased font-sans selection:bg-sky-500 selection:text-white">
+
+  <!-- Top Sticky Navigation -->
+  <nav class="sticky top-0 z-50 glass-card border-b border-slate-200/80 shadow-sm transition-all duration-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span class="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 text-white font-bold shadow-md shadow-sky-500/20 text-sm">
+          <i class="fa-solid fa-brain"></i>
+        </span>
+        <div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-sky-600 block">iPAS AI 應用規劃師 中級科目三</span>
+          <h1 class="text-sm sm:text-base font-bold text-slate-900 truncate max-w-[240px] sm:max-w-md">EP23(下) PyTorch 訓練迴圈與訓練曲線</h1>
+        </div>
+      </div>
+      <div class="hidden md:flex items-center space-x-5 text-sm font-medium text-slate-600">
+        <a href="#video-header" class="hover:text-sky-600 transition-colors">原創影片</a>
+        <a href="#warmup-ocr" class="hover:text-sky-600 transition-colors">開場思考題</a>
+        <a href="#ch25-pytorch" class="hover:text-sky-600 transition-colors">Ch.25 PyTorch 語法</a>
+        <a href="#ch26-matplotlib" class="hover:text-sky-600 transition-colors">Ch.26 曲線診斷</a>
+        <a href="#timeline-transcript" class="text-indigo-600 font-semibold hover:text-indigo-800 transition-colors flex items-center gap-1">
+          <i class="fa-solid fa-list-check text-xs"></i> 時間軸逐字稿
+        </a>
+        <a href="#key-takeaways" class="px-3.5 py-1.5 rounded-lg bg-sky-600 text-white hover:bg-sky-700 transition shadow-sm">重點速記</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+    <!-- Hero / Title & YouTube Video Card -->
+    <header id="video-header" class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-sky-950 to-indigo-950 text-white p-6 sm:p-10 shadow-xl shadow-slate-900/10">
+      <div class="relative z-10 max-w-4xl space-y-4">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30 text-xs font-semibold uppercase tracking-wide">
+          <i class="fa-solid fa-graduation-cap"></i> 核心衝刺教材 • 程式必考第 25 ~ 26 章
+        </div>
+        <h2 class="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight">
+          【iPAS AI應用規劃師_中級科目三 系列 EP23(下)】<br class="hidden sm:inline"/>
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-teal-300 to-indigo-300">
+            PyTorch 與 Matplotlib
+          </span>
+          ｜訓練迴圈、資料增強與曲線診斷
+        </h2>
+        <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+          解析遷移學習參數凍結技巧、訓練迴圈五步口訣「清、算、比、傳、改」、梯度裁剪（Gradient Clipping）時機、常見損失函數陷阱，以及 Matplotlib 格式字串與過擬合／欠擬合判定。
+        </p>
+      </div>
+
+      <!-- Video Reference Card -->
+      <div class="mt-8 pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-900/70 p-4 sm:p-5 rounded-2xl border border-white/10 backdrop-blur-md">
+        <div class="flex items-center gap-4 w-full sm:w-auto">
+          <div class="w-12 h-12 rounded-xl bg-red-600/20 border border-red-500/40 flex items-center justify-center text-red-400 text-2xl flex-shrink-0">
+            <i class="fa-brands fa-youtube"></i>
+          </div>
+          <div>
+            <div class="text-xs font-semibold text-slate-400 uppercase tracking-wide">官方推薦觀看來源</div>
+            <div class="text-sm font-bold text-white group-hover:text-sky-300">YouTube 官方原始影片播放清單</div>
+            <p class="text-xs text-slate-400 mt-0.5">點擊前往 YouTube 觀看原創課程，搭配本筆記效果更佳</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&list=PLC0AIqDG72yo&index=40" target="_blank" rel="noopener noreferrer"
+             class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 transition duration-150 font-medium text-sm text-white shadow-lg shadow-red-600/30">
+            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i> 前往觀看原影片
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <!-- SLIDE SVG 1: 程式題的最後兩章 -->
+    <section class="space-y-3">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold text-indigo-600 flex items-center gap-1.5 uppercase tracking-wider">
+          <i class="fa-solid fa-vector-square"></i> 原片簡報向量重現 1 · 課程總綱
+        </span>
+        <span class="text-[11px] text-slate-400 font-mono">SVG 1:1 Vector Fidelity</span>
+      </div>
+      <div class="rounded-2xl border border-slate-200/90 bg-white p-2 sm:p-4 shadow-sm overflow-hidden">
+        <svg viewBox="0 0 1000 280" class="w-full h-auto drop-shadow-sm select-none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="bgGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#FAF5FF"/>
+              <stop offset="100%" stop-color="#FFFFFF"/>
+            </linearGradient>
+          </defs>
+          <!-- Background -->
+          <rect width="1000" height="280" rx="16" fill="url(#bgGrad1)" />
+          
+          <!-- Top Header -->
+          <circle cx="36" cy="38" r="6" fill="#F97316"/>
+          <text x="52" y="44" fill="#6B21A8" font-family="'Inter', 'Noto Sans TC', sans-serif" font-weight="600" font-size="20">iPAS 23下 · PyTorch 與 Matplotlib</text>
+          <line x1="390" y1="38" x2="960" y2="38" stroke="#D8B4FE" stroke-width="2.5" stroke-linecap="round"/>
+          
+          <!-- Big Title -->
+          <text x="36" y="112" fill="#1E1B4B" font-family="'Inter', 'Noto Sans TC', sans-serif" font-weight="900" font-size="44">程式題的<tspan fill="#F97316">最後兩章</tspan></text>
+          
+          <!-- Card 25 -->
+          <g transform="translate(36, 142)">
+            <rect width="928" height="52" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+            <rect x="18" y="10" width="76" height="32" rx="8" fill="#4F46E5"/>
+            <text x="56" y="32" fill="#FFFFFF" font-family="'Noto Sans TC', sans-serif" font-weight="700" font-size="16" text-anchor="middle">二十五</text>
+            <text x="110" y="33" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="19">PyTorch 必認語法：凍結、訓練迴圈、損失函數、資料增強 + 兩個題組</text>
+          </g>
+          
+          <!-- Card 26 -->
+          <g transform="translate(36, 206)">
+            <rect width="928" height="52" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+            <rect x="18" y="10" width="76" height="32" rx="8" fill="#EA580C"/>
+            <text x="56" y="32" fill="#FFFFFF" font-family="'Noto Sans TC', sans-serif" font-weight="700" font-size="16" text-anchor="middle">二十六</text>
+            <text x="110" y="33" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="19">Matplotlib 與訓練曲線：畫圖語法、看著曲線下診斷</text>
+          </g>
+        </svg>
+      </div>
+    </section>
+
+    <!-- SECTION 0: Warmup Thought & OCR Trap -->
+    <section id="warmup-ocr" class="space-y-6">
+      <div class="flex items-center gap-3 border-l-4 border-amber-500 pl-3">
+        <h3 class="text-2xl font-bold text-slate-900">💡 開場思考題：OCR 字元識別的資料增強陷阱</h3>
+      </div>
+
+      <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200/80 space-y-6">
+        <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl">
+          <div class="flex gap-3">
+            <i class="fa-solid fa-triangle-exclamation text-amber-600 text-xl flex-shrink-0 mt-0.5"></i>
+            <div>
+              <h4 class="font-bold text-amber-900 text-base">考試情境模擬（115 年第 41 題同型概念題）</h4>
+              <p class="text-amber-800 text-sm mt-1 leading-relaxed">
+                一個光學字元辨識（OCR）模型在訓練時使用了一組轉換，前三個做資料增強，最後一個轉成張量（Tensor）。訓練過程中<strong>驗證損失（Validation Loss）持續下降</strong>看似非常順利，但部署上線後，發現 <span class="font-mono font-bold bg-amber-200/60 px-1 rounded">b</span>、<span class="font-mono font-bold bg-amber-200/60 px-1 rounded">d</span>、<span class="font-mono font-bold bg-amber-200/60 px-1 rounded">p</span>、<span class="font-mono font-bold bg-amber-200/60 px-1 rounded">q</span> 這幾個字母錯誤率極高。請問哪一個轉換是元兇？
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Flip Demonstration -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+          <div class="space-y-3">
+            <h5 class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <i class="fa-solid fa-arrows-split-up-and-left text-sky-600"></i> 互動觀察：字元鏡像變換破壞語義方向性
+            </h5>
+            <p class="text-xs text-slate-500">
+              一般圖片（如貓狗、車輛）水平翻轉仍是貓狗；但在字元與文字辨識中，<strong>水平翻轉會直接改變字元的幾何語義</strong>，造成標籤污染！
+            </p>
+            
+            <div class="flex gap-2 pt-2">
+              <button onclick="setOcrLetter('b', 'd')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-sky-100 text-slate-700 hover:text-sky-700 transition">字母 b ↔ d</button>
+              <button onclick="setOcrLetter('p', 'q')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-sky-100 text-slate-700 hover:text-sky-700 transition">字母 p ↔ q</button>
+              <button id="toggleFlipBtn" onclick="toggleOcrFlip()" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-sky-600 hover:bg-sky-700 text-white shadow-sm transition">
+                <i class="fa-solid fa-arrows-left-right mr-1"></i> 切換左右翻轉 (RandomHorizontalFlip)
+              </button>
+            </div>
+          </div>
+
+          <!-- Flip Display Card -->
+          <div class="bg-slate-900 text-white p-6 rounded-2xl flex flex-col items-center justify-center relative overflow-hidden">
+            <span class="text-xs text-slate-400 absolute top-3 left-4 font-mono">Image Tensor Viewer</span>
+            <div class="flex items-center justify-around w-full mt-4">
+              <div class="text-center">
+                <span class="text-xs text-slate-400 block mb-1">原始輸入圖與標籤</span>
+                <div id="originalChar" class="w-20 h-20 bg-slate-800 border-2 border-dashed border-sky-400 rounded-xl flex items-center justify-center text-5xl font-mono font-bold text-sky-400">b</div>
+                <span class="text-xs text-sky-300 mt-1 block">Label: 'b'</span>
+              </div>
+              <div class="text-slate-500 text-xl font-bold">
+                <i class="fa-solid fa-arrow-right-arrow-left"></i>
+              </div>
+              <div class="text-center">
+                <span class="text-xs text-slate-400 block mb-1">水平翻轉後資料</span>
+                <div id="flippedChar" class="w-20 h-20 bg-slate-800 border-2 border-red-500 rounded-xl flex items-center justify-center text-5xl font-mono font-bold text-red-400 transition-transform duration-300">d</div>
+                <span class="text-xs text-red-300 mt-1 block font-bold">Label 依然是 'b' (錯誤標籤!)</span>
+              </div>
+            </div>
+            <p id="ocrNotice" class="text-xs text-amber-300 mt-4 text-center">⚠️ 水平翻轉將 'b' 轉成了形狀為 'd' 的圖，但標籤仍寫著 'b'，模型學到了錯誤映射！</p>
+          </div>
+        </div>
+
+        <!-- Solution Card -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          <div class="p-4 rounded-xl border border-emerald-200 bg-emerald-50/70">
+            <h5 class="text-sm font-bold text-emerald-900 flex items-center gap-2">
+              <i class="fa-solid fa-circle-check text-emerald-600"></i> 正解：隨機左右翻轉（RandomHorizontalFlip）
+            </h5>
+            <p class="text-xs text-emerald-800 mt-1 leading-relaxed">
+              <strong>b、d</strong> 或 <strong>p、q</strong> 是左右對稱結構。翻轉後圖形完全變成了另一個字符，但標籤未跟著更改，導致模型有 50% 機率學習到錯誤對應關係。
+            </p>
+          </div>
+          <div class="p-4 rounded-xl border border-sky-200 bg-sky-50/70">
+            <h5 class="text-sm font-bold text-sky-900 flex items-center gap-2">
+              <i class="fa-solid fa-circle-info text-sky-600"></i> 為何訓練時「驗證損失」仍在下降？
+            </h5>
+            <p class="text-xs text-sky-800 mt-1 leading-relaxed">
+              驗證損失是<strong>所有字母的加權平均</strong>。b、d、p、q 僅佔 26 個英文字母中的 4 個，錯誤被其他字母的良好表現稀釋掩蓋，直到真實場景針對性監控時才暴露。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 1: Chapter 25 - PyTorch Core -->
+    <section id="ch25-pytorch" class="space-y-8">
+      <div class="flex items-center gap-3 border-l-4 border-sky-600 pl-3">
+        <h3 class="text-2xl font-bold text-slate-900">第 25 章 PyTorch 必考核心語法</h3>
+      </div>
+
+      <!-- SLIDE SVG 2: 遷移學習：凍結的四行程式 -->
+      <div class="rounded-2xl border border-slate-200/90 bg-white p-2 sm:p-4 shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+          <span class="text-xs font-bold text-indigo-600 flex items-center gap-1.5 uppercase tracking-wider">
+            <i class="fa-solid fa-vector-square"></i> 原片簡報向量重現 2 · 遷移學習：凍結的四行程式
+          </span>
+          <span class="text-[11px] text-slate-400 font-mono">Slide Vector Re-creation</span>
+        </div>
+        <svg viewBox="0 0 1000 360" class="w-full h-auto drop-shadow-sm select-none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Background -->
+          <rect width="1000" height="360" rx="16" fill="#FAF5FF"/>
+          
+          <!-- Top Header -->
+          <circle cx="36" cy="36" r="6" fill="#F97316"/>
+          <text x="52" y="42" fill="#6B21A8" font-family="'Inter', 'Noto Sans TC', sans-serif" font-weight="600" font-size="20">iPAS 23下 · PyTorch 與 Matplotlib</text>
+          <line x1="390" y1="36" x2="960" y2="36" stroke="#D8B4FE" stroke-width="2.5" stroke-linecap="round"/>
+          
+          <!-- Big Title -->
+          <text x="36" y="102" fill="#1E1B4B" font-family="'Inter', 'Noto Sans TC', sans-serif" font-weight="900" font-size="40">遷移學習：<tspan fill="#F97316">凍結的四行程式</tspan></text>
+          
+          <!-- Code Block (Left) -->
+          <g transform="translate(36, 126)">
+            <rect width="520" height="206" rx="14" fill="#181E29"/>
+            <text x="24" y="46" fill="#F8FAFC" font-family="'Fira Code', monospace" font-size="17" font-weight="500">
+              <tspan fill="#38BDF8">model</tspan> = models.vgg16(pretrained=<tspan fill="#F59E0B">True</tspan>)
+            </text>
+            <text x="24" y="88" fill="#F8FAFC" font-family="'Fira Code', monospace" font-size="17" font-weight="500">
+              <tspan fill="#F43F5E">for</tspan> param <tspan fill="#F43F5E">in</tspan> model.features.parameters():
+            </text>
+            <text x="54" y="130" fill="#F8FAFC" font-family="'Fira Code', monospace" font-size="17" font-weight="500">
+              param.requires_grad = <tspan fill="#F59E0B">False</tspan>
+            </text>
+            <text x="24" y="172" fill="#F8FAFC" font-family="'Fira Code', monospace" font-size="17" font-weight="500">
+              <tspan fill="#FBBF24">model.classifier[6]</tspan> = torch.nn.Linear(<tspan fill="#34D399">4096</tspan>, <tspan fill="#34D399">10</tspan>)
+            </text>
+          </g>
+
+          <!-- Explanation Pills (Right) -->
+          <g transform="translate(578, 126)">
+            <!-- Item 1 -->
+            <rect y="0" width="386" height="46" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.6"/>
+            <rect x="10" y="8" width="30" height="30" rx="8" fill="#4F46E5"/>
+            <text x="25" y="28" fill="#FFFFFF" font-family="'Noto Sans TC', sans-serif" font-weight="700" font-size="16" text-anchor="middle">1</text>
+            <text x="52" y="29" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="17">載入在 ImageNet 練好的 VGG16</text>
+
+            <!-- Item 2 -->
+            <rect y="54" width="386" height="46" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.6"/>
+            <rect x="10" y="62" width="30" height="30" rx="8" fill="#4F46E5"/>
+            <text x="25" y="82" fill="#FFFFFF" font-family="'Noto Sans TC', sans-serif" font-weight="700" font-size="16" text-anchor="middle">2</text>
+            <text x="52" y="83" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="17">卷積部分的參數一個個拿出來</text>
+
+            <!-- Item 3 -->
+            <rect y="108" width="386" height="46" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.6"/>
+            <rect x="10" y="116" width="30" height="30" rx="8" fill="#EA580C"/>
+            <text x="25" y="136" fill="#FFFFFF" font-family="'Noto Sans TC', sans-serif" font-weight="700" font-size="16" text-anchor="middle">3</text>
+            <text x="52" y="137" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="17">不算梯度、不更新 = 凍結</text>
+
+            <!-- Item 4 -->
+            <rect y="162" width="386" height="46" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.6"/>
+            <rect x="10" y="170" width="30" height="30" rx="8" fill="#4F46E5"/>
+            <text x="25" y="190" fill="#FFFFFF" font-family="'Noto Sans TC', sans-serif" font-weight="700" font-size="16" text-anchor="middle">4</text>
+            <text x="52" y="191" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="17">最後一層換新：4,096 → 10 類</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Part 1: Transfer Learning & Freezing -->
+      <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200/80 space-y-6">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <h4 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <span class="w-7 h-7 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center text-sm font-bold">1</span>
+            遷移學習（Transfer Learning）與參數凍結四大寫法辨析
+          </h4>
+          <span class="text-xs px-2.5 py-1 rounded-full bg-red-100 text-red-700 font-semibold">114 年第 45 題、115 年第 42 題必考</span>
+        </div>
+
+        <p class="text-sm text-slate-600 leading-relaxed">
+          常見需求：<strong>「凍結卷積特徵提取層（features），僅訓練全連接分類器（classifier）」</strong>。考題經常混合四種語法陷阱來測試觀念。
+        </p>
+
+        <!-- SLIDE SVG 3: 凍結的四種寫法 -->
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-2 sm:p-3 overflow-hidden">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <i class="fa-solid fa-vector-square text-sky-600"></i> 原片簡報向量重現 3 · 凍結的四種寫法精確比較
+          </div>
+          <svg viewBox="0 0 1000 420" class="w-full h-auto drop-shadow-xs select-none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Background -->
+            <rect width="1000" height="420" rx="14" fill="#FAF5FF"/>
+            <circle cx="36" cy="34" r="6" fill="#F97316"/>
+            <text x="52" y="40" fill="#6B21A8" font-family="'Inter', 'Noto Sans TC', sans-serif" font-weight="600" font-size="20">iPAS 23下 · PyTorch 與 Matplotlib</text>
+            <line x1="390" y1="34" x2="960" y2="34" stroke="#D8B4FE" stroke-width="2.5" stroke-linecap="round"/>
+            
+            <text x="36" y="98" fill="#1E1B4B" font-family="'Inter', 'Noto Sans TC', sans-serif" font-weight="900" font-size="40">凍結的<tspan fill="#F97316">四種寫法</tspan></text>
+            <text x="36" y="132" fill="#334155" font-family="'Noto Sans TC', sans-serif" font-weight="500" font-size="16">題目要的：凍結卷積層，只訓練全連接分類器（分類器裡有三個全連接層）</text>
+
+            <!-- Card 1 -->
+            <g transform="translate(36, 150)">
+              <rect width="928" height="54" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+              <text x="24" y="34" fill="#0F172A" font-family="'Fira Code', monospace" font-weight="600" font-size="18">model.parameters()</text>
+              <text x="380" y="33" fill="#334155" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="18">全部層凍結（新換上的層除外）</text>
+            </g>
+
+            <!-- Card 2 (Correct - Highlighted) -->
+            <g transform="translate(36, 214)">
+              <rect width="928" height="54" rx="12" fill="#F0FDF4" stroke="#059669" stroke-width="2.4"/>
+              <text x="24" y="34" fill="#047857" font-family="'Fira Code', monospace" font-weight="700" font-size="18">model.<tspan fill="#B45309">features</tspan>.parameters()</text>
+              <text x="380" y="33" fill="#065F46" font-family="'Noto Sans TC', sans-serif" font-weight="700" font-size="18">只凍結卷積層 → 114-45 正解 ★</text>
+            </g>
+
+            <!-- Card 3 -->
+            <g transform="translate(36, 278)">
+              <rect width="928" height="54" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+              <text x="24" y="34" fill="#0F172A" font-family="'Fira Code', monospace" font-weight="600" font-size="18">model.classifier.parameters()</text>
+              <text x="380" y="33" fill="#64748B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="18">凍結全連接層：和需求相反</text>
+            </g>
+
+            <!-- Card 4 (Wrong) -->
+            <g transform="translate(36, 342)">
+              <rect width="928" height="64" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+              <text x="24" y="38" fill="#0F172A" font-family="'Fira Code', monospace" font-weight="600" font-size="18">model.requires_grad = False</text>
+              <text x="380" y="27" fill="#B91C1C" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="16">不會凍結參數：錯誤寫法</text>
+              <text x="380" y="51" fill="#D97706" font-family="'Fira Code', monospace" font-weight="700" font-size="15">要用 model.requires_grad_(False)</text>
+            </g>
+          </svg>
+        </div>
+
+        <!-- Syntax Comparison Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr class="bg-slate-100 border-b border-slate-200 text-slate-700">
+                <th class="p-3 font-semibold">語法寫法</th>
+                <th class="p-3 font-semibold">作用對象</th>
+                <th class="p-3 font-semibold">考題正誤判定</th>
+                <th class="p-3 font-semibold">說明解析</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 text-slate-600 text-xs sm:text-sm">
+              <tr class="bg-emerald-50/50">
+                <td class="p-3 font-mono font-medium text-emerald-800">
+                  for p in model.features.parameters():<br>&nbsp;&nbsp;&nbsp;&nbsp;p.requires_grad = False
+                </td>
+                <td class="p-3 font-semibold text-emerald-700">僅卷積特徵提取層</td>
+                <td class="p-3"><span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">✅ 題目正解</span></td>
+                <td class="p-3 text-slate-600">正確只凍結卷積層，全連接分類器維持可訓練狀態。</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-mono">
+                  for p in model.parameters():<br>&nbsp;&nbsp;&nbsp;&nbsp;p.requires_grad = False
+                </td>
+                <td class="p-3">整個模型所有層</td>
+                <td class="p-3"><span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">⚠️ 部分符合</span></td>
+                <td class="p-3">連分類器前兩層都凍結；若後續再新建立替換最後一層，新層預設可訓練。</td>
+              </tr>
+              <tr class="bg-rose-50/40">
+                <td class="p-3 font-mono text-rose-800">
+                  for p in model.classifier.parameters():<br>&nbsp;&nbsp;&nbsp;&nbsp;p.requires_grad = False
+                </td>
+                <td class="p-3 font-semibold text-rose-700">僅全連接分類層</td>
+                <td class="p-3"><span class="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold">❌ 邏輯相反</span></td>
+                <td class="p-3 text-slate-600">把需要訓練的分類器給凍結了，反而讓卷積層更新。</td>
+              </tr>
+              <tr class="bg-rose-50/40">
+                <td class="p-3 font-mono text-rose-800">model.requires_grad = False</td>
+                <td class="p-3">無效語法</td>
+                <td class="p-3"><span class="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold">❌ 語法錯誤</span></td>
+                <td class="p-3 text-slate-600">僅在 Module 身上掛屬性變數，並不會遞迴傳遞至底下的 Tensor 參數。正確模型層級方法為 <code class="font-mono bg-slate-200 px-1 rounded">requires_grad_(False)</code>。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- VGG vs ResNet Architecture card -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="p-4 rounded-xl bg-slate-900 text-white font-mono text-xs space-y-2">
+            <div class="text-sky-400 font-bold flex items-center gap-1.5">
+              <i class="fa-solid fa-code"></i> VGG-16 分類器替換結構
+            </div>
+            <p class="text-slate-400"># classifier 包含 [0]Linear, [1]ReLU, [2]Dropout, [3]Linear, [4]ReLU, [5]Dropout, [6]Linear</p>
+            <p class="text-emerald-400"># 將最後一層 (index 6) 替換為輸出 10 類</p>
+            <p><span class="text-pink-400">model.classifier[6]</span> = nn.Linear(4096, 10)</p>
+            <p class="text-amber-300"># 優化器僅傳入換上的最後一層參數 (特徵提取)：</p>
+            <p>optimizer = optim.Adam(<span class="text-pink-400">model.classifier[6]</span>.parameters(), lr=0.001)</p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-900 text-white font-mono text-xs space-y-2">
+            <div class="text-sky-400 font-bold flex items-center gap-1.5">
+              <i class="fa-solid fa-code"></i> ResNet-50 分類器替換結構
+            </div>
+            <p class="text-slate-400"># ResNet-50 的最後一層全連接層變數名為 .fc (非 classifier)</p>
+            <p class="text-emerald-400"># 輸入維度為 2048，換成二元分類 (2 類)</p>
+            <p><span class="text-pink-400">model.fc</span> = nn.Linear(2048, 2)</p>
+            <p class="text-amber-300"># 若只訓練 fc：</p>
+            <p>optimizer = optim.SGD(<span class="text-pink-400">model.fc</span>.parameters(), lr=0.001, momentum=0.9)</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Part 2: Interactive 5-Step Training Loop & Gradient Clipping -->
+      <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200/80 space-y-6">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <h4 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <span class="w-7 h-7 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center text-sm font-bold">2</span>
+            PyTorch 訓練迴圈五大標準步驟：口訣「清、算、比、傳、改」
+          </h4>
+          <span class="text-xs px-2.5 py-1 rounded-full bg-sky-100 text-sky-700 font-semibold">115 年第 50 題必考位置題</span>
+        </div>
+
+        <p class="text-sm text-slate-600 leading-relaxed">
+          在 DataLoader 吐出資料後的每批（batch）迭代中，這 5 個動作具有嚴格的前後相依次序。點擊下方步驟查看該位置的核心指令與陷阱：
+        </p>
+
+        <!-- Interactive 5 Steps Buttons -->
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          <button onclick="selectLoopStep(1)" id="step-btn-1" class="loop-step-btn p-3 rounded-xl border-2 border-sky-500 bg-sky-50 text-slate-800 font-bold text-xs sm:text-sm text-center transition flex flex-col items-center">
+            <span class="text-xs text-sky-600">位置 1</span>
+            <span class="text-base my-0.5">① 清</span>
+            <span class="text-[10px] font-mono font-normal">zero_grad()</span>
+          </button>
+          <button onclick="selectLoopStep(2)" id="step-btn-2" class="loop-step-btn p-3 rounded-xl border border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs sm:text-sm text-center transition flex flex-col items-center">
+            <span class="text-xs text-slate-400">位置 2</span>
+            <span class="text-base my-0.5">② 算</span>
+            <span class="text-[10px] font-mono font-normal">forward pass</span>
+          </button>
+          <button onclick="selectLoopStep(3)" id="step-btn-3" class="loop-step-btn p-3 rounded-xl border border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs sm:text-sm text-center transition flex flex-col items-center">
+            <span class="text-xs text-slate-400">位置 3</span>
+            <span class="text-base my-0.5">③ 比</span>
+            <span class="text-[10px] font-mono font-normal">criterion(out, y)</span>
+          </button>
+          <button onclick="selectLoopStep(4)" id="step-btn-4" class="loop-step-btn p-3 rounded-xl border border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs sm:text-sm text-center transition flex flex-col items-center">
+            <span class="text-xs text-slate-400">位置 4</span>
+            <span class="text-base my-0.5">④ 傳</span>
+            <span class="text-[10px] font-mono font-normal">loss.backward()</span>
+          </button>
+          <button onclick="selectLoopStep(5)" id="step-btn-5" class="loop-step-btn p-3 rounded-xl border border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs sm:text-sm text-center transition flex flex-col items-center">
+            <span class="text-xs text-slate-400">位置 5</span>
+            <span class="text-base my-0.5">⑤ 改</span>
+            <span class="text-[10px] font-mono font-normal">optimizer.step()</span>
+          </button>
+        </div>
+
+        <!-- Dynamic Content Box for Steps -->
+        <div id="step-detail-box" class="p-5 rounded-2xl bg-slate-900 text-slate-200 border border-slate-800 space-y-3 font-sans">
+          <!-- Controlled by JS -->
+        </div>
+
+        <!-- Gradient Clipping Callout -->
+        <div class="p-4 rounded-xl bg-purple-50 border border-purple-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2 text-purple-900 font-bold text-sm">
+              <i class="fa-solid fa-scissors text-purple-600"></i>
+              梯度裁剪（Gradient Clipping）插入位置：位置 4（傳）與位置 5（改）之間
+            </div>
+            <p class="text-xs text-purple-800 leading-relaxed">
+              原因：<strong>先算完反向傳播（backward）才會有梯度，梯度有了才能裁剪，裁完才能執行 step() 更新權重！</strong>可防止 RNN 或深層網路的梯度爆炸（Gradient Explosion）。
+            </p>
+          </div>
+          <code class="text-xs font-mono bg-purple-200 text-purple-900 px-3 py-1.5 rounded-lg whitespace-nowrap self-stretch sm:self-auto text-center font-bold">
+            torch.nn.utils.clip_grad_norm_()
+          </code>
+        </div>
+      </div>
+
+      <!-- Part 3: Loss Functions & Data Augmentation (With Slide SVGs) -->
+      <div class="space-y-6">
+        
+        <!-- SLIDE SVG 4: PyTorch 的損失函數 -->
+        <div class="rounded-2xl border border-slate-200/90 bg-white p-2 sm:p-4 shadow-sm overflow-hidden">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+            <span class="text-xs font-bold text-indigo-600 flex items-center gap-1.5 uppercase tracking-wider">
+              <i class="fa-solid fa-vector-square"></i> 原片簡報向量重現 4 · PyTorch 的損失函數
+            </span>
+            <span class="text-[11px] text-slate-400 font-mono">Slide Vector Re-creation</span>
+          </div>
+          <svg viewBox="0 0 1000 370" class="w-full h-auto drop-shadow-xs select-none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1000" height="370" rx="14" fill="#FAF5FF"/>
+            <circle cx="36" cy="34" r="6" fill="#F97316"/>
+            <text x="52" y="40" fill="#6B21A8" font-family="'Inter', 'Noto Sans TC', sans-serif" font-weight="600" font-size="20">iPAS 23下 · PyTorch 與 Matplotlib</text>
+            <line x1="390" y1="34" x2="960" y2="34" stroke="#D8B4FE" stroke-width="2.5" stroke-linecap="round"/>
+            
+            <text x="36" y="98" fill="#1E1B4B" font-family="'Inter', 'Noto Sans TC', sans-serif" font-weight="900" font-size="40">PyTorch 的<tspan fill="#F97316">損失函數</tspan></text>
+
+            <!-- Card 1: CrossEntropyLoss -->
+            <g transform="translate(36, 120)">
+              <rect width="928" height="98" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+              <text x="24" y="38" fill="#0F172A" font-family="'Fira Code', monospace" font-weight="700" font-size="19">nn.CrossEntropyLoss()</text>
+              <text x="260" y="38" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="18">內含 Softmax（LogSoftmax 接 NLLLoss）→ 輸出層直接給 logits · <tspan fill="#EA580C" font-weight="800">不加激活</tspan></text>
+              <text x="260" y="64" fill="#64748B" font-family="'Noto Sans TC', sans-serif" font-size="15">logits：還沒經過 Softmax 的原始分數</text>
+              <text x="260" y="86" fill="#64748B" font-family="'Noto Sans TC', sans-serif" font-size="15">輸出層再加 Softmax = 做兩次 · 訓練變差（115-20）</text>
+            </g>
+
+            <!-- Card 2: BCEWithLogitsLoss -->
+            <g transform="translate(36, 230)">
+              <rect width="928" height="54" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+              <text x="24" y="34" fill="#0F172A" font-family="'Fira Code', monospace" font-weight="700" font-size="19">nn.BCEWithLogitsLoss()</text>
+              <text x="260" y="34" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="18">二元分類 · 內含 Sigmoid → 輸出層不必自己加</text>
+            </g>
+
+            <!-- Card 3: MSELoss -->
+            <g transform="translate(36, 296)">
+              <rect width="928" height="54" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+              <text x="24" y="34" fill="#0F172A" font-family="'Fira Code', monospace" font-weight="700" font-size="19">nn.MSELoss()</text>
+              <text x="260" y="34" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="18">迴歸</text>
+            </g>
+          </svg>
+        </div>
+
+        <!-- SLIDE SVG 5: 資料增強 transforms -->
+        <div class="rounded-2xl border border-slate-200/90 bg-white p-2 sm:p-4 shadow-sm overflow-hidden">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+            <span class="text-xs font-bold text-indigo-600 flex items-center gap-1.5 uppercase tracking-wider">
+              <i class="fa-solid fa-vector-square"></i> 原片簡報向量重現 5 · 資料增強 transforms
+            </span>
+            <span class="text-[11px] text-slate-400 font-mono">Slide Vector Re-creation</span>
+          </div>
+          <svg viewBox="0 0 1000 480" class="w-full h-auto drop-shadow-xs select-none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1000" height="480" rx="14" fill="#FAF5FF"/>
+            <circle cx="36" cy="34" r="6" fill="#F97316"/>
+            <text x="52" y="40" fill="#6B21A8" font-family="'Inter', 'Noto Sans TC', sans-serif" font-weight="600" font-size="20">iPAS 23下 · PyTorch 與 Matplotlib</text>
+            <line x1="390" y1="34" x2="960" y2="34" stroke="#D8B4FE" stroke-width="2.5" stroke-linecap="round"/>
+            
+            <text x="36" y="98" fill="#1E1B4B" font-family="'Inter', 'Noto Sans TC', sans-serif" font-weight="900" font-size="40">資料增強 <tspan fill="#F97316">transforms</tspan></text>
+            <text x="36" y="130" fill="#475569" font-family="'Noto Sans TC', sans-serif" font-size="16">隨機翻轉、旋轉、調亮度，做出更多變化，讓模型見過更多樣子</text>
+
+            <!-- Row 1: Compose -->
+            <g transform="translate(36, 146)">
+              <rect width="928" height="52" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+              <text x="24" y="32" fill="#0F172A" font-family="'Fira Code', monospace" font-weight="600" font-size="17">Compose([...])</text>
+              <text x="330" y="32" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="17">把多個轉換串起來</text>
+            </g>
+
+            <!-- Row 2: RandomHorizontalFlip -->
+            <g transform="translate(36, 208)">
+              <rect width="928" height="74" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+              <text x="24" y="34" fill="#0F172A" font-family="'Fira Code', monospace" font-weight="600" font-size="17">RandomHorizontalFlip(p=0.5)</text>
+              <text x="330" y="30" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="17">50% 機率左右翻轉</text>
+              <text x="330" y="56" fill="#D97706" font-family="'Noto Sans TC', sans-serif" font-weight="700" font-size="16">文字、數字會翻出另一個字 ⚠️</text>
+            </g>
+
+            <!-- Row 3: RandomRotation -->
+            <g transform="translate(36, 292)">
+              <rect width="928" height="52" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+              <text x="24" y="32" fill="#0F172A" font-family="'Fira Code', monospace" font-weight="600" font-size="17">RandomRotation(15)</text>
+              <text x="330" y="32" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="17">隨機轉正負 15 度：小角度通常沒問題</text>
+            </g>
+
+            <!-- Row 4: ColorJitter -->
+            <g transform="translate(36, 354)">
+              <rect width="928" height="52" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+              <text x="24" y="32" fill="#0F172A" font-family="'Fira Code', monospace" font-weight="600" font-size="17">ColorJitter(brightness=0.3)</text>
+              <text x="330" y="32" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="17">隨機調亮或調暗，最多 30%</text>
+            </g>
+
+            <!-- Row 5: ToTensor -->
+            <g transform="translate(36, 416)">
+              <rect width="928" height="52" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+              <text x="24" y="32" fill="#0F172A" font-family="'Fira Code', monospace" font-weight="600" font-size="17">ToTensor()</text>
+              <text x="330" y="24" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="16">轉成張量（多維陣列）· <tspan fill="#EA580C" font-weight="700">放最後</tspan></text>
+              <text x="330" y="44" fill="#64748B" font-family="'Noto Sans TC', sans-serif" font-size="14">像素 0 ~ 255 → 0 ~ 1</text>
+            </g>
+          </svg>
+        </div>
+
+      </div>
+
+      <!-- Part 4: Model Summary, Parameters & FLOPS (114年第42-44題) -->
+      <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200/80 space-y-6">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <h4 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <span class="w-7 h-7 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center text-sm font-bold">3</span>
+            PyTorch 模型摘要表（Summary）計算題組實戰
+          </h4>
+          <span class="text-xs px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 font-semibold">114 年第 42 ~ 44 題組原型</span>
+        </div>
+
+        <!-- SLIDE SVG 6: VGG16 模型摘要怎麼讀 -->
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-2 sm:p-3 overflow-hidden">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <i class="fa-solid fa-vector-square text-sky-600"></i> 原片簡報向量重現 6 · VGG16 模型摘要怎麼讀
+          </div>
+          <svg viewBox="0 0 1000 380" class="w-full h-auto drop-shadow-xs select-none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1000" height="380" rx="14" fill="#FAF5FF"/>
+            <circle cx="36" cy="34" r="6" fill="#F97316"/>
+            <text x="52" y="40" fill="#6B21A8" font-family="'Inter', 'Noto Sans TC', sans-serif" font-weight="600" font-size="20">iPAS 23下 · PyTorch 與 Matplotlib</text>
+            <line x1="390" y1="34" x2="960" y2="34" stroke="#D8B4FE" stroke-width="2.5" stroke-linecap="round"/>
+            
+            <text x="36" y="98" fill="#1E1B4B" font-family="'Inter', 'Noto Sans TC', sans-serif" font-weight="900" font-size="40">VGG16 <tspan fill="#F97316">模型摘要怎麼讀</tspan></text>
+            <text x="36" y="130" fill="#475569" font-family="'Noto Sans TC', sans-serif" font-size="16">114-42 ~ 44 同類型：PyTorch 印出的摘要表，每一列是一層</text>
+
+            <!-- Card 1 -->
+            <g transform="translate(36, 146)">
+              <rect width="928" height="64" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+              <text x="24" y="38" fill="#0F172A" font-family="'Fira Code', monospace" font-weight="700" font-size="17">Output Shape [-1, 64, 150, 150]</text>
+              <text x="380" y="28" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="17">-1 = 批次大小 | 64 個通道 | 150×150</text>
+              <text x="380" y="52" fill="#64748B" font-family="'Noto Sans TC', sans-serif" font-size="14">PyTorch 通道寫在長寬前面 · Keras 寫在後面</text>
+            </g>
+
+            <!-- Card 2 -->
+            <g transform="translate(36, 220)">
+              <rect width="928" height="54" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+              <text x="24" y="34" fill="#0F172A" font-family="'Fira Code', monospace" font-weight="700" font-size="17">Param #</text>
+              <text x="380" y="34" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="17">這層參數量；Linear 層有包含偏置</text>
+            </g>
+
+            <!-- Card 3 -->
+            <g transform="translate(36, 284)">
+              <rect width="928" height="66" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+              <text x="24" y="38" fill="#0F172A" font-family="'Fira Code', monospace" font-weight="700" font-size="17">Estimated Total Size</text>
+              <text x="380" y="28" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="17">前向傳播估計的記憶體，<tspan fill="#EA580C" font-weight="700">訓練實際要更多</tspan></text>
+              <text x="380" y="52" fill="#64748B" font-family="'Noto Sans TC', sans-serif" font-size="14">訓練還要存梯度和優化器的記錄</text>
+            </g>
+          </svg>
+        </div>
+
+        <p class="text-sm text-slate-600 leading-relaxed">
+          檢視模型結構表時，常考三件事：<strong>維度讀法（PyTorch 通道在前）</strong>、<strong>第一層全連接參數量計算（含偏置 bias）</strong>、以及<strong>運算量最大 vs 參數量最多</strong>的層別。
+        </p>
+
+        <!-- Summary Simulator -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 bg-slate-900 text-slate-100 p-5 rounded-2xl font-mono text-xs overflow-x-auto">
+            <div class="text-slate-400 border-b border-slate-800 pb-2 mb-2 flex justify-between">
+              <span>Layer (type)</span>
+              <span>Output Shape</span>
+              <span>Param #</span>
+            </div>
+            <div class="space-y-1 text-slate-300">
+              <div class="flex justify-between hover:bg-slate-800/60 p-1 rounded">
+                <span>Conv2d-1</span>
+                <span class="text-sky-300">[-1, 64, 150, 150]</span>
+                <span>1,792</span>
+              </div>
+              <div class="flex justify-between hover:bg-slate-800/60 p-1 rounded">
+                <span>MaxPool2d-2</span>
+                <span class="text-sky-300">[-1, 64, 75, 75]</span>
+                <span>0</span>
+              </div>
+              <div class="flex justify-between text-slate-500 px-1">
+                <span>... (共 13 個卷積層 + 池化) ...</span>
+                <span>...</span>
+                <span>...</span>
+              </div>
+              <div class="flex justify-between hover:bg-slate-800/60 p-1 rounded">
+                <span>AdaptiveAvgPool2d</span>
+                <span class="text-sky-300">[-1, 512, 7, 7]</span>
+                <span>0</span>
+              </div>
+              <div class="flex justify-between bg-sky-950/70 text-amber-300 p-1 rounded font-bold border border-sky-800">
+                <span>Linear-1 (FC1)</span>
+                <span>[-1, 4096]</span>
+                <span>102,764,544 ★</span>
+              </div>
+              <div class="flex justify-between hover:bg-slate-800/60 p-1 rounded">
+                <span>Linear-2 (FC2)</span>
+                <span class="text-sky-300">[-1, 4096]</span>
+                <span>16,781,312</span>
+              </div>
+              <div class="flex justify-between hover:bg-slate-800/60 p-1 rounded">
+                <span>Linear-3 (FC3)</span>
+                <span class="text-sky-300">[-1, 1000]</span>
+                <span>4,097,000</span>
+              </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
+              <div>Total params: 138,357,544 (約 1.38 億)</div>
+              <div>Estimated Total Size (MB): 前向傳播預估記憶體 (非訓練所需記憶體!)</div>
+            </div>
+          </div>
+
+          <!-- Formula & Rules Card -->
+          <div class="bg-indigo-50/70 border border-indigo-100 p-5 rounded-2xl flex flex-col justify-between space-y-4">
+            <div>
+              <h5 class="text-sm font-bold text-indigo-950 flex items-center gap-1.5 mb-2">
+                <i class="fa-solid fa-calculator text-indigo-600"></i> FC1 參數量手算證明
+              </h5>
+              <p class="text-xs text-indigo-900 leading-relaxed mb-2">
+                FC1 的輸入來自於展平（Flatten）的池化特徵圖：$512 \times 7 \times 7 = 25088$ 個特徵。每個輸出神經元連接 25088 個權重，再加上 1 個偏置（Bias）：
+              </p>
+              <div class="p-3 bg-white rounded-xl shadow-xs border border-indigo-200 text-center my-2">
+                <div class="text-sm font-bold text-indigo-950">
+                  $$25088 \times 4096 + 4096 = 102,764,544$$
+                </div>
+              </div>
+              <span class="text-[11px] text-indigo-700 block">單單第一層全連接層就獨佔了超過 1 億個參數！</span>
+            </div>
+
+            <!-- Exam Traps summary -->
+            <div class="text-xs space-y-1.5 pt-2 border-t border-indigo-200/60 text-slate-700">
+              <div><strong class="text-rose-600">💥 參數量最多：</strong>全連接層（FC）獨佔絕大部分參數量。</div>
+              <div><strong class="text-sky-600">⚡ 運算量（FLOPs）最多：</strong>卷積層（Conv2d）要在寬廣的圖面上滑動計算，消耗最多運算資源。</div>
+              <div><strong class="text-amber-600">🧠 記憶體大小：</strong>Summary 僅估計前向傳播，真實訓練需存梯度與優化器動量狀態，實際消耗遠大於此！</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- SECTION 2: Chapter 26 - Matplotlib & Training Curves -->
+    <section id="ch26-matplotlib" class="space-y-8">
+      <div class="flex items-center gap-3 border-l-4 border-teal-600 pl-3">
+        <h3 class="text-2xl font-bold text-slate-900">第 26 章 Matplotlib 訓練曲線與診斷</h3>
+      </div>
+
+      <!-- SLIDE SVG 7: 第二十六章：畫訓練曲線 -->
+      <div class="rounded-2xl border border-slate-200/90 bg-white p-2 sm:p-4 shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+          <span class="text-xs font-bold text-indigo-600 flex items-center gap-1.5 uppercase tracking-wider">
+            <i class="fa-solid fa-vector-square"></i> 原片簡報向量重現 7 · 第二十六章：畫訓練曲線
+          </span>
+          <span class="text-[11px] text-slate-400 font-mono">Slide Vector Re-creation</span>
+        </div>
+        <svg viewBox="0 0 1000 420" class="w-full h-auto drop-shadow-xs select-none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="1000" height="420" rx="14" fill="#FAF5FF"/>
+          <circle cx="36" cy="34" r="6" fill="#F97316"/>
+          <text x="52" y="40" fill="#6B21A8" font-family="'Inter', 'Noto Sans TC', sans-serif" font-weight="600" font-size="20">iPAS 23下 · PyTorch 與 Matplotlib</text>
+          <line x1="390" y1="34" x2="960" y2="34" stroke="#D8B4FE" stroke-width="2.5" stroke-linecap="round"/>
+          
+          <text x="36" y="98" fill="#1E1B4B" font-family="'Inter', 'Noto Sans TC', sans-serif" font-weight="900" font-size="40">第二十六章：<tspan fill="#F97316">畫訓練曲線</tspan></text>
+
+          <!-- Terminal Block -->
+          <g transform="translate(36, 120)">
+            <rect width="928" height="136" rx="12" fill="#181E29"/>
+            <text x="24" y="34" fill="#F8FAFC" font-family="'Fira Code', monospace" font-size="16">
+              plt.plot(epochs, loss, <tspan fill="#FBBF24">"b-"</tspan>, label=<tspan fill="#34D399">"Training Loss"</tspan>)
+            </text>
+            <text x="24" y="66" fill="#F8FAFC" font-family="'Fira Code', monospace" font-size="16">
+              plt.plot(epochs, val_loss, <tspan fill="#FBBF24">"r--"</tspan>, label=<tspan fill="#34D399">"Validation Loss"</tspan>)
+            </text>
+            <text x="24" y="98" fill="#F8FAFC" font-family="'Fira Code', monospace" font-size="16">plt.legend()</text>
+            <text x="24" y="124" fill="#F8FAFC" font-family="'Fira Code', monospace" font-size="16">plt.show()</text>
+          </g>
+
+          <!-- 3 Info Pills Below -->
+          <g transform="translate(36, 270)">
+            <rect width="928" height="44" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.6"/>
+            <rect x="8" y="7" width="56" height="30" rx="6" fill="#4F46E5"/>
+            <text x="36" y="27" fill="#FFFFFF" font-family="'Noto Sans TC', sans-serif" font-weight="700" font-size="14" text-anchor="middle">橫軸</text>
+            <text x="76" y="27" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="16">epochs：輪次，例如 1 到 100</text>
+          </g>
+
+          <g transform="translate(36, 320)">
+            <rect width="928" height="44" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.6"/>
+            <rect x="8" y="7" width="56" height="30" rx="6" fill="#4F46E5"/>
+            <text x="36" y="27" fill="#FFFFFF" font-family="'Noto Sans TC', sans-serif" font-weight="700" font-size="14" text-anchor="middle">縱軸</text>
+            <text x="76" y="27" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="16">上一集 history 的訓練損失、驗證損失</text>
+          </g>
+
+          <g transform="translate(36, 370)">
+            <rect width="928" height="44" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.6"/>
+            <rect x="8" y="7" width="56" height="30" rx="6" fill="#EA580C"/>
+            <text x="36" y="27" fill="#FFFFFF" font-family="'Fira Code', monospace" font-weight="700" font-size="14" text-anchor="middle">"b-"</text>
+            <text x="76" y="27" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="16">第三個引號字 = 格式字串（顏色 + 樣式）；label = 線的名字</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- SLIDE SVG 8: 格式字串和圖例 -->
+      <div class="rounded-2xl border border-slate-200/90 bg-white p-2 sm:p-4 shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+          <span class="text-xs font-bold text-indigo-600 flex items-center gap-1.5 uppercase tracking-wider">
+            <i class="fa-solid fa-vector-square"></i> 原片簡報向量重現 8 · 格式字串和圖例
+          </span>
+          <span class="text-[11px] text-slate-400 font-mono">Slide Vector Re-creation</span>
+        </div>
+        <svg viewBox="0 0 1000 380" class="w-full h-auto drop-shadow-xs select-none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="1000" height="380" rx="14" fill="#FAF5FF"/>
+          <circle cx="36" cy="34" r="6" fill="#F97316"/>
+          <text x="52" y="40" fill="#6B21A8" font-family="'Inter', 'Noto Sans TC', sans-serif" font-weight="600" font-size="20">iPAS 23下 · PyTorch 與 Matplotlib</text>
+          <line x1="390" y1="34" x2="960" y2="34" stroke="#D8B4FE" stroke-width="2.5" stroke-linecap="round"/>
+          
+          <text x="36" y="98" fill="#1E1B4B" font-family="'Inter', 'Noto Sans TC', sans-serif" font-weight="900" font-size="40">格式字串<tspan fill="#F97316">和圖例</tspan></text>
+
+          <!-- Left Column Spec Table -->
+          <g transform="translate(36, 126)">
+            <!-- b r g k -->
+            <rect y="0" width="460" height="42" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.6"/>
+            <text x="24" y="27" fill="#854D0E" font-family="'Fira Code', monospace" font-weight="700" font-size="16">b  r  g  k</text>
+            <line x1="120" y1="0" x2="120" y2="42" stroke="#E2E8F0" stroke-width="1.5"/>
+            <text x="140" y="27" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="16">藍、紅、綠、黑</text>
+
+            <!-- - -->
+            <rect y="48" width="460" height="42" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.6"/>
+            <text x="56" y="75" fill="#854D0E" font-family="'Fira Code', monospace" font-weight="800" font-size="20">-</text>
+            <line x1="120" y1="48" x2="120" y2="90" stroke="#E2E8F0" stroke-width="1.5"/>
+            <text x="140" y="75" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="16">實線（一槓）</text>
+
+            <!-- -- -->
+            <rect y="96" width="460" height="42" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.6"/>
+            <text x="50" y="123" fill="#854D0E" font-family="'Fira Code', monospace" font-weight="800" font-size="20">--</text>
+            <line x1="120" y1="96" x2="120" y2="138" stroke="#E2E8F0" stroke-width="1.5"/>
+            <text x="140" y="123" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="16">虛線（兩槓）</text>
+
+            <!-- : -->
+            <rect y="144" width="460" height="42" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.6"/>
+            <text x="56" y="171" fill="#854D0E" font-family="'Fira Code', monospace" font-weight="800" font-size="20">:</text>
+            <line x1="120" y1="144" x2="120" y2="186" stroke="#E2E8F0" stroke-width="1.5"/>
+            <text x="140" y="171" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="16">點線（冒號）</text>
+
+            <!-- o -->
+            <rect y="192" width="460" height="42" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.6"/>
+            <text x="56" y="219" fill="#854D0E" font-family="'Fira Code', monospace" font-weight="800" font-size="18">o</text>
+            <line x1="120" y1="192" x2="120" y2="234" stroke="#E2E8F0" stroke-width="1.5"/>
+            <text x="140" y="219" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="16">圓點標記</text>
+          </g>
+
+          <!-- Right Column Breakdown -->
+          <g transform="translate(518, 126)">
+            <!-- Top Box -->
+            <rect y="0" width="446" height="52" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.6"/>
+            <text x="24" y="32" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="700" font-size="17">
+              <tspan fill="#0284C7" font-family="'Fira Code', monospace">"b-"</tspan> 藍色實線 | <tspan fill="#DC2626" font-family="'Fira Code', monospace">"r--"</tspan> 紅色虛線
+            </text>
+
+            <!-- Middle Box: plt.legend() -->
+            <rect y="64" width="446" height="52" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.6"/>
+            <rect x="12" y="10" width="96" height="32" rx="8" fill="#4F46E5"/>
+            <text x="60" y="31" fill="#FFFFFF" font-family="'Fira Code', monospace" font-weight="700" font-size="13" text-anchor="middle">plt.legend()</text>
+            <text x="120" y="32" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="16">圖例：角落小框，列出每條線的樣式和名字</text>
+
+            <!-- Bottom Box: title / xlabel / ylabel -->
+            <rect y="128" width="446" height="52" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.6"/>
+            <rect x="12" y="10" width="46" height="32" rx="8" fill="#64748B"/>
+            <text x="35" y="31" fill="#FFFFFF" font-family="'Noto Sans TC', sans-serif" font-weight="700" font-size="14" text-anchor="middle">另外</text>
+            <text x="70" y="32" fill="#1E293B" font-family="'Fira Code', monospace" font-weight="600" font-size="15">plt.title <tspan font-family="'Noto Sans TC'">標題</tspan>、plt.xlabel / plt.ylabel <tspan font-family="'Noto Sans TC'">軸名稱</tspan></text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Part 2: Interactive Curve Diagnosis Simulator -->
+      <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200/80 space-y-6">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <h4 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <span class="w-7 h-7 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center text-sm font-bold">2</span>
+            互動模擬器：看著訓練曲線下診斷
+          </h4>
+          <span class="text-xs text-slate-500 font-medium">切換病徵狀態，即時觀察損失曲線變化</span>
+        </div>
+
+        <!-- Mode Buttons -->
+        <div class="flex flex-wrap gap-2">
+          <button onclick="setCurveMode('overfitting')" id="curve-btn-overfitting" class="curve-mode-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-rose-600 text-white shadow-sm transition">
+            🔴 過擬合 (Overfitting)
+          </button>
+          <button onclick="setCurveMode('normal')" id="curve-btn-normal" class="curve-mode-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+            🟢 正常收斂 (Good Fit)
+          </button>
+          <button onclick="setCurveMode('underfitting')" id="curve-btn-underfitting" class="curve-mode-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+            🟡 欠擬合 (Underfitting)
+          </button>
+          <button onclick="setCurveMode('lr_too_high')" id="curve-btn-lr_too_high" class="curve-mode-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+            ⚡ 學習率過大 (Learning Rate High)
+          </button>
+        </div>
+
+        <!-- SVG Curve Canvas & Diagnostic Info -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+          
+          <!-- Interactive SVG Plot -->
+          <div class="lg:col-span-2 bg-slate-900 rounded-2xl p-5 border border-slate-800">
+            <div class="flex justify-between items-center text-xs text-slate-400 mb-2 font-mono">
+              <span>Loss vs Epoch (訓練曲線模擬)</span>
+              <div class="flex items-center gap-4">
+                <span class="flex items-center gap-1.5"><span class="w-3.5 h-0.5 bg-sky-400 inline-block"></span> 藍色實線 'b-' : Train Loss</span>
+                <span class="flex items-center gap-1.5"><span class="w-3.5 h-0.5 border-t-2 border-dashed border-red-500 inline-block"></span> 紅色虛線 'r--' : Val Loss</span>
+              </div>
+            </div>
+
+            <!-- SVG Container -->
+            <div class="w-full aspect-[16/9] relative">
+              <svg id="curveSvg" viewBox="0 0 500 280" class="w-full h-full">
+                <!-- Grid Lines -->
+                <line x1="50" y1="20" x2="50" y2="240" stroke="#334155" stroke-width="1.5" />
+                <line x1="50" y1="240" x2="480" y2="240" stroke="#334155" stroke-width="1.5" />
+                <line x1="50" y1="80" x2="480" y2="80" stroke="#1e293b" stroke-dasharray="4" />
+                <line x1="50" y1="140" x2="480" y2="140" stroke="#1e293b" stroke-dasharray="4" />
+                <line x1="50" y1="200" x2="480" y2="200" stroke="#1e293b" stroke-dasharray="4" />
+
+                <!-- Axis Labels -->
+                <text x="35" y="245" fill="#64748b" font-size="10" text-anchor="end">0.0</text>
+                <text x="35" y="145" fill="#64748b" font-size="10" text-anchor="end">0.5</text>
+                <text x="35" y="45" fill="#64748b" font-size="10" text-anchor="end">1.0</text>
+                <text x="50" y="258" fill="#64748b" font-size="10">Epoch 0</text>
+                <text x="470" y="258" fill="#64748b" font-size="10" text-anchor="end">Epoch 100</text>
+
+                <!-- Train Line (Blue) -->
+                <path id="svgTrainPath" d="" fill="none" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" />
+                <!-- Validation Line (Red dashed) -->
+                <path id="svgValPath" d="" fill="none" stroke="#ef4444" stroke-width="3" stroke-dasharray="6,4" stroke-linecap="round" />
+
+                <!-- Annotations -->
+                <circle id="earlyStopMarker" cx="0" cy="0" r="5" fill="#f59e0b" style="display:none;" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- Diagnostic Description Card -->
+          <div id="diagnosticCard" class="p-5 rounded-2xl bg-rose-50 border border-rose-200 text-slate-800 space-y-3">
+            <!-- Dynamic update via JS -->
+          </div>
+
+        </div>
+
+        <!-- Early Stopping Patience callout -->
+        <div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm space-y-1">
+          <div class="font-bold flex items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-amber-600"></i>
+            早停機制（Early Stopping）與耐心值（Patience）設定考點
+          </div>
+          <p class="leading-relaxed text-amber-800 text-xs">
+            當驗證損失出現<strong>週期性小幅上下波動</strong>時，早停機制應設定<strong>較大的耐心值（Patience）</strong>。早停是指「連續 $N$ 輪驗證損失未獲改善時自動停止」。若耐心值設得太小（如設為 1 或 2），會在波動中的暫時高點被誤判而提早中斷訓練！
+          </p>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- SECTION 3: Key Takeaways (3 Things to Remember) -->
+    <section id="key-takeaways" class="space-y-6">
+      <div class="flex items-center gap-3 border-l-4 border-indigo-600 pl-3">
+        <h3 class="text-2xl font-bold text-slate-900">🎯 本集必備：考試必記 3 大核心考點</h3>
+      </div>
+
+      <!-- SLIDE SVG 9: 這集帶走三件事 -->
+      <div class="rounded-2xl border border-slate-200/90 bg-white p-2 sm:p-4 shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+          <span class="text-xs font-bold text-indigo-600 flex items-center gap-1.5 uppercase tracking-wider">
+            <i class="fa-solid fa-vector-square"></i> 原片簡報向量重現 9 · 這集帶走三件事
+          </span>
+          <span class="text-[11px] text-slate-400 font-mono">Slide Vector Re-creation</span>
+        </div>
+        <svg viewBox="0 0 1000 340" class="w-full h-auto drop-shadow-xs select-none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="1000" height="340" rx="14" fill="#FAF5FF"/>
+          <circle cx="36" cy="34" r="6" fill="#F97316"/>
+          <text x="52" y="40" fill="#6B21A8" font-family="'Inter', 'Noto Sans TC', sans-serif" font-weight="600" font-size="20">iPAS 23下 · PyTorch 與 Matplotlib</text>
+          <line x1="390" y1="34" x2="960" y2="34" stroke="#D8B4FE" stroke-width="2.5" stroke-linecap="round"/>
+          
+          <text x="36" y="98" fill="#1E1B4B" font-family="'Inter', 'Noto Sans TC', sans-serif" font-weight="900" font-size="40">這集帶走<tspan fill="#F97316">三件事</tspan></text>
+
+          <!-- Item 1 -->
+          <g transform="translate(36, 122)">
+            <rect width="928" height="54" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+            <rect x="14" y="9" width="36" height="36" rx="8" fill="#4F46E5"/>
+            <text x="32" y="33" fill="#FFFFFF" font-family="'Noto Sans TC', sans-serif" font-weight="700" font-size="18" text-anchor="middle">1</text>
+            <text x="64" y="34" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="18">只訓練分類器：從卷積部分（features）拿參數凍結</text>
+          </g>
+
+          <!-- Item 2 -->
+          <g transform="translate(36, 186)">
+            <rect width="928" height="54" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+            <rect x="14" y="9" width="36" height="36" rx="8" fill="#4F46E5"/>
+            <text x="32" y="33" fill="#FFFFFF" font-family="'Noto Sans TC', sans-serif" font-weight="700" font-size="18" text-anchor="middle">2</text>
+            <text x="64" y="34" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="18">清、算、比、傳、改；梯度裁剪在傳和改之間</text>
+          </g>
+
+          <!-- Item 3 -->
+          <g transform="translate(36, 250)">
+            <rect width="928" height="54" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+            <rect x="14" y="9" width="36" height="36" rx="8" fill="#4F46E5"/>
+            <text x="32" y="33" fill="#FFFFFF" font-family="'Noto Sans TC', sans-serif" font-weight="700" font-size="18" text-anchor="middle">3</text>
+            <text x="64" y="34" fill="#1E293B" font-family="'Noto Sans TC', sans-serif" font-weight="600" font-size="18">看圖例：b 一槓 = 藍色實線，r 兩槓 = 紅色虛線</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- Card 1 -->
+        <div class="bg-gradient-to-br from-white to-sky-50 rounded-2xl p-6 border-2 border-sky-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+          <div class="space-y-3">
+            <div class="w-10 h-10 rounded-xl bg-sky-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+              1
+            </div>
+            <h4 class="font-bold text-slate-900 text-base">只訓練分類器，凍結卷積層</h4>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              語法務必鎖定 <code class="font-mono bg-sky-100 text-sky-800 px-1 py-0.5 rounded">model.features.parameters()</code> 設為 <code class="font-mono bg-slate-100 px-1 rounded">requires_grad = False</code>。切勿在全模型上盲寫！
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-sky-100 text-[11px] font-semibold text-sky-700">
+            ★ 歷屆考古題高頻出題
+          </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="bg-gradient-to-br from-white to-indigo-50 rounded-2xl p-6 border-2 border-indigo-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+          <div class="space-y-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+              2
+            </div>
+            <h4 class="font-bold text-slate-900 text-base">訓練五部曲：「清、算、比、傳、改」</h4>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              <strong>zero_grad → forward → loss → backward → step</strong>。<br>
+              梯度裁剪（Gradient Clipping）固定安插在「傳」與「改」之間。
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-indigo-100 text-[11px] font-semibold text-indigo-700">
+            ★ 迴圈排序題送分關鍵
+          </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="bg-gradient-to-br from-white to-teal-50 rounded-2xl p-6 border-2 border-teal-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+          <div class="space-y-3">
+            <div class="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+              3
+            </div>
+            <h4 class="font-bold text-slate-900 text-base">Matplotlib 格式代碼與曲線下診斷</h4>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              <code class="font-mono bg-teal-100 text-teal-800 px-1 py-0.5 rounded">'b-'</code> 為藍色實線，<code class="font-mono bg-teal-100 text-teal-800 px-1 py-0.5 rounded">'r--'</code> 為紅色虛線。訓練降但驗證揚或卡住即為<strong>過擬合</strong>。
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-teal-100 text-[11px] font-semibold text-teal-700">
+            ★ 讀圖題與代碼挖空必考
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 4: Interactive Quiz & Self Check -->
+    <section class="space-y-6">
+      <div class="flex items-center gap-3 border-l-4 border-slate-700 pl-3">
+        <h3 class="text-2xl font-bold text-slate-900">📝 課堂即測即評（考前實戰檢驗）</h3>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- Question 1 -->
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold px-2 py-0.5 rounded bg-sky-100 text-sky-700">測驗題 1</span>
+            <span class="text-xs text-slate-400">iPAS 115 年同型題</span>
+          </div>
+          <p class="text-sm font-semibold text-slate-800">
+            在多類別分類任務中，使用 PyTorch 的 <code class="font-mono bg-slate-100 px-1 rounded">nn.CrossEntropyLoss()</code> 作為損失函數時，神經網路輸出層應該如何設計？
+          </p>
+          <div class="space-y-2 text-xs">
+            <button onclick="checkQuiz(1, 'A')" class="w-full text-left p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition quiz-opt-1" id="q1-opt-A">
+              A. 輸出層必須加入 Softmax 激活函數，將分數轉為機率
+            </button>
+            <button onclick="checkQuiz(1, 'B')" class="w-full text-left p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition quiz-opt-1" id="q1-opt-B">
+              B. 直接輸出未經過激活函數的 logits (原始連續數值)
+            </button>
+            <button onclick="checkQuiz(1, 'C')" class="w-full text-left p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition quiz-opt-1" id="q1-opt-C">
+              C. 輸出層必須加入 Sigmoid 函數以限制梯度
+            </button>
+          </div>
+          <div id="q1-feedback" class="text-xs p-3 rounded-xl hidden"></div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold px-2 py-0.5 rounded bg-sky-100 text-sky-700">測驗題 2</span>
+            <span class="text-xs text-slate-400">iPAS 114 年同型題</span>
+          </div>
+          <p class="text-sm font-semibold text-slate-800">
+            在深度神經網路中，若觀察到「卷積層 (Conv)」與「全連接層 (FC)」的資源消耗特性，下列敘述何者正確？
+          </p>
+          <div class="space-y-2 text-xs">
+            <button onclick="checkQuiz(2, 'A')" class="w-full text-left p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition quiz-opt-2" id="q2-opt-A">
+              A. 卷積層佔用絕大多數參數量，全連接層消耗最多運算量 (FLOPs)
+            </button>
+            <button onclick="checkQuiz(2, 'B')" class="w-full text-left p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition quiz-opt-2" id="q2-opt-B">
+              B. 全連接層的參數量不包含偏置項 (bias)
+            </button>
+            <button onclick="checkQuiz(2, 'C')" class="w-full text-left p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition quiz-opt-2" id="q2-opt-C">
+              C. 全連接層佔據模型絕大部分參數量，卷積層則消耗最多的浮點運算量
+            </button>
+          </div>
+          <div id="q2-feedback" class="text-xs p-3 rounded-xl hidden"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 5: Timeline Transcript (時間軸完整逐字稿) -->
+    <section id="timeline-transcript" class="space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-l-4 border-indigo-600 pl-3">
+        <div>
+          <h3 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-indigo-600"></i>
+            完整時間軸逐字稿（含關鍵考點標註）
+          </h3>
+          <p class="text-xs text-slate-500 mt-0.5">點擊各時間點或「跳轉原片」即可直接開啟 YouTube 在該秒數播放</p>
+        </div>
+
+        <!-- Transcript Controls -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+            <input type="text" id="transcriptSearch" oninput="filterTranscript()" placeholder="搜尋逐字稿關鍵字..."
+                   class="pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-44 sm:w-56 bg-white shadow-xs">
+          </div>
+          <button onclick="resetTranscriptFilter()" class="px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition">
+            重置
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Category Filter Chips -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+        <span class="text-slate-400 font-semibold whitespace-nowrap"><i class="fa-solid fa-filter text-[10px] mr-1"></i>分類快篩：</span>
+        <button onclick="filterByTag('all')" class="tag-filter-btn px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium" data-tag="all">全部章節</button>
+        <button onclick="filterByTag('ocr')" class="tag-filter-btn px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-tag="ocr">OCR與資料增強</button>
+        <button onclick="filterByTag('freeze')" class="tag-filter-btn px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-tag="freeze">遷移學習與凍結</button>
+        <button onclick="filterByTag('loop')" class="tag-filter-btn px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-tag="loop">訓練五部曲與裁剪</button>
+        <button onclick="filterByTag('summary')" class="tag-filter-btn px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-tag="summary">摘要與參數量計算</button>
+        <button onclick="filterByTag('curve')" class="tag-filter-btn px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-tag="curve">Matplotlib與曲線診斷</button>
+      </div>
+
+      <!-- Timeline Items List -->
+      <div id="transcriptContainer" class="relative pl-6 sm:pl-8 border-l-2 border-indigo-100 space-y-6">
+        
+        <!-- Item 1: 00:00:00 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="ocr" data-time="0">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-indigo-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
+                00:00:00
+              </span>
+              <span class="text-xs font-bold text-slate-700">開場問題：OCR 字符翻轉陷阱引言</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=0s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 00:00 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            先問你一題：一個光學字元辨識模型訓練時用了一組轉換，前三個做資料增強，最後一個轉成張量（就是 PyTorch 用的多維陣列）。訓練過程中驗證損失持續下降，看起來很順利，部署後 b、d、p、q 這幾個字母特別常認錯，哪一個轉換是元兇？
+          </p>
+        </div>
+
+        <!-- Item 2: 00:00:21 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="ocr" data-time="21">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-slate-300 group-hover:bg-indigo-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">
+                00:00:21
+              </span>
+              <span class="text-xs font-bold text-slate-700">四個選項拆解與思考提示</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=21s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 00:21 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            第一、隨機旋轉 15 度，角度過大；第二、隨機左右翻轉，破壞字母方向；第三、隨機調亮度，改變筆劃灰階；第四、轉成張量的步驟應該放在翻轉、旋轉前面。先停下來想一下答案，等一下講完資料增強時揭曉。
+          </p>
+        </div>
+
+        <!-- Item 3: 00:00:36 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="freeze loop curve" data-time="36">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-slate-300 group-hover:bg-indigo-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">
+                00:00:36
+              </span>
+              <span class="text-xs font-bold text-slate-700">章節架構導覽：Ch.25 與 Ch.26 核心大綱</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=36s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 00:36 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            這是程式題的最後兩章。第 25 章「PyTorch 必認語法」，講遷移學習怎麼凍結、訓練迴圈五個位置、損失函數、資料增強，再拆兩個題組。第 26 章「Matplotlib 與訓練曲線」，講畫圖語法，再看著曲線下診斷。
+          </p>
+        </div>
+
+        <!-- Item 4: 00:00:51 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="freeze" data-time="51">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-indigo-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-sky-50 text-sky-700 border border-sky-200">
+                00:00:51
+              </span>
+              <span class="text-xs font-bold text-slate-700">遷移學習範例：VGG-16 與替換輸出分類層</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=51s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 00:51 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            先看遷移學習。第一行載入已經在 ImageNet 大資料集上練好的 VGG-16；第二行把卷積部分的參數一個一個拿出來；第三行這個參數不計梯度、不更新，也就是凍結；第四行把最後一層換成新的，輸入 4096 個數字，輸出 10 類。
+          </p>
+        </div>
+
+        <!-- Item 5: 00:01:12 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="freeze" data-time="72">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-indigo-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
+                00:01:12
+              </span>
+              <span class="text-xs font-bold text-slate-700">凍結四種寫法辨析（114年第45題、115年第42題）</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=72s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 01:12 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            凍結的寫法有四種，114 年那回的第 45 題和 115 年那回的第 42 題都考過。題目要的是凍結卷積層，只訓練全連接分類器。VGG 的分類器裡有三個全連接層，從整個模型拿參數凍結的是全部層，連分類器前兩層都凍住（新換上的層除外）；從卷積部分拿參數，只凍結卷積層，只訓練全連接分類器，這是第 45 題的正解；從分類器拿參數凍結的是全連接層，和需求相反；直接在模型上寫要不要算梯度等於 False（requires_grad = False），這個寫法不會凍結參數，是錯誤寫法。整個模型要凍結，同一個名字後面多一條底線的寫法。
+          </p>
+        </div>
+
+        <!-- Item 6: 00:01:58 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="freeze" data-time="118">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-slate-300 group-hover:bg-indigo-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">
+                00:01:58
+              </span>
+              <span class="text-xs font-bold text-slate-700">為什麼新建立的層可訓練？直接在模型賦值為何無效？</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=118s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 01:58 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            為什麼新換上的層除外？因為凍結的迴圈先跑完之後才建立新的層，新層建立時預設要算梯度，所以它照樣會被訓練。為什麼直接寫在模型上沒用？那樣只是在模型身上掛一個標籤，不會傳到裡面每一個參數。
+          </p>
+        </div>
+
+        <!-- Item 7: 00:02:14 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="freeze" data-time="134">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-indigo-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-sky-50 text-sky-700 border border-sky-200">
+                00:02:14
+              </span>
+              <span class="text-xs font-bold text-slate-700">VGG features vs classifier、ResNet fc 與特徵擷取</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=134s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 02:14 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            VGG 的 features 是卷積部分，classifier 是全連接部分。classifier 裡三個全連接層的編號是 0、3、6，中間夾著 ReLU 與 Dropout，所以編號 6 的那一層是最後一層。ResNet-50 的最後一層叫 fc，輸入 2048 維，換成輸出兩類。全部凍結、只換最後一層再訓練，叫特徵擷取。優化器只放最後一層的參數，學習率 0.001，意思是優化器只負責更新換上的最後一層，其他層本來就凍結了。
+          </p>
+        </div>
+
+        <!-- Item 8: 00:02:46 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="loop" data-time="166">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-indigo-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
+                00:02:46
+              </span>
+              <span class="text-xs font-bold text-slate-700">訓練迴圈五個位置剖析（115年第50題）</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=166s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 02:46 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            再看訓練迴圈。115 年那回的第 50 題考過這五個位置。訓練資料載入器每次吐出一批圖片和對應的正確答案，迴圈一批一批跑：位置一：清掉舊梯度（zero_grad()）；位置二：前向傳播（forward pass）；位置三：算損失（loss）；位置四：反向傳播算梯度（backward()）；位置五：更新權重（step()）。
+          </p>
+        </div>
+
+        <!-- Item 9: 00:03:06 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="loop" data-time="186">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-emerald-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                00:03:06
+              </span>
+              <span class="text-xs font-bold text-slate-700">五步口訣：「清、算、比、傳、改」</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=186s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 03:06 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            口訣是「清、算、比、傳、改」：清是清梯度，算是模型算出預測，比是拿預測和正確答案比出損失，傳是往回傳算梯度，改是更新權重。
+          </p>
+        </div>
+
+        <!-- Item 10: 00:03:19 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="loop" data-time="199">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-purple-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200">
+                00:03:19
+              </span>
+              <span class="text-xs font-bold text-slate-700">梯度裁剪位置與累積梯度 Bug 解析</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=199s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 03:19 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            梯度裁剪（Gradient Clipping）是梯度太大時把它縮到上限以內，防止梯度爆炸。它放在位置 4 和 5 之間，梯度有了才能裁，裁完再更新。忘了清梯度，梯度會一直累加，更新會越來越歪，因為 PyTorch 的反向傳播會把新算的梯度加到舊梯度上，不會自動清掉。
+          </p>
+        </div>
+
+        <!-- Item 11: 00:03:38 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="loop" data-time="218">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-indigo-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
+                00:03:38
+              </span>
+              <span class="text-xs font-bold text-slate-700">損失函數與 Softmax / Sigmoid 陷阱（115年第20題）</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=218s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 03:38 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            接著看損失函數。交叉熵損失（CrossEntropyLoss）內含 Softmax，輸出層直接給 logits 不加激活函數。logits 是還沒經過 Softmax 的原始分數；損失函數裡已經做了一次 Softmax，輸出層再加一次等於做兩次，訓練會變差。115 年那回的第 20 題考過這一點。二元分類用 BCEWithLogitsLoss，內含 Sigmoid，輸出層一樣不必自己加；回歸用 MSELoss。
+          </p>
+        </div>
+
+        <!-- Item 12: 00:04:08 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="ocr" data-time="248">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-slate-300 group-hover:bg-indigo-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">
+                00:04:08
+              </span>
+              <span class="text-xs font-bold text-slate-700">資料增強 Compose 與 ToTensor 擺最後的原因</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=248s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 04:08 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            再看資料增強。資料增強是把訓練圖片隨機翻轉、旋轉、調亮度，做出更多變化，讓模型見過更多樣子。Compose 把多個轉換串起來：隨機左右翻轉（50% 機率翻，注意文字、數字會翻出另一個字）、隨機旋轉正負 15 度（小角度通常沒問題）、隨機調亮或調暗（幅度最多 30%）。ToTensor 轉成張量，就是 PyTorch 用的多維陣列，同時把像素從 0 到 255 縮成 0 到 1。轉成張量要放在最後，前面幾個轉換是對圖片本身動手，全部做完再一口氣轉成模型要吃的數字格式。
+          </p>
+        </div>
+
+        <!-- Item 13: 00:04:49 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="ocr" data-time="289">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-emerald-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                00:04:49
+              </span>
+              <span class="text-xs font-bold text-slate-700">開場題答案揭曉：左右翻轉導致標籤錯誤（115年第41題）</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=289s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 04:49 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            回到開場那一題，它和 115 年那回的第 41 題同類型。答案是第二個：隨機左右翻轉破壞字母方向。b 左右翻轉就是 d，p 翻轉就是 q，翻過的圖標籤卻還是 b，有一半機率學到錯的對應。15 度只是輕微傾斜，不會讓 b 變成 d；亮度變化不會改變字形；轉張量放最後是正確寫法。開場那題說驗證損失持續下降，為什麼還會出事？因為驗證損失是所有字母的平均，b、d、p、q 只佔 20 幾個字母裡的 4 個，這幾個認錯對平均的影響很小，整體看起來仍在進步，要到上線後專門看這幾個字母的錯誤率，問題才被看見。
+          </p>
+        </div>
+
+        <!-- Item 14: 00:05:29 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="summary" data-time="329">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-indigo-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-sky-50 text-sky-700 border border-sky-200">
+                00:05:29
+              </span>
+              <span class="text-xs font-bold text-slate-700">模型摘要表解析：通道在前與偏置項（114年第42-44題）</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=329s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 05:29 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            下一個題組，與 114 年那回的第 42 到 44 題同類型。題目給的是 PyTorch 印出的模型摘要表（Summary），每一列是一層，列出輸出形狀與參數量。輸出形狀寫 [-1, 64, 150, 150]，-1 是批次大小（batch size），64 個通道，長寬 150×150。PyTorch 把通道數寫在長寬前面，Keras 寫在後面。參數量那一欄，全連接層有包含偏置（bias）。
+          </p>
+        </div>
+
+        <!-- Item 15: 00:05:53 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="summary" data-time="353">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-indigo-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
+                00:05:53
+              </span>
+              <span class="text-xs font-bold text-slate-700">FC1 參數量手算一億多 vs 卷積層運算量最多</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=353s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 05:53 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            估計總大小是前向傳播估計的記憶體，訓練實際要更多，因為訓練還要存每個參數的梯度和優化器的記錄，摘要只估了前向傳播那一段。參數量最多的是全連接層，第一個全連接層是 25088 × 4096 + 4096 = 102,764,544，一層就有一億多；運算量最多的是卷積層，同一個 3×3 濾波器要在 150×150 的每個位置都算一次。
+          </p>
+        </div>
+
+        <!-- Item 16: 00:06:26 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="summary" data-time="386">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-slate-300 group-hover:bg-indigo-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">
+                00:06:26
+              </span>
+              <span class="text-xs font-bold text-slate-700">13卷積+3全連接與三大考題錯處正解總結</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=386s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 06:26 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            正確的敘述是 13 層卷積加 3 層全連接，約 1.38 億參數。其他選項錯在三個地方，正確說法是這三點：1. 第一個全連接層的輸入是 512 個通道乘 7 乘 7，也就是 25088。2. 全連接層的參數量有包含偏置。3. 摘要的記憶體不夠拿來訓練。
+          </p>
+        </div>
+
+        <!-- Item 17: 00:06:50 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="curve" data-time="410">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-teal-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-200">
+                00:06:50
+              </span>
+              <span class="text-xs font-bold text-slate-700">第 26 章：Matplotlib 繪製訓練損失曲線四行程式碼</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=410s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 06:50 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            換到第 26 章「Matplotlib 與訓練曲線」。畫圖的程式有四行：前兩行各畫一條線，後兩行顯示圖例、把圖顯示出來。橫軸是輪次（Epoch），例如 1 到 100；縱軸是上一集 history 裡每一輪的訓練損失與驗證損失。每條線括號裡第三個用引號包住的字是格式字串，決定線的顏色和樣式；label 是這條線的名字。
+          </p>
+        </div>
+
+        <!-- Item 18: 00:07:15 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="curve" data-time="435">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-teal-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-200">
+                00:07:15
+              </span>
+              <span class="text-xs font-bold text-slate-700">格式字串速記：'b-' 藍實線、'r--' 紅虛線</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=435s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 07:15 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            格式字串裡：b、r、g、k：藍、紅、綠、黑；-（一槓）：實線；--（兩槓）：虛線；:（冒號）：點線；o：圓點標記。所以 'b-' 是藍色實線，'r--' 是紅色虛線。圖例是圖角落的小框，列出每條線的樣式和名字，讓人知道哪條線是什麼。另外還有標題、橫軸名稱、縱軸名稱可以設定。
+          </p>
+        </div>
+
+        <!-- Item 19: 00:07:34 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="curve" data-time="454">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-indigo-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
+                00:07:34
+              </span>
+              <span class="text-xs font-bold text-slate-700">114 年第 50 題實戰：圖例對照與格式代碼填空</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=454s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 07:34 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            來看 114 年那回的第 50 題同類型題。題目的圖橫軸從 0 到 100 輪，藍色實線是訓練損失，從約 0.65 一路降到約 0.40；紅色虛線是驗證損失，前幾輪快速降到約 0.46，之後在 0.45 上下小幅波動。程式裡兩條線的格式字串被挖空，列了五個描述要判斷對錯：空格 1 填 'b-'、空格 2 填 'b--'；空格 1 填 'r-'、空格 2 填 'r--'；驗證損失減少得比訓練損失更明顯。做法是看圖例找答案：訓練損失是藍色實線，空格 1 填 'b-' 對；驗證損失是紅色虛線，空格 2 填 'r--' 對。空格 2 填 'b--' 錯（顏色不對）；空格 1 填 'r-' 也錯。最後一個描述也錯，因為驗證損失約在 0.45 持平，訓練損失降到 0.40。
+          </p>
+        </div>
+
+        <!-- Item 20: 00:08:33 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="curve" data-time="513">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-rose-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">
+                00:08:33
+              </span>
+              <span class="text-xs font-bold text-slate-700">看著曲線下診斷：過擬合、欠擬合、學習率過大與早停 Patience</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=513s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 08:33 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            最後看著曲線下診斷：過擬合（Overfitting）：訓練損失持續下降，驗證損失停在高處或上升。模型還在背訓練資料，對沒看過的資料卻沒進步或變差。訓練準確率明顯高於驗證準確率也是過擬合，練習很會、新題不會（115 年那回的第 48 題考過）。欠擬合（Underfitting）：兩條損失都高，或兩條準確率都低。連訓練資料都學不好，模型太簡單或練不夠。學習率太大：損失忽上忽下、越來越大。每一步跨太大，一直跨過最低點。早停機制（Early Stopping）：驗證損失週期性波動時，早停要設較大的耐心值（Patience）。早停是驗證損失連續幾輪沒改善就停止訓練，耐心值是能等幾輪，耐心值太小會在波動的高點誤停。
+          </p>
+        </div>
+
+        <!-- Item 21: 00:09:16 -->
+        <div class="transcript-card relative group p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition space-y-2" data-tags="freeze loop curve" data-time="556">
+          <div class="absolute -left-[31px] sm:-left-[39px] top-4 w-4 h-4 rounded-full bg-emerald-600 border-4 border-slate-50 group-hover:scale-125 transition"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                00:09:16
+              </span>
+              <span class="text-xs font-bold text-slate-700">全集總結：帶走三件事，正片完結！</span>
+            </div>
+            <a href="https://www.youtube.com/watch?v=z6-HMpT08tQ&t=556s" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 group-hover:underline">
+              <i class="fa-solid fa-play text-[10px]"></i> 跳轉 09:16 原片
+            </a>
+          </div>
+          <p class="transcript-text text-xs sm:text-sm text-slate-700 leading-relaxed">
+            這集帶走三件事：1. 只訓練分類器就從卷積部分拿參數來凍結。2. 訓練迴圈五個位置：「清、算、比、傳、改」，梯度裁剪放在「傳」和「改」之間。3. 看圖格式字串：'b-' 是藍色實線，'r--' 是紅色虛線。程式題到這裡講完，正片也全部講完了，接下來是複習集。
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="pt-8 pb-12 border-t border-slate-200 text-center text-xs text-slate-500 space-y-2">
+      <p>【iPAS AI應用規劃師_中級科目三 系列 EP23(下)】PyTorch 與 Matplotlib 互動學習講義</p>
+      <p>教學內容根據原創教學影片逐字稿整理製作，旨在提供清晰、直觀、考點明確的複習輔助。</p>
+    </footer>
+
+  </main>
+
+  <!-- Interactive JavaScript Logic -->
+  <script>
+    // -------------------------------------------------------------
+    // OCR Flip Interactive logic
+    // -------------------------------------------------------------
+    let currentChar = 'b';
+    let flippedCharMap = { 'b': 'd', 'p': 'q' };
+    let isFlipped = true;
+
+    function setOcrLetter(orig, flipped) {
+      currentChar = orig;
+      document.getElementById('originalChar').innerText = orig;
+      updateOcrState();
+    }
+
+    function toggleOcrFlip() {
+      isFlipped = !isFlipped;
+      updateOcrState();
+    }
+
+    function updateOcrState() {
+      const flippedEl = document.getElementById('flippedChar');
+      const noticeEl = document.getElementById('ocrNotice');
+      const targetChar = flippedCharMap[currentChar] || currentChar;
+
+      if (isFlipped) {
+        flippedEl.innerText = targetChar;
+        flippedEl.className = "w-20 h-20 bg-slate-800 border-2 border-red-500 rounded-xl flex items-center justify-center text-5xl font-mono font-bold text-red-400 transition-transform duration-300";
+        noticeEl.innerHTML = `⚠️ 水平翻轉將 '${currentChar}' 轉成了形狀為 '${targetChar}' 的圖，但標籤仍寫著 '${currentChar}'，模型學到錯誤映射！`;
+      } else {
+        flippedEl.innerText = currentChar;
+        flippedEl.className = "w-20 h-20 bg-slate-800 border-2 border-emerald-500 rounded-xl flex items-center justify-center text-5xl font-mono font-bold text-emerald-400 transition-transform duration-300";
+        noticeEl.innerHTML = `✅ 未翻轉狀態：字母形狀與原始標籤 '${currentChar}' 完全相符。`;
+      }
+    }
+
+    // -------------------------------------------------------------
+    // PyTorch Loop 5 Steps Interactive logic
+    // -------------------------------------------------------------
+    const stepDetails = {
+      1: {
+        title: "位置 1：① 清 (zero_grad)",
+        code: "optimizer.zero_grad()",
+        desc: "清空舊梯度。PyTorch 預設會在每次呼叫 backward() 時將新算出的梯度「累加」至現有梯度變數上。若忘記呼叫 zero_grad()，上一輪的梯度將會疊加到這一輪，導致更新權重時方向完全偏差！"
+      },
+      2: {
+        title: "位置 2：② 算 (Forward Pass 前向傳播)",
+        code: "outputs = model(inputs)",
+        desc: "將這一個 batch 的張量輸入模型，模型內部的網路層依序前向計算並輸出預測原始分數（Logits）。"
+      },
+      3: {
+        title: "位置 3：③ 比 (Loss Computation 算損失)",
+        code: "loss = criterion(outputs, labels)",
+        desc: "將模型的預測結果與 Ground Truth 標籤進行比對，由指定之損失函數（如 CrossEntropyLoss）計算出標量數值 Loss。"
+      },
+      4: {
+        title: "位置 4：④ 傳 (Backward Pass 反向傳播)",
+        code: "loss.backward()",
+        desc: "利用自動微分機制（Autograd），沿著計算圖從輸出往回傳播梯度，計算模型內所有 requires_grad=True 的參數梯度。"
+      },
+      5: {
+        title: "位置 5：⑤ 改 (Optimizer Step 參數更新)",
+        code: "optimizer.step()",
+        desc: "優化器（如 SGD, Adam）讀取每個參數算好的梯度，依照設定的學習率與動量公式，正式修改更新模型各層權重！"
+      }
+    };
+
+    function selectLoopStep(stepNum) {
+      for (let i = 1; i <= 5; i++) {
+        const btn = document.getElementById(`step-btn-${i}`);
+        if (i === stepNum) {
+          btn.className = "loop-step-btn p-3 rounded-xl border-2 border-sky-500 bg-sky-50 text-slate-800 font-bold text-xs sm:text-sm text-center transition flex flex-col items-center shadow-sm";
+        } else {
+          btn.className = "loop-step-btn p-3 rounded-xl border border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs sm:text-sm text-center transition flex flex-col items-center";
+        }
+      }
+
+      const info = stepDetails[stepNum];
+      document.getElementById('step-detail-box').innerHTML = `
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+          <span class="text-sm font-bold text-sky-400">${info.title}</span>
+          <span class="text-[11px] font-mono text-slate-400">標準代碼：${info.code}</span>
+        </div>
+        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">${info.desc}</p>
+      `;
+    }
+
+    // -------------------------------------------------------------
+    // Training Curves SVG & Diagnosis Logic
+    // -------------------------------------------------------------
+    const curveData = {
+      overfitting: {
+        btnClass: 'bg-rose-600 text-white',
+        trainPath: "M 50 80 Q 200 180, 470 220",
+        valPath: "M 50 90 Q 180 160, 240 165 T 380 120 T 470 95",
+        cardBg: "bg-rose-50 border-rose-200",
+        title: "🚨 診斷結論：過擬合 (Overfitting)",
+        titleColor: "text-rose-900",
+        desc: "訓練損失（藍實線）持續大幅下降，但驗證損失（紅虛線）在中途便停滯不前甚至開始往上反彈！這表示模型只是在死記硬背訓練集的特定雜訊，對未見過的測試資料喪失泛化能力（Generalization）。在準確率曲線上則表現為：訓練準確率極高，而驗證準確率顯著低落。"
+      },
+      normal: {
+        btnClass: 'bg-emerald-600 text-white',
+        trainPath: "M 50 70 Q 180 170, 470 215",
+        valPath: "M 50 85 Q 180 180, 470 205",
+        cardBg: "bg-emerald-50 border-emerald-200",
+        title: "✅ 診斷結論：正常收斂 (Good Fit)",
+        titleColor: "text-emerald-900",
+        desc: "訓練損失與驗證損失一同平穩下降，並在後期收斂於相近水準，兩者之間維持適當且穩定的微小差距，說明模型既有效學到了通用特徵，也沒有出現嚴重的過擬合現象。"
+      },
+      underfitting: {
+        btnClass: 'bg-amber-600 text-white',
+        trainPath: "M 50 70 Q 220 100, 470 120",
+        valPath: "M 50 80 Q 220 110, 470 130",
+        cardBg: "bg-amber-50 border-amber-200",
+        title: "🟡 診斷結論：欠擬合 (Underfitting)",
+        titleColor: "text-amber-900",
+        desc: "訓練損失與驗證損失都高居不下，兩條曲線下降極為緩慢。代表模型容量（Capacity）不足（例如模型過於簡單）、特徵提取能力太弱，或是訓練輪數遠遠不足，連訓練集本身的規律都尚未學會。"
+      },
+      lr_too_high: {
+        btnClass: 'bg-purple-600 text-white',
+        trainPath: "M 50 80 Q 100 160, 160 140 T 260 90 T 360 210 T 470 70",
+        valPath: "M 50 90 Q 120 140, 180 80 T 280 200 T 380 50 T 470 180",
+        cardBg: "bg-purple-50 border-purple-200",
+        title: "⚡ 診斷結論：學習率過大 (Learning Rate Too High)",
+        titleColor: "text-purple-900",
+        desc: "損失值劇烈震盪、忽上忽下，甚至後期損失呈現發散態勢。這是因為參數更新的步幅（Step Size）太大，在最佳損失低谷的兩側來回跳躍跨越，無法順利滑入局部極小值。"
+      }
+    };
+
+    function setCurveMode(mode) {
+      const keys = ['overfitting', 'normal', 'underfitting', 'lr_too_high'];
+      keys.forEach(k => {
+        const btn = document.getElementById(`curve-btn-${k}`);
+        if (k === mode) {
+          btn.className = `curve-mode-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-sm transition ${curveData[k].btnClass}`;
+        } else {
+          btn.className = "curve-mode-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition";
+        }
+      });
+
+      const data = curveData[mode];
+      document.getElementById('svgTrainPath').setAttribute('d', data.trainPath);
+      document.getElementById('svgValPath').setAttribute('d', data.valPath);
+
+      const card = document.getElementById('diagnosticCard');
+      card.className = `p-5 rounded-2xl border text-slate-800 space-y-3 ${data.cardBg}`;
+      card.innerHTML = `
+        <h5 class="text-sm font-bold ${data.titleColor}">${data.title}</h5>
+        <p class="text-xs leading-relaxed text-slate-700">${data.desc}</p>
+      `;
+    }
+
+    // -------------------------------------------------------------
+    // Quiz Check Logic
+    // -------------------------------------------------------------
+    function checkQuiz(qNum, selected) {
+      const feedback = document.getElementById(`q${qNum}-feedback`);
+      feedback.classList.remove('hidden');
+
+      if (qNum === 1) {
+        document.querySelectorAll('.quiz-opt-1').forEach(b => b.classList.remove('bg-emerald-100', 'bg-rose-100', 'border-emerald-500', 'border-rose-500'));
+        if (selected === 'B') {
+          document.getElementById('q1-opt-B').classList.add('bg-emerald-100', 'border-emerald-500');
+          feedback.className = "text-xs p-3 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 block";
+          feedback.innerHTML = "<strong>✅ 正確！</strong> nn.CrossEntropyLoss 內部已整合 LogSoftmax，輸出層應直接給 logits，勿疊加 Softmax。";
+        } else {
+          document.getElementById(`q1-opt-${selected}`).classList.add('bg-rose-100', 'border-rose-500');
+          feedback.className = "text-xs p-3 rounded-xl bg-rose-50 text-rose-800 border border-rose-200 block";
+          feedback.innerHTML = "<strong>❌ 答錯囉！</strong> 記得 CrossEntropyLoss 已經自帶 Softmax，在輸出層再加一次會造成做兩次 Softmax 的嚴重失真。";
+        }
+      } else if (qNum === 2) {
+        document.querySelectorAll('.quiz-opt-2').forEach(b => b.classList.remove('bg-emerald-100', 'bg-rose-100', 'border-emerald-500', 'border-rose-500'));
+        if (selected === 'C') {
+          document.getElementById('q2-opt-C').classList.add('bg-emerald-100', 'border-emerald-500');
+          feedback.className = "text-xs p-3 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 block";
+          feedback.innerHTML = "<strong>✅ 正確！</strong> 全連接層（FC）具有大量密集權重矩陣（佔絕大部分參數量），而卷積層因為在整個高解析度特徵圖上滑動卷積，運算量（FLOPs）最龐大。";
+        } else {
+          document.getElementById(`q2-opt-${selected}`).classList.add('bg-rose-100', 'border-rose-500');
+          feedback.className = "text-xs p-3 rounded-xl bg-rose-50 text-rose-800 border border-rose-200 block";
+          feedback.innerHTML = "<strong>❌ 答錯囉！</strong> 請記住口訣：全連接層「參數量最多」、卷積層「運算量最大」，且 FC 層計算包含 bias 偏置。";
+        }
+      }
+    }
+
+    // Initialize Default states on page load
+    window.onload = function () {
+      selectLoopStep(1);
+      setCurveMode('overfitting');
+      updateOcrState();
+    };
+
+    // -------------------------------------------------------------
+    // Timeline Transcript Search & Tag Filtering Logic
+    // -------------------------------------------------------------
+    let currentTag = 'all';
+
+    function filterByTag(tag) {
+      currentTag = tag;
+      document.querySelectorAll('.tag-filter-btn').forEach(btn => {
+        if (btn.getAttribute('data-tag') === tag) {
+          btn.className = "tag-filter-btn px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium";
+        } else {
+          btn.className = "tag-filter-btn px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium";
+        }
+      });
+      filterTranscript();
+    }
+
+    function filterTranscript() {
+      const keyword = (document.getElementById('transcriptSearch').value || '').trim().toLowerCase();
+      const cards = document.querySelectorAll('.transcript-card');
+
+      cards.forEach(card => {
+        const text = card.querySelector('.transcript-text').innerText.toLowerCase();
+        const header = card.querySelector('span.text-slate-700')?.innerText.toLowerCase() || '';
+        const tags = (card.getAttribute('data-tags') || '').split(' ');
+
+        const matchTag = (currentTag === 'all') || tags.includes(currentTag);
+        const matchKeyword = !keyword || text.includes(keyword) || header.includes(keyword);
+
+        if (matchTag && matchKeyword) {
+          card.style.display = 'block';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    function resetTranscriptFilter() {
+      document.getElementById('transcriptSearch').value = '';
+      filterByTag('all');
+    }
+  </script>
+</body>
+</html>

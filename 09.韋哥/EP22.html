@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>【iPAS AI應用規劃師】EP22 程式題一：NumPy、pandas、scikit-learn 互動講義</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                            800: '#0c4a6e',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'Courier New', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- KaTeX CSS & JS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+            onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        .code-pill {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: #f1f5f9;
+            color: #0f172a;
+            padding: 0.15rem 0.4rem;
+            border-radius: 0.375rem;
+            font-size: 0.875em;
+            border: 1px solid #e2e8f0;
+        }
+        .dark .code-pill {
+            background-color: #1e293b;
+            color: #38bdf8;
+            border-color: #334155;
+        }
+        pre code {
+            font-family: 'JetBrains Mono', monospace;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-sky-200">
+
+    <!-- 頂端浮動導覽列 -->
+    <header class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <span class="bg-sky-600 text-white p-2 rounded-lg text-lg font-bold flex items-center justify-center">
+                    <i class="ph-bold ph-terminal-window"></i>
+                </span>
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-sky-600">iPAS AI 應用規劃師 · 中級科目三</span>
+                    <h1 class="text-sm md:text-base font-bold text-slate-900 leading-tight">EP22 程式題精解：NumPy、pandas、scikit-learn</h1>
+                </div>
+            </div>
+            <nav class="hidden lg:flex items-center space-x-6 text-sm font-medium text-slate-600">
+                <a href="#exam-strategy" class="hover:text-sky-600 transition">考情與陷阱</a>
+                <a href="#numpy-section" class="hover:text-sky-600 transition">NumPy 軸與運算</a>
+                <a href="#sklearn-section" class="hover:text-sky-600 transition">sklearn 與洩漏</a>
+                <a href="#pca-section" class="hover:text-sky-600 transition">PCA 降噪原理</a>
+                <a href="#mock-exams" class="hover:text-sky-600 transition">考古實戰演練</a>
+                <a href="#timeline-transcript" class="text-sky-600 font-bold hover:text-sky-700 transition flex items-center gap-1">
+                    <i class="ph-bold ph-chats-circle"></i>
+                    <span>互動逐字稿</span>
+                </a>
+            </nav>
+            <a href="https://www.youtube.com/watch?v=MECrmxZn7hM&list=PLC0AIqDG72yo&index=38" target="_blank" rel="noopener noreferrer" 
+               class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs md:text-sm font-semibold bg-red-600 hover:bg-red-700 text-white shadow-sm transition transform hover:scale-105">
+                <i class="ph-fill ph-youtube-logo text-base"></i>
+                <span>開啟 YouTube</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- 主頁 Hero 區塊與可連動影片視窗 -->
+    <section class="bg-gradient-to-b from-sky-50 via-white to-slate-50 py-10 border-b border-slate-200">
+        <div class="max-w-5xl mx-auto px-4 text-center">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-100 text-sky-800 text-xs font-semibold mb-4">
+                <i class="ph ph-sparkle"></i> 官方公告最新命題趨勢：佔比約 25% · 影音連動同步講義
+            </div>
+            <h2 class="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-snug">
+                帶你看懂程式題怎麼讀：從語法直通核心觀念
+            </h2>
+            <p class="mt-3 text-slate-600 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed">
+                考試<b>從來不考寫程式</b>，考的是「看懂、挑錯、查洩漏、看輸出」。本篇整理 NumPy 軸向量向、pandas 切片、scikit-learn 資料洩漏與完整時間軸逐字稿。
+            </p>
+
+            <!-- 嵌入 YouTube 播放器 (支援點擊逐字稿跳轉) -->
+            <div class="mt-8 max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-xl border border-slate-300 bg-black aspect-video relative">
+                <iframe id="youtube-player" 
+                        class="w-full h-full" 
+                        src="https://www.youtube-nocookie.com/embed/MECrmxZn7hM?enablejsapi=1&rel=0" 
+                        title="iPAS AI應用規劃師 EP22" 
+                        frameborder="0" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                        allowfullscreen>
+                </iframe>
+            </div>
+
+            <!-- SVG 投影片 1：首頁目錄章節卡片 (1:1 還原 image_79fd56.png) -->
+            <div class="mt-8 max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-md border border-slate-200 bg-white">
+                <svg viewBox="0 0 900 600" class="w-full h-auto" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans TC', 'Inter', -apple-system, sans-serif">
+                    <!-- 背景 -->
+                    <rect width="900" height="600" fill="#FAF9FE"/>
+                    
+                    <!-- 頂部標籤列 -->
+                    <circle cx="28" cy="32" r="7" fill="#F97316"/>
+                    <text x="46" y="38" fill="#5E5873" font-size="20" font-weight="600">iPAS 22 · 程式題一：NumPy、pandas、scikit-learn</text>
+                    <line x1="680" y1="32" x2="880" y2="32" stroke="#6366F1" stroke-width="2.5" stroke-linecap="round"/>
+
+                    <!-- 大標題 -->
+                    <text x="25" y="115" fill="#1E1B4B" font-size="44" font-weight="800">程式題一：</text>
+                    <text x="290" y="115" fill="#F97316" font-size="44" font-weight="800">第二十一 ～ 二十三章</text>
+
+                    <!-- 前一集藥丸膠囊標籤 -->
+                    <rect x="25" y="145" width="650" height="68" rx="34" fill="#FFFFFF" stroke="#E0E7FF" stroke-width="2"/>
+                    <text x="55" y="189" fill="#334155" font-size="24" font-weight="700">上一集｜第二十章：演算法偏見與公平性</text>
+
+                    <!-- 章節 21 卡片 -->
+                    <g transform="translate(25, 245)">
+                        <rect width="850" height="95" rx="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2"/>
+                        <rect x="30" y="20" width="145" height="55" rx="12" fill="#6366F1"/>
+                        <text x="102" y="56" fill="#FFFFFF" font-size="26" font-weight="800" text-anchor="middle">二十一</text>
+                        <text x="205" y="58" fill="#1E293B" font-size="30" font-weight="700">程式題怎麼讀</text>
+                    </g>
+
+                    <!-- 章節 22 卡片 -->
+                    <g transform="translate(25, 365)">
+                        <rect width="850" height="95" rx="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2"/>
+                        <rect x="30" y="20" width="145" height="55" rx="12" fill="#F97316"/>
+                        <text x="102" y="56" fill="#FFFFFF" font-size="26" font-weight="800" text-anchor="middle">二十二</text>
+                        <text x="205" y="58" fill="#1E293B" font-size="30" font-weight="700">NumPy 必認語法</text>
+                    </g>
+
+                    <!-- 章節 23 卡片 -->
+                    <g transform="translate(25, 485)">
+                        <rect width="850" height="95" rx="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2"/>
+                        <rect x="30" y="20" width="145" height="55" rx="12" fill="#0D9488"/>
+                        <text x="102" y="56" fill="#FFFFFF" font-size="26" font-weight="800" text-anchor="middle">二十三</text>
+                        <text x="205" y="58" fill="#1E293B" font-size="30" font-weight="700">pandas 與 scikit-learn 必認語法</text>
+                    </g>
+                </svg>
+            </div>
+
+            <!-- 開場暖身挑戰題卡片 -->
+            <div class="mt-8 max-w-3xl mx-auto bg-white rounded-2xl p-6 shadow-md border border-slate-200 text-left">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <span class="text-xs font-bold uppercase tracking-wider text-amber-600 flex items-center gap-1.5">
+                        <i class="ph-bold ph-lightning"></i> 開場思維挑戰題
+                    </span>
+                    <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono">114年第48題同型</span>
+                </div>
+                <p class="text-sm md:text-base font-semibold text-slate-800 mt-4 leading-relaxed">
+                    一段程式先把每一欄減掉自己那欄的平均，再除以自己那欄的標準差：
+                </p>
+                <div class="my-3 bg-slate-900 text-emerald-400 p-3 rounded-lg font-mono text-xs md:text-sm overflow-x-auto shadow-inner">
+                    X_train -= np.mean(X_train, axis=0)<br>
+                    X_train /= np.std(X_train, axis=0)
+                </div>
+                <p class="text-xs text-slate-500 mb-3">請問以下哪些敘述是<b>正確的</b>？（多選思考）</p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs md:text-sm">
+                    <label class="flex items-start gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer hover:bg-sky-50 transition">
+                        <input type="checkbox" id="q-opt1" class="mt-0.5 rounded text-sky-600">
+                        <span>① 減平均讓每個特徵的平均變 0</span>
+                    </label>
+                    <label class="flex items-start gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer hover:bg-sky-50 transition">
+                        <input type="checkbox" id="q-opt2" class="mt-0.5 rounded text-sky-600">
+                        <span>② 除標準差讓標準差變 0</span>
+                    </label>
+                    <label class="flex items-start gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer hover:bg-sky-50 transition">
+                        <input type="checkbox" id="q-opt3" class="mt-0.5 rounded text-sky-600">
+                        <span>③ 結果會被壓縮到 0 到 1 之間</span>
+                    </label>
+                    <label class="flex items-start gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer hover:bg-sky-50 transition">
+                        <input type="checkbox" id="q-opt4" class="mt-0.5 rounded text-sky-600">
+                        <span>④ 標準化能防止梯度爆炸或消失</span>
+                    </label>
+                    <label class="flex items-start gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer hover:bg-sky-50 transition sm:col-span-2">
+                        <input type="checkbox" id="q-opt5" class="mt-0.5 rounded text-sky-600">
+                        <span>⑤ 此步驟屬於特徵選擇（Feature Selection）</span>
+                    </label>
+                </div>
+
+                <div class="mt-4 flex items-center justify-between">
+                    <button onclick="checkWarmupAnswer()" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs md:text-sm font-semibold rounded-lg shadow transition">
+                        確認答案與即時詳解
+                    </button>
+                    <span id="warmup-feedback" class="text-xs md:text-sm font-bold"></span>
+                </div>
+
+                <div id="warmup-explain" class="hidden mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs md:text-sm text-amber-950 space-y-2">
+                    <p class="font-bold text-amber-900 flex items-center gap-1.5">
+                        <i class="ph-bold ph-check-circle text-emerald-600"></i> 正確解答：僅 ① 與 ④ 正確！
+                    </p>
+                    <ul class="list-disc list-inside space-y-1 text-slate-700">
+                        <li><b>① 正確：</b> $x - \mu$ 使得轉換後的新平均值變為 0。</li>
+                        <li><b>② 錯誤：</b> 除以標準差 $\sigma$ 後，新標準差會縮小為 <b>1</b>，並非 0。</li>
+                        <li><b>③ 錯誤：</b> 壓縮至 $[0, 1]$ 是 <b>Min-Max 正規化</b>；標準化後的值可為負數或大於 1。</li>
+                        <li><b>④ 正確（官方標竿正解）：</b> 輸入維度尺度一致，避免特定欄位數值巨大讓梯度暴衝或神經元飽和，使反向傳播更穩定。</li>
+                        <li><b>⑤ 錯誤：</b> 屬於<b>特徵縮放（Feature Scaling）</b>，並沒有丟棄任何特徵欄位。</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 主內容區塊 -->
+    <main class="max-w-6xl mx-auto px-4 py-12 space-y-16">
+
+        <!-- 第 21 章：試題怎麼讀？考情分析與五大陷阱 -->
+        <section id="exam-strategy" class="space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center text-sm">21</span>
+                <div>
+                    <h3 class="text-xl md:text-2xl font-bold text-slate-900">考情分析：程式題的骨架與解題公式</h3>
+                    <p class="text-xs text-slate-500">掌握題型本質，不需背寫扣，只專注「認觀念」</p>
+                </div>
+            </div>
+
+            <!-- SVG 投影片 6：第二十一章 官方公告與命題比重 (1:1 還原 image_79f5b6.png) -->
+            <div class="rounded-2xl overflow-hidden shadow-md border border-slate-200 bg-white">
+                <svg viewBox="0 0 900 520" class="w-full h-auto" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans TC', 'Inter', -apple-system, sans-serif">
+                    <rect width="900" height="520" fill="#FAF9FE"/>
+                    
+                    <circle cx="28" cy="32" r="7" fill="#F97316"/>
+                    <text x="46" y="38" fill="#5E5873" font-size="20" font-weight="600">iPAS 22 · 程式題一：NumPy、pandas、scikit-learn</text>
+                    <line x1="680" y1="32" x2="880" y2="32" stroke="#6366F1" stroke-width="2.5" stroke-linecap="round"/>
+
+                    <text x="25" y="115" fill="#1E1B4B" font-size="42" font-weight="800">第二十一章：</text>
+                    <text x="315" y="115" fill="#F97316" font-size="42" font-weight="800">程式題在考什麼</text>
+
+                    <text x="25" y="172" fill="#334155" font-size="26" font-weight="700">官方公告（2026-03-31）：自 114 年第二梯次起，科目三納</text>
+                    <text x="25" y="214" fill="#334155" font-size="26" font-weight="700">入程式相關題型</text>
+
+                    <!-- 三大題型膠囊標籤 -->
+                    <g transform="translate(25, 245)">
+                        <!-- 標籤 1 -->
+                        <rect x="0" y="0" width="310" height="66" rx="33" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2"/>
+                        <circle cx="38" cy="33" r="20" fill="#6366F1"/>
+                        <text x="38" y="41" fill="#FFFFFF" font-size="20" font-weight="bold" text-anchor="middle">1</text>
+                        <text x="75" y="42" fill="#1E293B" font-size="24" font-weight="700">Python 基本語法</text>
+
+                        <!-- 標籤 2 -->
+                        <rect x="330" y="0" width="295" height="66" rx="33" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2"/>
+                        <circle cx="368" cy="33" r="20" fill="#6366F1"/>
+                        <text x="368" y="41" fill="#FFFFFF" font-size="20" font-weight="bold" text-anchor="middle">2</text>
+                        <text x="405" y="42" fill="#1E293B" font-size="24" font-weight="700">程式邏輯判斷</text>
+                    </g>
+
+                    <g transform="translate(25, 330)">
+                        <!-- 標籤 3 -->
+                        <rect x="0" y="0" width="295" height="66" rx="33" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2"/>
+                        <circle cx="38" cy="33" r="20" fill="#6366F1"/>
+                        <text x="38" y="41" fill="#FFFFFF" font-size="20" font-weight="bold" text-anchor="middle">3</text>
+                        <text x="75" y="42" fill="#1E293B" font-size="24" font-weight="700">程式片段解析</text>
+                    </g>
+
+                    <!-- 後續各梯次佔比預計 -->
+                    <text x="25" y="438" fill="#475569" font-size="23" font-weight="700">後續各梯次預計</text>
+                    <text x="25" y="505" fill="#1E1B4B" font-size="64" font-weight="900" letter-spacing="-1">約 25%</text>
+                </svg>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="p-5 bg-white rounded-xl border-t-4 border-indigo-500 shadow-sm border-x border-b border-slate-200">
+                    <div class="text-indigo-600 font-bold flex items-center gap-1.5 mb-2">
+                        <i class="ph-bold ph-eye"></i> 題型一：認一認
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        給一段程式碼，詢問背後代表何種機器學習演算法或評估指標。例如：認出 <b>MSE</b>、<b>Dropout 遮罩</b> 或 <b>特徵萃取</b>。
+                    </p>
+                </div>
+                <div class="p-5 bg-white rounded-xl border-t-4 border-rose-500 shadow-sm border-x border-b border-slate-200">
+                    <div class="text-rose-600 font-bold flex items-center gap-1.5 mb-2">
+                        <i class="ph-bold ph-bug"></i> 題型二：找錯、找洩漏
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        程式語法沒有報錯（可執行），但邏輯發生致命破綻！問哪一行程式必須修改，例如：<b>Data Leakage</b> 或 <b>指標名稱與多分類不合</b>。
+                    </p>
+                </div>
+                <div class="p-5 bg-white rounded-xl border-t-4 border-emerald-500 shadow-sm border-x border-b border-slate-200">
+                    <div class="text-emerald-600 font-bold flex items-center gap-1.5 mb-2">
+                        <i class="ph-bold ph-chart-line-up"></i> 題型三：讀輸出
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        提供模型架構摘要（Summary）、資料張量形狀（Shape）或 Loss/Acc 訓練曲線，要求讀出維度變化或過擬合診斷。
+                    </p>
+                </div>
+            </div>
+
+            <!-- 四大步驟 & 五大陷阱 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- 讀題四步驟 -->
+                <div class="bg-indigo-50/50 rounded-2xl p-6 border border-indigo-100 space-y-3">
+                    <h4 class="font-bold text-indigo-900 flex items-center gap-2 text-sm md:text-base">
+                        <i class="ph-bold ph-steps"></i> 秒殺程式題的四大閱讀步驟
+                    </h4>
+                    <ol class="space-y-2.5 text-xs md:text-sm text-slate-700">
+                        <li class="flex items-start gap-2">
+                            <span class="w-5 h-5 rounded-full bg-indigo-600 text-white flex-shrink-0 flex items-center justify-center text-xs font-bold">1</span>
+                            <span><b>先看題目問什麼：</b>不要先埋頭看 Code，先抓題目是問「指標不匹配」還是「資料外洩」。</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="w-5 h-5 rounded-full bg-indigo-600 text-white flex-shrink-0 flex items-center justify-center text-xs font-bold">2</span>
+                            <span><b>鎖定關鍵 2~3 行：</b>跳過繁瑣的資料載入與格式打印，直接鎖定模型與前處理核心。</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="w-5 h-5 rounded-full bg-indigo-600 text-white flex-shrink-0 flex items-center justify-center text-xs font-bold">3</span>
+                            <span><b>翻譯成一句白話：</b>例如「他在用全部資料 fit 主成分」，立刻覺察問題點。</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="w-5 h-5 rounded-full bg-indigo-600 text-white flex-shrink-0 flex items-center justify-center text-xs font-bold">4</span>
+                            <span><b>回到選項直接驗證：</b>用理論與考點比對選項，高效率排除陷阱。</span>
+                        </li>
+                    </ol>
+                </div>
+
+                <!-- 考試五大高頻陷阱 -->
+                <div class="bg-amber-50/60 rounded-2xl p-6 border border-amber-200 space-y-3">
+                    <h4 class="font-bold text-amber-900 flex items-center gap-2 text-sm md:text-base">
+                        <i class="ph-bold ph-warning-octagon text-amber-600"></i> 考卷最愛挖的五大高頻陷阱
+                    </h4>
+                    <ul class="space-y-2 text-xs md:text-sm text-slate-700">
+                        <li class="flex items-start gap-2">
+                            <i class="ph-fill ph-x-circle text-rose-500 mt-0.5"></i>
+                            <span><b>全資料預處理：</b>標準化或 PCA 在切分前 `fit` 全部資料（偷窺驗證集）。</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <i class="ph-fill ph-x-circle text-rose-500 mt-0.5"></i>
+                            <span><b>增強破壞語意：</b>手寫英文字母或數字不能水平翻轉（如 'b' 翻轉成 'd'）。</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <i class="ph-fill ph-x-circle text-rose-500 mt-0.5"></i>
+                            <span><b>指標不配任務：</b>多分類問題（如 10 類）直接寫 `scoring='f1'` 必定報錯或失真。</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <i class="ph-fill ph-x-circle text-rose-500 mt-0.5"></i>
+                            <span><b>凍結範圍寫錯：</b>遷移學習只想凍結卷積層特徵提取器，卻凍結了全網路。</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <i class="ph-fill ph-x-circle text-rose-500 mt-0.5"></i>
+                            <span><b>超參數未指定：</b>`PCA()` 未傳參數，預設保留所有主成分，根本沒達成降維！</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- 第 22 章：NumPy 必認運算與互動視覺化 -->
+        <section id="numpy-section" class="space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg bg-sky-600 text-white font-bold flex items-center justify-center text-sm">22</span>
+                <div>
+                    <h3 class="text-xl md:text-2xl font-bold text-slate-900">NumPy 必備運算：維度、Axis 與布林遮罩</h3>
+                    <p class="text-xs text-slate-500">搞懂向量同位乘法、矩陣點積、行列式與降維方向</p>
+                </div>
+            </div>
+
+            <!-- SVG 投影片 2：第二十二章 NumPy 必認語法與陣列相乘 (1:1 還原 image_79fa14.png) -->
+            <div class="rounded-2xl overflow-hidden shadow-md border border-slate-200 bg-white">
+                <svg viewBox="0 0 900 520" class="w-full h-auto" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans TC', 'Inter', -apple-system, sans-serif">
+                    <rect width="900" height="520" fill="#FAF9FE"/>
+                    
+                    <circle cx="28" cy="32" r="7" fill="#F97316"/>
+                    <text x="46" y="38" fill="#5E5873" font-size="20" font-weight="600">iPAS 22 · 程式題一：NumPy、pandas、scikit-learn</text>
+                    <line x1="680" y1="32" x2="880" y2="32" stroke="#6366F1" stroke-width="2.5" stroke-linecap="round"/>
+
+                    <text x="25" y="115" fill="#1E1B4B" font-size="44" font-weight="800">第二十二章：</text>
+                    <text x="320" y="115" fill="#F97316" font-size="44" font-weight="800">NumPy 必認語法</text>
+
+                    <!-- 陣列定義提示條 -->
+                    <g transform="translate(25, 140)">
+                        <rect width="850" height="70" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2"/>
+                        <rect x="20" y="14" width="76" height="42" rx="8" fill="#6366F1"/>
+                        <text x="58" y="43" fill="#FFFFFF" font-size="20" font-weight="800" text-anchor="middle">陣列</text>
+                        <text x="110" y="44" fill="#1E293B" font-size="24" font-weight="700">排成一列或一張表的數字，NumPy 的基本資料</text>
+                    </g>
+
+                    <!-- 代碼區塊 1 -->
+                    <g transform="translate(25, 230)">
+                        <rect width="850" height="74" rx="14" fill="#1E2433"/>
+                        <text x="25" y="47" fill="#FFFFFF" font-family="'JetBrains Mono', monospace" font-size="24" font-weight="600">np.array([1, 2, 3])</text>
+                        <text x="320" y="46" fill="#94A3B8" font-size="20" font-weight="600"># 建立陣列</text>
+                    </g>
+
+                    <!-- 代碼區塊 2 -->
+                    <g transform="translate(25, 320)">
+                        <rect width="850" height="74" rx="14" fill="#1E2433"/>
+                        <text x="25" y="47" fill="#FFFFFF" font-family="'JetBrains Mono', monospace" font-size="24" font-weight="600">v1 * v2</text>
+                        <text x="135" y="46" fill="#94A3B8" font-size="20" font-weight="600"># 逐元素相乘：同位置相乘，不加總</text>
+                    </g>
+
+                    <!-- 向量逐元素相乘運算方塊展示 -->
+                    <g transform="translate(25, 415)">
+                        <!-- [1, 2, 3] -->
+                        <g>
+                            <rect x="0" y="0" width="70" height="68" rx="10" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.8"/>
+                            <text x="35" y="47" fill="#1E293B" font-size="32" font-weight="800" text-anchor="middle">1</text>
+                        </g>
+                        <g transform="translate(85, 0)">
+                            <rect x="0" y="0" width="70" height="68" rx="10" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.8"/>
+                            <text x="35" y="47" fill="#1E293B" font-size="32" font-weight="800" text-anchor="middle">2</text>
+                        </g>
+                        <g transform="translate(170, 0)">
+                            <rect x="0" y="0" width="70" height="68" rx="10" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.8"/>
+                            <text x="35" y="47" fill="#1E293B" font-size="32" font-weight="800" text-anchor="middle">3</text>
+                        </g>
+
+                        <!-- 乘號 -->
+                        <text x="265" y="48" fill="#F97316" font-size="32" font-weight="900" text-anchor="middle">×</text>
+
+                        <!-- [4, 5, 6] -->
+                        <g transform="translate(295, 0)">
+                            <rect x="0" y="0" width="70" height="68" rx="10" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.8"/>
+                            <text x="35" y="47" fill="#1E293B" font-size="32" font-weight="800" text-anchor="middle">4</text>
+                        </g>
+                        <g transform="translate(380, 0)">
+                            <rect x="0" y="0" width="70" height="68" rx="10" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.8"/>
+                            <text x="35" y="47" fill="#1E293B" font-size="32" font-weight="800" text-anchor="middle">5</text>
+                        </g>
+                        <g transform="translate(465, 0)">
+                            <rect x="0" y="0" width="70" height="68" rx="10" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.8"/>
+                            <text x="35" y="47" fill="#1E293B" font-size="32" font-weight="800" text-anchor="middle">6</text>
+                        </g>
+
+                        <!-- 箭頭 -->
+                        <path d="M 560,34 L 590,34 M 580,24 L 592,34 L 580,44" stroke="#F97316" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+                        <!-- [4, 10, 18] (橘色強調框) -->
+                        <g transform="translate(615, 0)">
+                            <rect x="0" y="0" width="75" height="68" rx="10" fill="#FFF7ED" stroke="#FB923C" stroke-width="2.5"/>
+                            <text x="37" y="47" fill="#C2410C" font-size="32" font-weight="800" text-anchor="middle">4</text>
+                        </g>
+                        <g transform="translate(700, 0)">
+                            <rect x="0" y="0" width="75" height="68" rx="10" fill="#FFF7ED" stroke="#FB923C" stroke-width="2.5"/>
+                            <text x="37" y="47" fill="#C2410C" font-size="32" font-weight="800" text-anchor="middle">10</text>
+                        </g>
+                        <g transform="translate(785, 0)">
+                            <rect x="0" y="0" width="75" height="68" rx="10" fill="#FFF7ED" stroke="#FB923C" stroke-width="2.5"/>
+                            <text x="37" y="47" fill="#C2410C" font-size="32" font-weight="800" text-anchor="middle">18</text>
+                        </g>
+                    </g>
+                </svg>
+            </div>
+
+            <!-- SVG 投影片 3：形狀、轉置與第三章的三個 (1:1 還原 image_79f9b7.png) -->
+            <div class="rounded-2xl overflow-hidden shadow-md border border-slate-200 bg-white">
+                <svg viewBox="0 0 920 540" class="w-full h-auto" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans TC', 'Inter', -apple-system, sans-serif">
+                    <rect width="920" height="540" fill="#FAF9FE"/>
+                    
+                    <circle cx="28" cy="32" r="7" fill="#F97316"/>
+                    <text x="46" y="38" fill="#5E5873" font-size="20" font-weight="600">iPAS 22 · 程式題一：NumPy、pandas、scikit-learn</text>
+                    <line x1="680" y1="32" x2="895" y2="32" stroke="#6366F1" stroke-width="2.5" stroke-linecap="round"/>
+
+                    <text x="25" y="105" fill="#1E1B4B" font-size="42" font-weight="800">形狀、轉置與</text>
+                    <text x="280" y="105" fill="#F97316" font-size="42" font-weight="800">第三章的三個</text>
+
+                    <!-- 表格 Header -->
+                    <g transform="translate(25, 130)">
+                        <rect x="0" y="0" width="230" height="52" rx="10" fill="#EDE9FE"/>
+                        <text x="20" y="34" fill="#312E81" font-size="20" font-weight="700">語法</text>
+
+                        <rect x="245" y="0" width="280" height="52" rx="10" fill="#EDE9FE"/>
+                        <text x="265" y="34" fill="#312E81" font-size="20" font-weight="700">做什麼</text>
+
+                        <rect x="540" y="0" width="330" height="52" rx="10" fill="#EDE9FE"/>
+                        <text x="560" y="34" fill="#312E81" font-size="20" font-weight="700">例子與結果</text>
+                    </g>
+
+                    <!-- Row 1: A.shape -->
+                    <g transform="translate(25, 192)">
+                        <rect x="0" y="0" width="230" height="55" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                        <text x="20" y="36" fill="#0F172A" font-family="'JetBrains Mono', monospace" font-size="20" font-weight="700">A.shape</text>
+
+                        <rect x="245" y="0" width="280" height="55" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                        <text x="265" y="36" fill="#1E293B" font-size="20" font-weight="600">形狀：幾列幾欄</text>
+
+                        <rect x="540" y="0" width="330" height="55" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                        <text x="560" y="36" fill="#1E293B" font-size="20" font-weight="600">2 列 2 欄 → (2, 2)</text>
+                    </g>
+
+                    <!-- Row 2: A.T -->
+                    <g transform="translate(25, 257)">
+                        <rect x="0" y="0" width="230" height="55" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                        <text x="20" y="36" fill="#0F172A" font-family="'JetBrains Mono', monospace" font-size="20" font-weight="700">A.T</text>
+
+                        <rect x="245" y="0" width="280" height="55" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                        <text x="265" y="36" fill="#1E293B" font-size="20" font-weight="600">轉置：列和欄互換</text>
+
+                        <rect x="540" y="0" width="330" height="55" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                        <text x="560" y="36" fill="#1E293B" font-family="'JetBrains Mono', monospace" font-size="18" font-weight="600">[[1,2],[3,4]] → [[1,3],[2,4]]</text>
+                    </g>
+
+                    <!-- Row 3: np.linalg.inv(A) -->
+                    <g transform="translate(25, 322)">
+                        <rect x="0" y="0" width="230" height="55" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                        <text x="20" y="36" fill="#0F172A" font-family="'JetBrains Mono', monospace" font-size="18" font-weight="700">np.linalg.inv(A)</text>
+
+                        <rect x="245" y="0" width="280" height="55" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                        <text x="265" y="36" fill="#1E293B" font-size="20" font-weight="600">反矩陣（第三章）</text>
+
+                        <rect x="540" y="0" width="330" height="55" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                    </g>
+
+                    <!-- Row 4: np.linalg.det(A) -->
+                    <g transform="translate(25, 387)">
+                        <rect x="0" y="0" width="230" height="55" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                        <text x="20" y="36" fill="#0F172A" font-family="'JetBrains Mono', monospace" font-size="18" font-weight="700">np.linalg.det(A)</text>
+
+                        <rect x="245" y="0" width="280" height="55" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                        <text x="265" y="36" fill="#1E293B" font-size="20" font-weight="600">行列式（第三章）</text>
+
+                        <rect x="540" y="0" width="330" height="55" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                        <text x="560" y="36" fill="#1E293B" font-size="18" font-weight="600">[[1,2],[3,4]] → 1×4 - 2×3 = </text>
+                        <text x="795" y="36" fill="#F97316" font-size="20" font-weight="800">-2</text>
+                    </g>
+
+                    <!-- Row 5: np.linalg.eig(A) -->
+                    <g transform="translate(25, 452)">
+                        <rect x="0" y="0" width="230" height="55" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                        <text x="20" y="36" fill="#0F172A" font-family="'JetBrains Mono', monospace" font-size="18" font-weight="700">np.linalg.eig(A)</text>
+
+                        <rect x="245" y="0" width="280" height="55" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                        <text x="265" y="36" fill="#1E293B" font-size="20" font-weight="600">特徵值與特徵向量（第三章）</text>
+
+                        <rect x="540" y="0" width="330" height="55" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                    </g>
+                </svg>
+            </div>
+
+            <!-- 兩大相乘法與公式對比 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-bold text-sky-800 text-sm flex items-center gap-1.5">
+                            <i class="ph-bold ph-arrows-merge"></i> 逐元素相乘（Element-wise）
+                        </span>
+                        <code class="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded">a * b</code>
+                    </div>
+                    <p class="text-xs text-slate-600 mb-2">相同形狀的陣列，對應位置純數值相乘，維度保持不變。</p>
+                    <div class="bg-slate-900 text-slate-200 p-3 rounded font-mono text-xs">
+                        a = np.array([1, 2, 3])<br>
+                        b = np.array([4, 5, 6])<br>
+                        a * b  <span class="text-emerald-400"># array([4, 10, 18])</span>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-bold text-indigo-800 text-sm flex items-center gap-1.5">
+                            <i class="ph-bold ph-circle-dashed"></i> 向量點積與矩陣乘法
+                        </span>
+                        <code class="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded">np.dot(a, b)</code>
+                    </div>
+                    <p class="text-xs text-slate-600 mb-2">同位置相乘後全部加總為純量：$1\times 4 + 2\times 5 + 3\times 6 = 32$。</p>
+                    <div class="bg-slate-900 text-slate-200 p-3 rounded font-mono text-xs">
+                        np.dot(a, b)  <span class="text-emerald-400"># 32 (若是二維矩陣即為矩陣乘法)</span><br>
+                        np.linalg.det([[1,2],[3,4]]) <span class="text-emerald-400"># 1*4 - 2*3 = -2</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 互動式 SVG 1：NumPy Axis 視覺化器 -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-slate-100 gap-3">
+                    <div>
+                        <h4 class="font-bold text-slate-900 flex items-center gap-2">
+                            <i class="ph-bold ph-compass text-sky-600"></i> 互動展示：NumPy Axis 壓縮方向與形狀變化
+                        </h4>
+                        <p class="text-xs text-slate-500 mt-0.5">給定二維矩陣（2 列 3 欄）：第一列 [1, 2, 3]，第二列 [4, 5, 6]</p>
+                    </div>
+                    <div class="inline-flex rounded-lg border border-slate-200 p-1 bg-slate-50 text-xs font-semibold">
+                        <button id="btn-axis-none" onclick="setAxisMode('none')" class="px-3 py-1.5 rounded-md transition bg-white text-slate-900 shadow-sm">原始資料 (2, 3)</button>
+                        <button id="btn-axis-0" onclick="setAxisMode('0')" class="px-3 py-1.5 rounded-md transition text-slate-600 hover:text-slate-900">axis=0（直向壓扁）</button>
+                        <button id="btn-axis-1" onclick="setAxisMode('1')" class="px-3 py-1.5 rounded-md transition text-slate-600 hover:text-slate-900">axis=1（橫向壓扁）</button>
+                    </div>
+                </div>
+
+                <!-- 視覺化展示面板 -->
+                <div class="mt-6 flex flex-col md:flex-row items-center justify-center gap-8 py-4">
+                    <!-- SVG 矩陣呈現 -->
+                    <div class="relative">
+                        <svg id="axis-svg" width="300" height="200" viewBox="0 0 300 200" class="overflow-visible">
+                            <!-- 箭頭標記 -->
+                            <defs>
+                                <marker id="arrow-down" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#0284c7" />
+                                </marker>
+                                <marker id="arrow-right" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+                                </marker>
+                            </defs>
+
+                            <!-- 列 0 元素 -->
+                            <g id="cell-0-0" class="transition-all duration-300">
+                                <rect x="30" y="30" width="60" height="50" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+                                <text x="60" y="60" text-anchor="middle" font-family="monospace" font-size="16" font-weight="bold" fill="#1e293b">1</text>
+                            </g>
+                            <g id="cell-0-1" class="transition-all duration-300">
+                                <rect x="110" y="30" width="60" height="50" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+                                <text x="140" y="60" text-anchor="middle" font-family="monospace" font-size="16" font-weight="bold" fill="#1e293b">2</text>
+                            </g>
+                            <g id="cell-0-2" class="transition-all duration-300">
+                                <rect x="190" y="30" width="60" height="50" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+                                <text x="220" y="60" text-anchor="middle" font-family="monospace" font-size="16" font-weight="bold" fill="#1e293b">3</text>
+                            </g>
+
+                            <!-- 列 1 元素 -->
+                            <g id="cell-1-0" class="transition-all duration-300">
+                                <rect x="30" y="100" width="60" height="50" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+                                <text x="60" y="130" text-anchor="middle" font-family="monospace" font-size="16" font-weight="bold" fill="#1e293b">4</text>
+                            </g>
+                            <g id="cell-1-1" class="transition-all duration-300">
+                                <rect x="110" y="100" width="60" height="50" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+                                <text x="140" y="130" text-anchor="middle" font-family="monospace" font-size="16" font-weight="bold" fill="#1e293b">5</text>
+                            </g>
+                            <g id="cell-1-2" class="transition-all duration-300">
+                                <rect x="190" y="100" width="60" height="50" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+                                <text x="220" y="130" text-anchor="middle" font-family="monospace" font-size="16" font-weight="bold" fill="#1e293b">6</text>
+                            </g>
+
+                            <!-- 動態輔助指標（axis=0 向下箭頭） -->
+                            <g id="axis0-arrows" class="opacity-0 transition-opacity duration-300">
+                                <path d="M 60,85 L 60,95" stroke="#0284c7" stroke-width="3" marker-end="url(#arrow-down)"/>
+                                <path d="M 140,85 L 140,95" stroke="#0284c7" stroke-width="3" marker-end="url(#arrow-down)"/>
+                                <path d="M 220,85 L 220,95" stroke="#0284c7" stroke-width="3" marker-end="url(#arrow-down)"/>
+                            </g>
+                            <!-- 動態輔助指標（axis=1 向右箭頭） -->
+                            <g id="axis1-arrows" class="opacity-0 transition-opacity duration-300">
+                                <path d="M 95,55 L 105,55" stroke="#6366f1" stroke-width="3" marker-end="url(#arrow-right)"/>
+                                <path d="M 175,55 L 185,55" stroke="#6366f1" stroke-width="3" marker-end="url(#arrow-right)"/>
+                                <path d="M 95,125 L 105,125" stroke="#6366f1" stroke-width="3" marker-end="url(#arrow-right)"/>
+                                <path d="M 175,125 L 185,125" stroke="#6366f1" stroke-width="3" marker-end="url(#arrow-right)"/>
+                            </g>
+                        </svg>
+                    </div>
+
+                    <!-- 計算結果呈現區 -->
+                    <div id="axis-result-box" class="bg-slate-50 border border-slate-200 rounded-xl p-5 w-full md:w-72 transition-all">
+                        <div class="text-xs font-bold uppercase text-slate-500 mb-1">運算狀態與回傳結果</div>
+                        <div id="axis-op-title" class="text-base font-bold text-slate-900 font-mono">原始矩陣 array</div>
+                        <div id="axis-op-desc" class="text-xs text-slate-600 mt-1 leading-relaxed">
+                            維度為 $(2, 3)$，包含 2 列特徵紀錄與 3 欄特徵變數。
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-200">
+                            <span class="text-xs text-slate-500">計算結果 (加總)：</span>
+                            <div id="axis-output" class="font-mono text-sm font-bold text-sky-700 mt-1">
+                                [[1, 2, 3],<br>&nbsp;[4, 5, 6]]
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 亂數、布林遮罩與條件機率經典題解 -->
+            <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-6 shadow-md">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-700">
+                    <span class="text-xs font-bold tracking-wider text-sky-400 flex items-center gap-1.5">
+                        <i class="ph-bold ph-dice-five"></i> 經典題型解構：亂數模擬與條件機率估計（114年第41題同型）
+                    </span>
+                    <span class="text-xs text-slate-400 font-mono">Monte Carlo Simulation</span>
+                </div>
+
+                <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
+                    <div class="font-mono text-xs md:text-sm bg-black/40 p-4 rounded-xl border border-slate-700 space-y-1.5 text-slate-300">
+                        <p><span class="text-slate-500"># 固定種子並擲骰子 10 萬次 (產生 1~6，注意 7 不包含)</span></p>
+                        <p>np.random.seed(42)</p>
+                        <p>rolls = np.random.randint(1, 7, size=100000)</p>
+                        <p class="pt-2"><span class="text-slate-500"># 條件 A：點數為偶數；條件 B：點數大於 3</span></p>
+                        <p>cond_A = (rolls % 2 == 0) <span class="text-emerald-400"># 得到 True/False 陣列</span></p>
+                        <p>cond_B = (rolls > 3)</p>
+                        <p class="pt-2"><span class="text-slate-500"># 條件機率 P(A|B)：在 B 發生的條件下，A 也發生的機率</span></p>
+                        <p class="text-sky-300 font-bold">prob = np.sum(cond_A & cond_B) / np.sum(cond_B)</p>
+                    </div>
+
+                    <div class="space-y-3 text-xs md:text-sm text-slate-300">
+                        <h5 class="text-white font-bold text-base flex items-center gap-2">
+                            <i class="ph-bold ph-function text-sky-400"></i> 理論解析與公式對照
+                        </h5>
+                        <p class="leading-relaxed">
+                            條件機率公式為：
+                            $$P(A \mid B) = \frac{P(A \cap B)}{P(B)} = \frac{N(A \cap B)}{N(B)}$$
+                        </p>
+                        <ul class="space-y-1.5 text-slate-300">
+                            <li>• <b>分母放什麼？</b> 條件是 $B$，所以分母放 $B$ 發生的次數 <code class="code-pill">np.sum(cond_B)</code>。</li>
+                            <li>• <b>分子放什麼？</b> 兩者同時成立的交集次數 <code class="code-pill">np.sum(cond_A & cond_B)</code>。</li>
+                            <li>• <b>理論值驗算：</b> 骰子大於 3 的點數集合為 $\{4, 5, 6\}$，共 3 種可能；其中為偶數的有 $\{4, 6\}$，共 2 種可能。因此理論機率精確為：
+                            $$\frac{2}{3} \approx 0.6667$$</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 第 23 章：pandas 與 scikit-learn 核心方法 -->
+        <section id="sklearn-section" class="space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg bg-emerald-600 text-white font-bold flex items-center justify-center text-sm">23</span>
+                <div>
+                    <h3 class="text-xl md:text-2xl font-bold text-slate-900">pandas 切片與 scikit-learn 核心五大方法</h3>
+                    <p class="text-xs text-slate-500">表格數據切片、學規則與套用規則之區隔</p>
+                </div>
+            </div>
+
+            <!-- SVG 投影片 4：第二十三章 pandas 語法卡片 (1:1 還原 image_79f95b.png) -->
+            <div class="rounded-2xl overflow-hidden shadow-md border border-slate-200 bg-white">
+                <svg viewBox="0 0 920 540" class="w-full h-auto" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans TC', 'Inter', -apple-system, sans-serif">
+                    <rect width="920" height="540" fill="#FAF9FE"/>
+                    
+                    <circle cx="28" cy="32" r="7" fill="#F97316"/>
+                    <text x="46" y="38" fill="#5E5873" font-size="20" font-weight="600">iPAS 22 · 程式題一：NumPy、pandas、scikit-learn</text>
+                    <line x1="680" y1="32" x2="895" y2="32" stroke="#6366F1" stroke-width="2.5" stroke-linecap="round"/>
+
+                    <text x="25" y="105" fill="#1E1B4B" font-size="44" font-weight="800">第二十三章：</text>
+                    <text x="310" y="105" fill="#F97316" font-size="44" font-weight="800">pandas</text>
+
+                    <!-- 表頭 -->
+                    <g transform="translate(25, 130)">
+                        <rect x="0" y="0" width="410" height="50" rx="10" fill="#EDE9FE"/>
+                        <text x="20" y="33" fill="#312E81" font-size="20" font-weight="700">語法</text>
+
+                        <rect x="425" y="0" width="445" height="50" rx="10" fill="#EDE9FE"/>
+                        <text x="445" y="33" fill="#312E81" font-size="20" font-weight="700">做什麼</text>
+                    </g>
+
+                    <!-- Row 1: pd.read_csv("檔名.csv") -->
+                    <g transform="translate(25, 190)">
+                        <rect x="0" y="0" width="410" height="110" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                        <text x="20" y="42" fill="#0F172A" font-family="'JetBrains Mono', monospace" font-size="20" font-weight="700">pd.read_csv("檔名.csv")</text>
+
+                        <rect x="425" y="0" width="445" height="110" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                        <text x="445" y="38" fill="#1E293B" font-size="20" font-weight="700">讀 CSV 成 DataFrame（pandas</text>
+                        <text x="445" y="68" fill="#1E293B" font-size="20" font-weight="700">的表格，有欄名）</text>
+                        <text x="445" y="98" fill="#475569" font-size="18" font-weight="600">CSV：用逗號分隔欄位的表格檔</text>
+                    </g>
+
+                    <!-- Row 2: df.head() -->
+                    <g transform="translate(25, 310)">
+                        <rect x="0" y="0" width="410" height="55" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                        <text x="20" y="36" fill="#0F172A" font-family="'JetBrains Mono', monospace" font-size="20" font-weight="700">df.head()</text>
+
+                        <rect x="425" y="0" width="445" height="55" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                        <text x="445" y="36" fill="#1E293B" font-size="20" font-weight="700">看前 5 筆</text>
+                    </g>
+
+                    <!-- Row 3: df.values.astype('float32') -->
+                    <g transform="translate(25, 375)">
+                        <rect x="0" y="0" width="410" height="135" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                        <text x="20" y="42" fill="#0F172A" font-family="'JetBrains Mono', monospace" font-size="19" font-weight="700">df.values.astype('float32')</text>
+
+                        <rect x="425" y="0" width="445" height="135" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.8"/>
+                        <text x="445" y="38" fill="#1E293B" font-size="20" font-weight="700">拿掉欄名變成純數字的 NumPy 陣</text>
+                        <text x="445" y="68" fill="#1E293B" font-size="20" font-weight="700">列，再把每個數字改成 float32</text>
+                        <text x="445" y="100" fill="#475569" font-size="19" font-weight="600">（帶小數的數字格式）</text>
+                    </g>
+                </svg>
+            </div>
+
+            <!-- pandas 切片拆解 -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+                <h4 class="font-bold text-slate-900 text-sm md:text-base flex items-center gap-2">
+                    <i class="ph-bold ph-table text-emerald-600"></i> pandas 表格轉純數值陣列與特徵切片
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-slate-900 text-slate-200 p-4 rounded-xl font-mono text-xs space-y-2">
+                        <div class="text-slate-400"># 讀取 CSV 並轉為純浮點數陣列</div>
+                        <div>df = pd.read_csv('data.csv')</div>
+                        <div>data = df.values.astype(float)</div>
+                        <div class="text-slate-400 pt-2"># 切分特徵 X 與目標標籤 y</div>
+                        <div>X = data[:, 0:9]  <span class="text-emerald-400"># 列全選；欄取 0~8 (共 9 欄)</span></div>
+                        <div>y = data[:, 9]    <span class="text-emerald-400"># 列全選；欄取索引 9 (第 10 欄)</span></div>
+                    </div>
+                    <div class="space-y-2 text-xs md:text-sm text-slate-600">
+                        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                            <span class="font-bold text-slate-800">中括號切片語法拆解：<code class="code-pill">[列, 欄]</code></span>
+                            <p class="mt-1">單獨一個冒號 <code class="code-pill">:</code> 代表「該維度全部選取」。</p>
+                        </div>
+                        <div class="p-3 bg-amber-50 rounded-lg border border-amber-200 text-amber-900">
+                            <span class="font-bold">Python 切片左閉右開原則：</span>
+                            <p class="mt-0.5"><code class="code-pill">0:9</code> 包含索引 0、1、2... 直到 8，<b>不包含 9</b>。欄位索引從 0 起算，故 <code class="code-pill">[:, 9]</code> 取的是第 10 個欄位！</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- scikit-learn 五大核心方法比喻卡片 -->
+            <div>
+                <h4 class="text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
+                    <i class="ph-bold ph-toolbox text-sky-600"></i> scikit-learn 核心五大方法比喻法
+                </h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    <div class="bg-white p-4 rounded-xl border-l-4 border-sky-500 border-slate-200 border shadow-sm">
+                        <div class="font-mono font-bold text-sky-700 text-sm">.fit()</div>
+                        <div class="text-xs font-bold text-slate-800 mt-1">「量身尺寸」</div>
+                        <p class="text-xs text-slate-500 mt-1">從資料中學習規則（如平均值、主成分投影矩陣、權重）。</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border-l-4 border-indigo-500 border-slate-200 border shadow-sm">
+                        <div class="font-mono font-bold text-indigo-700 text-sm">.transform()</div>
+                        <div class="text-xs font-bold text-slate-800 mt-1">「照寸裁布」</div>
+                        <p class="text-xs text-slate-500 mt-1">套用已學會的規則，對資料進行變換（如標準化、降維投影）。</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border-l-4 border-purple-500 border-slate-200 border shadow-sm">
+                        <div class="font-mono font-bold text-purple-700 text-sm">.fit_transform()</div>
+                        <div class="text-xs font-bold text-slate-800 mt-1">「量完直接裁」</div>
+                        <p class="text-xs text-slate-500 mt-1">邊學規則邊變換當前資料，僅能在 Training Data 上使用！</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border-l-4 border-emerald-500 border-slate-200 border shadow-sm">
+                        <div class="font-mono font-bold text-emerald-700 text-sm">.predict()</div>
+                        <div class="text-xs font-bold text-slate-800 mt-1">「給出產出」</div>
+                        <p class="text-xs text-slate-500 mt-1">讓已訓練完成的 Estimator 對未知資料預測目標類別或數值。</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border-l-4 border-amber-500 border-slate-200 border shadow-sm">
+                        <div class="font-mono font-bold text-amber-700 text-sm">.inverse_transform()</div>
+                        <div class="text-xs font-bold text-slate-800 mt-1">「還原原狀」</div>
+                        <p class="text-xs text-slate-500 mt-1">將轉換後的降維或標準化數據，逆轉映射回原本維度。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 互動 SVG 2：Data Leakage vs Pipeline 防範流程 -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+                    <div>
+                        <h4 class="font-bold text-slate-900 flex items-center gap-2">
+                            <i class="ph-bold ph-shield-warning text-rose-500"></i> 視覺化解構：資料洩漏（Data Leakage）與 Pipeline 防護
+                        </h4>
+                        <p class="text-xs text-slate-500">切分驗證集前 fit 全資料 vs Pipeline 嚴格折內隔離</p>
+                    </div>
+                    <div class="inline-flex rounded-lg border border-slate-200 p-1 bg-slate-50 text-xs font-semibold">
+                        <button id="btn-leak-wrong" onclick="setPipelineFlow('wrong')" class="px-3 py-1.5 rounded-md transition bg-rose-500 text-white">常見錯誤：全局洩漏</button>
+                        <button id="btn-leak-correct" onclick="setPipelineFlow('correct')" class="px-3 py-1.5 rounded-md transition text-slate-600 hover:text-slate-900">正確作法：Pipeline 隔離</button>
+                    </div>
+                </div>
+
+                <!-- 流程圖 SVG -->
+                <div class="py-4 overflow-x-auto flex justify-center">
+                    <svg id="leak-svg" width="650" height="230" viewBox="0 0 650 230" class="max-w-full">
+                        <!-- 背景與折數容器 -->
+                        <g id="leak-content">
+                            <!-- JS 動態生成 -->
+                        </g>
+                    </svg>
+                </div>
+                <div id="leak-description-box" class="p-4 rounded-xl text-xs md:text-sm bg-rose-50 border border-rose-200 text-rose-950 transition-colors">
+                    <span class="font-bold flex items-center gap-1.5">
+                        <i class="ph-bold ph-warning-circle text-rose-600"></i> 洩漏分析：在交叉驗證外對全體資料做 fit
+                    </span>
+                    <p class="mt-1 leading-relaxed">
+                        如果在做 cross_val_score 前，就先執行了 <code class="code-pill">lda.fit_transform(X, y)</code>，LDA 便會提前利用了驗證折（Validation Fold）的標籤學到投影權重。這等於考前偷看考卷答案，產生的模型驗證分數<b>嚴重虛高</b>，上線必死！
+                    </p>
+                </div>
+            </div>
+
+            <!-- 評估指標評估對照表 -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                <h4 class="font-bold text-slate-900 text-sm md:text-base mb-3 flex items-center gap-2">
+                    <i class="ph-bold ph-scales text-indigo-600"></i> scoring 評估指標配置規範（高頻考點）
+                </h4>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs md:text-sm border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-700 border-b border-slate-200">
+                                <th class="p-3 font-semibold">任務類型</th>
+                                <th class="p-3 font-semibold">可使用的 scoring 名稱</th>
+                                <th class="p-3 font-semibold">致命錯誤 / 禁止使用</th>
+                                <th class="p-3 font-semibold">觀念理由</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-slate-600">
+                            <tr>
+                                <td class="p-3 font-bold text-slate-900">二元分類 (Binary)</td>
+                                <td class="p-3"><code class="code-pill">accuracy</code>, <code class="code-pill">f1</code>, <code class="code-pill">roc_auc</code></td>
+                                <td class="p-3 text-slate-400">無特殊限制</td>
+                                <td class="p-3">具有單一明確的正類（Positive Class），`f1` 預設直接計算該類別。</td>
+                            </tr>
+                            <tr class="bg-amber-50/40">
+                                <td class="p-3 font-bold text-amber-900">多類別分類 (Multiclass)</td>
+                                <td class="p-3 font-semibold text-emerald-700"><code class="code-pill">accuracy</code>, <code class="code-pill">f1_macro</code>, <code class="code-pill">f1_weighted</code></td>
+                                <td class="p-3 text-rose-600 font-bold"><i class="ph-fill ph-prohibit"></i> scoring='f1'</td>
+                                <td class="p-3">超過 2 類（如 10 類手寫字）沒有單一正類，直接寫 `f1` 會因缺乏平均策略而噴錯或無效！</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-slate-900">數值回歸 (Regression)</td>
+                                <td class="p-3"><code class="code-pill">neg_mean_squared_error</code>, <code class="code-pill">r2</code></td>
+                                <td class="p-3 text-rose-600"><i class="ph-fill ph-prohibit"></i> 'mse' 或 'accuracy'</td>
+                                <td class="p-3">scikit-learn 慣例：效能指標越高越好，但 MSE 越小越好，故內建指標冠上負號（Negative）。</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 互動 SVG 3：PCA 降噪原理互動 -->
+        <section id="pca-section" class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg bg-purple-600 text-white font-bold flex items-center justify-center text-sm">24</span>
+                <div>
+                    <h3 class="text-xl md:text-2xl font-bold text-slate-900">PCA 降噪原理解構：保留主要變異 vs 濾除微小雜訊</h3>
+                    <p class="text-xs text-slate-500">115 年第 46 題核心盲點：為什麼不設 n_components 雜訊完全沒濾掉？</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                <!-- 控制面板 -->
+                <div class="lg:col-span-5 space-y-4">
+                    <div class="p-4 bg-purple-50/70 rounded-xl border border-purple-200">
+                        <label for="pca-slider" class="flex items-center justify-between font-bold text-xs md:text-sm text-purple-950 mb-2">
+                            <span>調整保留主成分比例 (n_components)：</span>
+                            <span id="pca-comp-val" class="font-mono text-purple-700 bg-white px-2 py-0.5 rounded shadow-sm">50% 變異</span>
+                        </label>
+                        <input id="pca-slider" type="range" min="1" max="100" value="50" oninput="updatePCASimulation(this.value)"
+                               class="w-full h-2 bg-purple-200 rounded-lg appearance-none cursor-pointer accent-purple-600">
+                        <div class="flex justify-between text-[11px] text-purple-700 mt-1 font-mono">
+                            <span>0.05 (過度平滑)</span>
+                            <span>0.50 (最佳降噪)</span>
+                            <span>1.0 (未降維/雜訊重現)</span>
+                        </div>
+                    </div>
+
+                    <div class="text-xs md:text-sm text-slate-600 space-y-2">
+                        <div class="font-bold text-slate-800 flex items-center gap-1.5">
+                            <i class="ph-bold ph-lightbulb text-amber-500"></i> PCA 降噪三部曲
+                        </div>
+                        <p class="leading-relaxed">
+                            1. <code class="code-pill">pca.fit(X_noisy)</code> 尋找資料變異量最大的正交主軸。<br>
+                            2. <b>有效信號</b>（數字結構）集中在<b>前幾個大變異主成分</b>；隨機雜訊分散在<b>尾部微小主成分</b>。<br>
+                            3. 丟棄尾端成分後進行 <code class="code-pill">pca.inverse_transform(X_pca)</code> 還原，雜訊就被截斷清除了！
+                        </p>
+                        <p id="pca-status-hint" class="font-semibold text-purple-700 pt-1">
+                            目前狀態：已過濾高頻隨機雜訊，保留主要字形信號！
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 降噪視覺化波形/信號 SVG -->
+                <div class="lg:col-span-7 bg-slate-900 p-5 rounded-2xl flex flex-col items-center shadow-inner">
+                    <div class="w-full flex items-center justify-between text-xs text-slate-400 mb-2 font-mono">
+                        <span>[信號重建與雜訊過濾模擬]</span>
+                        <span id="pca-spectrum-info" class="text-emerald-400">保留成分: 前 5 / 10 個</span>
+                    </div>
+                    <svg id="pca-canvas-svg" width="460" height="180" viewBox="0 0 460 180" class="w-full h-auto">
+                        <!-- 坐標軸與網格 -->
+                        <line x1="20" y1="90" x2="440" y2="90" stroke="#334155" stroke-dasharray="4" />
+                        <!-- 原信號曲線 (虛線) -->
+                        <path id="pca-original-path" fill="none" stroke="#475569" stroke-width="1.5" stroke-dasharray="2" />
+                        <!-- 重建信號曲線 -->
+                        <path id="pca-reconstructed-path" fill="none" stroke="#38bdf8" stroke-width="2.5" />
+                    </svg>
+                    <div class="flex items-center gap-6 text-[11px] text-slate-400 mt-3 font-mono">
+                        <span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-slate-500 inline-block border-t border-dashed"></span> 原始純淨信號</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-1 bg-sky-400 inline-block rounded"></span> PCA 重建輸出信號</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 經典考古題實戰演練區 (互動折疊與判斷) -->
+        <section id="mock-exams" class="space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg bg-rose-600 text-white font-bold flex items-center justify-center text-sm">考古</span>
+                <div>
+                    <h3 class="text-xl md:text-2xl font-bold text-slate-900">官方考古試題精選實戰（114～115年真題同型）</h3>
+                    <p class="text-xs text-slate-500">考前必刷五大經典程式陷阱題，檢驗觀念盲區</p>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+
+                <!-- 題目 1: 115年第46題 PCA降噪 -->
+                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                    <button onclick="toggleMock('mock1')" class="w-full p-5 text-left flex items-center justify-between hover:bg-slate-50 transition">
+                        <div class="flex items-center gap-3">
+                            <span class="bg-purple-100 text-purple-700 text-xs font-bold px-2.5 py-1 rounded">115年 第46題型</span>
+                            <span class="font-bold text-slate-800 text-sm md:text-base">手寫數字 PCA 降噪程式為何雜訊沒有去除？</span>
+                        </div>
+                        <i id="mock1-icon" class="ph-bold ph-caret-down text-slate-400 transition-transform"></i>
+                    </button>
+                    <div id="mock1-body" class="hidden p-5 border-t border-slate-100 bg-slate-50/50 space-y-3 text-xs md:text-sm">
+                        <div class="bg-slate-900 text-slate-200 p-3.5 rounded-lg font-mono text-xs overflow-x-auto">
+                            noisy = digits.data + np.random.normal(0, 4, digits.data.shape)<br>
+                            pca = PCA()  <span class="text-rose-400"># &lt;-- 關鍵行！</span><br>
+                            pca.fit(noisy)<br>
+                            components = pca.transform(noisy)<br>
+                            filtered = pca.inverse_transform(components)
+                        </div>
+                        <p class="font-semibold text-slate-800">【問題剖析】執行完 filtered 後，發現影像中的雜訊完全沒有消失，原因是？</p>
+                        <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-950">
+                            <b>【考點解析與正解】：</b><br>
+                            <code class="code-pill">PCA()</code> 在初始化時若<b>沒有指定主成分個數</b>，預設會保留全部 64 個主成分（變異量 100%）。將所有正交基底投影後再做 <code class="code-pill">inverse_transform</code>，相當於原封不動地重建，所有的隨機雜訊也全數被還原！<br>
+                            <b>正確解法：</b> 應明確指定保留部分成分，如 <code class="code-pill">PCA(n_components=0.5)</code>（保留 50% 變異量）或指定主成分數，截斷後端高頻雜訊。
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 題目 2: 114年第47題 KNN多類別評分 -->
+                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                    <button onclick="toggleMock('mock2')" class="w-full p-5 text-left flex items-center justify-between hover:bg-slate-50 transition">
+                        <div class="flex items-center gap-3">
+                            <span class="bg-sky-100 text-sky-700 text-xs font-bold px-2.5 py-1 rounded">114年 第47題型</span>
+                            <span class="font-bold text-slate-800 text-sm md:text-base">10 類手寫數字 KNN 交叉驗證：哪幾段程式碼能正確執行？</span>
+                        </div>
+                        <i id="mock2-icon" class="ph-bold ph-caret-down text-slate-400 transition-transform"></i>
+                    </button>
+                    <div id="mock2-body" class="hidden p-5 border-t border-slate-100 bg-slate-50/50 space-y-3 text-xs md:text-sm">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 font-mono text-xs">
+                            <div class="p-2.5 bg-white border border-slate-200 rounded">
+                                <span class="font-bold text-slate-700">程式碼 A：</span><br>
+                                cv = StratifiedKFold(n_splits=5)<br>
+                                cross_val_score(knn, X, y, cv=cv, scoring='accuracy')
+                            </div>
+                            <div class="p-2.5 bg-white border border-slate-200 rounded">
+                                <span class="font-bold text-slate-700">程式碼 B：</span><br>
+                                cv = StratifiedKFold(n_splits=5)<br>
+                                cross_val_score(knn, X, y, cv=cv, scoring='f1')
+                            </div>
+                            <div class="p-2.5 bg-white border border-slate-200 rounded">
+                                <span class="font-bold text-slate-700">程式碼 C：</span><br>
+                                cross_val_score(knn, X, y, cv=5, scoring='accuracy')
+                            </div>
+                            <div class="p-2.5 bg-white border border-slate-200 rounded">
+                                <span class="font-bold text-slate-700">程式碼 D：</span><br>
+                                cross_val_score(knn, X, y, cv=5, scoring='f1')
+                            </div>
+                        </div>
+                        <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-950">
+                            <b>【考點解析與正解】：只有 A 與 C 能正確輸出！</b><br>
+                            1. <b>核心陷阱：</b> 手寫數字辨識共有 0 到 9 十個類別（多分類任務）。<code class="code-pill">scoring='f1'</code> 只適用於有明確單一正類的二元分類，若用於多分類會拋出 ValueError。多類別必須寫為 <code class="code-pill">f1_macro</code> 或 <code class="code-pill">f1_weighted</code>，故 B、D 直接排除！<br>
+                            2. <b>CV 設置：</b> 分類問題傳入 <code class="code-pill">cv=5</code> 時，scikit-learn 會自動預設採用分層切分（Stratified K-Fold），與直接建立 <code class="code-pill">StratifiedKFold(5)</code> 行為完全一致，因此 A 與 C 均正確無誤。
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 題目 3: 115年第44題 LDA 洩漏 -->
+                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                    <button onclick="toggleMock('mock3')" class="w-full p-5 text-left flex items-center justify-between hover:bg-slate-50 transition">
+                        <div class="flex items-center gap-3">
+                            <span class="bg-rose-100 text-rose-700 text-xs font-bold px-2.5 py-1 rounded">115年 第44題型</span>
+                            <span class="font-bold text-slate-800 text-sm md:text-base">指出 LDA + KNN 交叉驗證中的致命邏輯錯誤（第幾行出事？）</span>
+                        </div>
+                        <i id="mock3-icon" class="ph-bold ph-caret-down text-slate-400 transition-transform"></i>
+                    </button>
+                    <div id="mock3-body" class="hidden p-5 border-t border-slate-100 bg-slate-50/50 space-y-3 text-xs md:text-sm">
+                        <div class="bg-slate-900 text-slate-200 p-3.5 rounded-lg font-mono text-xs space-y-1">
+                            <div>line 1: lda = LinearDiscriminantAnalysis(n_components=2)</div>
+                            <div class="text-rose-400 font-bold bg-rose-950/60 p-1 rounded">line 2: X_lda = lda.fit_transform(X, y)  # &lt;-- 抓到了！</div>
+                            <div>line 3: knn = KNeighborsClassifier(n_neighbors=3)</div>
+                            <div>line 4: scores = cross_val_score(knn, X_lda, y, cv=5)</div>
+                        </div>
+                        <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-950">
+                            <b>【考點解析與正解】：問題在第 2 行（Data Leakage 資料外洩）！</b><br>
+                            LDA 是監督式降維技術，需要依賴標籤 $y$ 來最大化類間分散度。第 2 行直接對「全部資料 X, y」進行 <code class="code-pill">fit_transform</code>，導致後面第 4 行進行交叉驗證時，每一個驗證折的資料與標籤早就在第 2 行被看光光，分數虛高無效！<br>
+                            <b>正確修改：</b> 必須使用 <code class="code-pill">Pipeline([('lda', lda), ('knn', knn)])</code> 再放進 <code class="code-pill">cross_val_score</code>，確保每折各自獨立 Fit。
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 題目 4: 115年第50題 分層切分比較 -->
+                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                    <button onclick="toggleMock('mock4')" class="w-full p-5 text-left flex items-center justify-between hover:bg-slate-50 transition">
+                        <div class="flex items-center gap-3">
+                            <span class="bg-amber-100 text-amber-700 text-xs font-bold px-2.5 py-1 rounded">115年 第50題型</span>
+                            <span class="font-bold text-slate-800 text-sm md:text-base">四種交叉驗證寫法，哪幾種能確保「保持類別比例」？</span>
+                        </div>
+                        <i id="mock4-icon" class="ph-bold ph-caret-down text-slate-400 transition-transform"></i>
+                    </button>
+                    <div id="mock4-body" class="hidden p-5 border-t border-slate-100 bg-slate-50/50 space-y-3 text-xs md:text-sm">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 font-mono text-xs">
+                            <div class="p-2 bg-white border border-slate-200 rounded">A: KFold(n_splits=5, shuffle=True)</div>
+                            <div class="p-2 bg-white border border-slate-200 rounded">B: StratifiedKFold(n_splits=5, shuffle=True)</div>
+                            <div class="p-2 bg-white border border-slate-200 rounded">C: cv=5 (用於分類器 cross_val_score)</div>
+                            <div class="p-2 bg-white border border-slate-200 rounded">D: RepeatedStratifiedKFold(n_splits=5, n_repeats=2)</div>
+                        </div>
+                        <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-950">
+                            <b>【考點解析與正解】：只有 B、C、D 能保持類別比例！</b><br>
+                            • <b>A 錯誤：</b> <code class="code-pill">KFold</code> 僅是隨機打亂後均分，不會去計算各類別分佈，極易造成某些折特定類別樣本過少。<br>
+                            • <b>B 與 D 正確：</b> 凡名稱帶有 <code class="code-pill">Stratified</code>（分層）者，皆會嚴格依照母體標籤比例切分各折。<br>
+                            • <b>C 正確：</b> 當傳入的 Estimator 為分類器（Classifier）時，直接給整數 <code class="code-pill">cv=5</code>，scikit-learn 底層預設自動調用分層切分！
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 本集帶走的三句話 (重點總結) -->
+        <section class="space-y-6">
+            <!-- SVG 投影片 5：這集帶走三句話 (1:1 還原 image_79f610.png) -->
+            <div class="rounded-2xl overflow-hidden shadow-lg border border-slate-200 bg-white">
+                <svg viewBox="0 0 920 480" class="w-full h-auto" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans TC', 'Inter', -apple-system, sans-serif">
+                    <rect width="920" height="480" fill="#FAF9FE"/>
+                    
+                    <circle cx="28" cy="32" r="7" fill="#F97316"/>
+                    <text x="46" y="38" fill="#5E5873" font-size="20" font-weight="600">iPAS 22 · 程式題一：NumPy、pandas、scikit-learn</text>
+                    <line x1="680" y1="32" x2="895" y2="32" stroke="#6366F1" stroke-width="2.5" stroke-linecap="round"/>
+
+                    <text x="25" y="115" fill="#1E1B4B" font-size="44" font-weight="800">這集帶走</text>
+                    <text x="225" y="115" fill="#F97316" font-size="44" font-weight="800">三句話</text>
+
+                    <!-- 卡片 1 -->
+                    <g transform="translate(25, 150)">
+                        <rect width="870" height="85" rx="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2"/>
+                        <rect x="25" y="18" width="46" height="48" rx="8" fill="#6366F1"/>
+                        <text x="48" y="51" fill="#FFFFFF" font-size="26" font-weight="800" text-anchor="middle">1</text>
+                        <text x="90" y="52" fill="#1E293B" font-size="26" font-weight="700">程式題從來不考寫程式，考的是看懂與挑錯</text>
+                    </g>
+
+                    <!-- 卡片 2 -->
+                    <g transform="translate(25, 250)">
+                        <rect width="870" height="105" rx="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2"/>
+                        <rect x="25" y="20" width="46" height="48" rx="8" fill="#6366F1"/>
+                        <text x="48" y="53" fill="#FFFFFF" font-size="26" font-weight="800" text-anchor="middle">2</text>
+                        <text x="90" y="44" fill="#1E293B" font-size="25" font-weight="700">fit 只能在訓練資料上做</text>
+                        <text x="90" y="80" fill="#1E293B" font-size="25" font-weight="700">做交叉驗證時，前處理和模型一起包進 Pipeline</text>
+                    </g>
+
+                    <!-- 卡片 3 -->
+                    <g transform="translate(25, 370)">
+                        <rect width="870" height="85" rx="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2"/>
+                        <rect x="25" y="18" width="46" height="48" rx="8" fill="#6366F1"/>
+                        <text x="48" y="51" fill="#FFFFFF" font-size="26" font-weight="800" text-anchor="middle">3</text>
+                        <text x="90" y="52" fill="#1E293B" font-size="26" font-weight="700">"f1" 只給二元分類，多類別用 macro 或 weighted</text>
+                    </g>
+                </svg>
+            </div>
+
+            <!-- 卡片總結區域保持原有美感 -->
+            <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-8 text-white shadow-xl">
+                <div class="max-w-4xl mx-auto space-y-6">
+                    <div class="flex items-center gap-2 text-sky-400 text-xs font-bold uppercase tracking-wider">
+                        <i class="ph-bold ph-bookmark-simple"></i> Executive Summary
+                    </div>
+                    <h3 class="text-2xl sm:text-3xl font-extrabold text-white">本集帶走三句話：科目三程式題通關真訣</h3>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                        <div class="bg-white/10 p-5 rounded-xl backdrop-blur-sm border border-white/10">
+                            <span class="text-sky-400 font-mono text-2xl font-bold">01</span>
+                            <h4 class="font-bold text-white text-base mt-2">不考手寫，考看懂與挑錯</h4>
+                            <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+                                看到程式碼先看題目問什麼。抓出核心 2~3 行，翻譯成一句白話，回歸基礎概念判斷。
+                            </p>
+                        </div>
+                        <div class="bg-white/10 p-5 rounded-xl backdrop-blur-sm border border-white/10">
+                            <span class="text-indigo-400 font-mono text-2xl font-bold">02</span>
+                            <h4 class="font-bold text-white text-base mt-2">fit 嚴禁碰全集，Pipeline 是解藥</h4>
+                            <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+                                所有學習規則（標準化、PCA、LDA）只能在訓練集 fit。交叉驗證務必用 Pipeline 串接隔離。
+                            </p>
+                        </div>
+                        <div class="bg-white/10 p-5 rounded-xl backdrop-blur-sm border border-white/10">
+                            <span class="text-emerald-400 font-mono text-2xl font-bold">03</span>
+                            <h4 class="font-bold text-white text-base mt-2">f1 只限二元，多類必配 macro</h4>
+                            <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+                                多分類別指標選用需嚴謹。直接填 `f1` 必報錯，請記得加上 `f1_macro` 或 `f1_weighted`。
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="pt-6 border-t border-slate-700/60 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <span class="text-xs text-slate-400">下一集預告：【EP23】程式題二：Keras 與深度學習架構必認語法</span>
+                        <a href="https://www.youtube.com/watch?v=MECrmxZn7hM&list=PLC0AIqDG72yo&index=38" target="_blank" rel="noopener noreferrer" 
+                           class="px-5 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-xs sm:text-sm font-bold transition flex items-center gap-2">
+                            <span>觀看原創影片完整解說</span>
+                            <i class="ph-bold ph-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 互動時間軸逐字稿 (Interactive Timeline Transcript) -->
+        <section id="timeline-transcript" class="space-y-6 pt-4">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+                <div class="flex items-center gap-3">
+                    <span class="w-8 h-8 rounded-lg bg-red-600 text-white font-bold flex items-center justify-center text-sm shadow">
+                        <i class="ph-bold ph-subtitles"></i>
+                    </span>
+                    <div>
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-900 flex items-center gap-2">
+                            完整時間軸逐字稿
+                            <span class="text-xs px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold font-mono">00:00 ~ 13:57</span>
+                        </h3>
+                        <p class="text-xs text-slate-500">點擊任意時間戳可即時連動頂端播放器，並提供關鍵字全文檢索</p>
+                    </div>
+                </div>
+
+                <!-- 搜尋與篩選操作面板 -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="relative w-full sm:w-64">
+                        <i class="ph-bold ph-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+                        <input type="text" id="transcript-search" oninput="filterTranscript(this.value)"
+                               placeholder="檢索關鍵字 (如 PCA, axis, 洩漏)..." 
+                               class="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-sm text-slate-800">
+                    </div>
+                    <button onclick="copyCurrentTranscript()" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
+                        <i class="ph-bold ph-copy"></i>
+                        <span id="copy-btn-text">複製全部逐字稿</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 章節快捷過濾標籤 -->
+            <div class="flex items-center gap-2 overflow-x-auto pb-2 text-xs scrollbar-thin">
+                <span class="text-slate-400 font-semibold whitespace-nowrap"><i class="ph-bold ph-funnel"></i> 章節直達：</span>
+                <button onclick="filterBySection('all')" class="chapter-tag px-2.5 py-1 rounded-full bg-slate-900 text-white font-medium whitespace-nowrap transition">全部段落</button>
+                <button onclick="filterBySection('sec1')" class="chapter-tag px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium whitespace-nowrap transition">00:00 暖身問題</button>
+                <button onclick="filterBySection('sec2')" class="chapter-tag px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium whitespace-nowrap transition">00:43 試題讀法與五大陷阱</button>
+                <button onclick="filterBySection('sec3')" class="chapter-tag px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium whitespace-nowrap transition">02:52 NumPy 軸與運算</button>
+                <button onclick="filterBySection('sec4')" class="chapter-tag px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium whitespace-nowrap transition">05:48 標準化意義解析</button>
+                <button onclick="filterBySection('sec5')" class="chapter-tag px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium whitespace-nowrap transition">07:26 pandas & sklearn 方法</button>
+                <button onclick="filterBySection('sec6')" class="chapter-tag px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium whitespace-nowrap transition">10:46 考古題實戰拆解</button>
+                <button onclick="filterBySection('sec7')" class="chapter-tag px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium whitespace-nowrap transition">13:44 帶走三句話總結</button>
+            </div>
+
+            <!-- 時間軸逐字稿主體清單 -->
+            <div id="transcript-list" class="space-y-3 relative before:absolute before:inset-0 before:left-8 before:w-0.5 before:bg-slate-200 before:hidden md:before:block">
+                <!-- 由 JavaScript 自動注入具備時間軸與互動跳轉的逐字項目 -->
+            </div>
+            <div id="no-transcript-results" class="hidden text-center py-12 text-slate-400 text-sm">
+                <i class="ph-bold ph-file-dashed text-3xl mb-2 inline-block"></i>
+                <p>找不到符合關鍵字的逐字稿內容，請嘗試其他字詞。</p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 頁尾 -->
+    <footer class="bg-white border-t border-slate-200 py-8 text-center text-xs text-slate-500">
+        <p>iPAS AI 應用規劃師（中級科目三）知識庫 · 本互動教學網頁依據 EP22 影片內容專業轉譯建置</p>
+    </footer>
+
+    <!-- 互動邏輯 JavaScript -->
+    <script>
+        // 1. 開場挑戰題驗證
+        function checkWarmupAnswer() {
+            const o1 = document.getElementById('q-opt1').checked;
+            const o2 = document.getElementById('q-opt2').checked;
+            const o3 = document.getElementById('q-opt3').checked;
+            const o4 = document.getElementById('q-opt4').checked;
+            const o5 = document.getElementById('q-opt5').checked;
+            const feedback = document.getElementById('warmup-feedback');
+            const explain = document.getElementById('warmup-explain');
+
+            explain.classList.remove('hidden');
+
+            if (o1 && !o2 && !o3 && o4 && !o5) {
+                feedback.innerHTML = '<span class="text-emerald-600 flex items-center gap-1"><i class="ph-bold ph-check"></i> 完全答對！太厲害了！</span>';
+            } else {
+                feedback.innerHTML = '<span class="text-rose-600 flex items-center gap-1"><i class="ph-bold ph-x"></i> 答案有誤，請參考下方考點解析</span>';
+            }
+        }
+
+        // 2. NumPy Axis 互動模擬
+        function setAxisMode(mode) {
+            const btnNone = document.getElementById('btn-axis-none');
+            const btn0 = document.getElementById('btn-axis-0');
+            const btn1 = document.getElementById('btn-axis-1');
+            const opTitle = document.getElementById('axis-op-title');
+            const opDesc = document.getElementById('axis-op-desc');
+            const output = document.getElementById('axis-output');
+            const arrows0 = document.getElementById('axis0-arrows');
+            const arrows1 = document.getElementById('axis1-arrows');
+
+            // 重設樣式
+            [btnNone, btn0, btn1].forEach(b => {
+                b.className = "px-3 py-1.5 rounded-md transition text-slate-600 hover:text-slate-900";
+            });
+
+            // 還原顏色
+            for (let r = 0; r < 2; r++) {
+                for (let c = 0; c < 3; c++) {
+                    const rect = document.querySelector(`#cell-${r}-${c} rect`);
+                    rect.setAttribute('fill', '#f8fafc');
+                    rect.setAttribute('stroke', '#cbd5e1');
+                }
+            }
+            arrows0.classList.add('opacity-0');
+            arrows1.classList.add('opacity-0');
+
+            if (mode === 'none') {
+                btnNone.className = "px-3 py-1.5 rounded-md transition bg-white text-slate-900 shadow-sm";
+                opTitle.innerText = "原始矩陣 array";
+                opDesc.innerText = "維度為 (2, 3)，包含 2 列特徵紀錄與 3 欄特徵變數。";
+                output.innerHTML = "[[1, 2, 3],<br>&nbsp;[4, 5, 6]]";
+            } else if (mode === '0') {
+                btn0.className = "px-3 py-1.5 rounded-md transition bg-sky-600 text-white shadow-sm";
+                arrows0.classList.remove('opacity-0');
+                opTitle.innerText = "np.sum(x, axis=0)";
+                opDesc.innerText = "直向 (縱軸) 壓扁，沿著第 0 軸將每一欄由上往下相加。形狀由 (2, 3) 降為 (3,)。";
+                output.innerHTML = "[1+4, 2+5, 3+6] = <span class='text-sky-600 font-bold'>[5, 7, 9]</span> (共 3 個特徵值)";
+
+                for (let c = 0; c < 3; c++) {
+                    document.querySelector(`#cell-0-${c} rect`).setAttribute('fill', '#e0f2fe');
+                    document.querySelector(`#cell-1-${c} rect`).setAttribute('fill', '#e0f2fe');
+                    document.querySelector(`#cell-0-${c} rect`).setAttribute('stroke', '#0284c7');
+                    document.querySelector(`#cell-1-${c} rect`).setAttribute('stroke', '#0284c7');
+                }
+            } else if (mode === '1') {
+                btn1.className = "px-3 py-1.5 rounded-md transition bg-indigo-600 text-white shadow-sm";
+                arrows1.classList.remove('opacity-0');
+                opTitle.innerText = "np.sum(x, axis=1)";
+                opDesc.innerText = "橫向 (橫軸) 壓扁，沿著第 1 軸將每一列由左往右相加。形狀由 (2, 3) 降為 (2,)。";
+                output.innerHTML = "[1+2+3, 4+5+6] = <span class='text-indigo-600 font-bold'>[6, 15]</span> (共 2 筆紀錄加總)";
+
+                for (let c = 0; c < 3; c++) {
+                    document.querySelector(`#cell-0-${c} rect`).setAttribute('fill', '#ede9fe');
+                    document.querySelector(`#cell-1-${c} rect`).setAttribute('fill', '#f3e8ff');
+                    document.querySelector(`#cell-0-${c} rect`).setAttribute('stroke', '#6366f1');
+                    document.querySelector(`#cell-1-${c} rect`).setAttribute('stroke', '#a855f7');
+                }
+            }
+        }
+
+        // 3. Data Leakage vs Pipeline 流程圖切換
+        function setPipelineFlow(type) {
+            const btnWrong = document.getElementById('btn-leak-wrong');
+            const btnCorrect = document.getElementById('btn-leak-correct');
+            const svgContent = document.getElementById('leak-content');
+            const descBox = document.getElementById('leak-description-box');
+
+            if (type === 'wrong') {
+                btnWrong.className = "px-3 py-1.5 rounded-md transition bg-rose-500 text-white";
+                btnCorrect.className = "px-3 py-1.5 rounded-md transition text-slate-600 hover:text-slate-900";
+                descBox.className = "p-4 rounded-xl text-xs md:text-sm bg-rose-50 border border-rose-200 text-rose-950";
+                descBox.innerHTML = `
+                    <span class="font-bold flex items-center gap-1.5"><i class="ph-bold ph-warning-circle text-rose-600"></i> 洩漏分析：在交叉驗證外對全體資料做 fit</span>
+                    <p class="mt-1 leading-relaxed">如果執行了 <code class="code-pill">lda.fit_transform(X, y)</code>，LDA 便會提前利用了驗證折（Validation Fold）的標籤學到投影方向。這等於考前偷看答案，產生的模型驗證分數<b>嚴重虛高</b>，缺乏真實泛化力！</p>
+                `;
+                drawWrongFlow();
+            } else {
+                btnWrong.className = "px-3 py-1.5 rounded-md transition text-slate-600 hover:text-slate-900";
+                btnCorrect.className = "px-3 py-1.5 rounded-md transition bg-emerald-600 text-white";
+                descBox.className = "p-4 rounded-xl text-xs md:text-sm bg-emerald-50 border border-emerald-200 text-emerald-950";
+                descBox.innerHTML = `
+                    <span class="font-bold flex items-center gap-1.5"><i class="ph-bold ph-check-circle text-emerald-600"></i> 正確方案：Pipeline 將前處理與模型一同納入 CV 折內</span>
+                    <p class="mt-1 leading-relaxed">使用 <code class="code-pill">Pipeline([('scaler', scaler), ('model', model)])</code>。每一折只有該折的 <b>Training Fold</b> 會執行 fit，驗證折（Validation Fold）被嚴格隱匿，徹底杜絕洩漏！</p>
+                `;
+                drawCorrectFlow();
+            }
+        }
+
+        function drawWrongFlow() {
+            const svg = document.getElementById('leak-content');
+            svg.innerHTML = `
+                <!-- 錯誤流程示意 -->
+                <rect x="20" y="30" width="180" height="70" rx="8" fill="#fee2e2" stroke="#ef4444" stroke-width="2"/>
+                <text x="110" y="60" text-anchor="middle" font-size="13" font-weight="bold" fill="#991b1b">全部資料 (X, y)</text>
+                <text x="110" y="80" text-anchor="middle" font-size="11" fill="#b91c1c">未切分前直接 fit</text>
+
+                <path d="M 205,65 L 260,65" stroke="#ef4444" stroke-width="2" marker-end="url(#arrow-down)"/>
+                <text x="235" y="55" text-anchor="middle" font-size="10" font-weight="bold" fill="#ef4444">洩漏！</text>
+
+                <rect x="265" y="25" width="360" height="170" rx="10" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="4"/>
+                <text x="285" y="48" font-size="12" font-weight="bold" fill="#475569">5-Fold 交叉驗證 (已被污染)</text>
+
+                <!-- Fold 1 -->
+                <rect x="285" y="65" width="230" height="24" rx="4" fill="#cbd5e1"/>
+                <rect x="520" y="65" width="85" height="24" rx="4" fill="#fca5a5" stroke="#ef4444"/>
+                <text x="400" y="81" text-anchor="middle" font-size="10" fill="#334155">訓練折 1 (80%)</text>
+                <text x="562" y="81" text-anchor="middle" font-size="10" font-weight="bold" fill="#991b1b">驗證折(已被窺探)</text>
+
+                <!-- Fold 2 -->
+                <rect x="285" y="100" width="170" height="24" rx="4" fill="#cbd5e1"/>
+                <rect x="460" y="100" width="85" height="24" rx="4" fill="#fca5a5" stroke="#ef4444"/>
+                <rect x="550" y="100" width="55" height="24" rx="4" fill="#cbd5e1"/>
+                <text x="370" y="116" text-anchor="middle" font-size="10" fill="#334155">訓練折 2</text>
+                <text x="502" y="116" text-anchor="middle" font-size="10" font-weight="bold" fill="#991b1b">被偷看</text>
+
+                <text x="445" y="155" text-anchor="middle" font-size="11" font-weight="bold" fill="#dc2626">⚠️ 驗證評估分數大幅失真 (過度樂觀)</text>
+            `;
+        }
+
+        function drawCorrectFlow() {
+            const svg = document.getElementById('leak-content');
+            svg.innerHTML = `
+                <!-- 正確流程示意 -->
+                <rect x="20" y="40" width="160" height="130" rx="8" fill="#ecfdf5" stroke="#10b981" stroke-width="2"/>
+                <text x="100" y="70" text-anchor="middle" font-size="13" font-weight="bold" fill="#065f46">Pipeline 物件</text>
+                <text x="100" y="95" text-anchor="middle" font-size="11" fill="#047857">1. Scaler / PCA</text>
+                <text x="100" y="115" text-anchor="middle" font-size="11" fill="#047857">2. Classifier (KNN)</text>
+                <text x="100" y="145" text-anchor="middle" font-size="10" font-weight="bold" fill="#059669">包裝成統一 Estimator</text>
+
+                <path d="M 185,105 L 235,105" stroke="#10b981" stroke-width="2"/>
+
+                <rect x="240" y="25" width="385" height="170" rx="10" fill="#f8fafc" stroke="#10b981" stroke-dasharray="2"/>
+                <text x="260" y="48" font-size="12" font-weight="bold" fill="#065f46">嚴格隔離交叉驗證 (Cross Validation)</text>
+
+                <!-- Fold 1 正確 -->
+                <rect x="260" y="65" width="250" height="26" rx="4" fill="#a7f3d0" stroke="#059669"/>
+                <rect x="515" y="65" width="90" height="26" rx="4" fill="#f1f5f9" stroke="#64748b"/>
+                <text x="385" y="82" text-anchor="middle" font-size="10" font-weight="bold" fill="#065f46">折 1 訓練：僅對這 80% 資料 fit</text>
+                <text x="560" y="82" text-anchor="middle" font-size="10" fill="#475569">純粹驗證折</text>
+
+                <!-- Fold 2 正確 -->
+                <rect x="260" y="105" width="180" height="26" rx="4" fill="#a7f3d0" stroke="#059669"/>
+                <rect x="445" y="105" width="90" height="26" rx="4" fill="#f1f5f9" stroke="#64748b"/>
+                <rect x="540" y="105" width="65" height="26" rx="4" fill="#a7f3d0" stroke="#059669"/>
+                <text x="350" y="122" text-anchor="middle" font-size="10" font-weight="bold" fill="#065f46">折 2 訓練獨立 fit</text>
+                <text x="490" y="122" text-anchor="middle" font-size="10" fill="#475569">純粹驗證</text>
+
+                <text x="450" y="165" text-anchor="middle" font-size="11" font-weight="bold" fill="#059669">✓ 驗證折完全未參與任何 fit 階段，可信度 100%</text>
+            `;
+        }
+
+        // 4. PCA 降噪信號互動模擬
+        function updatePCASimulation(val) {
+            const compLabel = document.getElementById('pca-comp-val');
+            const spectrumInfo = document.getElementById('pca-spectrum-info');
+            const hint = document.getElementById('pca-status-hint');
+            const pct = parseInt(val);
+            compLabel.innerText = `${pct}% 變異`;
+
+            const keptComps = Math.max(1, Math.round(pct / 10));
+            spectrumInfo.innerText = `保留成分: 前 ${keptComps} / 10 個`;
+
+            if (pct >= 90) {
+                hint.innerText = "⚠️ 警告：保留過多成分（接近全部），微小隨機雜訊全數被重建還原，降噪失敗！";
+                hint.className = "font-semibold text-rose-600 pt-1";
+            } else if (pct <= 15) {
+                hint.innerText = "⚠️ 警示：保留成分過少，連同文字主體訊號一起被過濾掉（欠擬合、過度模糊）！";
+                hint.className = "font-semibold text-amber-600 pt-1";
+            } else {
+                hint.innerText = "✓ 最佳平衡：主要結構變異保留，高頻隨機雜訊被成功截斷拋棄！";
+                hint.className = "font-semibold text-emerald-600 pt-1";
+            }
+
+            renderPCACurve(pct);
+        }
+
+        function renderPCACurve(pct) {
+            const origPath = document.getElementById('pca-original-path');
+            const reconPath = document.getElementById('pca-reconstructed-path');
+            const width = 440;
+            const height = 180;
+            const midY = 90;
+
+            let origD = `M 20 ${midY}`;
+            let reconD = `M 20 ${midY}`;
+
+            // 生成擬真信號：主波 (信號) + 高頻隨機波 (雜訊)
+            const noiseFactor = (pct > 80) ? (pct - 70) / 30 : 0.08 * (pct / 50);
+            const smoothFactor = Math.min(1, pct / 40);
+
+            for (let x = 20; x <= width; x += 4) {
+                const t = (x - 20) / (width - 20) * Math.PI * 4;
+                // 純淨信號
+                const clean = Math.sin(t) * 45 + Math.sin(t * 0.5) * 20;
+                // 高頻雜訊
+                const noise = (Math.sin(t * 19) * 12 + Math.cos(t * 31) * 8);
+
+                origD += ` L ${x} ${midY - clean}`;
+
+                // 重建信號：smoothFactor 決定主信號還原度，noiseFactor 決定雜訊滲入量
+                const recon = clean * smoothFactor + noise * noiseFactor;
+                reconD += ` L ${x} ${midY - recon}`;
+            }
+
+            origPath.setAttribute('d', origD);
+            reconPath.setAttribute('d', reconD);
+        }
+
+        // 5. 考古題折疊展開控制
+        function toggleMock(id) {
+            const body = document.getElementById(`${id}-body`);
+            const icon = document.getElementById(`${id}-icon`);
+            if (body.classList.contains('hidden')) {
+                body.classList.remove('hidden');
+                icon.classList.add('rotate-180');
+            } else {
+                body.classList.add('hidden');
+                icon.classList.remove('rotate-180');
+            }
+        }
+
+        // 6. 時間軸逐字稿資料集與搜尋/跳轉邏輯
+        const rawTranscriptData = [
+            { time: "00:00:00", seconds: 0, sec: "sec1", topic: "開場思維挑戰", text: "先問你一題：一段程式先把每一欄減掉自己那一欄的平均，再除以自己那一欄的標準差，下面五個描述哪幾個對？", tags: ["標準化", "平均", "標準差"] },
+            { time: "00:00:07", seconds: 7, sec: "sec1", topic: "開場思維挑戰", text: "第一，減平均讓每個特徵的平均變 0；第二，除標準差讓標準差變 0；第三，結果會壓縮到 0 到 1 之間；第四，標準化能防止梯度爆炸或消失；第五，標準化屬於特徵選擇。", tags: ["特徵選擇", "正規化", "梯度爆炸"] },
+            { time: "00:00:24", seconds: 24, sec: "sec1", topic: "開場思維挑戰", text: "先停下來想一下，答案在後面講標準化程式時揭曉。", tags: ["解謎"] },
+            { time: "00:00:29", seconds: 29, sec: "sec2", topic: "試題結構與命題方向", text: "這集進程式題講義第 21 到 23 章。上一集講完第 20 章演算法偏見與公平性，這集三章：試題怎麼讀、NumPy 語法、pandas 與 scikit-learn 必認語法。", tags: ["大綱", "章節概覽"] },
+            { time: "00:00:43", seconds: 43, sec: "sec2", topic: "試題結構與命題方向", text: "先看第 21 章：試題在考什麼？官方公告從 114 年第二梯次起，科目三納入程式相關題型，涵蓋 Python 基本語法、程式邏輯判斷、程式片段解析，後續各梯次預計約佔整體試題 25%，題型有單選與題組。", tags: ["官方公告", "科目三", "佔比25%"] },
+            { time: "00:01:01", seconds: 61, sec: "sec2", topic: "試題結構與命題方向", text: "114 年和 115 年這兩回共有 23 題程式題，用到的套件只有五個：NumPy、scikit-learn、Keras、PyTorch，外加 Matplotlib 畫圖。從來不考寫程式，考的是看懂與除錯。", tags: ["五大套件", "看懂與除錯", "非手寫代碼"] },
+            { time: "00:01:13", seconds: 73, sec: "sec2", topic: "試題結構與命題方向", text: "程式題考的觀念前面各章都教過，程式題這幾章教你怎麼從程式碼裡認出那個觀念。", tags: ["觀念映射"] },
+            { time: "00:01:21", seconds: 81, sec: "sec2", topic: "試題結構與命題方向", text: "程式題有三種固定題型：第一種是「認一認」，給一段程式問他在算什麼、屬於哪種技術，考過的有認出 MSE、認出 Dropout、認出特徵萃取；第二種是「找錯、找洩漏」，程式跑得出來但結果不對，問哪一行要改；第三種是「讀輸出」，給模型摘要、資料形狀或訓練曲線，問數字或診斷。", tags: ["三大固定題型", "認一認", "找洩漏", "讀輸出"] },
+            { time: "00:01:46", seconds: 106, sec: "sec2", topic: "四大閱讀步驟", text: "讀程式題有四個步驟：第一，先讀題目問什麼，再看程式碼；第二，找出跟問題有關的那兩三行，其他行先跳過；第三，把程式翻成一句中文（這行在做什麼）；第四，回到選項，用前面學的觀念判斷。", tags: ["解題步驟", "先讀題目", "白話翻譯"] },
+            { time: "00:02:02", seconds: 122, sec: "sec2", topic: "高頻五大陷阱", text: "程式題最常見的陷阱有五個：第一，前處理用了全部資料：標準化、PCA 會從資料學平均、投影方向，這些東西只能在訓練資料上學，用全部資料學等於先偷看了驗證資料。第二，增強破壞語意：字母、數字左右翻轉會變成別的字（例如 b 翻過來就是 d），所以不能拿水平翻轉做資料增強。第三，指標名稱不配任務：寫成 F1 只會算二元分類，十類的資料要改用 f1_macro 這類寫法。第四，凍結範圍寫錯：只想凍結卷積層，卻寫成凍結整個模型。第五，參數沒設：PCA 沒填要保留幾個主成分就會全部保留，等於沒降維。", tags: ["資料洩漏", "增強破壞語意", "指標不匹配", "凍結範圍", "未降維"] },
+            { time: "00:02:47", seconds: 167, sec: "sec2", topic: "高頻五大陷阱", text: "第一、三、五個這回拆，第二、四個留到第 25 章再拆。", tags: ["章節安排"] },
+            { time: "00:02:52", seconds: 172, sec: "sec3", topic: "NumPy 陣列乘法與點積", text: "接著第 22 章：NumPy 必認語法。NumPy 的基本資料是陣列，就是排成一列或一張表的數字。兩個陣列直接用乘號（*）相乘是逐元素相乘（同位置相乘不加），例如 [1, 2, 3] 乘上 [4, 5, 6] 得到 [4, 10, 18]。", tags: ["逐元素相乘", "陣列", "乘號"] },
+            { time: "00:03:10", seconds: 190, sec: "sec3", topic: "NumPy 點積與矩陣乘法", text: "另一種乘法是點積（Dot product），同位置相乘再全部加起來，同樣這兩組數字：1*4 + 2*5 + 3*6 = 32。放兩個矩陣進去就是矩陣乘法。", tags: ["點積", "Dot Product", "矩陣乘法"] },
+            { time: "00:03:20", seconds: 200, sec: "sec3", topic: "矩陣形狀、轉置與行列式", text: "形狀（shape）是幾列幾欄（例如 2 列 2 欄）；轉置是列和欄互換；反矩陣、行列式、特徵值與特徵向量各有一個寫法。", tags: ["shape", "轉置", "反矩陣", "行列式", "特徵值"] },
+            { time: "00:03:32", seconds: 212, sec: "sec3", topic: "行列式計算範例", text: "行列式的例子是 [1, 2] 在第一列，[3, 4] 在第二列，算法是 1*4 - 2*3 = -2。", tags: ["det", "行列式"] },
+            { time: "00:03:40", seconds: 220, sec: "sec3", topic: "Axis 統計量計算", text: "算平均時寫 axis=0 得到每一欄的平均，也就是往下算，每個特徵各一個平均；標準差也一樣，axis=0 是每一欄的標準差。開根號也有現成的寫法（np.sqrt），算 RMSE 會用到，RMSE 就是 MSE 開根號。", tags: ["axis=0", "mean", "std", "RMSE"] },
+            { time: "00:03:58", seconds: 238, sec: "sec3", topic: "Axis 軸向壓縮核心法則", text: "axis=0 是上下方向壓扁，得到每一欄的結果；axis=1 是左右方向壓扁，得到每一列的結果。例如 2 列 3 欄的陣列，第一列是 1, 2, 3，第二列是 4, 5, 6：axis=0 加總得到 5, 7, 9 共三個數；axis=1 加總得到 6, 15 共兩個數。", tags: ["上下壓扁", "左右壓扁", "axis維度"] },
+            { time: "00:04:17", seconds: 257, sec: "sec3", topic: "亂數種子與分佈生成", text: "接著是亂數：設定種子（seed）是固定亂數，每次跑結果一樣可以重現。產生整數時寫 1 到 7 得到的是 1 到 6（不含 7），擲骰子就用它。常態分佈亂數要給平均和標準差，例如以原資料為中心加上標準差 4 的雜訊。另一種只產生 0 或 1，可以做 Dropout 遮罩，1 的位置保留、0 的位置關掉。", tags: ["seed", "randint", "normal", "Dropout遮罩"] },
+            { time: "00:04:41", seconds: 281, sec: "sec3", topic: "布林遮罩與條件判斷", text: "百分號（%）在程式裡是除完的餘數，餘 0 就是偶數。拿整個陣列去做這種判斷會得到一串 True 和 False（例如偶數的位置是 True）。兩串這樣的結果用 & 符號連起來代表「且」（兩個條件同時成立）。加總的時候 True 當 1 加起來就是次數。", tags: ["餘數", "布林遮罩", "np.sum"] },
+            { time: "00:05:01", seconds: 301, sec: "sec3", topic: "題組：擲骰子與條件機率估計", text: "來看第一個題組（與 114 年那回第 41 題同類型）：程式先固定亂數，再擲 10 萬次骰子（每次 1 到 6）。條件 A 是每一次是不是偶數，得到 10 萬個 True 或 False；條件 B 是每一次是不是大於 3；A 和 B 合起來是每一次兩個條件是不是都成立，它還是一串 True/False，加總才是次數。在 B 發生的條件下要估 A 的機率，分母要放什麼？條件是 B，分母放 B 的次數，分子放兩個都發生的次數。這個條件機率問的是在 B 已經發生的那些次數裡 A 也發生的比例。理論值是 2/3（大於 3 的點數是 4、5、6，其中偶數有 4、6 兩個，所以是 2/3），擲 10 萬次的模擬結果會很接近。", tags: ["114年第41題", "條件機率", "擲骰子模擬", "蒙地卡羅"] },
+            { time: "00:05:48", seconds: 348, sec: "sec4", topic: "標準化意義深度剖析", text: "回到開場那段標準化的程式（與 114 年那回第 48 題同類型）：第一行的 -= 是減掉之後存回原變數，每一欄都減掉自己那一欄的平均；第二行的 /= 是除完之後存回原變數，每一欄再除以自己那一欄的標準差。這兩步合起來就是第 13 章教過的「標準化」。", tags: ["114年第48題", "標準化", "特徵縮放"] },
+            { time: "00:06:11", seconds: 371, sec: "sec4", topic: "開場題選項逐一檢定", text: "答案是第一和第四：第一個對：每個值都減掉平均，新的平均就是 0。第二個錯：標準差會變成 1。每個值除以標準差，分散程度剛好縮成一個單位。第三個錯：標準化後可以是負數或大於 1，壓到 0 到 1 是 Min-Max 正規化。第四個對：這就是官方答案，輸入尺度一致讓訓練更穩（深層網路的梯度消失仍要靠 ReLU、殘差、批次正規化）。第五個錯：標準化屬於特徵縮放，特徵選擇是挑掉沒用的欄位，標準化一欄都沒丟，只改數字大小。", tags: ["選項詳解", "尺度一致", "正規化差異"] },
+            { time: "00:06:44", seconds: 404, sec: "sec4", topic: "輸入尺度一致的物理意義", text: "輸入尺度一致是什麼意思？原本年齡是幾十，收入是幾萬，數字大小差很多；標準化後每一欄都在 0 附近差不多大，格線大小相近，梯度就不會因為某一欄數字特別大而暴衝，訓練比較穩。", tags: ["梯度暴衝", "尺度一致"] },
+            { time: "00:07:02", seconds: 422, sec: "sec4", topic: "測試集前處理的嚴謹原則", text: "開場那段考題程式其實還有另外兩行：對測試集也用了它自己的平均與標準差。嚴格說應該用訓練集的統計量，因為測試集代表未來才會看到的新資料，規則只能從訓練集學。114 年第 48 題不考這一點不影響答案，正確寫法是先用訓練集算出平均與標準差，訓練集和測試集都用這一組減平均再除以標準差。", tags: ["測試集污染", "統計量沿用"] },
+            { time: "00:07:26", seconds: 446, sec: "sec5", topic: "pandas 讀表與切片切分", text: "接著第 23 章先看 pandas：pandas 可以把 CSV 檔讀成一張有欄名的表格叫 DataFrame。CSV 是用逗號分隔欄位的表格檔，讀進來可以先看前五筆（head()），接著拿掉欄名變成純數字的 NumPy 陣列（.values），再把每個數字改成帶小數的數字格式（.astype(float)）。", tags: ["DataFrame", "values", "astype"] },
+            { time: "00:07:44", seconds: 464, sec: "sec5", topic: "Python 切片左閉右開原則", text: "中括號裡逗號左邊管列、右邊管欄，單獨一個冒號（:）代表全部。畫面中第一行是所有列、欄寫 0:9，實際只取第 0 到第 8 欄（不含 9）當特徵 X；第二行是第 9 欄當標籤 y。欄的編號從 0 開始數，所以第 9 欄其實是第 10 個欄位。", tags: ["切片語法", "0:9", "第10欄"] },
+            { time: "00:08:04", seconds: 484, sec: "sec5", topic: "scikit-learn 五大方法", text: "再來是 scikit-learn 的五個方法：fit：從資料學規則（例如平均、主成分、模型參數），比喻是「量身」。transform：套用學到的規則，像是照尺寸「裁布」。fit_transform：學完馬上套用在同一份資料，量完直接裁。predict：用訓練好的模型做預測。inverse_transform：負責還原，把轉換後的資料還原回原本形狀（例如手寫數字每張 64 個像素，PCA 降成幾維後再轉回原本的 64 維，降噪會用到）。", tags: ["fit", "transform", "fit_transform", "predict", "inverse_transform"] },
+            { time: "00:08:38", seconds: 518, sec: "sec5", topic: "資料洩漏（Data Leakage）核心鐵律", text: "最重要的一條：fit 只能在訓練資料上做。在全部資料上 fit 再做交叉驗證就是「資料洩漏」（Data Leakage），因為 fit 會把驗證那一份的資訊一起學進去（例如平均、投影方向、標籤），等於考前先看過考題，分數會虛高。", tags: ["資料洩漏", "分數虛高", "鐵律"] },
+            { time: "00:08:53", seconds: 533, sec: "sec5", topic: "交叉驗證原理", text: "接著是交叉驗證：交叉驗證是把資料切成 K 份，輪流拿其中一份當驗證、其餘當訓練，最後平均 K 次的分數。程式裡寫 cv=5 就是五折交叉驗證，回傳每折的分數再取平均。", tags: ["交叉驗證", "cv=5", "K-Fold"] },
+            { time: "00:09:10", seconds: 550, sec: "sec5", topic: "四大 CV 切分策略比較", text: "切法有四種寫法：第一種是隨機切（不保持類別比例）；第二種是分層切（Stratified，保持類別比例）；第三種直接寫 cv=5，分類模型會自動用分層 K 折；第四種是分層切再重複兩輪（RepeatedStratifiedKFold）。分層的意思是每一份的類別比例都盡量和全體一樣（例如全體 30% 是陽性，每一份也都是 30% 左右）。", tags: ["StratifiedKFold", "分層比例", "RepeatedStratifiedKFold"] },
+            { time: "00:09:35", seconds: 575, sec: "sec5", topic: "Pipeline 隔離防禦機制", text: "Pipeline 把前處理和模型串起來一起放進交叉驗證，避免洩漏。放進去之後，每一折都只用那一折的訓練部分做前處理，驗證那份不會被偷看。", tags: ["Pipeline", "避免洩漏", "自動隔離"] },
+            { time: "00:09:46", seconds: 586, sec: "sec5", topic: "scoring 評估指標匹配規範", text: "評分的名稱也要配任務：accuracy 用在分類（二元與多類別都可以）；f1 只適用二元分類；f1_macro 和 f1_weighted 用在多類別；roc_auc 用在二元分類；回歸用負的 MSE（neg_mean_squared_error），MSE 越小越好，但 scikit-learn 規定分數越大越好，所以加負號。", tags: ["accuracy", "f1", "f1_macro", "neg_mean_squared_error"] },
+            { time: "00:10:05", seconds: 605, sec: "sec5", topic: "多類別為什麼不能直接填 f1", text: "為什麼 f1 只給二元？二元分類有一個明確的正類（例如有病），f1 只算正類那一類的 F1；10 類的資料沒有單一正類，f1 算不出有效分數。多類別要指定怎麼平均：macro 是每個類別算一次 F1 再平均；weighted 是以每類樣本數加權平均。", tags: ["f1限制", "macro", "weighted"] },
+            { time: "00:10:26", seconds: 626, sec: "sec5", topic: "三大高頻演算法類別名稱", text: "程式裡常出現的類別名稱（工具名稱）先認三個：KNN（鄰居數設 3 就是找最近的三筆資料投票決定類別）；LDA（線性判別分析，用標籤找出讓各類分得最開的方向來降維）；PCA（主成分數可以填整數代表保留幾個，也可以填 0 到 1 的小數代表保留幾成變異）。", tags: ["KNN", "LDA", "PCA"] },
+            { time: "00:10:46", seconds: 646, sec: "sec6", topic: "115年第46題：PCA 降噪程式陷阱", text: "來看 115 年那回的第 46 題同類型：PCA 降噪。資料是手寫數字 1,797 筆，每筆 8*8 = 64 個特徵。第一行把每個像素都以原值為中心加上標準差 4 的隨機亂數，做出有雜訊的圖；第二行建立 PCA 沒設主成分數，會保留全部主成分；接著 fit 找出主成分（資料變化最大的幾個方向）；transform 把每張圖改用這些方向的座標表示（投影）；最後一行還原回原本的 64 維。", tags: ["115年第46題", "PCA降噪", "手寫數字"] },
+            { time: "00:11:22", seconds: 682, sec: "sec6", topic: "PCA 降噪原理與除錯", text: "這樣跑完雜訊有被去掉嗎？先想一下 PCA 為什麼能降噪？數字真正的形狀集中在前面幾個變異大的主成分，雜訊分散在後面變異小的主成分。只留前面幾個再還原，等於把後面那些雜訊丟掉；保留全部主成分投影再還原等於原封不動，雜訊也回來了。所以要改程式碼，例如把主成分數設成 0.5（只保留加起來能解釋 50% 變異的那幾個主成分）。", tags: ["n_components", "截斷雜訊", "變異量50%"] },
+            { time: "00:11:51", seconds: 711, sec: "sec6", topic: "114年第47題：KNN 多類別評分配對", text: "再來是 114 年那回第 47 題同類型：用 KNN 分手寫數字。四段程式碼差在兩個地方：CV 怎麼設、評分填什麼。程式碼 A：分層 K 折配 accuracy；程式碼 B：分層 K 折配 f1；程式碼 C：cv=5 配 accuracy；程式碼 D：cv=5 配 f1。哪幾段能正確輸出分數？答案是 A 和 C。關鍵是 f1 只給二元分類，手寫數字是 0 到 9 共十類，B 和 D 填了 f1 所以不行；CV 怎麼設兩種都行，分層 K 折是分層切，分類模型寫 cv=5 也會自動分層，兩種都能正常跑。", tags: ["114年第47題", "KNN評分", "A與C正確"] },
+            { time: "00:12:30", seconds: 750, sec: "sec6", topic: "115年第44題：LDA 標籤外洩找錯", text: "接著是 115 年那回第 44 題同類型：第一行建立 LDA；第二行用全部資料與標籤學 LDA 的投影方向，再把全部資料投影過去；第三行建立 KNN；第四行才做五折交叉驗證。問題出在哪一行？問題在第二行。每一輪拿來打分數的那一份叫驗證折，它的標籤早在第二行就被 LDA 拿去學方向了，這就是「資料洩漏」，分數會虛高。正確寫法是把 LDA 和 KNN 包成 Pipeline 再丟進交叉驗證，這樣每一折都只用那一折的訓練部分學 LDA，驗證折的標籤不會被偷看。", tags: ["115年第44題", "第二行錯誤", "LDA標籤洩漏", "Pipeline正解"] },
+            { time: "00:13:13", seconds: 793, sec: "sec6", topic: "115年第50題：保持類別比例切分法", text: "最後一題（115 年那回第 50 題同類型）：四種 CV 寫法，哪幾種能保持類別比例？程式碼 A：K-Fold 加打亂（shuffle）；程式碼 B：StratifiedKFold 加打亂；程式碼 C：cv=5；程式碼 D：RepeatedStratifiedKFold。答案是程式碼 B、C、D。程式碼 A 不保持類別比例，只是先打亂順序再切；B 和 D 是分層切；C 是分類模型會自動分層，都能保持類別比例。", tags: ["115年第50題", "BCD正確", "Stratified保持比例"] },
+            { time: "00:13:44", seconds: 824, sec: "sec7", topic: "結語：科目三必勝三句話", text: "這集帶走三句話：第一，程式題從來不考寫程式，考的是看懂與挑錯。第二，fit 只能在訓練資料上做；交叉驗證時，前處理要和模型一起包進 Pipeline。第三，f1 只給二元分類，多類別要用 macro 或 weighted。", tags: ["總結三句話", "核心口訣"] },
+            { time: "00:13:57", seconds: 837, sec: "sec7", topic: "下集預告", text: "下一集試題二：Keras 必認語法。", tags: ["EP23", "Keras預告"] }
+        ];
+
+        let activeIndex = -1;
+
+        // 渲染時間軸逐字稿
+        function renderTranscript(filterKeyword = "", targetSec = "all") {
+            const container = document.getElementById('transcript-list');
+            const noResults = document.getElementById('no-transcript-results');
+            container.innerHTML = "";
+
+            const kw = filterKeyword.trim().toLowerCase();
+            let count = 0;
+
+            rawTranscriptData.forEach((item, idx) => {
+                const matchSec = (targetSec === "all" || item.sec === targetSec);
+                const matchKw = (!kw || item.text.toLowerCase().includes(kw) || item.topic.toLowerCase().includes(kw) || item.tags.some(t => t.toLowerCase().includes(kw)));
+
+                if (matchSec && matchKw) {
+                    count++;
+                    const card = document.createElement('div');
+                    card.id = `transcript-item-${idx}`;
+                    card.className = `p-4 rounded-xl border transition-all duration-200 relative bg-white border-slate-200 hover:border-sky-300 hover:shadow-sm ${activeIndex === idx ? 'ring-2 ring-sky-500 bg-sky-50/70 border-sky-400' : ''}`;
+
+                    // 關鍵字高亮
+                    let displayText = item.text;
+                    if (kw) {
+                        const regex = new RegExp(`(${kw})`, 'gi');
+                        displayText = displayText.replace(regex, `<mark class="bg-amber-200 text-amber-900 rounded px-1">$1</mark>`);
+                    }
+
+                    // 標籤徽章 HTML
+                    const tagBadges = item.tags.map(t => `<span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">#${t}</span>`).join(" ");
+
+                    card.innerHTML = `
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2 mb-2 border-b border-slate-100 text-xs">
+                            <div class="flex items-center gap-2">
+                                <button onclick="jumpToVideoTime(${item.seconds}, ${idx})" title="點擊連動播放器至此秒數" 
+                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-900 hover:bg-sky-600 text-white font-mono font-bold transition shadow-sm">
+                                    <i class="ph-fill ph-play text-[10px]"></i>
+                                    <span>[${item.time}]</span>
+                                </button>
+                                <span class="font-bold text-slate-800">${item.topic}</span>
+                            </div>
+                            <div class="flex items-center gap-1 flex-wrap">
+                                ${tagBadges}
+                            </div>
+                        </div>
+                        <p class="text-xs md:text-sm text-slate-700 leading-relaxed">${displayText}</p>
+                    `;
+                    container.appendChild(card);
+                }
+            });
+
+            if (count === 0) {
+                noResults.classList.remove('hidden');
+            } else {
+                noResults.classList.add('hidden');
+            }
+        }
+
+        // 搜尋過濾逐字稿
+        function filterTranscript(kw) {
+            renderTranscript(kw, window.currentSection || 'all');
+        }
+
+        // 章節分類篩選
+        function filterBySection(sec) {
+            window.currentSection = sec;
+            const buttons = document.querySelectorAll('.chapter-tag');
+            buttons.forEach(btn => {
+                btn.className = "chapter-tag px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium whitespace-nowrap transition";
+            });
+            event.target.className = "chapter-tag px-2.5 py-1 rounded-full bg-slate-900 text-white font-medium whitespace-nowrap transition";
+
+            const kw = document.getElementById('transcript-search').value;
+            renderTranscript(kw, sec);
+        }
+
+        // 連動 YouTube 播放器至特定秒數
+        function jumpToVideoTime(sec, idx) {
+            activeIndex = idx;
+            const iframe = document.getElementById('youtube-player');
+            if (iframe) {
+                // 發送 YouTube iframe API 指令
+                iframe.contentWindow.postMessage(JSON.stringify({
+                    "event": "command",
+                    "func": "seekTo",
+                    "args": [sec, true]
+                }), "*");
+                iframe.contentWindow.postMessage(JSON.stringify({
+                    "event": "command",
+                    "func": "playVideo",
+                    "args": []
+                }), "*");
+
+                // 平滑滾動至播放器視窗
+                iframe.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            renderTranscript(document.getElementById('transcript-search').value, window.currentSection || 'all');
+        }
+
+        // 複製全部逐字稿到剪貼簿
+        function copyCurrentTranscript() {
+            const allText = rawTranscriptData.map(item => `[${item.time}] ${item.text}`).join("\n\n");
+            const tempTextArea = document.createElement("textarea");
+            tempTextArea.value = allText;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempTextArea);
+
+            const copyBtnText = document.getElementById('copy-btn-text');
+            copyBtnText.innerText = "已複製全部！";
+            setTimeout(() => {
+                copyBtnText.innerText = "複製全部逐字稿";
+            }, 2000);
+        }
+
+        // 初始化
+        window.onload = function() {
+            setAxisMode('none');
+            drawWrongFlow();
+            updatePCASimulation(50);
+            renderTranscript();
+        }
+    </script>
+</body>
+</html>
