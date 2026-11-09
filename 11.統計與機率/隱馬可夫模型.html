@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>隱馬可夫模型 (Hidden Markov Model, HMM) 終極教學指南與 iPAS AI 核心實戰</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        tech: {
+                            800: '#1e293b',
+                            850: '#131d2e',
+                            900: '#0f172a',
+                            950: '#020617'
+                        },
+                        brand: {
+                            emerald: '#10b981',
+                            amber: '#f59e0b',
+                            cyan: '#06b6d4',
+                            indigo: '#6366f1',
+                            rose: '#f43f5e'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- KaTeX CDN with Auto-render -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <style>
+        html { scroll-behavior: smooth; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0b1120; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .gold-glow { filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.75)); }
+        .node-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .7; } }
+    </style>
+</head>
+<body class="bg-tech-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-black">
+
+    <!-- 頂端懸浮導航列 -->
+    <header class="sticky top-0 z-50 backdrop-blur-md bg-tech-950/90 border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-indigo-500 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-emerald-500/20">
+                    <i class="fa-solid fa-project-diagram text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                        Hidden Markov Model <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono">iPAS AI 實戰特訓</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">馬可夫模型 vs 隱馬可夫模型 · 三大經典問題 · 演算法與動態晶格沙盒</p>
+                </div>
+            </div>
+            <nav class="flex items-center gap-1 sm:gap-2 text-xs">
+                <a href="#intro" class="px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition hidden sm:inline-block">歷史原理</a>
+                <a href="#mm-vs-hmm" class="px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">MM vs HMM</a>
+                <a href="#three-problems" class="px-2.5 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-semibold hover:bg-indigo-500/30 transition">三大核心問題</a>
+                <a href="#sandbox" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition shadow flex items-center gap-1.5">
+                    <i class="fa-solid fa-play text-xs"></i>
+                    <span>Trellis 沙盒</span>
+                </a>
+                <a href="#applications" class="px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition hidden md:inline-block">工業應用</a>
+                <a href="#code" class="px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition hidden lg:inline-block">Python 程式碼</a>
+                <a href="#quiz" class="px-2.5 py-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-950/40 transition">iPAS 認證測驗</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-16">
+
+        <!-- 1. 核心簡介與歷史脈絡 -->
+        <section id="intro" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- 核心定義與直覺 -->
+                <div class="lg:col-span-2 bg-tech-900 border border-slate-800 rounded-2xl p-6 sm:p-7 relative overflow-hidden flex flex-col justify-between">
+                    <div class="absolute -right-20 -top-20 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                    <div>
+                        <div class="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-2">
+                            <i class="fa-solid fa-lightbulb"></i>
+                            <span>一句話秒懂核心精髓</span>
+                        </div>
+                        <h2 class="text-2xl sm:text-3xl font-extrabold text-white mb-3">
+                            「你看得見外部表象，看不見內在真實狀態」
+                        </h2>
+                        <p class="text-slate-300 text-sm sm:text-base leading-relaxed mb-5">
+                            隱馬可夫模型 (Hidden Markov Model, HMM) 是一種專門處理<strong class="text-emerald-300">時序序列 (Sequential Data)</strong>的統計機率圖形模型。它假設背後運行著一個<strong class="text-amber-300">不可直視的隱藏狀態鏈 (Hidden State Sequence)</strong>，外部唯一能測量到的，只是隱藏狀態隨機發射出來的<strong class="text-cyan-300">表面觀測值 (Observation Sequence)</strong>。
+                        </p>
+                    </div>
+
+                    <!-- 兩大根本假設 (iPAS 必考基礎) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                        <div class="p-4 rounded-xl bg-tech-850 border border-slate-800/90">
+                            <div class="text-xs font-bold text-emerald-400 flex items-center gap-1.5 mb-1.5">
+                                <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                                <span>假設一：一階馬可夫假設</span>
+                            </div>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                目前時刻的隱藏狀態 $S_t$ 僅受前一時刻 $S_{t-1}$ 影響，與更早的歷史完全條件獨立（無長程記憶）：
+                                <span class="block mt-1.5 font-mono text-slate-200 text-xs">
+                                    $$P(S_t \mid S_{t-1}, S_{t-2}, \dots, S_1) = P(S_t \mid S_{t-1})$$
+                                </span>
+                            </p>
+                        </div>
+                        <div class="p-4 rounded-xl bg-tech-850 border border-slate-800/90">
+                            <div class="text-xs font-bold text-cyan-400 flex items-center gap-1.5 mb-1.5">
+                                <i class="fa-solid fa-eye-slash"></i>
+                                <span>假設二：觀測獨立性假設</span>
+                            </div>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                任何時刻產生的觀測值 $O_t$ 僅由當前隱藏狀態 $S_t$ 決定，與其他時刻的狀態或觀測值皆獨立：
+                                <span class="block mt-1.5 font-mono text-slate-200 text-xs">
+                                    $$P(O_t \mid S_t, S_{t-1}, O_{t-1}, \dots) = P(O_t \mid S_t)$$
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 歷史脈絡重要貢獻者 -->
+                <div class="bg-tech-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between space-y-4">
+                    <div>
+                        <div class="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-wider mb-3">
+                            <i class="fa-solid fa-landmark"></i>
+                            <span>HMM 歷史發展里程碑</span>
+                        </div>
+                        <div class="space-y-4 border-l-2 border-slate-800 pl-4 text-xs">
+                            <div class="relative">
+                                <span class="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                                <strong class="text-white block text-sm">1906 · Andrey Markov</strong>
+                                <p class="text-slate-400 mt-0.5">提出馬可夫鏈 (Markov Chain)，分析俄語詩歌母音與子音轉移，奠定無後效性隨機過程基礎。</p>
+                            </div>
+                            <div class="relative">
+                                <span class="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+                                <strong class="text-white block text-sm">1960s-1970s · Leonard Baum</strong>
+                                <p class="text-slate-400 mt-0.5">發展出隱含隨機狀態統計理論，並發明著名的 Baum-Welch 演算法（即 EM 期望最大化演算法在 HMM 中的經典形式）。</p>
+                            </div>
+                            <div class="relative">
+                                <span class="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                                <strong class="text-white block text-sm">1989 · Lawrence Rabiner</strong>
+                                <p class="text-slate-400 mt-0.5">發表歷史級經典論文《A Tutorial on Hidden Markov Models》，統一規範了 HMM 三大問題與現代語音辨識、生物資訊架構。</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-tech-850 rounded-xl border border-slate-800 text-[11px] text-slate-400">
+                        💡 核心突破：將原本只能分析「完全可觀測」系統的工具，擴展為能自主挖掘「黑盒子隱變數 (Latent Variables)」的生成式推論架構。
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. 馬可夫模型 (MM) vs 隱馬可夫模型 (HMM) 深度對比 -->
+        <section id="mm-vs-hmm" class="space-y-6">
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <div class="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-wider mb-1">
+                        <i class="fa-solid fa-code-compare"></i>
+                        <span>Model Comparison</span>
+                    </div>
+                    <h2 class="text-xl sm:text-2xl font-extrabold text-white">馬可夫模型 (MM) vs 隱馬可夫模型 (HMM) 深度對比</h2>
+                    <p class="text-slate-400 text-xs sm:text-sm mt-1">同一個情境秒懂差異：在客廳抬頭看天空 vs 在地下室看室友配件</p>
+                </div>
+
+                <!-- 互動模式切換按鈕 -->
+                <div class="inline-flex p-1 rounded-xl bg-tech-900 border border-slate-800">
+                    <button id="btn-view-mm" onclick="switchScenarioMode('mm')" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-2 bg-emerald-600 text-white shadow">
+                        <i class="fa-solid fa-sun"></i>
+                        <span>1. 馬可夫模型 (狀態看得到)</span>
+                    </button>
+                    <button id="btn-view-hmm" onclick="switchScenarioMode('hmm')" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-2 text-slate-400 hover:text-slate-200">
+                        <i class="fa-solid fa-umbrella"></i>
+                        <span>2. 隱馬可夫模型 (狀態看不到)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 情境動態演示卡片 -->
+            <div id="scenario-display-box" class="bg-tech-900 border border-slate-800 rounded-2xl p-6 sm:p-8 relative overflow-hidden transition-all duration-300">
+                <!-- 由 JavaScript 動態生成與切換 -->
+            </div>
+
+            <!-- 完整對照表 (依照規範精確整理) -->
+            <div class="bg-tech-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                <div class="px-6 py-4 bg-tech-850 border-b border-slate-800 flex items-center justify-between">
+                    <h3 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-table text-emerald-400"></i>
+                        <span>核心維度詳細對照表 (iPAS AI 必考概念)</span>
+                    </h3>
+                    <span class="text-xs px-2.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">面試與認證高頻焦點</span>
+                </div>
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-xs sm:text-sm border-collapse">
+                        <thead>
+                            <tr class="bg-tech-900 border-b border-slate-800 text-slate-400">
+                                <th class="p-4 font-bold w-1/5">比較項目</th>
+                                <th class="p-4 font-bold w-2/5 text-emerald-400 border-r border-slate-800">馬可夫模型 (Markov Model)</th>
+                                <th class="p-4 font-bold w-2/5 text-cyan-400">隱馬可夫模型 (Hidden Markov Model, HMM)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/80 text-slate-300">
+                            <tr class="hover:bg-slate-800/30 transition">
+                                <td class="p-4 font-semibold text-white">狀態可見度</td>
+                                <td class="p-4 border-r border-slate-800">
+                                    <div class="font-bold text-emerald-300 mb-1">完全可見 (Fully Observable)</div>
+                                    <p class="text-slate-400 text-xs">你所記錄到的狀態就是系統真正的物理狀態，公開透明，無任何未知遮蔽。</p>
+                                </td>
+                                <td class="p-4">
+                                    <div class="font-bold text-cyan-300 mb-1">隱藏不可見 (Hidden / Latent)</div>
+                                    <p class="text-slate-400 text-xs">真正的狀態看不到，只能看到狀態依照發射機率產生的表面「觀測值」。</p>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/30 transition">
+                                <td class="p-4 font-semibold text-white">隨機過程數量</td>
+                                <td class="p-4 border-r border-slate-800">
+                                    <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold mr-2">1 個</span>
+                                    <span>單純的<strong>狀態轉移隨機過程</strong> ($S_t \to S_{t+1}$)。</span>
+                                </td>
+                                <td class="p-4">
+                                    <span class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono font-bold mr-2">2 個</span>
+                                    <span>雙重隨機過程：1. <strong>隱藏狀態轉移過程</strong> + 2. <strong>隱藏狀態產生觀測值的發射過程</strong>。</span>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/30 transition">
+                                <td class="p-4 font-semibold text-white">核心矩陣參數</td>
+                                <td class="p-4 border-r border-slate-800">
+                                    <div class="font-mono text-emerald-300 font-bold mb-1">$\lambda = (A, \pi)$</div>
+                                    <p class="text-xs text-slate-400">僅需狀態轉移機率矩陣 $A$ 與初始分佈 $\pi$。</p>
+                                </td>
+                                <td class="p-4">
+                                    <div class="font-mono text-cyan-300 font-bold mb-1">$\lambda = (A, B, \pi)$</div>
+                                    <p class="text-xs text-slate-400">轉移機率矩陣 $A$ + 觀測發射矩陣 $B$ + 初始狀態分佈 $\pi$。</p>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/30 transition">
+                                <td class="p-4 font-semibold text-white">經典生活比喻</td>
+                                <td class="p-4 border-r border-slate-800">
+                                    <strong class="text-emerald-300">看窗外的天空：</strong>
+                                    <p class="text-xs text-slate-400 mt-1">今天下雨，明天出太陽。直接看著天空記筆記，狀態一目了然。</p>
+                                </td>
+                                <td class="p-4">
+                                    <strong class="text-cyan-300">地下室看室友配件猜天氣：</strong>
+                                    <p class="text-xs text-slate-400 mt-1">被關在地下室看不到天氣，只能看室友帶不帶傘（觀測值）來盲推外面的天氣（隱藏狀態）。</p>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/30 transition">
+                                <td class="p-4 font-semibold text-white">核心求解演算法</td>
+                                <td class="p-4 border-r border-slate-800">
+                                    <strong class="text-slate-200">頻率統計與極大似然估計 (MLE)</strong>
+                                    <p class="text-xs text-slate-400 mt-1">狀態已知，直接計算轉移次數：$a_{ij} = \frac{Count(i \to j)}{Count(i)}$。</p>
+                                </td>
+                                <td class="p-4">
+                                    <strong class="text-slate-200">三大經典演算法</strong>
+                                    <p class="text-xs text-slate-400 mt-1">前向-後向演算法 (Forward-Backward)、維特比動態規劃 (Viterbi)、Baum-Welch (EM)。</p>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/30 transition">
+                                <td class="p-4 font-semibold text-white">推論數學目標</td>
+                                <td class="p-4 border-r border-slate-800">
+                                    <span class="font-mono text-emerald-300 text-xs">$P(S_{t+1} \mid S_t)$</span>
+                                    <p class="text-xs text-slate-400 mt-1">直接預測下一時刻真實狀態發生的機率。</p>
+                                </td>
+                                <td class="p-4">
+                                    <span class="font-mono text-cyan-300 text-xs">$\arg\max_S P(S \mid O, \lambda)$</span>
+                                    <p class="text-xs text-slate-400 mt-1">在給定表面觀測序列下，逆向還原最可能的底層隱藏路徑。</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. 【IPAS AI 考題核心：HMM 三大經典問題】 (重要核心高亮展示) -->
+        <section id="three-problems" class="space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                <div>
+                    <div class="flex items-center gap-2 text-rose-400 text-xs font-bold uppercase tracking-wider mb-1">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>iPAS AI 必考重點核心</span>
+                    </div>
+                    <h2 class="text-xl sm:text-2xl font-extrabold text-white flex items-center gap-2.5">
+                        <span>HMM 三大經典問題與演算法全解析</span>
+                        <span class="text-xs px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-normal">核心命題熱點</span>
+                    </h2>
+                    <p class="text-slate-400 text-xs sm:text-sm mt-1">所有的 HMM 應用與理論，皆圍繞這三個本質問題展開：評估、解碼、學習。</p>
+                </div>
+                <div class="px-3 py-1.5 rounded-lg bg-tech-900 border border-slate-800 text-xs font-mono text-amber-400">
+                    模型三元組：$\lambda = (A, B, \pi)$
+                </div>
+            </div>
+
+            <!-- 三大問題卡片矩陣 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- 問題一：評估問題 (Evaluation) -->
+                <div class="p-6 rounded-2xl bg-tech-900 border border-slate-800 hover:border-emerald-500/60 transition flex flex-col justify-between space-y-4">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">問題一 · 評估</span>
+                            <span class="text-xs text-slate-400 font-mono">Evaluation</span>
+                        </div>
+                        <h3 class="text-lg font-bold text-white mb-1">評估問題 (Evaluation Problem)</h3>
+                        <div class="text-xs text-emerald-400 font-mono mb-3">計算生成機率：$P(O \mid \lambda)$</div>
+                        
+                        <div class="space-y-2 text-xs text-slate-300">
+                            <p><strong class="text-slate-400">【輸入條件】</strong>給定模型參數 $\lambda = (A, B, \pi)$ 與觀測序列 $O = (O_1, \dots, O_T)$。</p>
+                            <p><strong class="text-slate-400">【目標任務】</strong>計算該特定觀測序列發生的總機率 $P(O \mid \lambda)$。</p>
+                            <div class="p-3 bg-tech-850 rounded-xl border border-slate-800 text-[11px] space-y-1.5">
+                                <div class="font-bold text-white">標準解法演算法：</div>
+                                <div class="text-emerald-300 font-semibold">前向演算法 (Forward) / 後向演算法 (Backward)</div>
+                                <div class="text-slate-400">
+                                    暴力窮舉時間複雜度為 <span class="text-rose-400 font-mono">$\mathcal{O}(N^T)$</span>（不可行）；透過動態規劃將重複子問題記憶化，大幅壓縮至 <span class="text-emerald-400 font-mono font-bold">$\mathcal{O}(N^2 T)$</span>！
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-2.5 rounded-lg bg-emerald-950/30 border border-emerald-500/30 text-[11px] text-emerald-300">
+                        🎯 <strong>典型場景</strong>：語音辨識中比對哪個單詞模型的生成機率最高。
+                    </div>
+                </div>
+
+                <!-- 問題二：解碼問題 (Decoding) -->
+                <div class="p-6 rounded-2xl bg-tech-900 border-2 border-amber-500/60 transition flex flex-col justify-between space-y-4 shadow-lg shadow-amber-500/5">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">問題二 · 解碼</span>
+                            <span class="text-xs text-slate-400 font-mono">Decoding</span>
+                        </div>
+                        <h3 class="text-lg font-bold text-white mb-1">解碼問題 (Decoding Problem)</h3>
+                        <div class="text-xs text-amber-400 font-mono mb-3">推論最優路徑：$\arg\max_S P(S \mid O, \lambda)$</div>
+                        
+                        <div class="space-y-2 text-xs text-slate-300">
+                            <p><strong class="text-slate-400">【輸入條件】</strong>給定模型參數 $\lambda$ 與觀測序列 $O$。</p>
+                            <p><strong class="text-slate-400">【目標任務】</strong>在所有可能的隱藏狀態序列中，找出機率最大的最優路徑 $S^* = (s_1^*, s_2^*, \dots, s_T^*)$。</p>
+                            <div class="p-3 bg-tech-850 rounded-xl border border-slate-800 text-[11px] space-y-1.5">
+                                <div class="font-bold text-white">標準解法演算法：</div>
+                                <div class="text-amber-300 font-semibold">維特比演算法 (Viterbi Algorithm, 動態規劃 DP)</div>
+                                <div class="text-slate-400">
+                                    記錄到達時刻 $t$ 各狀態的最大路徑機率 $V_t(j)$ 與最佳前驅節點 $\psi_t(j)$，時間複雜度同樣為 <span class="text-amber-400 font-mono font-bold">$\mathcal{O}(N^2 T)$</span>。
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-2.5 rounded-lg bg-amber-950/30 border border-amber-500/30 text-[11px] text-amber-300">
+                        🎯 <strong>典型場景</strong>：看室友配件猜天氣、NLP 詞性標註、工廠機台磨損階段推論。
+                    </div>
+                </div>
+
+                <!-- 問題三：學習問題 (Learning) -->
+                <div class="p-6 rounded-2xl bg-tech-900 border border-slate-800 hover:border-cyan-500/60 transition flex flex-col justify-between space-y-4">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">問題三 · 學習</span>
+                            <span class="text-xs text-slate-400 font-mono">Learning / Training</span>
+                        </div>
+                        <h3 class="text-lg font-bold text-white mb-1">學習問題 (Learning Problem)</h3>
+                        <div class="text-xs text-cyan-400 font-mono mb-3">參數最佳化：$\max_\lambda P(O \mid \lambda)$</div>
+                        
+                        <div class="space-y-2 text-xs text-slate-300">
+                            <p><strong class="text-slate-400">【輸入條件】</strong>僅給定大量表面觀測序列 $O$（無隱藏狀態標註，非監督式學習）。</p>
+                            <p><strong class="text-slate-400">【目標任務】</strong>自動調整估計模型參數 $\lambda = (A, B, \pi)$，使得觀測似然度最大化。</p>
+                            <div class="p-3 bg-tech-850 rounded-xl border border-slate-800 text-[11px] space-y-1.5">
+                                <div class="font-bold text-white">標準解法演算法：</div>
+                                <div class="text-cyan-300 font-semibold">鮑姆-韋爾奇演算法 (Baum-Welch Algorithm, 即 EM 演算法)</div>
+                                <div class="text-slate-400">
+                                    交替執行 E-Step（計算隱含狀態後驗期望機率）與 M-Step（極大化重新更新矩陣參數），保證單調收斂至局部最優解。
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-2.5 rounded-lg bg-cyan-950/30 border border-cyan-500/30 text-[11px] text-cyan-300">
+                        🎯 <strong>典型場景</strong>：在沒有人工標籤的情況下，從感測器歷史大數據自學設備模型。
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. 嚴謹數學推導與三元組 λ 定義 -->
+        <section id="math-derivations" class="space-y-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-wider mb-1">
+                        <i class="fa-solid fa-square-root-variable"></i>
+                        <span>Formulations</span>
+                    </div>
+                    <h3 class="text-lg sm:text-xl font-bold text-white">數學推導：三元組 $\lambda = (A, B, \pi)$ 與三大演算法方程式</h3>
+                </div>
+                <span class="text-xs font-mono text-slate-400">KaTeX 純淨渲染驗證</span>
+            </div>
+
+            <!-- 三元組參數意義表格 -->
+            <div class="bg-tech-900 border border-slate-800 rounded-2xl p-5 overflow-hidden">
+                <h4 class="font-bold text-white text-sm mb-3">HMM 模型三元組參數 $\lambda = (A, B, \pi)$ 的嚴謹定義</h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                    <div class="p-3.5 bg-tech-850 rounded-xl border border-slate-800">
+                        <div class="font-mono text-emerald-400 font-bold text-sm mb-1">矩陣 A：狀態轉移機率矩陣</div>
+                        <div class="text-slate-300 mb-2">$$a_{ij} = P(S_{t+1} = s_j \mid S_t = s_i)$$</div>
+                        <p class="text-slate-400">維度為 $N \times N$，每列機率和必須滿足 $\sum_{j=1}^N a_{ij} = 1$。描述底層隱藏世界自身變遷規律。</p>
+                    </div>
+                    <div class="p-3.5 bg-tech-850 rounded-xl border border-slate-800">
+                        <div class="font-mono text-cyan-400 font-bold text-sm mb-1">矩陣 B：觀測發射/混淆矩陣</div>
+                        <div class="text-slate-300 mb-2">$$b_j(k) = P(O_t = v_k \mid S_t = s_j)$$</div>
+                        <p class="text-slate-400">維度為 $N \times M$，每列機率和滿足 $\sum_{k=1}^M b_j(k) = 1$。描述各隱藏狀態隨機發射出特定觀測值的機率。</p>
+                    </div>
+                    <div class="p-3.5 bg-tech-850 rounded-xl border border-slate-800">
+                        <div class="font-mono text-amber-400 font-bold text-sm mb-1">向量 $\pi$：初始狀態機率分佈</div>
+                        <div class="text-slate-300 mb-2">$$\pi_i = P(S_1 = s_i)$$</div>
+                        <p class="text-slate-400">維度為 $N \times 1$，總和滿足 $\sum_{i=1}^N \pi_i = 1$。系統在時間 $t=1$ 開始時各隱藏狀態的先驗分佈。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 三大演算法數學推導詳細面板 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- 前向演算法推導 -->
+                <div class="bg-tech-900 border border-slate-800 rounded-2xl p-5 space-y-3 text-xs text-slate-300">
+                    <div class="font-bold text-emerald-400 text-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-calculator"></i> 前向演算法 (Forward Algorithm)
+                    </div>
+                    <p class="text-slate-400">定義前向變數 $\alpha_t(i)$ 為時刻 $t$ 觀測到 $O_1, \dots, O_t$ 且狀態為 $s_i$ 的聯合機率：</p>
+                    <div class="p-3 bg-tech-850 rounded-xl border border-slate-800 font-mono space-y-2 text-[11px]">
+                        <div><strong>1. 初值化 ($t=1$)：</strong></div>
+                        <div class="text-emerald-300">$$\alpha_1(i) = \pi_i \cdot b_i(O_1)$$</div>
+                        <div><strong>2. 遞推式 ($t=1 \to T-1$)：</strong></div>
+                        <div class="text-emerald-300">$$\alpha_{t+1}(j) = \left[ \sum_{i=1}^N \alpha_t(i) a_{ij} \right] \cdot b_j(O_{t+1})$$</div>
+                        <div><strong>3. 終結求和：</strong></div>
+                        <div class="text-emerald-300">$$P(O \mid \lambda) = \sum_{i=1}^N \alpha_T(i)$$</div>
+                    </div>
+                </div>
+
+                <!-- 維特比演算法推導 -->
+                <div class="bg-tech-900 border border-slate-800 rounded-2xl p-5 space-y-3 text-xs text-slate-300">
+                    <div class="font-bold text-amber-400 text-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-route"></i> 維特比演算法 (Viterbi Algorithm)
+                    </div>
+                    <p class="text-slate-400">定義 $V_t(j)$ 為到達時刻 $t$ 狀態為 $s_j$ 的最大路徑機率；$\psi_t(j)$ 記錄回溯最佳前驅：</p>
+                    <div class="p-3 bg-tech-850 rounded-xl border border-slate-800 font-mono space-y-2 text-[11px]">
+                        <div><strong>1. 初值化 ($t=1$)：</strong></div>
+                        <div class="text-amber-300">$$V_1(i) = \pi_i \cdot b_i(O_1), \quad \psi_1(i) = 0$$</div>
+                        <div><strong>2. 動態規劃遞推：</strong></div>
+                        <div class="text-amber-300">$$V_t(j) = \max_{1 \le i \le N} [V_{t-1}(i) a_{ij}] \cdot b_j(O_t)$$</div>
+                        <div class="text-amber-300">$$\psi_t(j) = \arg\max_{1 \le i \le N} [V_{t-1}(i) a_{ij}]$$</div>
+                        <div><strong>3. 終結與回溯：</strong></div>
+                        <div class="text-amber-300">$$S_T^* = \arg\max_i V_T(i), \quad S_t^* = \psi_{t+1}(S_{t+1}^*)$$</div>
+                    </div>
+                </div>
+
+                <!-- Baum-Welch 演算法推導 -->
+                <div class="bg-tech-900 border border-slate-800 rounded-2xl p-5 space-y-3 text-xs text-slate-300">
+                    <div class="font-bold text-cyan-400 text-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-arrows-rotate"></i> 鮑姆-韋爾奇 (Baum-Welch EM)
+                    </div>
+                    <p class="text-slate-400">透過前向後向變數計算隱含狀態後驗期望機率 $\gamma_t(i)$ 與狀態轉移期望機率 $\xi_t(i,j)$：</p>
+                    <div class="p-3 bg-tech-850 rounded-xl border border-slate-800 font-mono space-y-2 text-[11px]">
+                        <div><strong>E-Step (期望步)：</strong></div>
+                        <div class="text-cyan-300">$$\gamma_t(i) = P(S_t = s_i \mid O, \lambda)$$</div>
+                        <div class="text-cyan-300">$$\xi_t(i,j) = P(S_t = s_i, S_{t+1} = s_j \mid O, \lambda)$$</div>
+                        <div><strong>M-Step (極大化更新)：</strong></div>
+                        <div class="text-cyan-300">$$\bar{a}_{ij} = \frac{\sum_{t=1}^{T-1} \xi_t(i,j)}{\sum_{t=1}^{T-1} \gamma_t(i)}, \quad \bar{\pi}_i = \gamma_1(i)$$</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. 視覺化 Trellis 晶格動態規劃解碼沙盒 (室友地下室猜天氣) -->
+        <section id="sandbox" class="space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <div class="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                            <i class="fa-solid fa-sliders"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-white">Trellis 晶格動態規劃解碼沙盒 (室友地下室猜天氣)</h3>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-1">
+                        自由更換室友配件觀測序列，體會 Viterbi 演算法如何逐層尋求局部最優，並在終點完成全局黃金回溯 (Backtrace)
+                    </p>
+                </div>
+
+                <!-- 步進控制按鈕組 -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="btn-prev-step" class="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 flex items-center gap-1.5 transition disabled:opacity-30">
+                        <i class="fa-solid fa-backward-step"></i> 上一步
+                    </button>
+                    <button id="btn-next-step" class="px-3.5 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg shadow flex items-center gap-1.5 transition disabled:opacity-30">
+                        <i class="fa-solid fa-play"></i> 單步執行 (Step)
+                    </button>
+                    <button id="btn-auto-play" class="px-3.5 py-1.5 text-xs bg-tech-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/40 rounded-lg flex items-center gap-1.5 transition">
+                        <i class="fa-solid fa-forward"></i> 自動演示
+                    </button>
+                    <button id="btn-reset" class="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition">
+                        重設
+                    </button>
+                </div>
+            </div>
+
+            <!-- 自訂控制面板 -->
+            <div class="bg-tech-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-bold text-slate-300 whitespace-nowrap">室友配件觀測序列 $O$：</span>
+                        <div id="obs-tag-container" class="flex flex-wrap gap-2">
+                            <!-- 動態注入標籤 -->
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <select id="select-add-obs" class="bg-tech-850 border border-slate-700 text-xs text-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 font-medium">
+                            <option value="Umbrella">☔ 雨傘 (Umbrella)</option>
+                            <option value="Sunglasses">🕶️ 墨鏡 (Sunglasses)</option>
+                        </select>
+                        <button id="btn-add-obs" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1">
+                            <i class="fa-solid fa-plus text-xs"></i> 增加天數
+                        </button>
+                        <button id="btn-preset-classic" class="text-xs bg-slate-800/80 hover:bg-slate-700 text-amber-400 px-3 py-1.5 rounded-lg border border-slate-700 transition">
+                            經典案例 [雨傘, 雨傘, 墨鏡]
+                        </button>
+                        <button id="btn-random-obs" class="text-xs bg-slate-800/80 hover:bg-slate-700 text-cyan-400 px-3 py-1.5 rounded-lg border border-slate-700 transition">
+                            隨機序列
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 參數矩陣摘要看板 -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-800/80 text-xs">
+                    <div class="p-2.5 bg-tech-850 rounded-lg border border-slate-800">
+                        <span class="font-bold text-emerald-400 block mb-1">初始機率分佈 $\pi$</span>
+                        <div class="text-slate-300">☀️ 晴天: 0.6 | 🌧️ 雨天: 0.4</div>
+                    </div>
+                    <div class="p-2.5 bg-tech-850 rounded-lg border border-slate-800">
+                        <span class="font-bold text-emerald-400 block mb-1">轉移矩陣 $A$</span>
+                        <div class="text-slate-300 font-mono text-[11px]">晴➔晴: 0.7, 晴➔雨: 0.3<br>雨➔晴: 0.4, 雨➔雨: 0.6</div>
+                    </div>
+                    <div class="p-2.5 bg-tech-850 rounded-lg border border-slate-800">
+                        <span class="font-bold text-cyan-400 block mb-1">發射矩陣 $B$</span>
+                        <div class="text-slate-300 font-mono text-[11px]">晴天: [雨傘 0.1, 墨鏡 0.9]<br>雨天: [雨傘 0.8, 墨鏡 0.2]</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trellis 晶格畫布 -->
+            <div class="bg-tech-900 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
+                <div class="flex items-center justify-between mb-3 text-xs">
+                    <span class="text-slate-400 flex items-center gap-3">
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> 當前計算節點</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-400 inline-block"></span> 最優回溯路徑 (Golden Path)</span>
+                    </span>
+                    <span id="step-indicator" class="font-mono text-emerald-400 font-bold">進度：步驟 0 / 0</span>
+                </div>
+
+                <div class="overflow-x-auto custom-scrollbar pb-4">
+                    <div id="trellis-container" class="min-w-[620px] relative py-6 px-4 flex justify-between items-center">
+                        <svg id="trellis-svg" class="absolute inset-0 w-full h-full pointer-events-none z-0"></svg>
+                    </div>
+                </div>
+
+                <!-- 動態規劃方程式即時拆解記錄 -->
+                <div class="mt-4 p-4 rounded-xl bg-tech-950 border border-slate-800">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-calculator"></i>
+                            <span>維特比動態規劃局部方程式即時追蹤 (Dynamic Programming Breakdown)</span>
+                        </h4>
+                        <span id="formula-stage-badge" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">尚未開始</span>
+                    </div>
+                    <div id="step-math-details" class="text-xs text-slate-300 font-mono space-y-1">
+                        請點擊上方「單步執行」或「自動演示」開始觀測解碼過程。
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. 工業與 AI 實戰應用 -->
+        <section id="applications" class="space-y-4">
+            <div class="flex items-center gap-2">
+                <div class="p-1.5 rounded-lg bg-amber-500/20 text-amber-400">
+                    <i class="fa-solid fa-industry"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg sm:text-xl font-bold text-white">工業與 AI 應用：為什麼 HMM 不可或缺？</h3>
+                    <p class="text-xs text-slate-400">當關鍵特徵隱藏於物理內部或底層結構時的經典落地場景</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div class="p-5 rounded-2xl bg-tech-900 border border-slate-800 flex flex-col justify-between">
+                    <div>
+                        <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center mb-3">
+                            <i class="fa-solid fa-gear"></i>
+                        </div>
+                        <h4 class="font-bold text-white text-base">智慧製造：預測性維護 (PHM)</h4>
+                        <div class="my-2 p-2 rounded-lg bg-tech-950 text-xs font-mono border border-slate-800">
+                            <div class="text-slate-400">觀測: 振動頻譜、溫度感測</div>
+                            <div class="text-amber-400">隱藏: [良好➔微磨損➔危險]</div>
+                        </div>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            工廠刀具與馬達軸承無法隨時拆機。工程師透過外貼加速規的振動訊號，利用 HMM 維特比演算法推論內部磨損階段與剩餘可用壽命 (RUL)。
+                        </p>
+                    </div>
+                </div>
+
+                <div class="p-5 rounded-2xl bg-tech-900 border border-slate-800 flex flex-col justify-between">
+                    <div>
+                        <div class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center mb-3">
+                            <i class="fa-solid fa-microphone-lines"></i>
+                        </div>
+                        <h4 class="font-bold text-white text-base">語音辨識：經典聲學模型 (ASR)</h4>
+                        <div class="my-2 p-2 rounded-lg bg-tech-950 text-xs font-mono border border-slate-800">
+                            <div class="text-slate-400">觀測: 梅爾倒頻譜係數 (MFCC)</div>
+                            <div class="text-blue-400">隱藏: 音素 (Phoneme) 狀態序列</div>
+                        </div>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            說話語速有快有慢，時間長度不固定。GMM-HMM 透過轉移機率矩陣吸收語速彈性，精確將連續波形特徵對齊到文字音素。
+                        </p>
+                    </div>
+                </div>
+
+                <div class="p-5 rounded-2xl bg-tech-900 border border-slate-800 flex flex-col justify-between">
+                    <div>
+                        <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center mb-3">
+                            <i class="fa-solid fa-spell-check"></i>
+                        </div>
+                        <h4 class="font-bold text-white text-base">自然語言處理：詞性標註 (POS)</h4>
+                        <div class="my-2 p-2 rounded-lg bg-tech-950 text-xs font-mono border border-slate-800">
+                            <div class="text-slate-400">觀測: 句子中的文字單詞</div>
+                            <div class="text-purple-400">隱藏: 詞性標籤 (名詞/動詞/形容詞)</div>
+                        </div>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            「研究」可以是動詞或名詞。HMM 根據前一個詞的詞性轉移到下一詞性的文法規律，精確解碼消解語義歧義。
+                        </p>
+                    </div>
+                </div>
+
+                <div class="p-5 rounded-2xl bg-tech-900 border border-slate-800 flex flex-col justify-between">
+                    <div>
+                        <div class="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-3">
+                            <i class="fa-solid fa-dna"></i>
+                        </div>
+                        <h4 class="font-bold text-white text-base">生物資訊：DNA 基因外顯子定位</h4>
+                        <div class="my-2 p-2 rounded-lg bg-tech-950 text-xs font-mono border border-slate-800">
+                            <div class="text-slate-400">觀測: 鹼基序列 (A, T, C, G)</div>
+                            <div class="text-cyan-400">隱藏: 基因區域 (外顯子/內含子)</div>
+                        </div>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            DNA 鏈由數十億個字母構成。HMM 能在未標註的鹼基鏈中，自主劃分並解碼出真正負責合成蛋白質的編碼區段 (Exon)。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 7. Python 實作程式碼 (hmmlearn) -->
+        <section id="code" class="space-y-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                        <i class="fa-brands fa-python"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-white">Python + hmmlearn 實作範例</h3>
+                </div>
+                <button id="btn-copy-code" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-1.5 transition">
+                    <i class="fa-regular fa-copy"></i>
+                    <span id="copy-btn-text">複製程式碼</span>
+                </button>
+            </div>
+
+            <div class="bg-tech-900 border border-slate-800 rounded-2xl overflow-hidden">
+                <div class="bg-tech-850 px-4 py-2.5 border-b border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                        <span class="text-xs font-mono text-slate-400 ml-2">hmm_weather_roommate.py</span>
+                    </div>
+                    <span class="text-xs text-slate-400 font-mono">Python 3.9+ / hmmlearn</span>
+                </div>
+                <pre class="p-4 sm:p-6 text-xs sm:text-sm font-mono overflow-x-auto text-slate-200 leading-relaxed custom-scrollbar"><code id="code-content"><span class="text-slate-500"># 安裝套件指令: pip install hmmlearn numpy</span>
+<span class="text-purple-400">import</span> numpy <span class="text-purple-400">as</span> np
+<span class="text-purple-400">from</span> hmmlearn <span class="text-purple-400">import</span> hmm
+
+<span class="text-slate-500"># 1. 定義狀態與觀測維度</span>
+states = [<span class="text-amber-300">"Sunny (晴天)"</span>, <span class="text-blue-300">"Rainy (雨天)"</span>]
+n_states = len(states)
+
+observations = [<span class="text-cyan-300">"Umbrella (雨傘)"</span>, <span class="text-amber-300">"Sunglasses (墨鏡)"</span>]
+n_observations = len(observations)
+
+<span class="text-slate-500"># 2. 建立 Categorical HMM 模型 (處理離散觀測值)</span>
+model = hmm.CategoricalHMM(n_components=n_states, algorithm=<span class="text-amber-300">"viterbi"</span>)
+
+<span class="text-slate-500"># 3. 設定模型參數 lambda = (pi, A, B)</span>
+<span class="text-slate-500"># 初始機率分佈 pi: 晴天 0.6, 雨天 0.4</span>
+model.startprob_ = np.array([<span class="text-orange-400">0.6</span>, <span class="text-orange-400">0.4</span>])
+
+<span class="text-slate-500"># 狀態轉移矩陣 A (Transition Matrix)</span>
+model.transmat_ = np.array([
+    [<span class="text-orange-400">0.7</span>, <span class="text-orange-400">0.3</span>],  <span class="text-slate-500"># Sunny -> [Sunny, Rainy]</span>
+    [<span class="text-orange-400">0.4</span>, <span class="text-orange-400">0.6</span>]   <span class="text-slate-500"># Rainy -> [Sunny, Rainy]</span>
+])
+
+<span class="text-slate-500"># 觀測發射矩陣 B (Emission Matrix)</span>
+model.emissionprob_ = np.array([
+    [<span class="text-orange-400">0.1</span>, <span class="text-orange-400">0.9</span>],  <span class="text-slate-500"># 晴天 -> [雨傘 0.1, 墨鏡 0.9]</span>
+    [<span class="text-orange-400">0.8</span>, <span class="text-orange-400">0.2</span>]   <span class="text-slate-500"># 雨天 -> [雨傘 0.8, 墨鏡 0.2]</span>
+])
+
+<span class="text-slate-500"># 4. 室友帶出門的配件觀測序列: [雨傘(0), 雨傘(0), 墨鏡(1)]</span>
+obs_seq = np.array([[<span class="text-orange-400">0</span>], [<span class="text-orange-400">0</span>], [<span class="text-orange-400">1</span>]])
+
+<span class="text-slate-500"># 5. 解碼問題 (Decoding) - 執行維特比演算法</span>
+log_prob, hidden_states = model.decode(obs_seq, algorithm=<span class="text-amber-300">"viterbi"</span>)
+
+print(<span class="text-emerald-300">"=== 維特比演算法解碼結果 ==="</span>)
+print(<span class="text-slate-300">f"對數聯合機率 Log Probability: {log_prob:.4f}"</span>)
+print(<span class="text-slate-300">f"還原路徑機率: {np.exp(log_prob):.6f}"</span>)
+print(<span class="text-slate-300">"推論最可能的天氣序列:"</span>, [states[i] <span class="text-purple-400">for</span> i <span class="text-purple-400">in</span> hidden_states])
+
+<span class="text-slate-500"># 6. 評估問題 (Evaluation) - 計算觀測序列邊際機率 P(O|lambda)</span>
+log_eval_prob = model.score(obs_seq)
+print(<span class="text-slate-300">f"\n觀測序列生成總機率 P(O|lambda): {np.exp(log_eval_prob):.6f}"</span>)
+</code></pre>
+            </div>
+        </section>
+
+        <!-- 8. iPAS AI 認證題庫模擬實戰 -->
+        <section id="quiz" class="space-y-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-400">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-white">iPAS AI 巨量資料與機器學習認證模擬測驗</h3>
+                </div>
+                <span class="text-xs text-slate-400">共 3 題 · 即時給分與詳解</span>
+            </div>
+            <div class="space-y-4" id="quiz-container">
+                <!-- 題目由 JS 動態生成 -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 頁尾 -->
+    <footer class="border-t border-slate-800 bg-tech-950 py-8 text-center text-xs text-slate-500">
+        <p>隱馬可夫模型 (Hidden Markov Model, HMM) 終極教學指南 · 專為機器學習推論與 iPAS AI 專業認證特訓打造</p>
+    </footer>
+
+    <!-- 全局互動邏輯腳本 -->
+    <script>
+        // 嚴格 KaTeX 自動渲染器
+        function triggerMathRender(el) {
+            const target = el || document.body;
+            if (window.renderMathInElement) {
+                renderMathInElement(target, {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '$', right: '$', display: false }
+                    ],
+                    throwOnError: false
+                });
+            }
+        }
+
+        // ============================================
+        // 1. 情境切換器：抬頭看天空 vs 地下室看室友配件
+        // ============================================
+        function switchScenarioMode(mode) {
+            const btnMM = document.getElementById('btn-view-mm');
+            const btnHMM = document.getElementById('btn-view-hmm');
+            const container = document.getElementById('scenario-display-box');
+
+            if (mode === 'mm') {
+                btnMM.className = 'px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-2 bg-emerald-600 text-white shadow';
+                btnHMM.className = 'px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-2 text-slate-400 hover:text-slate-200';
+
+                container.innerHTML = `
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-xs px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold">
+                            馬可夫模型模式 · 狀態完全可見
+                        </span>
+                        <span class="text-xs text-slate-400 font-mono">1 個隨機過程</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                        <div>
+                            <h3 class="text-xl font-bold text-white mb-2">你在客廳打開窗戶：直接看見天空</h3>
+                            <p class="text-slate-300 text-sm leading-relaxed mb-4">
+                                你抬頭就能親眼看到天空是 <span class="text-amber-400 font-bold">☀️ 晴天</span> 還是 <span class="text-blue-400 font-bold">🌧️ 雨天</span>。<br>
+                                你連續觀察記錄三天：「今天晴天、明天晴天、後天雨天」。
+                            </p>
+                            <div class="p-3.5 rounded-xl bg-tech-850 border border-slate-800 space-y-2 text-xs">
+                                <div class="text-slate-300 font-bold">特點歸納：</div>
+                                <div class="flex items-center gap-2 text-emerald-400">
+                                    <i class="fa-solid fa-check"></i>
+                                    <span>狀態透明：狀態本身就是你所收集到的資料，毫無遮掩。</span>
+                                </div>
+                                <div class="flex items-center gap-2 text-emerald-400">
+                                    <i class="fa-solid fa-check"></i>
+                                    <span>只需計算狀態轉移矩陣 A：例如「今天晴天，明天繼續晴天的機率」。</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-5 rounded-xl bg-tech-850 border border-slate-800 text-center">
+                            <span class="text-xs text-slate-400 font-mono block mb-3">【單純狀態鏈】直接可見的轉移</span>
+                            <div class="flex items-center justify-center gap-2 text-sm font-bold">
+                                <div class="px-3 py-2 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                    $S_1$: ☀️ 晴天
+                                </div>
+                                <i class="fa-solid fa-arrow-right text-slate-600 text-xs"></i>
+                                <div class="px-3 py-2 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                    $S_2$: ☀️ 晴天
+                                </div>
+                                <i class="fa-solid fa-arrow-right text-slate-600 text-xs"></i>
+                                <div class="px-3 py-2 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                    $S_3$: 🌧️ 雨天
+                                </div>
+                            </div>
+                            <div class="mt-4 text-[11px] text-slate-400">
+                                模型參數只有轉移矩陣 $A$：$P(S_{t+1} \mid S_t)$。不需要猜測，答案就在眼前。
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                btnMM.className = 'px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-2 text-slate-400 hover:text-slate-200';
+                btnHMM.className = 'px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-2 bg-indigo-600 text-white shadow';
+
+                container.innerHTML = `
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-xs px-2.5 py-1 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 font-semibold">
+                            隱馬可夫模型模式 · 狀態完全隱藏
+                        </span>
+                        <span class="text-xs text-slate-400 font-mono">2 個隨機過程 (轉移 + 發射)</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                        <div>
+                            <h3 class="text-xl font-bold text-white mb-2">你被關在沒有窗戶的地下室：只能看室友的配件</h3>
+                            <p class="text-slate-300 text-sm leading-relaxed mb-4">
+                                你看不見外面的天氣（<span class="text-amber-400 font-bold">隱藏狀態</span>），但你每天看到室友出門時拿了什麼（<span class="text-cyan-400 font-bold">觀測值</span>）。<br>
+                                室友連續三天出門帶了：<strong class="text-white font-mono">[☔ 雨傘, ☔ 雨傘, 🕶️ 墨鏡]</strong>。
+                            </p>
+                            <div class="p-3.5 rounded-xl bg-tech-850 border border-slate-800 space-y-2 text-xs">
+                                <div class="text-slate-300 font-bold">HMM 的關鍵挑戰：</div>
+                                <div class="flex items-center gap-2 text-cyan-400">
+                                    <i class="fa-solid fa-circle-question"></i>
+                                    <span>雙重隨機過程：天氣自己在轉變 (A)，同時天氣又決定了室友帶傘或墨鏡的機率 (B)。</span>
+                                </div>
+                                <div class="flex items-center gap-2 text-cyan-400">
+                                    <i class="fa-solid fa-circle-question"></i>
+                                    <span>必須使用維特比 (Viterbi) 演算法，從看見的配件倒推這三天最可能的天氣！</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-5 rounded-xl bg-tech-850 border border-slate-800 text-center">
+                            <span class="text-xs text-amber-400 font-mono block mb-2">【隱藏層 (看不到)】真實天氣轉移過程 A</span>
+                            <div class="flex items-center justify-center gap-2 text-xs font-bold mb-3">
+                                <div class="px-2.5 py-1.5 rounded bg-slate-800 text-slate-400 border border-slate-700">? 天氣 $S_1$</div>
+                                <i class="fa-solid fa-arrow-right text-slate-600 text-xs"></i>
+                                <div class="px-2.5 py-1.5 rounded bg-slate-800 text-slate-400 border border-slate-700">? 天氣 $S_2$</div>
+                                <i class="fa-solid fa-arrow-right text-slate-600 text-xs"></i>
+                                <div class="px-2.5 py-1.5 rounded bg-slate-800 text-slate-400 border border-slate-700">? 天氣 $S_3$</div>
+                            </div>
+
+                            <div class="text-slate-500 my-1 text-xs font-mono">⬇️ 發射過程 B: $P(O_t \mid S_t)$</div>
+
+                            <span class="text-xs text-cyan-400 font-mono block mt-2 mb-2">【觀測層 (看得到)】室友隨身配件</span>
+                            <div class="flex items-center justify-center gap-2 text-xs font-bold">
+                                <div class="px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30">☔ 雨傘 $O_1$</div>
+                                <div class="w-4"></div>
+                                <div class="px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30">☔ 雨傘 $O_2$</div>
+                                <div class="w-4"></div>
+                                <div class="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30">🕶️ 墨鏡 $O_3$</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            triggerMathRender(container);
+        }
+
+        // ============================================
+        // 2. Trellis 網格視覺化與維特比解碼器
+        // ============================================
+        const HMM_MODEL = {
+            states: ['Sunny', 'Rainy'],
+            stateNames: { Sunny: '☀️ 晴天 (Sunny)', Rainy: '🌧️ 雨天 (Rainy)' },
+            pi: { Sunny: 0.6, Rainy: 0.4 },
+            A: {
+                Sunny: { Sunny: 0.7, Rainy: 0.3 },
+                Rainy: { Sunny: 0.4, Rainy: 0.6 }
+            },
+            B: {
+                Sunny: { Umbrella: 0.1, Sunglasses: 0.9 },
+                Rainy: { Umbrella: 0.8, Sunglasses: 0.2 }
+            },
+            obsLabels: {
+                Umbrella: '☔ 雨傘',
+                Sunglasses: '🕶️ 墨鏡'
+            }
+        };
+
+        let currentObservations = ['Umbrella', 'Umbrella', 'Sunglasses'];
+        let viterbiHistory = null;
+        let currentStepIndex = 0;
+        let autoPlayTimer = null;
+
+        // 計算 Viterbi 完整 DP 矩陣
+        function computeViterbi(observations) {
+            const T = observations.length;
+            const states = HMM_MODEL.states;
+            const dp = [];
+            const steps = [];
+
+            // Step 0: t = 0
+            const step0 = { t: 0, obs: observations[0], nodes: {}, details: [] };
+            dp[0] = {};
+            for (let s of states) {
+                const initP = HMM_MODEL.pi[s];
+                const emitP = HMM_MODEL.B[s][observations[0]];
+                const prob = initP * emitP;
+                dp[0][s] = { prob: prob, backtrace: null };
+                step0.nodes[s] = {
+                    prob: prob,
+                    backtrace: null,
+                    expr: `V_1(${s}) = \\pi(${s}) \\cdot B(${s}, ${observations[0]}) = ${initP} \\times ${emitP} = ${prob.toFixed(4)}`
+                };
+                step0.details.push(`狀態 [${s}] 初始機率: ${initP} × 發射機率(${HMM_MODEL.obsLabels[observations[0]]}): ${emitP} = ${prob.toFixed(4)}`);
+            }
+            steps.push(step0);
+
+            // Forward Recursion t = 1 to T-1
+            for (let t = 1; t < T; t++) {
+                const obs = observations[t];
+                dp[t] = {};
+                const stepT = { t: t, obs: obs, nodes: {}, details: [] };
+
+                for (let toState of states) {
+                    let maxProb = -1;
+                    let bestFrom = null;
+                    let log = [];
+
+                    for (let fromState of states) {
+                        const prevProb = dp[t - 1][fromState].prob;
+                        const transProb = HMM_MODEL.A[fromState][toState];
+                        const emitProb = HMM_MODEL.B[toState][obs];
+                        const candProb = prevProb * transProb * emitProb;
+
+                        log.push(`自 ${fromState}: ${prevProb.toFixed(4)} × 轉移(${transProb}) × 發射(${emitProb}) = ${candProb.toFixed(5)}`);
+
+                        if (candProb > maxProb) {
+                            maxProb = candProb;
+                            bestFrom = fromState;
+                        }
+                    }
+
+                    dp[t][toState] = { prob: maxProb, backtrace: bestFrom };
+                    stepT.nodes[toState] = {
+                        prob: maxProb,
+                        backtrace: bestFrom,
+                        expr: `V_{${t+1}}(${toState}) = \\max [V_t \\cdot A] \\cdot B = ${maxProb.toFixed(5)}`
+                    };
+                    stepT.details.push(`狀態 [${toState}]: 比較 (${log.join(' vs ')}) ➔ 最大前驅: ${bestFrom} (${maxProb.toFixed(5)})`);
+                }
+                steps.push(stepT);
+            }
+
+            // Termination & Backtracking
+            let bestFinalProb = -1;
+            let bestFinalState = null;
+            for (let s of states) {
+                if (dp[T - 1][s].prob > bestFinalProb) {
+                    bestFinalProb = dp[T - 1][s].prob;
+                    bestFinalState = s;
+                }
+            }
+
+            const bestPath = new Array(T);
+            bestPath[T - 1] = bestFinalState;
+            for (let t = T - 1; t > 0; t--) {
+                bestPath[t - 1] = dp[t][bestPath[t]].backtrace;
+            }
+
+            return { dp, steps, bestPath, bestFinalProb };
+        }
+
+        // 渲染自訂序列標籤
+        function renderObsTags() {
+            const container = document.getElementById('obs-tag-container');
+            container.innerHTML = '';
+            currentObservations.forEach((obs, idx) => {
+                const tag = document.createElement('div');
+                tag.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-tech-850 border border-slate-700 text-xs text-slate-200';
+                tag.innerHTML = `
+                    <span class="text-slate-400 font-mono text-[10px]">t=${idx+1}</span>
+                    <span class="font-medium">${HMM_MODEL.obsLabels[obs]}</span>
+                    ${currentObservations.length > 2 ? `
+                        <button onclick="removeObservation(${idx})" class="text-slate-500 hover:text-red-400 ml-1">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    ` : ''}
+                `;
+                container.appendChild(tag);
+            });
+        }
+
+        window.removeObservation = function(index) {
+            if (currentObservations.length <= 2) return;
+            currentObservations.splice(index, 1);
+            resetSandbox();
+        };
+
+        // 構建 Trellis DOM 節點
+        function buildTrellisDOM() {
+            const container = document.getElementById('trellis-container');
+            const svg = document.getElementById('trellis-svg');
+            container.innerHTML = '';
+            container.appendChild(svg);
+            svg.innerHTML = '';
+
+            const T = currentObservations.length;
+            for (let t = 0; t < T; t++) {
+                const col = document.createElement('div');
+                col.className = 'flex flex-col items-center gap-6 z-10';
+                col.id = `trellis-col-${t}`;
+
+                const header = document.createElement('div');
+                header.className = 'text-center';
+                header.innerHTML = `
+                    <span class="text-[11px] font-mono text-slate-400 block">第 ${t+1} 天</span>
+                    <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-cyan-300 font-medium border border-slate-700 inline-block mt-1">
+                        ${HMM_MODEL.obsLabels[currentObservations[t]]}
+                    </span>
+                `;
+                col.appendChild(header);
+
+                HMM_MODEL.states.forEach(state => {
+                    const node = document.createElement('div');
+                    node.id = `node-${t}-${state}`;
+                    node.className = `w-32 p-3 rounded-xl border border-slate-800 bg-tech-850 text-center transition-all duration-300`;
+                    node.innerHTML = `
+                        <div class="text-xs font-bold text-slate-300 mb-0.5">${state === 'Sunny' ? '☀️ 晴天' : '🌧️ 雨天'}</div>
+                        <div class="font-mono text-xs font-semibold text-slate-400" id="prob-${t}-${state}">V = 0.0000</div>
+                        <div class="text-[10px] text-slate-500 mt-1" id="bt-${t}-${state}">前驅: -</div>
+                    `;
+                    col.appendChild(node);
+                });
+
+                container.appendChild(col);
+            }
+        }
+
+        // 繪製 SVG 連線箭頭
+        function drawTrellisConnections(currentStep) {
+            const svg = document.getElementById('trellis-svg');
+            svg.innerHTML = '';
+
+            if (!viterbiHistory) return;
+            const { steps, bestPath } = viterbiHistory;
+            const containerRect = document.getElementById('trellis-container').getBoundingClientRect();
+
+            for (let t = 1; t <= currentStep; t++) {
+                const stepData = steps[t];
+                for (let toState of HMM_MODEL.states) {
+                    const fromState = stepData.nodes[toState].backtrace;
+                    if (!fromState) continue;
+
+                    const fromNode = document.getElementById(`node-${t-1}-${fromState}`);
+                    const toNode = document.getElementById(`node-${t}-${toState}`);
+                    if (!fromNode || !toNode) continue;
+
+                    const fromRect = fromNode.getBoundingClientRect();
+                    const toRect = toNode.getBoundingClientRect();
+
+                    const x1 = fromRect.right - containerRect.left;
+                    const y1 = fromRect.top + fromRect.height / 2 - containerRect.top;
+                    const x2 = toRect.left - containerRect.left;
+                    const y2 = toRect.top + toRect.height / 2 - containerRect.top;
+
+                    const isOptimalEdge = (currentStep === currentObservations.length - 1) &&
+                                          (bestPath[t-1] === fromState && bestPath[t] === toState);
+
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', x1);
+                    line.setAttribute('y1', y1);
+                    line.setAttribute('x2', x2);
+                    line.setAttribute('y2', y2);
+
+                    if (isOptimalEdge) {
+                        line.setAttribute('stroke', '#f59e0b');
+                        line.setAttribute('stroke-width', '3.5');
+                        line.setAttribute('class', 'gold-glow');
+                    } else {
+                        line.setAttribute('stroke', '#334155');
+                        line.setAttribute('stroke-width', '1.5');
+                        line.setAttribute('stroke-dasharray', '3 3');
+                    }
+                    svg.appendChild(line);
+                }
+            }
+        }
+
+        // 更新視圖
+        function updateTrellisView(stepIndex) {
+            if (!viterbiHistory) return;
+            const { steps, bestPath } = viterbiHistory;
+            const T = currentObservations.length;
+            const isCompleted = stepIndex >= T - 1;
+
+            for (let t = 0; t < T; t++) {
+                HMM_MODEL.states.forEach(state => {
+                    const node = document.getElementById(`node-${t}-${state}`);
+                    const probEl = document.getElementById(`prob-${t}-${state}`);
+                    const btEl = document.getElementById(`bt-${t}-${state}`);
+                    if (!node || !probEl || !btEl) return;
+
+                    node.className = 'w-32 p-3 rounded-xl border border-slate-800 bg-tech-850/60 text-center transition-all duration-300';
+                    probEl.className = 'font-mono text-xs font-semibold text-slate-500';
+                    btEl.className = 'text-[10px] text-slate-600 mt-1';
+
+                    if (t <= stepIndex) {
+                        const nodeData = steps[t].nodes[state];
+                        probEl.textContent = `V = ${nodeData.prob.toFixed(4)}`;
+                        probEl.className = 'font-mono text-xs font-semibold text-emerald-400';
+
+                        if (nodeData.backtrace) {
+                            btEl.textContent = `來自: ${nodeData.backtrace === 'Sunny' ? '☀️晴天' : '🌧️雨天'}`;
+                            btEl.className = 'text-[10px] text-slate-400 mt-1';
+                        } else {
+                            btEl.textContent = `初始節點`;
+                        }
+
+                        if (t === stepIndex) {
+                            node.className = 'w-32 p-3 rounded-xl border border-emerald-500 bg-emerald-950/30 text-center shadow-lg shadow-emerald-500/20';
+                        }
+
+                        if (isCompleted && bestPath[t] === state) {
+                            node.className = 'w-32 p-3 rounded-xl border-2 border-amber-400 bg-amber-950/40 text-center shadow-lg shadow-amber-400/20';
+                            probEl.className = 'font-mono text-xs font-bold text-amber-300';
+                            btEl.className = 'text-[10px] text-amber-200/90 font-medium mt-1';
+                        }
+                    } else {
+                        probEl.textContent = 'V = 0.0000';
+                        btEl.textContent = '尚未計算';
+                    }
+                });
+            }
+
+            const formulaBadge = document.getElementById('formula-stage-badge');
+            const mathDetails = document.getElementById('step-math-details');
+            const stepIndicator = document.getElementById('step-indicator');
+
+            stepIndicator.textContent = `進度：步驟 ${stepIndex + 1} / ${T}`;
+
+            if (stepIndex === 0) {
+                formulaBadge.textContent = '階段：第 1 天初始邊界條件';
+                formulaBadge.className = 'text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30';
+            } else if (isCompleted) {
+                formulaBadge.textContent = '階段：解碼回溯完成 (Optimal Path Found)';
+                formulaBadge.className = 'text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold';
+            } else {
+                formulaBadge.textContent = `階段：第 ${stepIndex+1} 天動態規劃遞推計算`;
+                formulaBadge.className = 'text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+            }
+
+            const currentStepData = steps[stepIndex];
+            let detailHTML = `<div class="text-slate-300 font-semibold mb-1">時刻 t=${stepIndex+1} (觀測到: ${HMM_MODEL.obsLabels[currentStepData.obs]}):</div>`;
+            currentStepData.details.forEach(item => {
+                detailHTML += `<div class="pl-2 border-l border-slate-700 text-slate-400 text-xs my-1">${item}</div>`;
+            });
+
+            if (isCompleted) {
+                detailHTML += `
+                    <div class="mt-3 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 font-bold text-xs">
+                        🏆 維特比演算法回溯最優隱藏天氣序列: [${bestPath.map(s => s === 'Sunny' ? '☀️晴天' : '🌧️雨天').join(' ➔ ')}]
+                        <br><span class="font-normal text-slate-300 font-mono text-[11px]">最大累積路徑聯合機率: ${viterbiHistory.bestFinalProb.toFixed(6)}</span>
+                    </div>
+                `;
+            }
+
+            mathDetails.innerHTML = detailHTML;
+            drawTrellisConnections(stepIndex);
+
+            document.getElementById('btn-prev-step').disabled = (stepIndex <= 0);
+            document.getElementById('btn-next-step').disabled = (stepIndex >= T - 1);
+        }
+
+        function resetSandbox() {
+            if (autoPlayTimer) {
+                clearInterval(autoPlayTimer);
+                autoPlayTimer = null;
+                document.getElementById('btn-auto-play').innerHTML = '<i class="fa-solid fa-forward"></i> 自動演示';
+            }
+            renderObsTags();
+            viterbiHistory = computeViterbi(currentObservations);
+            currentStepIndex = 0;
+            buildTrellisDOM();
+            updateTrellisView(0);
+        }
+
+        function stepForward() {
+            if (currentStepIndex < currentObservations.length - 1) {
+                currentStepIndex++;
+                updateTrellisView(currentStepIndex);
+            }
+        }
+
+        function stepBackward() {
+            if (currentStepIndex > 0) {
+                currentStepIndex--;
+                updateTrellisView(currentStepIndex);
+            }
+        }
+
+        function toggleAutoPlay() {
+            const btn = document.getElementById('btn-auto-play');
+            if (autoPlayTimer) {
+                clearInterval(autoPlayTimer);
+                autoPlayTimer = null;
+                btn.innerHTML = '<i class="fa-solid fa-forward"></i> 自動演示';
+            } else {
+                btn.innerHTML = '<i class="fa-solid fa-pause"></i> 暫停演示';
+                if (currentStepIndex >= currentObservations.length - 1) {
+                    currentStepIndex = 0;
+                    updateTrellisView(0);
+                }
+                autoPlayTimer = setInterval(() => {
+                    if (currentStepIndex < currentObservations.length - 1) {
+                        stepForward();
+                    } else {
+                        clearInterval(autoPlayTimer);
+                        autoPlayTimer = null;
+                        btn.innerHTML = '<i class="fa-solid fa-rotate-left"></i> 重新演示';
+                    }
+                }, 1300);
+            }
+        }
+
+        // ============================================
+        // 3. iPAS AI 題庫與互動評量
+        // ============================================
+        const QUIZ_DATA = [
+            {
+                id: 1,
+                question: "在隱馬可夫模型中，給定模型參數 $\\lambda = (A, B, \\pi)$ 與觀測序列 $O$，欲推求最可能的隱藏狀態序列 $S^*$，應使用下列哪一種演算法？",
+                options: [
+                    "A. 前向演算法 (Forward Algorithm)",
+                    "B. 維特比演算法 (Viterbi Algorithm)",
+                    "C. 鮑姆-韋爾奇演算法 (Baum-Welch Algorithm)",
+                    "D. 蒙地卡羅樹搜尋 (MCTS)"
+                ],
+                answer: 1,
+                explanation: "維特比演算法 (Viterbi) 採用動態規劃 (Dynamic Programming)，專門用於求解 HMM 的第二類基本問題：解碼問題 (Decoding)，找出使得聯合條件機率最大的隱藏狀態序列。"
+            },
+            {
+                id: 2,
+                question: "下列關於「馬可夫模型」與「隱馬可夫模型」的比較，何者最為正確？",
+                options: [
+                    "A. 馬可夫模型的狀態不可見，需要發射矩陣 B 來推估",
+                    "B. 隱馬可夫模型包含 2 個隨機過程：狀態轉移隨機過程與觀測發射隨機過程",
+                    "C. 馬可夫模型的時間複雜度永遠高於隱馬可夫模型",
+                    "D. 兩者的核心模型參數完全一致，皆為 $\\lambda = (A, \\pi)$"
+                ],
+                answer: 1,
+                explanation: "馬可夫模型狀態完全可見，僅有 1 個隨機過程 $\\lambda = (A, \\pi)$；而 HMM 具備雙重隨機過程（隱藏狀態轉移與觀測發射），核心參數三元組為 $\\lambda = (A, B, \\pi)$。"
+            },
+            {
+                id: 3,
+                question: "若在工業機台感測場景中，只有大量未標記隱藏磨損狀態的振動感測觀測序列，希望自主訓練估算 HMM 模型參數，應使用：",
+                options: [
+                    "A. 梯度下降反向傳播演算法",
+                    "B. 貪婪搜尋演算法 (Greedy Search)",
+                    "C. 鮑姆-韋爾奇演算法 (Baum-Welch / EM 演算法)",
+                    "D. 主成分分析演算法 (PCA)"
+                ],
+                answer: 2,
+                explanation: "Baum-Welch 演算法是 EM (Expectation-Maximization) 演算法在 HMM 上的具體實作，能在缺乏隱藏狀態標籤的無監督環境下估算轉移與發射矩陣。"
+            }
+        ];
+
+        function renderQuiz() {
+            const container = document.getElementById('quiz-container');
+            container.innerHTML = '';
+
+            QUIZ_DATA.forEach((q, qIndex) => {
+                const card = document.createElement('div');
+                card.className = 'p-5 rounded-2xl bg-tech-900 border border-slate-800 space-y-3';
+                
+                let optionsHTML = '';
+                q.options.forEach((opt, optIndex) => {
+                    optionsHTML += `
+                        <button onclick="handleAnswer(${qIndex}, ${optIndex})" id="quiz-btn-${qIndex}-${optIndex}" class="w-full text-left p-3 rounded-xl bg-tech-850 hover:bg-slate-800 border border-slate-700/70 text-xs sm:text-sm text-slate-200 transition flex items-center justify-between">
+                            <span>${opt}</span>
+                            <span class="status-icon"></span>
+                        </button>
+                    `;
+                });
+
+                card.innerHTML = `
+                    <div class="flex items-start gap-2">
+                        <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono text-xs font-bold">第 ${qIndex + 1} 題</span>
+                        <h4 class="text-xs sm:text-sm font-semibold text-white leading-relaxed quiz-question-title">${q.question}</h4>
+                    </div>
+                    <div class="space-y-2 mt-2">
+                        ${optionsHTML}
+                    </div>
+                    <div id="quiz-explain-${qIndex}" class="hidden p-3 rounded-xl bg-slate-800/80 border border-slate-700 text-xs text-slate-300 mt-2">
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            triggerMathRender(container);
+        }
+
+        window.handleAnswer = function(qIndex, selectedOptIndex) {
+            const q = QUIZ_DATA[qIndex];
+            const explainBox = document.getElementById(`quiz-explain-${qIndex}`);
+            
+            q.options.forEach((_, optIdx) => {
+                const btn = document.getElementById(`quiz-btn-${qIndex}-${optIdx}`);
+                btn.disabled = true;
+                btn.classList.remove('hover:bg-slate-800');
+                if (optIdx === q.answer) {
+                    btn.classList.add('border-emerald-500', 'bg-emerald-950/40', 'text-emerald-300');
+                    btn.querySelector('.status-icon').innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i>';
+                } else if (optIdx === selectedOptIndex && selectedOptIndex !== q.answer) {
+                    btn.classList.add('border-red-500', 'bg-red-950/40', 'text-red-300');
+                    btn.querySelector('.status-icon').innerHTML = '<i class="fa-solid fa-xmark text-red-400"></i>';
+                }
+            });
+
+            explainBox.classList.remove('hidden');
+            const isCorrect = (selectedOptIndex === q.answer);
+            explainBox.innerHTML = `
+                <div class="font-bold ${isCorrect ? 'text-emerald-400' : 'text-red-400'} mb-1">
+                    ${isCorrect ? '✅ 回答正確！' : '❌ 答錯了，請複習核心觀念：'}
+                </div>
+                <div class="text-slate-300">${q.explanation}</div>
+            `;
+            triggerMathRender(explainBox);
+        };
+
+        // ============================================
+        // 4. 初始化與全域監聽
+        // ============================================
+        document.addEventListener('DOMContentLoaded', () => {
+            triggerMathRender(document.body);
+            switchScenarioMode('mm');
+            resetSandbox();
+            renderQuiz();
+
+            // 複製程式碼功能
+            document.getElementById('btn-copy-code').addEventListener('click', () => {
+                const codeText = document.getElementById('code-content').innerText;
+                const textArea = document.createElement('textarea');
+                textArea.value = codeText;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    const btnText = document.getElementById('copy-btn-text');
+                    btnText.textContent = '已複製到剪貼簿！';
+                    setTimeout(() => { btnText.textContent = '複製程式碼'; }, 2000);
+                } catch (err) {
+                    console.error('複製失敗', err);
+                }
+                document.body.removeChild(textArea);
+            });
+
+            // 沙盒按鈕監聽
+            document.getElementById('btn-next-step').addEventListener('click', stepForward);
+            document.getElementById('btn-prev-step').addEventListener('click', stepBackward);
+            document.getElementById('btn-auto-play').addEventListener('click', toggleAutoPlay);
+            document.getElementById('btn-reset').addEventListener('click', resetSandbox);
+
+            // 新增觀測天數
+            document.getElementById('btn-add-obs').addEventListener('click', () => {
+                if (currentObservations.length >= 6) return;
+                const select = document.getElementById('select-add-obs');
+                currentObservations.push(select.value);
+                resetSandbox();
+            });
+
+            // 經典三部曲
+            document.getElementById('btn-preset-classic').addEventListener('click', () => {
+                currentObservations = ['Umbrella', 'Umbrella', 'Sunglasses'];
+                resetSandbox();
+            });
+
+            // 隨機序列生成
+            document.getElementById('btn-random-obs').addEventListener('click', () => {
+                const choices = ['Umbrella', 'Sunglasses'];
+                const len = Math.floor(Math.random() * 2) + 3; // 3 or 4
+                currentObservations = [];
+                for (let i = 0; i < len; i++) {
+                    currentObservations.push(choices[Math.floor(Math.random() * choices.length)]);
+                }
+                resetSandbox();
+            });
+
+            window.addEventListener('resize', () => {
+                drawTrellisConnections(currentStepIndex);
+            });
+        });
+    </script>
+</body>
+</html>
