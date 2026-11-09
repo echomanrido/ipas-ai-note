@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iPAS AI 常用任務與損失函數完整比較與互動實驗室</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- KaTeX for crisp mathematical formulas -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#1e1b4b',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans TC', 'system-ui', 'sans-serif'],
+            mono: ['Fira Code', 'Consolas', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .glass-card {
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans selection:bg-brand-600 selection:text-white">
+
+  <!-- Top Header Navigation -->
+  <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-500 to-teal-400 flex items-center justify-center text-white font-bold shadow-md shadow-brand-500/20">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 text-xs font-semibold bg-brand-50 text-brand-700 rounded-full border border-brand-200">iPAS AI 鑑定備考</span>
+            <span class="text-xs text-slate-400 font-medium">常見任務與損失函數</span>
+          </div>
+          <h1 class="text-sm sm:text-base font-bold text-slate-900 tracking-tight">損失函數全方位比較與互動學習實驗室</h1>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="#table-section" class="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-brand-600 hover:bg-slate-100 rounded-lg transition">
+          📊 核心對照表
+        </a>
+        <a href="#lab-section" class="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-brand-600 hover:bg-slate-100 rounded-lg transition">
+          🔬 動態實驗室
+        </a>
+        <a href="#quiz-section" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 active:scale-95 transition rounded-lg shadow-sm">
+          🎯 模擬試題
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+
+    <!-- Hero / Headline Banner -->
+    <div class="bg-gradient-to-r from-slate-900 via-brand-900 to-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+      <div class="absolute -right-12 -top-12 w-64 h-64 bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="relative z-10 max-w-4xl space-y-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="px-2.5 py-1 text-xs font-semibold bg-white/10 backdrop-blur rounded border border-white/20 text-teal-300">經濟部產業人才能力鑑定</span>
+          <span class="px-2.5 py-1 text-xs font-semibold bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30">必考核心考點 ★★★★★</span>
+        </div>
+        <h2 class="text-xl sm:text-3xl font-extrabold tracking-tight text-white">常見任務與損失函數 (Loss Functions) 完整知識對照</h2>
+        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+          損失函數是模型反向傳播梯度與權重優化的核心舵手。本系統提供<strong>「全景對照比較表」</strong>、<strong>「動態殘差/機率探針」</strong>、<strong>「異常值強韌性擬合沙盒」</strong>與<strong>「iPAS 仿真模考試題」</strong>，助您掌握回歸、分類、排序與重建任務的實務選型。
+        </p>
+      </div>
+    </div>
+
+    <!-- SECTION 1: COMPARISON TABLE (FEATURED HIGHLIGHT) -->
+    <section id="table-section" class="glass-card rounded-2xl shadow-sm border border-slate-200 overflow-hidden space-y-4 p-5 sm:p-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-brand-100 text-brand-700">重點精華</span>
+            <h3 class="text-lg sm:text-xl font-bold text-slate-900">常見任務與損失函數完整比較表</h3>
+          </div>
+          <p class="text-xs text-slate-500 mt-1">
+            依照任務類別（迴歸、分類、排序與重建）進行數學公式、特性、優劣勢與 iPAS 考點橫向對比。
+          </p>
+        </div>
+
+        <!-- Filter & Search Controls -->
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="relative">
+            <input type="text" id="table-search" placeholder="搜尋損失函數或關鍵字..." oninput="filterTable()" class="w-48 sm:w-60 pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+            <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          </div>
+          <div class="flex rounded-xl bg-slate-100 p-1 text-xs font-medium text-slate-600" id="filter-btn-group">
+            <button onclick="setFilter('all', this)" class="filter-btn px-2.5 py-1 rounded-lg bg-white text-brand-600 font-semibold shadow-sm transition">全部</button>
+            <button onclick="setFilter('迴歸', this)" class="filter-btn px-2.5 py-1 rounded-lg hover:text-slate-900 transition">迴歸</button>
+            <button onclick="setFilter('分類', this)" class="filter-btn px-2.5 py-1 rounded-lg hover:text-slate-900 transition">分類</button>
+            <button onclick="setFilter('排序與重建', this)" class="filter-btn px-2.5 py-1 rounded-lg hover:text-slate-900 transition">排序與重建</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Responsive Table -->
+      <div class="overflow-x-auto custom-scrollbar border border-slate-200 rounded-xl shadow-inner">
+        <table class="w-full text-left text-xs sm:text-sm border-collapse min-w-[950px]" id="loss-table">
+          <thead>
+            <tr class="bg-slate-100/90 text-slate-700 font-bold border-b border-slate-200">
+              <th class="py-3 px-3.5 w-28">任務性質</th>
+              <th class="py-3 px-3.5 w-44">損失函數名稱</th>
+              <th class="py-3 px-3.5 w-52">核心公式 / 數學表達</th>
+              <th class="py-3 px-4">運作機制與核心特性</th>
+              <th class="py-3 px-4 w-48">優點 / 適用場景</th>
+              <th class="py-3 px-4 w-44">缺點 / 限制</th>
+              <th class="py-3 px-3.5 w-36">iPAS 考點提示</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 bg-white" id="loss-table-body">
+            
+            <!-- MSE -->
+            <tr class="table-row-item hover:bg-slate-50/80 transition" data-category="迴歸" data-search="均方誤差 mse l2 迴歸 放大較大誤差">
+              <td class="py-3 px-3.5 font-semibold text-blue-700 bg-blue-50/30">
+                <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-500"></span> 迴歸任務</span>
+                <span class="block text-[11px] text-slate-400 font-normal">預測連續數值</span>
+              </td>
+              <td class="py-3 px-3.5 font-bold text-slate-900">
+                均方誤差 (MSE)
+                <span class="block text-[11px] text-slate-500 font-mono font-normal">L2 Loss</span>
+              </td>
+              <td class="py-3 px-3.5 font-mono text-[11px] bg-slate-50/60 text-slate-800">
+                $$\frac{1}{N}\sum (y_i - \hat{y}_i)^2$$
+              </td>
+              <td class="py-3 px-4 text-slate-600 leading-relaxed">
+                計算預測值與真值差值的平方平均。<strong>放大較大誤差的懲罰</strong>，誤差越大幅度呈平方倍增長。
+              </td>
+              <td class="py-3 px-4 text-emerald-700 bg-emerald-50/20 leading-relaxed">
+                適合<strong>誤差分佈穩定</strong>之情境；數學上處處平滑可導，便於梯度下降平順收斂。
+              </td>
+              <td class="py-3 px-4 text-rose-700 bg-rose-50/20 leading-relaxed">
+                <strong>對極端異常值（Outliers）極為敏感</strong>，易使擬合線被離群點嚴重拉偏。
+              </td>
+              <td class="py-3 px-3.5">
+                <span class="px-2 py-1 rounded bg-amber-50 text-amber-800 font-semibold text-[11px] border border-amber-200 block text-center">
+                  關鍵詞：放大較大誤差
+                </span>
+              </td>
+            </tr>
+
+            <!-- MAE -->
+            <tr class="table-row-item hover:bg-slate-50/80 transition" data-category="迴歸" data-search="平均絕對誤差 mae l1 迴歸 對極端值不敏感 穩健性 robust">
+              <td class="py-3 px-3.5 font-semibold text-blue-700 bg-blue-50/30">
+                <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-500"></span> 迴歸任務</span>
+                <span class="block text-[11px] text-slate-400 font-normal">預測連續數值</span>
+              </td>
+              <td class="py-3 px-3.5 font-bold text-slate-900">
+                平均絕對誤差 (MAE)
+                <span class="block text-[11px] text-slate-500 font-mono font-normal">L1 Loss</span>
+              </td>
+              <td class="py-3 px-3.5 font-mono text-[11px] bg-slate-50/60 text-slate-800">
+                $$\frac{1}{N}\sum |y_i - \hat{y}_i|$$
+              </td>
+              <td class="py-3 px-4 text-slate-600 leading-relaxed">
+                計算預測值與真實值差值的絕對值平均。懲罰與誤差呈線性關係，權重增長均勻。
+              </td>
+              <td class="py-3 px-4 text-emerald-700 bg-emerald-50/20 leading-relaxed">
+                <strong>對極端值較不敏感</strong>，具備極佳強韌性（Robustness），適合含有雜訊與異常值資料。
+              </td>
+              <td class="py-3 px-4 text-rose-700 bg-rose-50/20 leading-relaxed">
+                在原點（誤差為 0）處不可導；接近極值點時梯度不隨誤差縮小而減緩，易在解附近微幅震盪。
+              </td>
+              <td class="py-3 px-3.5">
+                <span class="px-2 py-1 rounded bg-amber-50 text-amber-800 font-semibold text-[11px] border border-amber-200 block text-center">
+                  關鍵詞：對極端值不敏感
+                </span>
+              </td>
+            </tr>
+
+            <!-- Huber -->
+            <tr class="table-row-item hover:bg-slate-50/80 transition" data-category="迴歸" data-search="huber 損失 smooth l1 結合 mse mae 平衡穩定抗雜訊">
+              <td class="py-3 px-3.5 font-semibold text-blue-700 bg-blue-50/30">
+                <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-500"></span> 迴歸任務</span>
+                <span class="block text-[11px] text-slate-400 font-normal">預測連續數值</span>
+              </td>
+              <td class="py-3 px-3.5 font-bold text-slate-900">
+                Huber 損失
+                <span class="block text-[11px] text-slate-500 font-mono font-normal">Smooth L1 基礎</span>
+              </td>
+              <td class="py-3 px-3.5 font-mono text-[10px] bg-slate-50/60 text-slate-800">
+                $$\begin{cases} \frac{1}{2}e^2 & |e|\le \delta \\ \delta(|e|-\frac{1}{2}\delta) & |e|> \delta \end{cases}$$
+              </td>
+              <td class="py-3 px-4 text-slate-600 leading-relaxed">
+                <strong>結合 MSE 與 MAE 優點</strong>，以閾值 $\delta$ 分界：小誤差採二次方，大誤差切換為線性。
+              </td>
+              <td class="py-3 px-4 text-emerald-700 bg-emerald-50/20 leading-relaxed">
+                在<strong>穩定性（中心光滑可導）與抗雜訊（遠端線性抗拉偏）</strong>之間取得平衡。
+              </td>
+              <td class="py-3 px-4 text-rose-700 bg-rose-50/20 leading-relaxed">
+                需人為調校超參數 $\delta$（Delta 閾值），調校不當會退化偏向單一特性。
+              </td>
+              <td class="py-3 px-3.5">
+                <span class="px-2 py-1 rounded bg-amber-50 text-amber-800 font-semibold text-[11px] border border-amber-200 block text-center">
+                  關鍵詞：結合兩者優點
+                </span>
+              </td>
+            </tr>
+
+            <!-- Cross-Entropy -->
+            <tr class="table-row-item hover:bg-slate-50/80 transition" data-category="分類" data-search="交叉熵損失 cross entropy 分類 機率距離 標準選擇 bce softmax">
+              <td class="py-3 px-3.5 font-semibold text-indigo-700 bg-indigo-50/30">
+                <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> 分類任務</span>
+                <span class="block text-[11px] text-slate-400 font-normal">預測類別標籤</span>
+              </td>
+              <td class="py-3 px-3.5 font-bold text-slate-900">
+                交叉熵損失 (Cross-Entropy)
+                <span class="block text-[11px] text-slate-500 font-mono font-normal">CE / BCE Loss</span>
+              </td>
+              <td class="py-3 px-3.5 font-mono text-[11px] bg-slate-50/60 text-slate-800">
+                $$-\sum y_c \log(\hat{p}_c)$$
+              </td>
+              <td class="py-3 px-4 text-slate-600 leading-relaxed">
+                <strong>衡量預測機率與實際標籤的距離</strong>。本質基於 Kullback-Leibler (KL) 散度，懲罰錯誤預測。
+              </td>
+              <td class="py-3 px-4 text-emerald-700 bg-emerald-50/20 leading-relaxed">
+                為<strong>多數分類模型的標準選擇</strong>。配合 Softmax 或 Sigmoid 輸出層求導數學形式極為簡潔。
+              </td>
+              <td class="py-3 px-4 text-rose-700 bg-rose-50/20 leading-relaxed">
+                當面臨<strong>類別極端不平衡</strong>時，大量容易辨識的負樣本總損失會淹沒少數正樣本。
+              </td>
+              <td class="py-3 px-3.5">
+                <span class="px-2 py-1 rounded bg-amber-50 text-amber-800 font-semibold text-[11px] border border-amber-200 block text-center">
+                  關鍵詞：衡量機率距離
+                </span>
+              </td>
+            </tr>
+
+            <!-- Contrastive Loss -->
+            <tr class="table-row-item hover:bg-slate-50/80 transition" data-category="分類" data-search="對比損失 contrastive loss 樣本對相似度 人臉辨識 語意匹配 度量學習">
+              <td class="py-3 px-3.5 font-semibold text-indigo-700 bg-indigo-50/30">
+                <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> 分類任務</span>
+                <span class="block text-[11px] text-slate-400 font-normal">度量與匹配</span>
+              </td>
+              <td class="py-3 px-3.5 font-bold text-slate-900">
+                對比損失 (Contrastive Loss)
+                <span class="block text-[11px] text-slate-500 font-mono font-normal">Pairwise Distance</span>
+              </td>
+              <td class="py-3 px-3.5 font-mono text-[10px] bg-slate-50/60 text-slate-800">
+                $$(1-Y)\frac{1}{2}D^2 + Y\frac{1}{2}[\max(0, m-D)]^2$$
+              </td>
+              <td class="py-3 px-4 text-slate-600 leading-relaxed">
+                <strong>學習樣本對之間的相似度關係</strong>。將同類樣本在嵌入空間拉近，不同類樣本推開至安全邊界 $m$ 外。
+              </td>
+              <td class="py-3 px-4 text-emerald-700 bg-emerald-50/20 leading-relaxed">
+                常用於<strong>人臉辨識、簽名比對與語意匹配</strong>；適合處理類別眾多且類別未知之開放性比對。
+              </td>
+              <td class="py-3 px-4 text-rose-700 bg-rose-50/20 leading-relaxed">
+                高度依賴成對樣本建構品質（正負樣本採樣策略），超參數邊界 $m$ 需經驗調配。
+              </td>
+              <td class="py-3 px-3.5">
+                <span class="px-2 py-1 rounded bg-amber-50 text-amber-800 font-semibold text-[11px] border border-amber-200 block text-center">
+                  關鍵詞：人臉辨識/相似度
+                </span>
+              </td>
+            </tr>
+
+            <!-- Focal Loss -->
+            <tr class="table-row-item hover:bg-slate-50/80 transition" data-category="分類" data-search="focal loss 難分類樣本 資料不平衡 聚焦因子 gamma retinanet">
+              <td class="py-3 px-3.5 font-semibold text-indigo-700 bg-indigo-50/30">
+                <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> 分類任務</span>
+                <span class="block text-[11px] text-slate-400 font-normal">不平衡分類</span>
+              </td>
+              <td class="py-3 px-3.5 font-bold text-slate-900">
+                Focal Loss
+                <span class="block text-[11px] text-slate-500 font-mono font-normal">RetinaNet 核心</span>
+              </td>
+              <td class="py-3 px-3.5 font-mono text-[11px] bg-slate-50/60 text-slate-800">
+                $$-\alpha_t (1 - p_t)^\gamma \log(p_t)$$
+              </td>
+              <td class="py-3 px-4 text-slate-600 leading-relaxed">
+                引入調變係數 $(1-p_t)^\gamma$，自動大幅降低高置信度（易分類）樣本的權重，<strong>強化對難分類樣本的學習</strong>。
+              </td>
+              <td class="py-3 px-4 text-emerald-700 bg-emerald-50/20 leading-relaxed">
+                特別適合處理<strong>資料極端不平衡問題</strong>（如工業瑕疵偵測、醫學罕見病灶、物件偵測前景背景失衡）。
+              </td>
+              <td class="py-3 px-4 text-rose-700 bg-rose-50/20 leading-relaxed">
+                需額外調整聚焦參數 $\gamma$（通常設為 2）及平衡權重 $\alpha$。
+              </td>
+              <td class="py-3 px-3.5">
+                <span class="px-2 py-1 rounded bg-amber-50 text-amber-800 font-semibold text-[11px] border border-amber-200 block text-center">
+                  關鍵詞：資料不平衡問題
+                </span>
+              </td>
+            </tr>
+
+            <!-- Ranking Loss -->
+            <tr class="table-row-item hover:bg-slate-50/80 transition" data-category="排序與重建" data-search="排序損失 ranking loss triplet 相對順序 搜尋引擎 推薦系統">
+              <td class="py-3 px-3.5 font-semibold text-teal-700 bg-teal-50/30">
+                <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-teal-500"></span> 排序與重建</span>
+                <span class="block text-[11px] text-slate-400 font-normal">順序檢索</span>
+              </td>
+              <td class="py-3 px-3.5 font-bold text-slate-900">
+                排序損失 (Ranking Loss)
+                <span class="block text-[11px] text-slate-500 font-mono font-normal">Triplet / Margin</span>
+              </td>
+              <td class="py-3 px-3.5 font-mono text-[10px] bg-slate-50/60 text-slate-800">
+                $$\max(0, D_{ap} - D_{an} + m)$$
+              </td>
+              <td class="py-3 px-4 text-slate-600 leading-relaxed">
+                <strong>關注資料間的相對順序</strong>而非預測單一絕對分數。強制相關項目分數高於不相關項目至少一個安全邊距。
+              </td>
+              <td class="py-3 px-4 text-emerald-700 bg-emerald-50/20 leading-relaxed">
+                常見於<strong>搜尋引擎排序、電商推薦系統、Query-Document 檢索重排</strong>。
+              </td>
+              <td class="py-3 px-4 text-rose-700 bg-rose-50/20 leading-relaxed">
+                三元組（Anchor, Positive, Negative）構建較複雜，需配合 Hard Negative Mining 挖掘有效樣本。
+              </td>
+              <td class="py-3 px-3.5">
+                <span class="px-2 py-1 rounded bg-amber-50 text-amber-800 font-semibold text-[11px] border border-amber-200 block text-center">
+                  關鍵詞：關注相對順序
+                </span>
+              </td>
+            </tr>
+
+            <!-- Reconstruction Loss -->
+            <tr class="table-row-item hover:bg-slate-50/80 transition" data-category="排序與重建" data-search="重建損失 reconstruction loss 自編碼器 autoencoder 生成模型 輸入輸出相似度">
+              <td class="py-3 px-3.5 font-semibold text-teal-700 bg-teal-50/30">
+                <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-teal-500"></span> 排序與重建</span>
+                <span class="block text-[11px] text-slate-400 font-normal">特徵生成</span>
+              </td>
+              <td class="py-3 px-3.5 font-bold text-slate-900">
+                重建損失 (Reconstruction Loss)
+                <span class="block text-[11px] text-slate-500 font-mono font-normal">AE / VAE / GAN</span>
+              </td>
+              <td class="py-3 px-3.5 font-mono text-[11px] bg-slate-50/60 text-slate-800">
+                $$\|X - \hat{X}\|^2 \text{ or } \text{BCE}$$
+              </td>
+              <td class="py-3 px-4 text-slate-600 leading-relaxed">
+                <strong>計算輸入 $X$ 與輸出 $\hat{X}$ 間的相似程度</strong>。迫使中間隱含層（Latent Bottleneck）學習核心低維特徵。
+              </td>
+              <td class="py-3 px-4 text-emerald-700 bg-emerald-50/20 leading-relaxed">
+                廣泛應用於<strong>自編碼器 (Autoencoder)、變分自編碼器 (VAE) 與生成模型</strong>之無監督特徵壓縮與還原。
+              </td>
+              <td class="py-3 px-4 text-rose-700 bg-rose-50/20 leading-relaxed">
+                若以純像素級 MSE 重建自然圖像，易導致邊緣模糊（平均化現象）。
+              </td>
+              <td class="py-3 px-3.5">
+                <span class="px-2 py-1 rounded bg-amber-50 text-amber-800 font-semibold text-[11px] border border-amber-200 block text-center">
+                  關鍵詞：輸入輸出相似度
+                </span>
+              </td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+      <div id="no-result-msg" class="hidden text-center py-8 text-xs text-slate-400">
+        找不到符合篩選條件的損失函數，請嘗試其他關鍵字。
+      </div>
+    </section>
+
+    <!-- SECTION 2: INTERACTIVE LABS -->
+    <section id="lab-section" class="space-y-6">
+      
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-indigo-100 text-indigo-700">互動視覺實驗室</span>
+          <h3 class="text-xl font-bold text-slate-900 mt-1">動態探針與函數幾何視覺化</h3>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Lab 1: Regression Curves & Probe -->
+        <div class="glass-card p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+              <h4 class="font-bold text-slate-900 flex items-center gap-1.5 text-sm sm:text-base">
+                <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                迴歸損失探針 (MSE vs MAE vs Huber)
+              </h4>
+              <div class="text-[11px] font-mono text-slate-400">曲率與梯度對比</div>
+            </div>
+
+            <!-- Chart Canvas -->
+            <div class="relative w-full h-[220px] mb-4">
+              <canvas id="regChart"></canvas>
+            </div>
+
+            <!-- Controls -->
+            <div class="space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+              <div>
+                <div class="flex justify-between items-center text-xs font-semibold mb-1">
+                  <label for="reg-error-slider" class="text-slate-700">殘差誤差 $e = (y - \hat{y})$</label>
+                  <span id="reg-error-val" class="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-mono text-xs">2.00</span>
+                </div>
+                <input type="range" id="reg-error-slider" min="-5" max="5" step="0.1" value="2.0" class="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer accent-blue-600">
+              </div>
+
+              <div>
+                <div class="flex justify-between items-center text-xs font-semibold mb-1">
+                  <label for="huber-delta-slider" class="text-slate-700">Huber 閾值 $\delta$ (Delta)</label>
+                  <span id="huber-delta-val" class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-mono text-xs">1.35</span>
+                </div>
+                <input type="range" id="huber-delta-slider" min="0.2" max="3.0" step="0.05" value="1.35" class="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer accent-amber-500">
+              </div>
+
+              <!-- Output stat badges -->
+              <div class="grid grid-cols-3 gap-2 pt-1 text-center">
+                <div class="p-2 rounded-lg bg-blue-50 border border-blue-200">
+                  <div class="text-[10px] text-blue-600 font-semibold">MSE 損失</div>
+                  <div id="stat-mse" class="text-base font-bold font-mono text-blue-900">4.00</div>
+                </div>
+                <div class="p-2 rounded-lg bg-emerald-50 border border-emerald-200">
+                  <div class="text-[10px] text-emerald-600 font-semibold">MAE 損失</div>
+                  <div id="stat-mae" class="text-base font-bold font-mono text-emerald-900">2.00</div>
+                </div>
+                <div class="p-2 rounded-lg bg-amber-50 border border-amber-200">
+                  <div class="text-[10px] text-amber-600 font-semibold">Huber 損失</div>
+                  <div id="stat-huber" class="text-base font-bold font-mono text-amber-900">1.79</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-500 mt-3">
+            💡 <strong>觀察重點</strong>：當誤差 $e$ 擴大時，MSE 曲線陡峭飛升（過度懲罰離群值）；Huber 則在 $|e| > \delta$ 時維持與 MAE 平行的線性斜率，抑制極端梯度。
+          </p>
+        </div>
+
+        <!-- Lab 2: Classification Focal Loss Probe -->
+        <div class="glass-card p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+              <h4 class="font-bold text-slate-900 flex items-center gap-1.5 text-sm sm:text-base">
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                分類損失與 Focal Loss 權重調變
+              </h4>
+              <div class="text-[11px] font-mono text-slate-400">處理不平衡資料</div>
+            </div>
+
+            <!-- Chart Canvas -->
+            <div class="relative w-full h-[220px] mb-4">
+              <canvas id="clsChart"></canvas>
+            </div>
+
+            <!-- Controls -->
+            <div class="space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+              <div>
+                <div class="flex justify-between items-center text-xs font-semibold mb-1">
+                  <label for="cls-prob-slider" class="text-slate-700">正確類別預測機率 $p_t$</label>
+                  <span id="cls-prob-val" class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-mono text-xs">0.70</span>
+                </div>
+                <input type="range" id="cls-prob-slider" min="0.01" max="0.99" step="0.01" value="0.70" class="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer accent-indigo-600">
+              </div>
+
+              <div>
+                <div class="flex justify-between items-center text-xs font-semibold mb-1">
+                  <label for="focal-gamma-slider" class="text-slate-700">聚焦因子 $\gamma$ (Gamma)</label>
+                  <span id="focal-gamma-val" class="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-mono text-xs">2.0</span>
+                </div>
+                <input type="range" id="focal-gamma-slider" min="0.0" max="5.0" step="0.25" value="2.0" class="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer accent-rose-500">
+              </div>
+
+              <!-- Output stat badges -->
+              <div class="grid grid-cols-2 gap-2 pt-1 text-center">
+                <div class="p-2 rounded-lg bg-indigo-50 border border-indigo-200">
+                  <div class="text-[10px] text-indigo-600 font-semibold">標準交叉熵 (CE)</div>
+                  <div id="stat-ce" class="text-base font-bold font-mono text-indigo-900">0.357</div>
+                </div>
+                <div class="p-2 rounded-lg bg-rose-50 border border-rose-200">
+                  <div class="text-[10px] text-rose-600 font-semibold">Focal Loss</div>
+                  <div id="stat-focal" class="text-base font-bold font-mono text-rose-900">0.032</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mt-3 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-900" id="stat-modulating-desc">
+            當 $p_t=0.7$ 且 $\gamma=2$ 時，調節權重 $(1-p_t)^\gamma = 0.09$，此容易分類樣本損失被降權至原先的 <strong>9%</strong>，讓模型專注攻克難分類樣本！
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Lab 3: Linear Regression Outlier Sandbox -->
+      <div class="glass-card p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 gap-3">
+          <div>
+            <h4 class="font-bold text-slate-900 flex items-center gap-2 text-base">
+              <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+              異常值擬合抵抗沙盒 (Robustness Sandbox)
+            </h4>
+            <p class="text-xs text-slate-500 mt-0.5">
+              實際觀測當訓練集出現<strong>孤立極端點（紅色點）</strong>時，MSE、MAE 與 Huber 的回歸線抗噪反應。
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="stepSimulate()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 active:scale-95 transition shadow-sm">
+              單步更新 (Step)
+            </button>
+            <button id="auto-sim-btn" onclick="toggleAutoSimulate()" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-brand-600 hover:bg-brand-700 text-white active:scale-95 transition shadow-sm">
+              一鍵自動收斂
+            </button>
+            <button onclick="injectPresetOutliers()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 transition">
+              + 注入極端異常值
+            </button>
+            <button onclick="resetSimData()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition">
+              重設畫布
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <div class="lg:col-span-8 flex flex-col items-center">
+            <div class="relative w-full aspect-[16/9] bg-slate-950 rounded-xl overflow-hidden shadow-inner border border-slate-800">
+              <canvas id="simCanvas" class="w-full h-full cursor-crosshair"></canvas>
+              <div class="absolute top-2.5 left-3 flex items-center gap-2 text-[11px] font-mono text-slate-300 pointer-events-none">
+                <span class="bg-slate-900/90 px-2 py-0.5 rounded border border-slate-700">樣本數: <span id="sim-points-count" class="text-white font-bold">12</span> (點擊畫布可手動增點)</span>
+                <span class="bg-slate-900/90 px-2 py-0.5 rounded border border-slate-700">疊代: <span id="sim-epoch-count" class="text-brand-300 font-bold">0</span></span>
+              </div>
+              <div class="absolute bottom-2.5 right-3 flex items-center gap-3 bg-slate-900/90 px-2.5 py-1 rounded border border-slate-800 text-[10px] text-slate-300 pointer-events-none">
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-cyan-400"></span> 正常分佈</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span> 極端異常值</span>
+                <span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-amber-400"></span> 當前擬合線</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="lg:col-span-4 space-y-3">
+            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+              <div class="text-xs font-bold text-slate-900">選擇評估損失函數</div>
+              
+              <label class="flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:border-brand-300 transition">
+                <input type="radio" name="sim-loss" value="mse" checked onchange="changeSimLoss('mse')" class="text-brand-600 h-3.5 w-3.5">
+                <div class="ml-2.5">
+                  <span class="block text-xs font-bold text-slate-800">MSE 均方誤差 (L2)</span>
+                  <span class="block text-[10px] text-slate-500">直線會被孤立點強烈拉扯偏斜</span>
+                </div>
+              </label>
+
+              <label class="flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:border-brand-300 transition">
+                <input type="radio" name="sim-loss" value="mae" onchange="changeSimLoss('mae')" class="text-brand-600 h-3.5 w-3.5">
+                <div class="ml-2.5">
+                  <span class="block text-xs font-bold text-slate-800">MAE 平均絕對誤差 (L1)</span>
+                  <span class="block text-[10px] text-slate-500">穩健堅守主軸，高度無視異常值</span>
+                </div>
+              </label>
+
+              <label class="flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:border-brand-300 transition">
+                <input type="radio" name="sim-loss" value="huber" onchange="changeSimLoss('huber')" class="text-brand-600 h-3.5 w-3.5">
+                <div class="ml-2.5">
+                  <span class="block text-xs font-bold text-slate-800">Huber Loss ($\delta=1.0$)</span>
+                  <span class="block text-[10px] text-slate-500">兩者折衷，中心平滑且兼具抗噪</span>
+                </div>
+              </label>
+
+              <div class="p-2.5 bg-white rounded-lg border border-slate-200 font-mono text-xs space-y-0.5 mt-2">
+                <div class="text-[10px] text-slate-400">目前擬合方程式：</div>
+                <div class="text-slate-900 font-bold" id="sim-equation-disp">ŷ = 0.500x + 0.800</div>
+                <div class="text-[10px] text-slate-500">損失均值: <span id="sim-loss-disp" class="text-brand-600 font-bold">--</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- SECTION 3: iPAS PRACTICE QUIZ -->
+    <section id="quiz-section" class="glass-card p-6 rounded-2xl shadow-sm border border-slate-200 space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 gap-2">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800">iPAS 歷屆考點驗收</span>
+            <h3 class="text-lg font-bold text-slate-900">核心考點實戰隨堂測驗</h3>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">點擊選項立即批改並呈現精析，全面查漏補缺。</p>
+        </div>
+        <div class="flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-xl border border-slate-200 text-xs">
+          <span class="text-slate-600 font-medium">當前答對率:</span>
+          <span id="quiz-score" class="text-base font-extrabold text-brand-600 font-mono">0 / 4</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="quiz-container">
+        
+        <!-- Question 1 -->
+        <div class="quiz-item p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5 flex flex-col justify-between" data-qid="1" data-correct="B">
+          <div>
+            <span class="text-xs font-bold text-slate-900 block mb-2">Q1. 在進行房價連續數值迴歸預測時，若資料集中存在極端高價的豪宅離群值 (Outliers)，下列哪一個損失函數最「不易受到極端值干擾」，能維持最佳穩健性？</span>
+            <div class="space-y-1.5 text-xs">
+              <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 cursor-pointer">
+                <input type="radio" name="q1" value="A"> <span>(A) 均方誤差 (MSE, Mean Squared Error)</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 cursor-pointer">
+                <input type="radio" name="q1" value="B"> <span>(B) 平均絕對誤差 (MAE, Mean Absolute Error)</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 cursor-pointer">
+                <input type="radio" name="q1" value="C"> <span>(C) 二元交叉熵損失 (Binary Cross-Entropy)</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 cursor-pointer">
+                <input type="radio" name="q1" value="D"> <span>(D) 排序損失 (Ranking Loss)</span>
+              </label>
+            </div>
+          </div>
+          <div class="quiz-feedback hidden p-2.5 rounded-lg text-xs leading-relaxed"></div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="quiz-item p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5 flex flex-col justify-between" data-qid="2" data-correct="C">
+          <div>
+            <span class="text-xs font-bold text-slate-900 block mb-2">Q2. 工廠晶圓表面瑕疵檢測任務中，良品佔 99.9%、瑕疵品僅佔 0.1%（極度不平衡）。為了避免大量容易分類的良品主導梯度更新，最適當優先採用的損失函數為？</span>
+            <div class="space-y-1.5 text-xs">
+              <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 cursor-pointer">
+                <input type="radio" name="q2" value="A"> <span>(A) 均方誤差 (MSE)</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 cursor-pointer">
+                <input type="radio" name="q2" value="B"> <span>(B) 標準多分類交叉熵損失 (Cross-Entropy)</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 cursor-pointer">
+                <input type="radio" name="q2" value="C"> <span>(C) Focal Loss</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 cursor-pointer">
+                <input type="radio" name="q2" value="D"> <span>(D) 餘弦相似度損失 (Cosine Similarity Loss)</span>
+              </label>
+            </div>
+          </div>
+          <div class="quiz-feedback hidden p-2.5 rounded-lg text-xs leading-relaxed"></div>
+        </div>
+
+        <!-- Question 3 -->
+        <div class="quiz-item p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5 flex flex-col justify-between" data-qid="3" data-correct="D">
+          <div>
+            <span class="text-xs font-bold text-slate-900 block mb-2">Q3. 關於「Huber 損失」的數學運作設計理念，下列敘述何者最正確？</span>
+            <div class="space-y-1.5 text-xs">
+              <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 cursor-pointer">
+                <input type="radio" name="q3" value="A"> <span>(A) 在誤差較大時採二次方懲罰，誤差較小時採絕對值懲罰</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 cursor-pointer">
+                <input type="radio" name="q3" value="B"> <span>(B) 原點處不可導，因此只能透過次梯度下降法求解</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 cursor-pointer">
+                <input type="radio" name="q3" value="C"> <span>(C) 專門用於解決自編碼器影像特徵壓縮任務</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 cursor-pointer">
+                <input type="radio" name="q3" value="D"> <span>(D) 結合 MSE 與 MAE 優點，小誤差處平滑可導，大誤差處線性抗雜訊</span>
+              </label>
+            </div>
+          </div>
+          <div class="quiz-feedback hidden p-2.5 rounded-lg text-xs leading-relaxed"></div>
+        </div>
+
+        <!-- Question 4 -->
+        <div class="quiz-item p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5 flex flex-col justify-between" data-qid="4" data-correct="A">
+          <div>
+            <span class="text-xs font-bold text-slate-900 block mb-2">Q4. 下列 AI 任務與合適損失函數的配對，何者「完全正確」？</span>
+            <div class="space-y-1.5 text-xs">
+              <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 cursor-pointer">
+                <input type="radio" name="q4" value="A"> <span>(A) 人臉特徵度量比對 ➡️ 對比損失 (Contrastive Loss)</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 cursor-pointer">
+                <input type="radio" name="q4" value="B"> <span>(B) 搜尋引擎相關度重排 ➡️ 均方誤差 (MSE)</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 cursor-pointer">
+                <input type="radio" name="q4" value="C"> <span>(C) 自編碼器重建輸入訊號 ➡️ 交叉熵排序損失 (Ranking Loss)</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 cursor-pointer">
+                <input type="radio" name="q4" value="D"> <span>(D) 物件偵測類別不平衡 ➡️ 平均絕對誤差 (MAE)</span>
+              </label>
+            </div>
+          </div>
+          <div class="quiz-feedback hidden p-2.5 rounded-lg text-xs leading-relaxed"></div>
+        </div>
+
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="resetQuiz()" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+          重置作答
+        </button>
+        <button onclick="submitQuiz()" class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-brand-600 text-white hover:bg-brand-700 shadow-sm transition">
+          送出批改
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 space-y-1">
+      <p class="font-medium text-slate-700">iPAS AI 應用規劃師 核心考點強化教材 · 常見任務與損失函數對應</p>
+      <p class="text-slate-400">涵蓋：迴歸 (MSE / MAE / Huber) · 分類 (CE / Contrastive / Focal) · 排序與自編碼器重建 (Ranking / Reconstruction)</p>
+    </div>
+  </footer>
+
+  <script>
+    // ==========================================
+    // 1. TABLE FILTER & SEARCH LOGIC
+    // ==========================================
+    let currentFilter = 'all';
+
+    function setFilter(category, btnElement) {
+      currentFilter = category;
+      document.querySelectorAll('#filter-btn-group .filter-btn').forEach(btn => {
+        btn.classList.remove('bg-white', 'text-brand-600', 'font-semibold', 'shadow-sm');
+        btn.classList.add('hover:text-slate-900');
+      });
+      btnElement.classList.add('bg-white', 'text-brand-600', 'font-semibold', 'shadow-sm');
+      btnElement.classList.remove('hover:text-slate-900');
+      filterTable();
+    }
+
+    function filterTable() {
+      const query = document.getElementById('table-search').value.toLowerCase().trim();
+      const rows = document.querySelectorAll('#loss-table-body .table-row-item');
+      let visibleCount = 0;
+
+      rows.forEach(row => {
+        const rowCategory = row.getAttribute('data-category');
+        const rowSearchData = row.getAttribute('data-search').toLowerCase();
+
+        const categoryMatch = (currentFilter === 'all') || (rowCategory === currentFilter);
+        const searchMatch = !query || rowSearchData.includes(query);
+
+        if (categoryMatch && searchMatch) {
+          row.classList.remove('hidden');
+          visibleCount++;
+        } else {
+          row.classList.add('hidden');
+        }
+      });
+
+      const noResult = document.getElementById('no-result-msg');
+      if (visibleCount === 0) {
+        noResult.classList.remove('hidden');
+      } else {
+        noResult.classList.add('hidden');
+      }
+    }
+
+    // ==========================================
+    // 2. REGRESSION & CLASSIFICATION CHARTS
+    // ==========================================
+    let regChart = null;
+    let clsChart = null;
+
+    function calcMSE(e) { return e * e; }
+    function calcMAE(e) { return Math.abs(e); }
+    function calcHuber(e, delta) {
+      const absE = Math.abs(e);
+      return absE <= delta ? 0.5 * e * e : delta * (absE - 0.5 * delta);
+    }
+    function calcCE(p) { return -Math.log(Math.max(p, 1e-6)); }
+    function calcFocal(p, gamma) { return Math.pow(1 - p, gamma) * calcCE(p); }
+
+    function initRegressionChart() {
+      const ctx = document.getElementById('regChart').getContext('2d');
+      const xs = [];
+      for (let x = -5; x <= 5.01; x += 0.2) xs.push(parseFloat(x.toFixed(2)));
+
+      const delta = parseFloat(document.getElementById('huber-delta-slider').value);
+      const curE = parseFloat(document.getElementById('reg-error-slider').value);
+
+      regChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: xs,
+          datasets: [
+            { label: 'MSE (e²)', data: xs.map(x => calcMSE(x)), borderColor: '#2563eb', borderWidth: 2, tension: 0.1, pointRadius: 0 },
+            { label: 'MAE (|e|)', data: xs.map(x => calcMAE(x)), borderColor: '#059669', borderWidth: 2, tension: 0.1, pointRadius: 0 },
+            { label: 'Huber Loss', data: xs.map(x => calcHuber(x, delta)), borderColor: '#d97706', borderWidth: 2, tension: 0.1, pointRadius: 0 },
+            { label: '目前誤差點', data: [{ x: curE, y: calcHuber(curE, delta) }], borderColor: '#4338ca', backgroundColor: '#4f46e5', pointRadius: 5, showLine: false }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          scales: {
+            x: { title: { display: true, text: '殘差誤差 (e = y - ŷ)', font: { size: 10 } } },
+            y: { max: 18, min: 0, title: { display: true, text: '損失值', font: { size: 10 } } }
+          },
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } }
+          }
+        }
+      });
+    }
+
+    function updateRegression() {
+      const e = parseFloat(document.getElementById('reg-error-slider').value);
+      const delta = parseFloat(document.getElementById('huber-delta-slider').value);
+
+      document.getElementById('reg-error-val').innerText = e.toFixed(2);
+      document.getElementById('huber-delta-val').innerText = delta.toFixed(2);
+
+      const mse = calcMSE(e);
+      const mae = calcMAE(e);
+      const huber = calcHuber(e, delta);
+
+      document.getElementById('stat-mse').innerText = mse.toFixed(2);
+      document.getElementById('stat-mae').innerText = mae.toFixed(2);
+      document.getElementById('stat-huber').innerText = huber.toFixed(2);
+
+      if (regChart) {
+        regChart.data.datasets[2].data = regChart.data.labels.map(x => calcHuber(x, delta));
+        regChart.data.datasets[3].data = [{ x: e, y: huber }];
+        regChart.update();
+      }
+    }
+
+    function initClassificationChart() {
+      const ctx = document.getElementById('clsChart').getContext('2d');
+      const ps = [];
+      for (let p = 0.02; p <= 0.98; p += 0.02) ps.push(parseFloat(p.toFixed(2)));
+
+      const gamma = parseFloat(document.getElementById('focal-gamma-slider').value);
+      const curP = parseFloat(document.getElementById('cls-prob-slider').value);
+
+      clsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ps,
+          datasets: [
+            { label: 'CE (γ=0)', data: ps.map(p => calcCE(p)), borderColor: '#4f46e5', borderWidth: 2, tension: 0.1, pointRadius: 0 },
+            { label: 'Focal Loss', data: ps.map(p => calcFocal(p, gamma)), borderColor: '#f43f5e', borderWidth: 2, tension: 0.1, pointRadius: 0 },
+            { label: '目前機率點', data: [{ x: curP, y: calcFocal(curP, gamma) }], borderColor: '#be123c', backgroundColor: '#f43f5e', pointRadius: 5, showLine: false }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          scales: {
+            x: { title: { display: true, text: '預測機率 pt', font: { size: 10 } } },
+            y: { max: 3.5, min: 0, title: { display: true, text: '損失值', font: { size: 10 } } }
+          },
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } }
+          }
+        }
+      });
+    }
+
+    function updateClassification() {
+      const p = parseFloat(document.getElementById('cls-prob-slider').value);
+      const gamma = parseFloat(document.getElementById('focal-gamma-slider').value);
+
+      document.getElementById('cls-prob-val').innerText = p.toFixed(2);
+      document.getElementById('focal-gamma-val').innerText = gamma.toFixed(1);
+
+      const ce = calcCE(p);
+      const fl = calcFocal(p, gamma);
+      const factor = Math.pow(1 - p, gamma);
+
+      document.getElementById('stat-ce').innerText = ce.toFixed(3);
+      document.getElementById('stat-focal').innerText = fl.toFixed(3);
+
+      const pct = (factor * 100).toFixed(1);
+      document.getElementById('stat-modulating-desc').innerHTML = 
+        `當 $p_t=${p.toFixed(2)}$ 且 $\\gamma=${gamma.toFixed(1)}$ 時，調節權重 $(1-p_t)^\\gamma = ${factor.toFixed(3)}$，此樣本損失被調降至標準交叉熵的 <strong>${pct}%</strong>。`;
+
+      if (window.renderMathInElement) {
+        renderMathInElement(document.getElementById('stat-modulating-desc'), {
+          delimiters: [{left: "$", right: "$", display: false}]
+        });
+      }
+
+      if (clsChart) {
+        clsChart.data.datasets[1].data = clsChart.data.labels.map(x => calcFocal(x, gamma));
+        clsChart.data.datasets[2].data = [{ x: p, y: fl }];
+        clsChart.update();
+      }
+    }
+
+    // ==========================================
+    // 3. ROBUSTNESS SANDBOX CANVAS & ENGINE
+    // ==========================================
+    const simCanvas = document.getElementById('simCanvas');
+    const simCtx = simCanvas.getContext('2d');
+    let autoSimInterval = null;
+
+    let simPoints = [
+      { x: 1.0, y: 1.2, isOutlier: false },
+      { x: 1.5, y: 1.8, isOutlier: false },
+      { x: 2.0, y: 2.1, isOutlier: false },
+      { x: 2.5, y: 2.4, isOutlier: false },
+      { x: 3.0, y: 3.1, isOutlier: false },
+      { x: 3.5, y: 3.6, isOutlier: false },
+      { x: 4.0, y: 3.9, isOutlier: false },
+      { x: 4.5, y: 4.6, isOutlier: false },
+      { x: 5.0, y: 5.0, isOutlier: false },
+      { x: 5.5, y: 5.4, isOutlier: false },
+      { x: 2.0, y: 6.6, isOutlier: true },
+      { x: 5.0, y: 0.8, isOutlier: true }
+    ];
+
+    let simModel = {
+      slope: 0.5,
+      intercept: 0.8,
+      lr: 0.05,
+      epoch: 0,
+      lossType: 'mse',
+      delta: 1.0
+    };
+
+    function resizeSimCanvas() {
+      const rect = simCanvas.getBoundingClientRect();
+      simCanvas.width = rect.width * (window.devicePixelRatio || 1);
+      simCanvas.height = rect.height * (window.devicePixelRatio || 1);
+    }
+
+    function simToCanvasX(x) {
+      const pad = 35 * (window.devicePixelRatio || 1);
+      return pad + (x / 7.0) * (simCanvas.width - pad * 2);
+    }
+
+    function simToCanvasY(y) {
+      const pad = 35 * (window.devicePixelRatio || 1);
+      return simCanvas.height - pad - (y / 7.0) * (simCanvas.height - pad * 2);
+    }
+
+    function canvasToSim(cx, cy) {
+      const pad = 35 * (window.devicePixelRatio || 1);
+      const w = simCanvas.width - pad * 2;
+      const h = simCanvas.height - pad * 2;
+      return {
+        x: Math.max(0, Math.min(7, ((cx - pad) / w) * 7.0)),
+        y: Math.max(0, Math.min(7, ((simCanvas.height - pad - cy) / h) * 7.0))
+      };
+    }
+
+    function drawSimCanvas() {
+      if (!simCanvas.width) resizeSimCanvas();
+      const ctx = simCtx;
+      const w = simCanvas.width;
+      const h = simCanvas.height;
+      const dpr = window.devicePixelRatio || 1;
+
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(0, 0, w, h);
+
+      // Grid
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 7; i++) {
+        ctx.beginPath();
+        ctx.moveTo(simToCanvasX(i), simToCanvasY(0));
+        ctx.lineTo(simToCanvasX(i), simToCanvasY(7));
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(simToCanvasX(0), simToCanvasY(i));
+        ctx.lineTo(simToCanvasX(7), simToCanvasY(i));
+        ctx.stroke();
+      }
+
+      // Residual lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.setLineDash([3, 3]);
+      simPoints.forEach(p => {
+        const predY = simModel.slope * p.x + simModel.intercept;
+        ctx.beginPath();
+        ctx.moveTo(simToCanvasX(p.x), simToCanvasY(p.y));
+        ctx.lineTo(simToCanvasX(p.x), simToCanvasY(predY));
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+
+      // Points
+      simPoints.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(simToCanvasX(p.x), simToCanvasY(p.y), (p.isOutlier ? 6 : 4.5) * dpr, 0, Math.PI * 2);
+        ctx.fillStyle = p.isOutlier ? '#f43f5e' : '#22d3ee';
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.2 * dpr;
+        ctx.stroke();
+      });
+
+      // Regression Line
+      const y1 = simModel.slope * 0 + simModel.intercept;
+      const y2 = simModel.slope * 7 + simModel.intercept;
+      ctx.beginPath();
+      ctx.moveTo(simToCanvasX(0), simToCanvasY(y1));
+      ctx.lineTo(simToCanvasX(7), simToCanvasY(y2));
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 2.5 * dpr;
+      ctx.stroke();
+
+      // HUD
+      document.getElementById('sim-points-count').innerText = simPoints.length;
+      document.getElementById('sim-epoch-count').innerText = simModel.epoch;
+      document.getElementById('sim-equation-disp').innerText = 
+        `ŷ = ${simModel.slope.toFixed(3)}x + ${simModel.intercept.toFixed(3)}`;
+
+      let totalLoss = 0;
+      simPoints.forEach(p => {
+        const e = p.y - (simModel.slope * p.x + simModel.intercept);
+        if (simModel.lossType === 'mse') totalLoss += calcMSE(e);
+        else if (simModel.lossType === 'mae') totalLoss += calcMAE(e);
+        else totalLoss += calcHuber(e, simModel.delta);
+      });
+      document.getElementById('sim-loss-disp').innerText = (totalLoss / simPoints.length).toFixed(3);
+    }
+
+    function stepSimulate() {
+      let dSlope = 0, dIntercept = 0;
+      const N = simPoints.length;
+
+      simPoints.forEach(p => {
+        const error = (simModel.slope * p.x + simModel.intercept) - p.y;
+        let grad = 0;
+        if (simModel.lossType === 'mse') {
+          grad = error;
+        } else if (simModel.lossType === 'mae') {
+          grad = error > 0 ? 1 : (error < 0 ? -1 : 0);
+        } else {
+          grad = Math.abs(error) <= simModel.delta ? error : simModel.delta * (error > 0 ? 1 : -1);
+        }
+        dSlope += grad * p.x;
+        dIntercept += grad;
+      });
+
+      simModel.slope -= simModel.lr * (dSlope / N);
+      simModel.intercept -= simModel.lr * (dIntercept / N);
+      simModel.epoch += 1;
+      drawSimCanvas();
+    }
+
+    function toggleAutoSimulate() {
+      const btn = document.getElementById('auto-sim-btn');
+      if (autoSimInterval) {
+        clearInterval(autoSimInterval);
+        autoSimInterval = null;
+        btn.innerText = '一鍵自動收斂';
+        btn.classList.remove('bg-rose-600', 'hover:bg-rose-700');
+        btn.classList.add('bg-brand-600', 'hover:bg-brand-700');
+      } else {
+        autoSimInterval = setInterval(stepSimulate, 45);
+        btn.innerText = '暫停擬合';
+        btn.classList.remove('bg-brand-600', 'hover:bg-brand-700');
+        btn.classList.add('bg-rose-600', 'hover:bg-rose-700');
+      }
+    }
+
+    function changeSimLoss(type) {
+      simModel.lossType = type;
+      drawSimCanvas();
+    }
+
+    function injectPresetOutliers() {
+      simPoints.push({ x: 1.2, y: 6.2, isOutlier: true });
+      simPoints.push({ x: 5.8, y: 0.5, isOutlier: true });
+      drawSimCanvas();
+    }
+
+    function resetSimData() {
+      simPoints = [
+        { x: 1.0, y: 1.2, isOutlier: false },
+        { x: 1.5, y: 1.8, isOutlier: false },
+        { x: 2.0, y: 2.1, isOutlier: false },
+        { x: 2.5, y: 2.4, isOutlier: false },
+        { x: 3.0, y: 3.1, isOutlier: false },
+        { x: 3.5, y: 3.6, isOutlier: false },
+        { x: 4.0, y: 3.9, isOutlier: false },
+        { x: 4.5, y: 4.6, isOutlier: false },
+        { x: 5.0, y: 5.0, isOutlier: false },
+        { x: 5.5, y: 5.4, isOutlier: false },
+        { x: 2.0, y: 6.6, isOutlier: true },
+        { x: 5.0, y: 0.8, isOutlier: true }
+      ];
+      simModel.slope = 0.5;
+      simModel.intercept = 0.8;
+      simModel.epoch = 0;
+      if (autoSimInterval) toggleAutoSimulate();
+      drawSimCanvas();
+    }
+
+    simCanvas.addEventListener('click', (e) => {
+      const rect = simCanvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const pt = canvasToSim((e.clientX - rect.left) * dpr, (e.clientY - rect.top) * dpr);
+      simPoints.push({ x: pt.x, y: pt.y, isOutlier: true });
+      drawSimCanvas();
+    });
+
+    // ==========================================
+    // 4. iPAS QUIZ ENGINE
+    // ==========================================
+    const explanations = {
+      1: "正確答案是 (B) MAE。均方誤差 (MSE) 計算平方差，對極端值產生嚴重放大懲罰；而 MAE 懲罰隨誤差呈線性增長，具備優異的 Robustness（強韌性）。",
+      2: "正確答案是 (C) Focal Loss。Focal Loss 透過調節權重 (1 - pt)^γ 大幅降低大量良品（背景易分類樣本）的損失貢獻，專門用以解決極度不平衡問題。",
+      3: "正確答案是 (D)。Huber 損失在誤差小於 δ 時為二次光滑曲線（MSE 特性），大於 δ 時轉為線性抗噪（MAE 特性），兼具兩者優點。",
+      4: "正確答案是 (A)。人臉特徵比對著重度量樣本之間的距離與相似度，標準採用對比損失 (Contrastive Loss) 或三元組損失 (Triplet Loss)。"
+    };
+
+    function submitQuiz() {
+      let score = 0;
+      const items = document.querySelectorAll('.quiz-item');
+
+      items.forEach(item => {
+        const qid = item.getAttribute('data-qid');
+        const correct = item.getAttribute('data-correct');
+        const checked = item.querySelector(`input[name="q${qid}"]:checked`);
+        const feedback = item.querySelector('.quiz-feedback');
+
+        feedback.classList.remove('hidden', 'bg-emerald-50', 'text-emerald-900', 'border-emerald-200', 'bg-rose-50', 'text-rose-900', 'border-rose-200');
+
+        if (checked && checked.value === correct) {
+          score++;
+          feedback.classList.add('bg-emerald-50', 'text-emerald-900', 'border', 'border-emerald-200');
+          feedback.innerHTML = `<strong>✅ 答對！</strong> ${explanations[qid]}`;
+        } else {
+          feedback.classList.add('bg-rose-50', 'text-rose-900', 'border', 'border-rose-200');
+          feedback.innerHTML = `<strong>❌ 答錯（正確為 ${correct}）</strong> ${explanations[qid]}`;
+        }
+      });
+
+      document.getElementById('quiz-score').innerText = `${score} / 4`;
+    }
+
+    function resetQuiz() {
+      document.querySelectorAll('#quiz-container input[type="radio"]').forEach(r => r.checked = false);
+      document.querySelectorAll('.quiz-feedback').forEach(f => {
+        f.classList.add('hidden');
+        f.innerHTML = '';
+      });
+      document.getElementById('quiz-score').innerText = `0 / 4`;
+    }
+
+    // Window Init
+    window.onload = function () {
+      initRegressionChart();
+      initClassificationChart();
+
+      document.getElementById('reg-error-slider').addEventListener('input', updateRegression);
+      document.getElementById('huber-delta-slider').addEventListener('input', updateRegression);
+      document.getElementById('cls-prob-slider').addEventListener('input', updateClassification);
+      document.getElementById('focal-gamma-slider').addEventListener('input', updateClassification);
+
+      window.addEventListener('resize', () => {
+        resizeSimCanvas();
+        drawSimCanvas();
+      });
+      resizeSimCanvas();
+      drawSimCanvas();
+
+      if (window.renderMathInElement) {
+        renderMathInElement(document.body, {
+          delimiters: [
+            { left: "$$", right: "$$", display: true },
+            { left: "$", right: "$", display: false }
+          ]
+        });
+      }
+    };
+  </script>
+</body>
+</html>

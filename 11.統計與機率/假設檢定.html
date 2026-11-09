@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IPAS AI 核心技術：假設檢定 (Hypothesis Testing) 互動教學平台</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- Chart.js CDN for distribution visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- KaTeX for crisp mathematical notation rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <!-- FontAwesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbar for better aesthetics */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    .dark ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-200 font-sans min-h-screen flex flex-col">
+
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-50 backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+          <i class="fa-solid fa-chart-line text-lg"></i>
+        </div>
+        <div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">IPAS AI 人工智慧評測必考</span>
+          <h1 class="text-lg font-bold leading-tight">假設檢定 (Hypothesis Testing)</h1>
+        </div>
+      </div>
+
+      <!-- Quick Nav Buttons & Dark Mode Toggle -->
+      <div class="flex items-center space-x-2 sm:space-x-4">
+        <nav class="hidden md:flex space-x-1">
+          <a href="#overview" class="px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition">核心精要</a>
+          <a href="#error-matrix" class="px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition">決策錯誤矩陣</a>
+          <a href="#test-statistics-detail" class="px-3 py-1.5 rounded-lg text-sm font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/50">四大統計量</a>
+          <a href="#interactive-simulator" class="px-3 py-1.5 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50">動態模擬器</a>
+          <a href="#math-theory" class="px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition">理論推導</a>
+          <a href="#exam-quiz" class="px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition">考試真題</a>
+          <a href="#python-code" class="px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition">實作程式碼</a>
+        </nav>
+        <button id="themeToggle" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-blue-600 transition" title="切換深淺色模式">
+          <i class="fa-solid fa-moon dark:hidden"></i>
+          <i class="fa-solid fa-sun hidden dark:inline"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section & One-sentence Summary -->
+  <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12 w-full">
+    
+    <!-- Hero / Core Concept Card -->
+    <section id="overview" class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-700 via-indigo-700 to-slate-900 text-white p-6 sm:p-10 shadow-2xl">
+      <div class="relative z-10 max-w-3xl space-y-4">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur border border-white/20 text-xs font-semibold text-blue-200">
+          <i class="fa-solid fa-scale-balanced"></i> 統計推論核心方法
+        </div>
+        <h2 class="text-2xl sm:text-4xl font-extrabold tracking-tight">
+          假設檢定（Hypothesis Testing）
+        </h2>
+        <p class="text-blue-100 text-base sm:text-lg leading-relaxed">
+          假設檢定是統計推論的核心方法之一，用來<strong>透過樣本數據去判斷關於母體參數的主張是否站得住腳</strong>。它的核心邏輯類似「法庭審判」：先假設被告無罪，再檢視證據是否強烈到足以推翻無罪假設。
+        </p>
+
+        <!-- Confusion Matrix Concept Grid in Dark Card -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4">
+          <div class="bg-white/10 backdrop-blur rounded-2xl p-3 border border-white/10">
+            <span class="text-xs text-blue-200 block font-medium">虛無假設 H₀</span>
+            <span class="text-sm font-bold text-white">Negative (維持現狀)</span>
+          </div>
+          <div class="bg-white/10 backdrop-blur rounded-2xl p-3 border border-white/10">
+            <span class="text-xs text-blue-200 block font-medium">型一錯誤 (α)</span>
+            <span class="text-sm font-bold text-rose-300">偽陽性 (棄真)</span>
+          </div>
+          <div class="bg-white/10 backdrop-blur rounded-2xl p-3 border border-white/10">
+            <span class="text-xs text-blue-200 block font-medium">型二錯誤 (β)</span>
+            <span class="text-sm font-bold text-amber-300">偽陰性 (存偽)</span>
+          </div>
+          <div class="bg-white/10 backdrop-blur rounded-2xl p-3 border border-white/10">
+            <span class="text-xs text-blue-200 block font-medium">檢定力 (Power)</span>
+            <span class="text-sm font-bold text-emerald-300">1 &minus; β (正確檢出)</span>
+          </div>
+        </div>
+      </div>
+      <!-- Background decoration icon -->
+      <div class="absolute -right-6 -bottom-8 opacity-10 text-[240px] pointer-events-none">
+        <i class="fa-solid fa-scale-balanced"></i>
+      </div>
+    </section>
+
+    <!-- Fundamental Concepts & Definitions -->
+    <section class="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+          <i class="fa-solid fa-book-bookmark"></i>
+        </div>
+        <div>
+          <h2 class="text-xl font-bold">基本概念與核心名詞</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">建立嚴謹推論的必備名詞基石</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- H0 -->
+        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700/80">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-bold text-slate-800 dark:text-slate-100 text-sm">虛無假設 (Null Hypothesis)</span>
+            <span class="px-2 py-0.5 rounded text-xs font-mono font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">H₀</span>
+          </div>
+          <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            通常代表<strong>「沒有差異」</strong>、<strong>「沒有效果」</strong>或<strong>「維持現狀」</strong>的起始假設，是我們企圖尋找充分證據去推翻的對象。
+          </p>
+        </div>
+
+        <!-- H1 -->
+        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700/80">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-bold text-slate-800 dark:text-slate-100 text-sm">對立假設 (Alternative)</span>
+            <span class="px-2 py-0.5 rounded text-xs font-mono font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">H₁ / Hₐ</span>
+          </div>
+          <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            與虛無假設相反的敘述，通常是研究者真正想要證明的<strong>「有差異」</strong>或<strong>「有顯著效果」</strong>。
+          </p>
+        </div>
+
+        <!-- Alpha -->
+        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700/80">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-bold text-slate-800 dark:text-slate-100 text-sm">顯著水準 (Significance Level)</span>
+            <span class="px-2 py-0.5 rounded text-xs font-mono font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300">α</span>
+          </div>
+          <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            容許犯下<strong>「型一錯誤」</strong>的最高機率界線，產業界與學界常用標準為 <strong>0.05 (5%)</strong> 或 <strong>0.01 (1%)</strong>。
+          </p>
+        </div>
+
+        <!-- p-value -->
+        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700/80">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-bold text-slate-800 dark:text-slate-100 text-sm">p 值 (p-value)</span>
+            <span class="px-2 py-0.5 rounded text-xs font-mono font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300">p</span>
+          </div>
+          <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            在<strong>虛無假設為真</strong>的前提下，觀察到目前樣本數據或比目前數據<strong>更極端</strong>的機率。越小代表越罕見。
+          </p>
+        </div>
+
+        <!-- Test Statistic -->
+        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700/80 lg:col-span-2">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-bold text-slate-800 dark:text-slate-100 text-sm">檢定統計量 (Test Statistic)</span>
+            <span class="px-2 py-0.5 rounded text-xs font-mono font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300">Z, t, χ², F</span>
+          </div>
+          <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            將樣本數據透過公式標準化或轉換後得到的數值（如標準常態 <strong>Z 值</strong>、學生 <strong>t 值</strong>、卡方值 <strong>χ²</strong>、變異數分析 <strong>F 值</strong> 等），用以評估樣本與 H₀ 的偏離程度。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- DEEP DIVE: FOUR ESSENTIAL TEST STATISTICS (Z, t, χ², F) -->
+    <section id="test-statistics-detail" class="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-700 shadow-xl space-y-8">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-700 pb-5">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+            <i class="fa-solid fa-shapes"></i>
+          </div>
+          <div>
+            <h2 class="text-xl sm:text-2xl font-bold">四大關鍵檢定統計量深度剖析</h2>
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">標準常態 Z 值、學生 t 值、卡方值 χ²、變異數分析 F 值之定義、分佈與 AI 實務應用</p>
+          </div>
+        </div>
+        <span class="px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-xs font-semibold text-purple-700 dark:text-purple-300 self-start sm:self-auto">
+          IPAS AI 考題高頻考點
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 1. Z 值 (Standard Normal Z) -->
+        <div class="rounded-2xl border border-blue-200 dark:border-blue-900/60 bg-gradient-to-b from-blue-50/40 to-transparent dark:from-blue-950/20 dark:to-transparent p-5 sm:p-6 space-y-4 flex flex-col justify-between">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-blue-600 text-white font-bold flex items-center justify-center text-xs">1</span>
+                <h3 class="font-bold text-base text-slate-900 dark:text-slate-100">標準常態 Z 值 (Z-score)</h3>
+              </div>
+              <span class="font-mono text-xs px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-bold">N(0, 1)</span>
+            </div>
+
+            <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              <strong>定義：</strong>將樣本均值與假設的母體均值之間的差距，以<strong>標準誤（Standard Error）</strong>為尺度進行標準化轉換後的數值。它衡量樣本平均數距離虛無假設中心「相差幾個標準差」。
+            </p>
+
+            <div class="p-3 rounded-xl bg-white dark:bg-slate-900 border border-blue-100 dark:border-blue-900/50 font-mono text-xs space-y-1">
+              <div class="text-slate-400 text-[11px]">標準化公式：</div>
+              <div class="text-blue-600 dark:text-blue-400 font-bold text-sm">Z = (X̄ − μ₀) / (σ / √n)</div>
+              <div class="text-[10px] text-slate-500">（需已知母體標準差 σ，或大樣本 n ≥ 30 符合中央極限定理）</div>
+            </div>
+
+            <div class="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+              <div class="flex items-start gap-1.5">
+                <i class="fa-solid fa-bell text-blue-500 mt-0.5 text-[10px]"></i>
+                <span><strong>理論分佈：</strong>完美的標準常態分佈，對稱且尾部固定（±1.96 涵蓋 95% 信心區間）。</span>
+              </div>
+              <div class="flex items-start gap-1.5">
+                <i class="fa-solid fa-microchip text-indigo-500 mt-0.5 text-[10px]"></i>
+                <span><strong>AI / 工業應用：</strong>海量生產線推論延遲（n > 10,000）基準線比對、大數據集 A/B 轉換率雙比例 Z 檢定。</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-blue-100 dark:border-blue-900/40 text-[11px] text-blue-800 dark:text-blue-300 bg-blue-50/60 dark:bg-blue-950/40 px-3 py-2 rounded-xl">
+            💡 <strong>口訣特徵：</strong>母體標準差已知，或樣本數大（n ≥ 30）時直上 Z 檢定！
+          </div>
+        </div>
+
+        <!-- 2. t 值 (Student's t) -->
+        <div class="rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-gradient-to-b from-indigo-50/40 to-transparent dark:from-indigo-950/20 dark:to-transparent p-5 sm:p-6 space-y-4 flex flex-col justify-between">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center text-xs">2</span>
+                <h3 class="font-bold text-base text-slate-900 dark:text-slate-100">學生 t 值 (Student's t)</h3>
+              </div>
+              <span class="font-mono text-xs px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-bold">t(df = n − 1)</span>
+            </div>
+
+            <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              <strong>定義：</strong>在<strong>母體變異數未知</strong>且只能使用「樣本標準差 S」來估計母體標準差時所用的檢定統計量。因額外估計了標準差，引發了額外的不確定性。
+            </p>
+
+            <div class="p-3 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/50 font-mono text-xs space-y-1">
+              <div class="text-slate-400 text-[11px]">小樣本估計公式：</div>
+              <div class="text-indigo-600 dark:text-indigo-400 font-bold text-sm">t = (X̄ − μ₀) / (S / √n)</div>
+              <div class="text-[10px] text-slate-500">自由度 df = n − 1；當 n → ∞ 時，t 分佈逼近 Z 分佈</div>
+            </div>
+
+            <div class="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+              <div class="flex items-start gap-1.5">
+                <i class="fa-solid fa-chart-area text-indigo-500 mt-0.5 text-[10px]"></i>
+                <span><strong>理論分佈：</strong>鐘形對稱，但<strong>肥尾（Heavy-tailed）</strong>且較平緩，自由度越小尾部越厚，更容忍極端波動。</span>
+              </div>
+              <div class="flex items-start gap-1.5">
+                <i class="fa-solid fa-code-compare text-indigo-500 mt-0.5 text-[10px]"></i>
+                <span><strong>AI / 工業應用：</strong>成對比較新舊神經網路在 10-Fold 交叉驗證上的 F1 分數（Paired t-test）、邊緣設備少樣本耗能差異。</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-indigo-100 dark:border-indigo-900/40 text-[11px] text-indigo-800 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-950/40 px-3 py-2 rounded-xl">
+            💡 <strong>口訣特徵：</strong>母體變異數未知、樣本小（n &lt; 30），務必以樣本標準差 S 搭配自由度查 t 表！
+          </div>
+        </div>
+
+        <!-- 3. 卡方值 χ² (Chi-Square) -->
+        <div class="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-gradient-to-b from-amber-50/40 to-transparent dark:from-amber-950/20 dark:to-transparent p-5 sm:p-6 space-y-4 flex flex-col justify-between">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-amber-600 text-white font-bold flex items-center justify-center text-xs">3</span>
+                <h3 class="font-bold text-base text-slate-900 dark:text-slate-100">卡方值 χ² (Chi-Square)</h3>
+              </div>
+              <span class="font-mono text-xs px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 font-bold">χ²(df)</span>
+            </div>
+
+            <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              <strong>定義：</strong>多個獨立標準常態變數平方和的分佈。在列聯表檢定中，用來衡量<strong>「實際觀察頻率 (O)」</strong>與<strong>「理論期望頻率 (E)」</strong>之間的累積偏離程度。
+            </p>
+
+            <div class="p-3 rounded-xl bg-white dark:bg-slate-900 border border-amber-100 dark:border-amber-900/50 font-mono text-xs space-y-1">
+              <div class="text-slate-400 text-[11px]">獨立性與適配度檢定公式：</div>
+              <div class="text-amber-600 dark:text-amber-400 font-bold text-sm">χ² = ∑ [ (O − E)² / E ]</div>
+              <div class="text-[10px] text-slate-500">列聯表自由度 df = (列數 − 1) × (行數 − 1)</div>
+            </div>
+
+            <div class="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+              <div class="flex items-start gap-1.5">
+                <i class="fa-solid fa-chart-line text-amber-500 mt-0.5 text-[10px]"></i>
+                <span><strong>理論分佈：</strong><strong>非對稱、右偏（Right-skewed）</strong>且數值恆正（≥ 0）。自由度愈大時逐漸接近對稱常態。</span>
+              </div>
+              <div class="flex items-start gap-1.5">
+                <i class="fa-solid fa-filter text-amber-500 mt-0.5 text-[10px]"></i>
+                <span><strong>AI / 工業應用：</strong>類別特徵工程篩選（<code>SelectKBest(chi2)</code>）、NLP 詞彙與情感標籤獨立性檢定、混淆矩陣分佈適合度檢定。</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-amber-100 dark:border-amber-900/40 text-[11px] text-amber-800 dark:text-amber-300 bg-amber-50/60 dark:bg-amber-950/40 px-3 py-2 rounded-xl">
+            💡 <strong>口訣特徵：</strong>平方和恆正、右偏分佈；專門處理類別變數關聯度與特徵重要性！
+          </div>
+        </div>
+
+        <!-- 4. F 值 (Fisher-Snedecor F) -->
+        <div class="rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-gradient-to-b from-rose-50/40 to-transparent dark:from-rose-950/20 dark:to-transparent p-5 sm:p-6 space-y-4 flex flex-col justify-between">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-rose-600 text-white font-bold flex items-center justify-center text-xs">4</span>
+                <h3 class="font-bold text-base text-slate-900 dark:text-slate-100">變異數分析 F 值 (ANOVA F-statistic)</h3>
+              </div>
+              <span class="font-mono text-xs px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-900 text-rose-700 dark:text-rose-300 font-bold">F(df₁, df₂)</span>
+            </div>
+
+            <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              <strong>定義：</strong>兩個獨立卡方變數各自除以其自由度後的<strong>比值（變異比 Ratio of Variances）</strong>。在變異數分析（ANOVA）中，衡量「組間變異（信號）」相對於「組內變異（雜訊）」的相對倍數。
+            </p>
+
+            <div class="p-3 rounded-xl bg-white dark:bg-slate-900 border border-rose-100 dark:border-rose-900/50 font-mono text-xs space-y-1">
+              <div class="text-slate-400 text-[11px]">訊號雜訊比 (信噪比) 公式：</div>
+              <div class="text-rose-600 dark:text-rose-400 font-bold text-sm">F = MS_between / MS_within = (SSB/df₁) / (SSW/df₂)</div>
+              <div class="text-[10px] text-slate-500">若組間變異遠大於隨機誤差，F 值便顯著大於 1</div>
+            </div>
+
+            <div class="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+              <div class="flex items-start gap-1.5">
+                <i class="fa-solid fa-signal text-rose-500 mt-0.5 text-[10px]"></i>
+                <span><strong>理論分佈：</strong><strong>嚴格正值、右偏分佈</strong>，取決於分子自由度 df₁（組數 − 1）與分母自由度 df₂（總樣本數 − 組數）。</span>
+              </div>
+              <div class="flex items-start gap-1.5">
+                <i class="fa-solid fa-sliders text-rose-500 mt-0.5 text-[10px]"></i>
+                <span><strong>AI / 工業應用：</strong>三種以上深度學習架構/學習率配置的多組別效能比較（ANOVA）、多元線性迴歸整體的顯著性檢定（Regression Overall Test）。</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-rose-100 dark:border-rose-900/40 text-[11px] text-rose-800 dark:text-rose-300 bg-rose-50/60 dark:bg-rose-950/40 px-3 py-2 rounded-xl">
+            💡 <strong>口訣特徵：</strong>組間變異比組內變異（信號 / 雜訊）；比較三組以上平均值是否相同時必用 F 檢定！
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Summary Matrix for Z, t, χ², F -->
+      <div class="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+        <h4 class="font-bold text-xs uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
+          <i class="fa-solid fa-compass"></i> 四大統計量快速選用決策樹
+        </h4>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+          <div class="p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <span class="font-bold text-blue-600 dark:text-blue-400 block mb-1">使用 Z 檢定？</span>
+            <p class="text-slate-600 dark:text-slate-400 text-[11px]">母體變異數已知、或大樣本數（n ≥ 30），比較單一或兩組平均值。</p>
+          </div>
+          <div class="p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <span class="font-bold text-indigo-600 dark:text-indigo-400 block mb-1">使用 t 檢定？</span>
+            <p class="text-slate-600 dark:text-slate-400 text-[11px]">母體變異數未知、樣本較小（n &lt; 30），以樣本標準差 S 進行推論。</p>
+          </div>
+          <div class="p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <span class="font-bold text-amber-600 dark:text-amber-400 block mb-1">使用 χ² 檢定？</span>
+            <p class="text-slate-600 dark:text-slate-400 text-[11px]">變數為類別型（非連續數值），檢測兩變數獨立性或次數分配配適度。</p>
+          </div>
+          <div class="p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <span class="font-bold text-rose-600 dark:text-rose-400 block mb-1">使用 F 檢定？</span>
+            <p class="text-slate-600 dark:text-slate-400 text-[11px]">比較三組或以上實驗組的平均數差異（ANOVA），或檢定兩群體變異數是否同質。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DECISION ERROR MATRIX SECTION (NEW SECTION FROM USER MATERIAL) -->
+    <section id="error-matrix" class="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-700 shadow-xl space-y-6">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">
+          <i class="fa-solid fa-table-cells-large"></i>
+        </div>
+        <div>
+          <h2 class="text-xl font-bold">決策時可能犯的錯誤（決策混淆矩陣）</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">真實母體狀況 vs 樣本檢定決策結果的 2×2 矩陣關係</p>
+        </div>
+      </div>
+
+      <!-- Decision Matrix Table -->
+      <div class="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700">
+        <table class="w-full text-center text-sm border-collapse">
+          <thead>
+            <tr class="bg-slate-100 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
+              <th class="py-4 px-6 text-left">實際狀況 \ 決策結果</th>
+              <th class="py-4 px-6 bg-slate-50/50 dark:bg-slate-800/50">接受 H₀（不拒絕）</th>
+              <th class="py-4 px-6 bg-rose-50/40 dark:bg-rose-950/20">拒絕 H₀</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 dark:divide-slate-700 text-slate-700 dark:text-slate-200">
+            <!-- H0 is True Row -->
+            <tr>
+              <td class="py-5 px-6 font-bold text-left bg-slate-50/70 dark:bg-slate-900/40">
+                H₀ 為真 <span class="text-xs font-normal text-slate-500">(實際無差異)</span>
+              </td>
+              <td class="py-5 px-6 bg-emerald-50/50 dark:bg-emerald-950/20">
+                <div class="font-bold text-emerald-700 dark:text-emerald-400 flex items-center justify-center gap-1.5">
+                  <i class="fa-solid fa-check"></i> 正確決定
+                </div>
+                <div class="text-xs font-mono text-emerald-600 dark:text-emerald-400 mt-1">機率 = 1 &minus; α</div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">信賴水準 (Confidence Level)</div>
+              </td>
+              <td class="py-5 px-6 bg-rose-50/60 dark:bg-rose-950/40">
+                <div class="font-bold text-rose-700 dark:text-rose-400 flex items-center justify-center gap-1.5">
+                  <i class="fa-solid fa-triangle-exclamation"></i> 型一錯誤 (Type I Error)
+                </div>
+                <div class="text-xs font-mono font-bold text-rose-600 dark:text-rose-300 mt-1">機率 = α (顯著水準)</div>
+                <div class="text-[11px] text-rose-600 dark:text-rose-400 font-semibold mt-0.5">「偽陽性」· 棄真</div>
+              </td>
+            </tr>
+
+            <!-- H0 is False Row -->
+            <tr>
+              <td class="py-5 px-6 font-bold text-left bg-slate-50/70 dark:bg-slate-900/40">
+                H₀ 為假 <span class="text-xs font-normal text-slate-500">(實際有差異)</span>
+              </td>
+              <td class="py-5 px-6 bg-amber-50/60 dark:bg-amber-950/40">
+                <div class="font-bold text-amber-700 dark:text-amber-400 flex items-center justify-center gap-1.5">
+                  <i class="fa-solid fa-triangle-exclamation"></i> 型二錯誤 (Type II Error)
+                </div>
+                <div class="text-xs font-mono font-bold text-amber-600 dark:text-amber-300 mt-1">機率 = β</div>
+                <div class="text-[11px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5">「偽陰性」· 存偽</div>
+              </td>
+              <td class="py-5 px-6 bg-emerald-50/50 dark:bg-emerald-950/20">
+                <div class="font-bold text-emerald-700 dark:text-emerald-400 flex items-center justify-center gap-1.5">
+                  <i class="fa-solid fa-check-double"></i> 正確決定 (檢定力 Power)
+                </div>
+                <div class="text-xs font-mono text-emerald-600 dark:text-emerald-400 mt-1">機率 = 1 &minus; β</div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">成功檢測真實差異之能力</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Conceptual Takeaway Boxes -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+        <div class="p-4 rounded-2xl bg-rose-50/80 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60">
+          <div class="font-bold text-rose-800 dark:text-rose-300 text-sm flex items-center gap-2 mb-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> 型一錯誤 (Type I Error, α)：
+          </div>
+          <p class="text-xs text-rose-900/80 dark:text-rose-200/90 leading-relaxed">
+            <strong>實際上沒有差別</strong>，但你宣稱有差別（<strong>「偽陽性」</strong>）。例如：無辜者被判有罪；新舊模型無實質提升，卻被誤認為大幅進步。
+          </p>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60">
+          <div class="font-bold text-amber-800 dark:text-amber-300 text-sm flex items-center gap-2 mb-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> 型二錯誤 (Type II Error, β)：
+          </div>
+          <p class="text-xs text-amber-900/80 dark:text-amber-200/90 leading-relaxed">
+            <strong>實際上真的有差別</strong>，但你的樣本不足或沒測出來（<strong>「偽陰性」</strong>）。例如：罪犯證據不足獲釋；新特徵確實能提升模型表現卻被過濾遺漏。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Intuitive Analogy & Industrial Application Section -->
+    <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Legal Analogy -->
+      <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+        <div>
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+              <i class="fa-solid fa-gavel"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-lg">生活化比喻：法庭無罪推定</h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400">直觀理解型一與型二錯誤</p>
+            </div>
+          </div>
+          <ul class="space-y-3 text-sm text-slate-600 dark:text-slate-300">
+            <li class="flex items-start gap-2">
+              <span class="font-bold text-blue-600 dark:text-blue-400 min-w-[75px]">預設立場:</span>
+              <span>被告預設是清白的（H₀：清白無辜者）。</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="font-bold text-rose-500 min-w-[75px]">型一錯誤:</span>
+              <span>被告本無辜，卻被法官冤枉判刑有罪（冤獄 / 偽陽性 FP，機率 α）。</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="font-bold text-amber-500 min-w-[75px]">型二錯誤:</span>
+              <span>被告明明有罪，卻因證據微弱被判無罪釋放（縱放 / 偽陰性 FN，機率 β）。</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="font-bold text-emerald-600 dark:text-emerald-400 min-w-[75px]">p-value:</span>
+              <span>假設嫌疑人真的是無辜的，現場採集到如此不利證據的機率有多極端罕見。</span>
+            </li>
+          </ul>
+        </div>
+        <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 text-xs text-slate-500">
+          💡 <strong>核心考點：</strong> 事先嚴格設定顯著水準 α（通常為 0.05 或 0.01），就是在控制冤獄發生的最大容忍上限！
+        </div>
+      </div>
+
+      <!-- Industrial & AI Applications -->
+      <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+        <div>
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+              <i class="fa-solid fa-microchip"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-lg">工業與 AI/ML 實務情境</h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400">IPAS 重點評測場景</p>
+            </div>
+          </div>
+          <div class="space-y-3 text-sm">
+            <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-700/50">
+              <div class="font-semibold text-slate-800 dark:text-slate-200">1. AI 模型 A/B 測試 (A/B Testing)</div>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">比較新舊 CV 瑕疵檢測模型在 F1-score 上是否存在統計顯著差異，而非抽樣波動。</p>
+            </div>
+            <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-700/50">
+              <div class="font-semibold text-slate-800 dark:text-slate-200">2. 特徵工程特徵篩選 (Feature Selection)</div>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">利用卡方檢定 (χ²-test) 或單因子 ANOVA 驗證輸入特徵是否與目標欄位具有相關顯著性。</p>
+            </div>
+            <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-700/50">
+              <div class="font-semibold text-slate-800 dark:text-slate-200">3. 資料與概念漂移 (Drift Detection)</div>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">以 KS 檢定 (Kolmogorov-Smirnov) 監控產線特徵分佈漂移，自動判定是否重訓神經網路。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CORE INTERACTIVE COMPONENT: Real-time Distribution & Hypothesis Sandbox -->
+    <section id="interactive-simulator" class="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-700 shadow-xl space-y-6">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-700 pb-5">
+        <div>
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-semibold mb-2">
+            <i class="fa-solid fa-flask"></i> 互動式動態實驗室
+          </div>
+          <h2 class="text-2xl font-bold">雙尾 Z 檢定動態分佈與拒絕域可視化</h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400">動態調整顯著水準 α、樣本數 N 與樣本平均數 X̄，即時觀察拒絕域與 p-value 決策邊界</p>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap gap-2">
+          <button id="btnRandomSample" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-semibold transition flex items-center gap-2">
+            <i class="fa-solid fa-dice"></i> 隨機抽樣數據
+          </button>
+          <button id="btnAutoSimulate" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-md shadow-blue-500/20 transition flex items-center gap-2">
+            <i class="fa-solid fa-play"></i> 一鍵自動動態展示
+          </button>
+        </div>
+      </div>
+
+      <!-- Controls and Chart Layout -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <!-- Control Sliders -->
+        <div class="lg:col-span-4 space-y-5 bg-slate-50 dark:bg-slate-900/60 p-5 rounded-2xl border border-slate-200 dark:border-slate-800">
+          <h3 class="font-bold text-sm text-slate-700 dark:text-slate-300 flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-blue-500"></i> 參數調控面板
+          </h3>
+
+          <!-- Alpha Slider -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-medium">
+              <span>顯著水準 (α) [型一錯誤上限]</span>
+              <span id="alphaValText" class="font-mono font-bold text-blue-600 dark:text-blue-400">0.05</span>
+            </div>
+            <input type="range" id="sliderAlpha" min="0.01" max="0.10" step="0.01" value="0.05" class="w-full accent-blue-600 cursor-pointer">
+            <div class="flex justify-between text-[10px] text-slate-400 font-mono">
+              <span>0.01 (嚴格)</span>
+              <span>0.05 (標準)</span>
+              <span>0.10 (寬鬆)</span>
+            </div>
+          </div>
+
+          <!-- Sample Mean Slider -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-medium">
+              <span>樣本均值 (X̄) [母體基準 μ₀ = 50.0]</span>
+              <span id="meanValText" class="font-mono font-bold text-indigo-600 dark:text-indigo-400">51.2</span>
+            </div>
+            <input type="range" id="sliderMean" min="47.0" max="53.0" step="0.1" value="51.2" class="w-full accent-indigo-600 cursor-pointer">
+          </div>
+
+          <!-- Sample Size N Slider -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-medium">
+              <span>樣本數量 (N)</span>
+              <span id="nValText" class="font-mono font-bold text-purple-600 dark:text-purple-400">45</span>
+            </div>
+            <input type="range" id="sliderN" min="10" max="150" step="5" value="45" class="w-full accent-purple-600 cursor-pointer">
+          </div>
+
+          <!-- Real-time Calculated Metrics -->
+          <div class="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-2.5 font-mono text-xs">
+            <div class="flex justify-between py-1 px-2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              <span class="text-slate-500">標準誤 SE (σ / √n):</span>
+              <span id="calcSE" class="font-bold">0.60</span>
+            </div>
+            <div class="flex justify-between py-1 px-2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              <span class="text-slate-500">檢定統計量 Z-score:</span>
+              <span id="calcZ" class="font-bold text-blue-600 dark:text-blue-400">+2.01</span>
+            </div>
+            <div class="flex justify-between py-1 px-2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              <span class="text-slate-500">臨界值 Critical ±Z<sub>α/2</sub>:</span>
+              <span id="calcZCrit" class="font-bold">±1.96</span>
+            </div>
+            <div class="flex justify-between py-1.5 px-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-900">
+              <span class="text-blue-700 dark:text-blue-300 font-semibold">雙尾 p-value:</span>
+              <span id="calcPValue" class="font-bold text-sm text-blue-800 dark:text-blue-200">0.0444</span>
+            </div>
+          </div>
+
+          <!-- Final Decision Banner -->
+          <div id="decisionCard" class="p-3.5 rounded-xl border transition-all text-center">
+            <!-- Dynamic decision text injected via JS -->
+          </div>
+        </div>
+
+        <!-- Canvas Chart Area -->
+        <div class="lg:col-span-8 flex flex-col items-center">
+          <div class="w-full relative h-[360px] sm:h-[400px]">
+            <canvas id="distributionCanvas"></canvas>
+          </div>
+          <!-- Chart Legend & Guide -->
+          <div class="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs">
+            <div class="flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+              <span class="text-slate-600 dark:text-slate-400">常態抽樣分佈 N(0, 1)</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded-sm bg-rose-500/40 border border-rose-500"></span>
+              <span class="text-slate-600 dark:text-slate-400">雙尾拒絕域 (各占 α / 2)</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+              <span class="text-slate-600 dark:text-slate-400">樣本檢定點 (Z-statistic)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP-BY-STEP WORKFLOW GUIDE -->
+    <section class="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-700 shadow-xl space-y-6">
+      <div class="text-center max-w-2xl mx-auto">
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-semibold mb-2">
+          <i class="fa-solid fa-list-ol"></i> 標準方法論
+        </div>
+        <h2 class="text-2xl font-bold">假設檢定的五大步驟</h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">掌握標準推論邏輯流程，徹底根除誤判盲點</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <!-- Step 1 -->
+        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 relative flex flex-col justify-between">
+          <div>
+            <div class="w-8 h-8 rounded-xl bg-blue-600 text-white font-bold flex items-center justify-center text-xs mb-3 shadow-sm">1</div>
+            <h4 class="font-bold text-sm mb-1 text-slate-800 dark:text-slate-100">建立假設</h4>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              明確寫出<strong>虛無假設 H₀</strong> 與<strong>對立假設 H₁</strong>。
+            </p>
+          </div>
+          <div class="mt-3 pt-2 border-t border-slate-200 dark:border-slate-800 font-mono text-[11px] text-blue-600 dark:text-blue-400">
+            H₀: μ = μ₀<br>H₁: μ ≠ μ₀
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 relative flex flex-col justify-between">
+          <div>
+            <div class="w-8 h-8 rounded-xl bg-indigo-600 text-white font-bold flex items-center justify-center text-xs mb-3 shadow-sm">2</div>
+            <h4 class="font-bold text-sm mb-1 text-slate-800 dark:text-slate-100">設定顯著水準</h4>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              決定 <strong>α 值</strong>（例如 α = 0.05 或 0.01）。
+            </p>
+          </div>
+          <div class="mt-3 pt-2 border-t border-slate-200 dark:border-slate-800 font-mono text-[11px] text-indigo-600 dark:text-indigo-400">
+            型一錯誤上限 α
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 relative flex flex-col justify-between">
+          <div>
+            <div class="w-8 h-8 rounded-xl bg-purple-600 text-white font-bold flex items-center justify-center text-xs mb-3 shadow-sm">3</div>
+            <h4 class="font-bold text-sm mb-1 text-slate-800 dark:text-slate-100">計算檢定統計量</h4>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              依資料類型與變異數已知與否，選用適用的檢定公式（單一樣本 Z 檢定、t 檢定、卡方檢定等）。
+            </p>
+          </div>
+          <div class="mt-3 pt-2 border-t border-slate-200 dark:border-slate-800 font-mono text-[11px] text-purple-600 dark:text-purple-400">
+            Z / t / χ² / F
+          </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 relative flex flex-col justify-between">
+          <div>
+            <div class="w-8 h-8 rounded-xl bg-rose-600 text-white font-bold flex items-center justify-center text-xs mb-3 shadow-sm">4</div>
+            <h4 class="font-bold text-sm mb-1 text-slate-800 dark:text-slate-100">算出 p 值或臨界值</h4>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              算出 p 值或尋找臨界值，比較檢定統計量與拒絕域的關係。
+            </p>
+          </div>
+          <div class="mt-3 pt-2 border-t border-slate-200 dark:border-slate-800 font-mono text-[11px] text-rose-600 dark:text-rose-400">
+            P(Data | H₀)
+          </div>
+        </div>
+
+        <!-- Step 5 -->
+        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 relative flex flex-col justify-between">
+          <div>
+            <div class="w-8 h-8 rounded-xl bg-emerald-600 text-white font-bold flex items-center justify-center text-xs mb-3 shadow-sm">5</div>
+            <h4 class="font-bold text-sm mb-1 text-slate-800 dark:text-slate-100">做出決策</h4>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              • <strong>若 p ≤ α</strong>：拒絕虛無假設 (H₀)，接受對立假設，代表結果具「統計顯著性」。<br>
+              • <strong>若 p > α</strong>：不拒絕虛無假設 (H₀)，代表目前證據不足以推翻現狀（不等於證明 H₀ 一定正確）。
+            </p>
+          </div>
+          <div class="mt-3 pt-2 border-t border-slate-200 dark:border-slate-800 font-mono text-[11px] text-emerald-600 dark:text-emerald-400">
+            p ≤ α → 拒絕 H₀
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Mathematical Formula Details -->
+    <section id="math-theory" class="bg-white dark:bg-slate-800 rounded-2xl p-6 sm:p-8 border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+          <i class="fa-solid fa-square-root-variable"></i>
+        </div>
+        <div>
+          <h2 class="text-xl font-bold">數學理論推導與常見檢定方法對照</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">掌握 IPAS 考卷上各類檢定統計量的適用時機</p>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm border-collapse">
+          <thead>
+            <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-400 font-semibold text-xs">
+              <th class="py-3 px-4">檢定名稱</th>
+              <th class="py-3 px-4">適用條件 / 假設</th>
+              <th class="py-3 px-4">統計量計算公式</th>
+              <th class="py-3 px-4">AI / 機器學習應用</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800 text-slate-600 dark:text-slate-300">
+            <tr>
+              <td class="py-3.5 px-4 font-bold text-slate-800 dark:text-slate-100">單/雙樣本 Z 檢定</td>
+              <td class="py-3.5 px-4">大樣本 (<i>n</i> ≥ 30) 且母體變異數 σ² 已知</td>
+              <td class="py-3.5 px-4 font-mono text-xs text-blue-600 dark:text-blue-400">Z = (X̄ − μ₀) / (σ / √n)</td>
+              <td class="py-3.5 px-4">產線海量數據推論延遲平均數驗證</td>
+            </tr>
+            <tr>
+              <td class="py-3.5 px-4 font-bold text-slate-800 dark:text-slate-100">學生 t 檢定 (t-test)</td>
+              <td class="py-3.5 px-4">小樣本 (<i>n</i> &lt; 30) 或母體變異數未知（以樣本標準差 S 代替）</td>
+              <td class="py-3.5 px-4 font-mono text-xs text-blue-600 dark:text-blue-400">t = (X̄ − μ₀) / (S / √n) ~ t(df = n−1)</td>
+              <td class="py-3.5 px-4">成對比較新舊模型 F1-score、Cross Validation 表現</td>
+            </tr>
+            <tr>
+              <td class="py-3.5 px-4 font-bold text-slate-800 dark:text-slate-100">卡方獨立性檢定 (χ²)</td>
+              <td class="py-3.5 px-4">類別型變數 (Categorical Data) 關聯度分析</td>
+              <td class="py-3.5 px-4 font-mono text-xs text-blue-600 dark:text-blue-400">χ² = ∑ [ (O − E)² / E ]</td>
+              <td class="py-3.5 px-4">特徵工程特徵篩選 (SelectKBest chi2)</td>
+            </tr>
+            <tr>
+              <td class="py-3.5 px-4 font-bold text-slate-800 dark:text-slate-100">單因子變異數分析 (ANOVA)</td>
+              <td class="py-3.5 px-4">三組或三組以上常態分佈平均值比較</td>
+              <td class="py-3.5 px-4 font-mono text-xs text-blue-600 dark:text-blue-400">F = MS<sub>between</sub> / MS<sub>within</sub></td>
+              <td class="py-3.5 px-4">多組超參數設定 (Hyperparameters) 表現評估</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- INTERACTIVE EXAM PRACTICE (IPAS AI Practice Center) -->
+    <section id="exam-quiz" class="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-700 shadow-xl space-y-6">
+      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-4">
+        <div>
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-semibold mb-1">
+            <i class="fa-solid fa-graduation-cap"></i> 考前實戰衝刺
+          </div>
+          <h2 class="text-2xl font-bold">IPAS 人工智慧證照真題模擬試煉</h2>
+        </div>
+        <div class="text-sm font-semibold text-slate-500">
+          得分: <span id="quizScoreText" class="text-blue-600 dark:text-blue-400 font-mono text-lg">0</span> / 2
+        </div>
+      </div>
+
+      <!-- Question 1 -->
+      <div class="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
+        <div class="flex items-start gap-2">
+          <span class="px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs font-bold mt-0.5">Q1</span>
+          <p class="font-medium text-sm text-slate-800 dark:text-slate-100">
+            在機器學習模型的 A/B 測試中，研究員設定虛無假設 H₀ 為「新舊模型推論準確率無差異」。若檢定結果得到 <i>p</i>-value = 0.012，在預先設定顯著水準 α = 0.05 的情況下，下列哪一項結論最為正確？
+          </p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <button onclick="handleQuizAnswer(1, 'A', false)" class="quiz-btn-1 text-left p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-500 transition">
+            (A) 接受虛無假設，證明新舊模型絕對相同
+          </button>
+          <button onclick="handleQuizAnswer(1, 'B', true)" class="quiz-btn-1 text-left p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-500 transition">
+            (B) 拒絕虛無假設，有充分統計證據顯示兩者具有顯著差異
+          </button>
+          <button onclick="handleQuizAnswer(1, 'C', false)" class="quiz-btn-1 text-left p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-500 transition">
+            (C) 型二錯誤發生的機率恰好等於 0.012
+          </button>
+          <button onclick="handleQuizAnswer(1, 'D', false)" class="quiz-btn-1 text-left p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-500 transition">
+            (D) 新模型比舊模型優秀的機率為 98.8%
+          </button>
+        </div>
+        <div id="quiz-feedback-1" class="hidden text-xs p-3 rounded-xl"></div>
+      </div>
+
+      <!-- Question 2 -->
+      <div class="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
+        <div class="flex items-start gap-2">
+          <span class="px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs font-bold mt-0.5">Q2</span>
+          <p class="font-medium text-sm text-slate-800 dark:text-slate-100">
+            關於型一錯誤（Type I Error, α）與型二錯誤（Type II Error, β）以及機器學習混淆矩陣之對應關係，下列敘述何者正確？
+          </p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <button onclick="handleQuizAnswer(2, 'A', false)" class="quiz-btn-2 text-left p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-500 transition">
+            (A) 固定樣本數下，降低 α 也會一併降低 β
+          </button>
+          <button onclick="handleQuizAnswer(2, 'B', false)" class="quiz-btn-2 text-left p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-500 transition">
+            (B) 檢定力 (Power of Test) 定義為 1 − α
+          </button>
+          <button onclick="handleQuizAnswer(2, 'C', true)" class="quiz-btn-2 text-left p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-500 transition">
+            (C) 偽陽性 (False Positive) 對應型一錯誤（棄真），即原假設為真卻被誤判拒絕
+          </button>
+          <button onclick="handleQuizAnswer(2, 'D', false)" class="quiz-btn-2 text-left p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-500 transition">
+            (D) 顯著水準 α 需在實驗並收集完全部資料後透過公式計算得出
+          </button>
+        </div>
+        <div id="quiz-feedback-2" class="hidden text-xs p-3 rounded-xl"></div>
+      </div>
+    </section>
+
+    <!-- PYTHON IMPLEMENTATION & CODE EXPLAINER -->
+    <section id="python-code" class="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-700 shadow-xl space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-semibold mb-1">
+            <i class="fa-brands fa-python"></i> 實務工程開發
+          </div>
+          <h2 class="text-2xl font-bold">Python / SciPy 雙樣本獨立 t 檢定實作</h2>
+        </div>
+        <button id="btnCopyCode" onclick="copyPythonCode()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-semibold flex items-center gap-2 self-start transition">
+          <i class="fa-regular fa-copy"></i> 複製範例程式
+        </button>
+      </div>
+
+      <!-- Syntax-Highlighted-Style Code Container -->
+      <div class="rounded-2xl bg-slate-900 text-slate-100 p-5 font-mono text-xs sm:text-sm overflow-x-auto shadow-inner leading-relaxed border border-slate-800">
+        <pre><code id="rawPythonCode"><span class="text-slate-500"># IPAS AI 實務標準流程：新舊深度學習模型推論延遲 (Latency ms) Welch's t-test</span>
+<span class="text-purple-400">import</span> numpy <span class="text-purple-400">as</span> np
+<span class="text-purple-400">from</span> scipy <span class="text-purple-400">import</span> stats
+
+<span class="text-blue-400">def</span> <span class="text-yellow-300 font-bold">evaluate_model_improvement</span>(baseline_latencies: np.ndarray, new_latencies: np.ndarray, alpha: <span class="text-emerald-400">float</span> = <span class="text-amber-300">0.05</span>):
+    <span class="text-slate-500">"""
+    使用 Welch's t 檢定驗證新模型推論耗時是否顯著優化 (不假設變異數相等)
+    """</span>
+    n_base, n_new = <span class="text-emerald-400">len</span>(baseline_latencies), <span class="text-emerald-400">len</span>(new_latencies)
+    mean_base, mean_new = np.<span class="text-cyan-400">mean</span>(baseline_latencies), np.<span class="text-cyan-400">mean</span>(new_latencies)
+    
+    <span class="text-slate-500"># 核心重點函式：stats.ttest_ind (equal_var=False 即為 Welch's t-test)</span>
+    <span class="text-yellow-300 font-bold">t_stat</span>, <span class="text-yellow-300 font-bold">p_value</span> = stats.<span class="text-emerald-300 font-bold bg-blue-900/60 px-1 rounded">ttest_ind</span>(
+        new_latencies, 
+        baseline_latencies, 
+        <span class="text-cyan-300">equal_var</span>=<span class="text-rose-400">False</span>, 
+        <span class="text-cyan-300">alternative</span>=<span class="text-amber-300">'two-sided'</span>
+    )
+    
+    <span class="text-cyan-400">print</span>(<span class="text-amber-300">f"[統計檢驗結果] t統計量 = {t_stat:.4f}, p值 = {p_value:.6f}"</span>)
+    
+    <span class="text-purple-400">if</span> p_value &lt;= alpha:
+        decision = <span class="text-emerald-300 font-bold">"拒絕 H0 (統計顯著)：新模型與基準組延遲有顯著性差異！"</span>
+    <span class="text-purple-400">else</span>:
+        decision = <span class="text-rose-300 font-bold">"不拒絕 H0 (無顯著差異)：現存樣本證據不足以證明改良效果。"</span>
+        
+    <span class="text-purple-400">return</span> {<span class="text-amber-300">"t_stat"</span>: t_stat, <span class="text-amber-300">"p_val"</span>: p_value, <span class="text-amber-300">"decision"</span>: decision}
+
+<span class="text-purple-400">if</span> __name__ == <span class="text-amber-300">"__main__"</span>:
+    np.random.<span class="text-cyan-400">seed</span>(<span class="text-amber-300">42</span>)
+    <span class="text-slate-500"># 模擬基準模型 (mu=45.0ms) 與優化模型 (mu=42.8ms) 各採樣 50 次推論耗時</span>
+    baseline_data = np.random.<span class="text-cyan-400">normal</span>(loc=<span class="text-amber-300">45.0</span>, scale=<span class="text-amber-300">3.2</span>, size=<span class="text-amber-300">50</span>)
+    optimized_data = np.random.<span class="text-cyan-400">normal</span>(loc=<span class="text-amber-300">42.8</span>, scale=<span class="text-amber-300">3.0</span>, size=<span class="text-amber-300">50</span>)
+    
+    result = <span class="text-yellow-300">evaluate_model_improvement</span>(baseline_data, optimized_data, alpha=<span class="text-amber-300">0.05</span>)
+    <span class="text-cyan-400">print</span>(<span class="text-amber-300">"決策判定:"</span>, result[<span class="text-amber-300">"decision"</span>])</code></pre>
+      </div>
+      
+      <!-- Key Python Highlights Legend -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          <span class="font-bold text-blue-600 dark:text-blue-400 block mb-1">stats.ttest_ind</span>
+          <span class="text-slate-500">雙樣本獨立 t 檢定必用核心函式。</span>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          <span class="font-bold text-amber-600 dark:text-amber-400 block mb-1">equal_var=False</span>
+          <span class="text-slate-500">啟用 Welch's 修正，避免變異數不齊性引發之誤判。</span>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          <span class="font-bold text-emerald-600 dark:text-emerald-400 block mb-1">p_value &lt;= alpha</span>
+          <span class="text-slate-500">程式化判定門檻，嚴格遵循預先定義之顯著水準。</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Sticky Bottom Alert Feedback Modal (Hidden by Default) -->
+  <div id="toastMessage" class="fixed bottom-6 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 max-w-sm p-4 rounded-2xl shadow-xl flex items-center gap-3 bg-slate-900 text-white border border-slate-700">
+    <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+    <span id="toastText" class="text-sm font-medium">操作成功</span>
+  </div>
+
+  <!-- Page Footer -->
+  <footer class="border-t border-slate-200 dark:border-slate-800 py-6 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p>© IPAS AI 人工智慧技術專家評測認證輔助教學系統</p>
+      <p class="font-mono">推論統計 · 假設檢定 · A/B 測試架構</p>
+    </div>
+  </footer>
+
+  <!-- Application Logic Scripts -->
+  <script>
+    // --- Dark Mode State Management ---
+    const themeToggleBtn = document.getElementById('themeToggle');
+    function initTheme() {
+      if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+    initTheme();
+
+    themeToggleBtn.addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+      const isDark = document.documentElement.classList.contains('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      updateChartTheme();
+    });
+
+    // --- Toast Message Component (Replacing alert) ---
+    function showToast(msg, isSuccess = true) {
+      const toast = document.getElementById('toastMessage');
+      const icon = document.getElementById('toastIcon');
+      const text = document.getElementById('toastText');
+
+      text.innerText = msg;
+      if (isSuccess) {
+        icon.className = 'fa-solid fa-circle-check text-emerald-400 text-lg';
+      } else {
+        icon.className = 'fa-solid fa-circle-exclamation text-rose-400 text-lg';
+      }
+
+      toast.classList.remove('translate-y-24', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-24', 'opacity-0');
+      }, 2500);
+    }
+
+    // --- Statistical Math Helpers ---
+    // Standard Normal Probability Density Function: phi(x)
+    function normalPDF(x) {
+      return (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * x * x);
+    }
+
+    // Standard Normal CDF approximation (Abramowitz and Stegun)
+    function normalCDF(x) {
+      const b1 = 0.319381530;
+      const b2 = -0.356563782;
+      const b3 = 1.781477937;
+      const b4 = -1.821255978;
+      const b5 = 1.330274429;
+      const p = 0.2316419;
+      const c = 0.39894228;
+
+      if (x >= 0.0) {
+        const t = 1.0 / (1.0 + p * x);
+        return (1.0 - c * Math.exp(-x * x / 2.0) * t *
+          (t * (t * (t * (t * b5 + b4) + b3) + b2) + b1));
+      } else {
+        const t = 1.0 / (1.0 - p * x);
+        return (c * Math.exp(-x * x / 2.0) * t *
+          (t * (t * (t * (t * b5 + b4) + b3) + b2) + b1));
+      }
+    }
+
+    // Inverse Normal CDF approximation to get critical values
+    function getCriticalZ(alpha) {
+      // For two-tailed test, area on one tail is alpha / 2
+      const p = 1.0 - alpha / 2.0;
+      // Rational approximation for normal quantile
+      const a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02, 1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00];
+      const b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02, 6.680191180164808e+01, -1.328068155288572e+01];
+      const c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00, -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00];
+      const d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00];
+
+      const q = p - 0.5;
+      let r, z;
+      if (Math.abs(q) <= 0.42) {
+        r = q * q;
+        z = q * (((a[0]*r + a[1])*r + a[2])*r + a[3]*r + a[4]*r + a[5]) /
+            ((((b[0]*r + b[1])*r + b[2])*r + b[3])*r + b[4]*r + 1.0);
+      } else {
+        r = p < 0.5 ? p : 1.0 - p;
+        r = Math.log(-Math.log(r));
+        z = c[0]*r + c[1] + (c[2]*r + c[3])*r + c[4]*r + c[5];
+        if (p < 0.5) z = -z;
+      }
+      return Math.abs(z);
+    }
+
+    // --- Chart & Visualization Logic ---
+    let myChart = null;
+    const mu0 = 50.0;
+    const sigma = 4.0;
+
+    const sliderAlpha = document.getElementById('sliderAlpha');
+    const sliderMean = document.getElementById('sliderMean');
+    const sliderN = document.getElementById('sliderN');
+
+    const alphaValText = document.getElementById('alphaValText');
+    const meanValText = document.getElementById('meanValText');
+    const nValText = document.getElementById('nValText');
+
+    const calcSE = document.getElementById('calcSE');
+    const calcZ = document.getElementById('calcZ');
+    const calcZCrit = document.getElementById('calcZCrit');
+    const calcPValue = document.getElementById('calcPValue');
+    const decisionCard = document.getElementById('decisionCard');
+
+    function generateChartPoints(alpha, sampleZ, critZ) {
+      const labels = [];
+      const pdfData = [];
+      const leftRejection = [];
+      const rightRejection = [];
+      const samplePoints = [];
+
+      const start = -3.8;
+      const end = 3.8;
+      const step = 0.08;
+
+      for (let x = start; x <= end; x += step) {
+        const roundedX = parseFloat(x.toFixed(2));
+        labels.push(roundedX);
+        const y = normalPDF(roundedX);
+        pdfData.push(y);
+
+        // Fill left rejection region
+        if (roundedX <= -critZ) {
+          leftRejection.push(y);
+        } else {
+          leftRejection.push(null);
+        }
+
+        // Fill right rejection region
+        if (roundedX >= critZ) {
+          rightRejection.push(y);
+        } else {
+          rightRejection.push(null);
+        }
+
+        // Sample Point Marker
+        if (Math.abs(roundedX - sampleZ) < step / 2) {
+          samplePoints.push(y);
+        } else {
+          samplePoints.push(null);
+        }
+      }
+
+      return { labels, pdfData, leftRejection, rightRejection, samplePoints };
+    }
+
+    function initChart() {
+      const ctx = document.getElementById('distributionCanvas').getContext('2d');
+      const isDark = document.documentElement.classList.contains('dark');
+      const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
+      const textColor = isDark ? '#94a3b8' : '#64748b';
+
+      myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: '抽樣分佈曲線 N(0,1)',
+              data: [],
+              borderColor: '#3b82f6',
+              borderWidth: 2.5,
+              tension: 0.35,
+              pointRadius: 0,
+              fill: false
+            },
+            {
+              label: '左側拒絕域 (α/2)',
+              data: [],
+              backgroundColor: 'rgba(239, 68, 68, 0.35)',
+              borderColor: 'transparent',
+              fill: 'origin',
+              pointRadius: 0
+            },
+            {
+              label: '右側拒絕域 (α/2)',
+              data: [],
+              backgroundColor: 'rgba(239, 68, 68, 0.35)',
+              borderColor: 'transparent',
+              fill: 'origin',
+              pointRadius: 0
+            },
+            {
+              label: '樣本統計量 Z 點',
+              data: [],
+              pointRadius: 7,
+              pointBackgroundColor: '#10b981',
+              pointBorderColor: '#ffffff',
+              pointBorderWidth: 2,
+              showLine: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            intersect: false,
+            mode: 'index',
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => `Z-Score: ${items[0].label}`,
+                label: (item) => `機率密度: ${item.formattedValue}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: gridColor },
+              ticks: { color: textColor, maxTicksLimit: 9 },
+              title: {
+                display: true,
+                text: '標準化檢定統計量 (Z 軸)',
+                color: textColor,
+                font: { size: 12 }
+              }
+            },
+            y: {
+              grid: { color: gridColor },
+              ticks: { color: textColor, display: false },
+              beginAtZero: true,
+              max: 0.45
+            }
+          }
+        }
+      });
+      updateCalculations();
+    }
+
+    function updateChartTheme() {
+      if (!myChart) return;
+      const isDark = document.documentElement.classList.contains('dark');
+      const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
+      const textColor = isDark ? '#94a3b8' : '#64748b';
+
+      myChart.options.scales.x.grid.color = gridColor;
+      myChart.options.scales.x.ticks.color = textColor;
+      myChart.options.scales.x.title.color = textColor;
+      myChart.options.scales.y.grid.color = gridColor;
+      myChart.update();
+    }
+
+    function updateCalculations() {
+      const alpha = parseFloat(sliderAlpha.value);
+      const sampleMean = parseFloat(sliderMean.value);
+      const n = parseInt(sliderN.value, 10);
+
+      // Labels update
+      alphaValText.innerText = alpha.toFixed(2);
+      meanValText.innerText = sampleMean.toFixed(1);
+      nValText.innerText = n;
+
+      // Stats calculation
+      const se = sigma / Math.sqrt(n);
+      const zScore = (sampleMean - mu0) / se;
+      const critZ = getCriticalZ(alpha);
+      
+      // Calculate two-tailed p-value
+      const pVal = 2 * (1 - normalCDF(Math.abs(zScore)));
+
+      // Display numeric metrics
+      calcSE.innerText = se.toFixed(3);
+      calcZ.innerText = (zScore >= 0 ? '+' : '') + zScore.toFixed(3);
+      calcZCrit.innerText = `±${critZ.toFixed(3)}`;
+      calcPValue.innerText = pVal < 0.0001 ? '< 0.0001' : pVal.toFixed(4);
+
+      // Decision Card
+      const isRejected = Math.abs(zScore) >= critZ;
+      if (isRejected) {
+        decisionCard.className = 'p-3.5 rounded-xl border border-rose-300 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 text-center';
+        decisionCard.innerHTML = `
+          <div class="font-bold text-sm flex items-center justify-center gap-1.5 text-rose-600 dark:text-rose-400">
+            <i class="fa-solid fa-triangle-exclamation"></i> 決策：拒絕虛無假設 (Reject H0)
+          </div>
+          <p class="text-xs mt-1 text-rose-700 dark:text-rose-300">
+            因為 |Z| (${Math.abs(zScore).toFixed(2)}) &ge; 臨界值 (${critZ.toFixed(2)})，且 p-value &le; &alpha;。樣本差異達統計顯著！
+          </p>
+        `;
+      } else {
+        decisionCard.className = 'p-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 text-center';
+        decisionCard.innerHTML = `
+          <div class="font-bold text-sm flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-300">
+            <i class="fa-solid fa-shield-halved"></i> 決策：不拒絕虛無假設 (Fail to Reject H0)
+          </div>
+          <p class="text-xs mt-1 text-slate-500 dark:text-slate-400">
+            因為 |Z| 未落入拒絕域，且 p-value &gt; &alpha;。目前證據不足以推翻現狀。
+          </p>
+        `;
+      }
+
+      // Update Chart data
+      if (myChart) {
+        const { labels, pdfData, leftRejection, rightRejection, samplePoints } = generateChartPoints(alpha, zScore, critZ);
+        myChart.data.labels = labels;
+        myChart.data.datasets[0].data = pdfData;
+        myChart.data.datasets[1].data = leftRejection;
+        myChart.data.datasets[2].data = rightRejection;
+        myChart.data.datasets[3].data = samplePoints;
+        myChart.update();
+      }
+    }
+
+    // Attach slider listeners
+    [sliderAlpha, sliderMean, sliderN].forEach(slider => {
+      slider.addEventListener('input', updateCalculations);
+    });
+
+    // Random sample generator button
+    document.getElementById('btnRandomSample').addEventListener('click', () => {
+      // Random mean between 47.5 and 52.5
+      const randomM = (48.0 + Math.random() * 4.0).toFixed(1);
+      const randomN = [20, 30, 45, 60, 80, 100][Math.floor(Math.random() * 6)];
+      sliderMean.value = randomM;
+      sliderN.value = randomN;
+      updateCalculations();
+      showToast(`隨機採樣已載入: 均值=${randomM}, 樣本數=${randomN}`);
+    });
+
+    // Auto Simulation Demo (Smooth transition)
+    let autoSimInterval = null;
+    document.getElementById('btnAutoSimulate').addEventListener('click', () => {
+      if (autoSimInterval) {
+        clearInterval(autoSimInterval);
+        autoSimInterval = null;
+        document.getElementById('btnAutoSimulate').innerHTML = '<i class="fa-solid fa-play"></i> 一鍵自動動態展示';
+        return;
+      }
+      
+      showToast('開始自動動畫模擬...');
+      document.getElementById('btnAutoSimulate').innerHTML = '<i class="fa-solid fa-pause"></i> 暫停展示';
+      
+      let stepVal = 47.0;
+      let forward = true;
+      autoSimInterval = setInterval(() => {
+        if (forward) {
+          stepVal += 0.2;
+          if (stepVal >= 52.8) forward = false;
+        } else {
+          stepVal -= 0.2;
+          if (stepVal <= 47.2) forward = true;
+        }
+        sliderMean.value = stepVal.toFixed(1);
+        updateCalculations();
+      }, 100);
+    });
+
+    // --- IPAS Exam Interactive System ---
+    let totalScore = 0;
+    const answeredMap = {};
+
+    function handleQuizAnswer(qId, selectedOption, isCorrect) {
+      if (answeredMap[qId]) return; // prevent duplicate clicks
+      answeredMap[qId] = true;
+
+      const feedbackEl = document.getElementById(`quiz-feedback-${qId}`);
+      feedbackEl.classList.remove('hidden');
+
+      const buttons = document.querySelectorAll(`.quiz-btn-${qId}`);
+      buttons.forEach(btn => {
+        btn.disabled = true;
+        btn.classList.remove('hover:border-blue-500');
+      });
+
+      if (isCorrect) {
+        totalScore += 1;
+        document.getElementById('quizScoreText').innerText = totalScore;
+        feedbackEl.className = 'text-xs p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-medium';
+        feedbackEl.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i> <strong>回答正確！</strong> (B) 因 p值 (0.012) &le; &alpha; (0.05)，屬於拒絕域，代表證據充分支持拒絕虛無假設。統計決策非確定性證明，不能推得真值機率。`;
+      } else {
+        feedbackEl.className = 'text-xs p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800 font-medium';
+        feedbackEl.innerHTML = `<i class="fa-solid fa-circle-xmark text-rose-500 mr-1"></i> <strong>答案有誤。</strong> 正確解答應為 <strong>(B)</strong>。注意：p-value 是條件機率 P(Data|H0)，絕非 H0 或 H1 為真的後驗機率！`;
+      }
+    }
+
+    // --- Copy Python Code Utility (document.execCommand as required) ---
+    function copyPythonCode() {
+      const codeElement = document.getElementById('rawPythonCode');
+      const textToCopy = codeElement.innerText;
+      
+      const tempTextArea = document.createElement('textarea');
+      tempTextArea.value = textToCopy;
+      document.body.appendChild(tempTextArea);
+      tempTextArea.select();
+      
+      try {
+        const success = document.execCommand('copy');
+        if (success) {
+          showToast('Python 範例程式已複製到剪貼簿！');
+        } else {
+          showToast('複製失敗，請手動選取', false);
+        }
+      } catch (err) {
+        showToast('瀏覽器安全性限制無法自動複製', false);
+      } finally {
+        document.body.removeChild(tempTextArea);
+      }
+    }
+
+    // Window Onload initialization
+    window.onload = function() {
+      initChart();
+      // Auto render KaTeX if library is present
+      if (typeof renderMathInElement === 'function') {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+    };
+  </script>
+</body>
+</html>

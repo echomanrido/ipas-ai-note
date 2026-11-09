@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Focal Loss 互動教學實驗室 | iPAS AI 考點全解</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js for Loss curve visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- KaTeX for math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .code-token-keyword { color: #f43f5e; font-weight: 600; }
+    .code-token-class { color: #38bdf8; font-weight: 600; }
+    .code-token-func { color: #a855f7; }
+    .code-token-param { color: #fb923c; }
+    .code-token-num { color: #eab308; }
+    .code-token-comment { color: #64748b; font-style: italic; }
+    .code-token-str { color: #4ade80; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- Navigation -->
+  <header class="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-brand-500/20 font-black text-xl">
+          FL
+        </div>
+        <div>
+          <span class="font-bold text-lg text-white">Focal Loss <span class="text-brand-500 text-xs px-2 py-0.5 rounded-full bg-brand-500/10 border border-brand-500/30">iPAS AI 實戰</span></span>
+          <p class="text-xs text-slate-400 hidden sm:block">極端類別不平衡與難易樣本自適應損失函數</p>
+        </div>
+      </div>
+      <nav class="hidden md:flex space-x-6 text-sm font-medium text-slate-300">
+        <a href="#core-concept" class="hover:text-brand-400 transition-colors">核心概念</a>
+        <a href="#math-curve" class="hover:text-brand-400 transition-colors">互動數學圖表</a>
+        <a href="#step-simulation" class="hover:text-brand-400 transition-colors">極端不平衡模擬</a>
+        <a href="#code-implementation" class="hover:text-brand-400 transition-colors">PyTorch 實作</a>
+        <a href="#ipas-quiz" class="hover:text-brand-400 transition-colors">iPAS 認證考題</a>
+      </nav>
+      <div class="flex items-center gap-2 sm:gap-3">
+        <a href="../index.html" class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs sm:text-sm border border-slate-700 transition-all">
+          <i class="fa-solid fa-house"></i> <span>回首頁</span>
+        </a>
+        <a href="#math-curve" class="bg-brand-600 hover:bg-brand-500 text-white text-xs sm:text-sm font-semibold px-4 py-2 rounded-lg transition-all shadow-md hover:shadow-brand-500/30">
+          <i class="fa-solid fa-play mr-1.5"></i>開始互動實驗
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="relative overflow-hidden pt-12 pb-16 border-b border-slate-800 bg-gradient-to-b from-slate-900 via-slate-900/80 to-slate-950">
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(59,130,246,0.15),rgba(255,255,255,0))]"></div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div class="max-w-3xl">
+        <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700 text-brand-400 text-xs font-semibold mb-4">
+          <i class="fa-solid fa-crosshairs"></i>
+          <span>ICCV 2017 Best Paper • RetinaNet 核心創新</span>
+        </div>
+        <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight text-white mb-6 leading-tight">
+          全面壓制易分類樣本，<br class="hidden sm:inline" />
+          讓梯度全神貫注於 <span class="text-cyan-300 font-black drop-shadow-[0_2px_12px_rgba(34,211,238,0.4)]">難分類目標 (Hard Examples)</span>
+        </h1>
+        <p class="text-base sm:text-lg text-slate-300 leading-relaxed mb-6">
+          在單階段物件偵測、半導體晶圓瑕疵、罕見疾病診斷中，負樣本（正常背景）往往佔據 99.9% 以上。
+          標準 Cross Entropy 會被龐大但微小的背景損失徹底淹沒；Focal Loss 透過調節因子 $(1-p_t)^\gamma$，動態削弱高信心樣本，一舉打破精度瓶頸。
+        </p>
+      </div>
+
+      <!-- Quick Metrics Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
+        <div class="p-5 rounded-xl bg-slate-800/50 border border-slate-700/60 backdrop-blur-sm">
+          <div class="text-brand-400 text-2xl font-bold mb-1">01. 一句話簡介</div>
+          <p class="text-sm text-slate-300">以動態調製權重 $(1-p_t)^\gamma$ 削弱容易樣本，專注挖掘困難樣本的損失函數。</p>
+        </div>
+        <div class="p-5 rounded-xl bg-slate-800/50 border border-slate-700/60 backdrop-blur-sm">
+          <div class="text-brand-400 text-2xl font-bold mb-1">02. 誕生背景</div>
+          <p class="text-sm text-slate-300">Facebook AI Research (FAIR) 林琮易等人為解決 RetinaNet 密集錨框前景背景失衡所創。</p>
+        </div>
+        <div class="p-5 rounded-xl bg-slate-800/50 border border-slate-700/60 backdrop-blur-sm">
+          <div class="text-brand-400 text-2xl font-bold mb-1">03. 核心參數</div>
+          <p class="text-sm text-slate-300">聚焦指數 $\gamma$（常用 2.0）調控難易衰減；平衡係數 $\alpha$（常用 0.25）調控正負樣本。</p>
+        </div>
+        <div class="p-5 rounded-xl bg-slate-800/50 border border-slate-700/60 backdrop-blur-sm">
+          <div class="text-brand-400 text-2xl font-bold mb-1">04. 工業落地</div>
+          <p class="text-sm text-slate-300">半導體 AOI 瑕疵、醫療影像病灶分割、信用卡盜刷異常檢測等極端不平衡場景。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SVG Architecture & Visual Infographics Section -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
+    <div class="border-b border-slate-800 pb-4 mb-8">
+      <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-diagram-project text-cyan-400"></i>
+        視覺化架構原理：四大核心 SVG 圖解
+      </h2>
+      <p class="text-slate-400 text-sm mt-1">透過向量結構圖透視樣本過濾門控、密集錨框失衡、RetinaNet 網路管線與 AOI 檢測焦點</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      
+      <!-- SVG 1: Modulating Factor Mechanism Diagram -->
+      <div class="p-6 rounded-2xl bg-slate-800/60 border border-slate-700/80 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider bg-cyan-950/60 border border-cyan-800 px-2.5 py-1 rounded-full">SVG 圖解 1</span>
+            <span class="text-xs text-slate-400">動態門控調製機制</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">調製因子 $(1-p_t)^\gamma$ 篩濾水門</h3>
+          <p class="text-xs text-slate-300 mb-4">
+            高信心樣本（$p_t=0.99$）被強力阻絕壓制，而難辨識樣本（$p_t=0.50$）則順暢通過，主導反向傳播。
+          </p>
+          <div class="w-full bg-slate-950/90 rounded-xl p-3 border border-slate-800 flex items-center justify-center">
+            <svg viewBox="0 0 600 320" class="w-full h-auto max-h-72" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="easyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#34d399" />
+                  <stop offset="100%" stop-color="#059669" />
+                </linearGradient>
+                <linearGradient id="hardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#f87171" />
+                  <stop offset="100%" stop-color="#dc2626" />
+                </linearGradient>
+                <linearGradient id="valveGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#0284c7" />
+                  <stop offset="100%" stop-color="#1e40af" />
+                </linearGradient>
+                <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+                </marker>
+                <marker id="arrowCyan" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8"/>
+                </marker>
+              </defs>
+
+              <!-- Inputs -->
+              <rect x="20" y="40" width="140" height="90" rx="10" fill="#1e293b" stroke="#34d399" stroke-width="2"/>
+              <text x="90" y="70" fill="#34d399" font-size="14" font-weight="bold" text-anchor="middle">易分類樣本 (Easy)</text>
+              <text x="90" y="92" fill="#cbd5e1" font-size="12" text-anchor="middle">預測機率 pt = 0.99</text>
+              <text x="90" y="112" fill="#94a3b8" font-size="11" text-anchor="middle">原始 CE = 0.010</text>
+
+              <rect x="20" y="190" width="140" height="90" rx="10" fill="#1e293b" stroke="#f87171" stroke-width="2"/>
+              <text x="90" y="220" fill="#f87171" font-size="14" font-weight="bold" text-anchor="middle">難分類樣本 (Hard)</text>
+              <text x="90" y="242" fill="#cbd5e1" font-size="12" text-anchor="middle">預測機率 pt = 0.50</text>
+              <text x="90" y="262" fill="#94a3b8" font-size="11" text-anchor="middle">原始 CE = 0.693</text>
+
+              <!-- Flow arrows to filter -->
+              <line x1="160" y1="85" x2="225" y2="125" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+              <line x1="160" y1="235" x2="225" y2="195" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+
+              <!-- Filter Valve -->
+              <rect x="230" y="100" width="140" height="120" rx="14" fill="url(#valveGrad)" stroke="#38bdf8" stroke-width="2"/>
+              <text x="300" y="135" fill="#ffffff" font-size="14" font-weight="bold" text-anchor="middle">動態衰減閥門</text>
+              <text x="300" y="162" fill="#bae6fd" font-size="13" font-weight="bold" text-anchor="middle">(1 - pt)^γ</text>
+              <text x="300" y="195" fill="#e0f2fe" font-size="11" text-anchor="middle">設定 γ = 2.0</text>
+
+              <!-- Out flow arrows -->
+              <line x1="370" y1="130" x2="435" y2="85" stroke="#64748b" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrow)" />
+              <line x1="370" y1="185" x2="435" y2="235" stroke="#38bdf8" stroke-width="4" marker-end="url(#arrowCyan)" />
+
+              <!-- Output Cards -->
+              <rect x="440" y="40" width="140" height="90" rx="10" fill="#0f172a" stroke="#475569" stroke-width="1.5"/>
+              <text x="510" y="68" fill="#94a3b8" font-size="12" font-weight="bold" text-anchor="middle">權重抑制 99.99%</text>
+              <text x="510" y="90" fill="#64748b" font-size="12" text-anchor="middle">因 (1-0.99)² = 0.0001</text>
+              <text x="510" y="112" fill="#ef4444" font-size="12" font-weight="bold" text-anchor="middle">FL = 0.0000010</text>
+
+              <rect x="440" y="190" width="140" height="90" rx="10" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+              <text x="510" y="218" fill="#38bdf8" font-size="13" font-weight="bold" text-anchor="middle">保留 25.0% 損失</text>
+              <text x="510" y="240" fill="#e2e8f0" font-size="12" text-anchor="middle">因 (1-0.50)² = 0.25</text>
+              <text x="510" y="262" fill="#22c55e" font-size="14" font-weight="black" text-anchor="middle">FL = 0.1732 (主導梯度)</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- SVG 2: Dense Anchors Grid Imbalance -->
+      <div class="p-6 rounded-2xl bg-slate-800/60 border border-slate-700/80 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold text-amber-400 uppercase tracking-wider bg-amber-950/60 border border-amber-800 px-2.5 py-1 rounded-full">SVG 圖解 2</span>
+            <span class="text-xs text-slate-400">密集候選框失衡場景</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">單階段物件偵測密集錨點 (Dense Anchors)</h3>
+          <p class="text-xs text-slate-300 mb-4">
+            在多尺度特徵圖上鋪設數十萬個候選錨框，只有極微量錨框重疊於目標（前景），絕大多數皆為純背景。
+          </p>
+          <div class="w-full bg-slate-950/90 rounded-xl p-3 border border-slate-800 flex items-center justify-center">
+            <svg viewBox="0 0 600 320" class="w-full h-auto max-h-72" xmlns="http://www.w3.org/2000/svg">
+              <!-- Background Scene Canvas -->
+              <rect x="30" y="25" width="320" height="270" rx="8" fill="#0f172a" stroke="#334155" stroke-width="2"/>
+              
+              <!-- Dense anchor grid lines -->
+              <g stroke="#1e293b" stroke-width="1">
+                <line x1="30" y1="70" x2="350" y2="70"/>
+                <line x1="30" y1="115" x2="350" y2="115"/>
+                <line x1="30" y1="160" x2="350" y2="160"/>
+                <line x1="30" y1="205" x2="350" y2="205"/>
+                <line x1="30" y1="250" x2="350" y2="250"/>
+                <line x1="83" y1="25" x2="83" y2="295"/>
+                <line x1="136" y1="25" x2="136" y2="295"/>
+                <line x1="190" y1="25" x2="190" y2="295"/>
+                <line x1="243" y1="25" x2="243" y2="295"/>
+                <line x1="296" y1="25" x2="296" y2="295"/>
+              </g>
+
+              <!-- Negative Anchors (Dotted Grey boxes) -->
+              <rect x="45" y="40" width="50" height="45" rx="3" fill="none" stroke="#475569" stroke-dasharray="3,3" stroke-width="1.2"/>
+              <rect x="110" y="35" width="60" height="65" rx="3" fill="none" stroke="#475569" stroke-dasharray="3,3" stroke-width="1.2"/>
+              <rect x="250" y="50" width="70" height="50" rx="3" fill="none" stroke="#475569" stroke-dasharray="3,3" stroke-width="1.2"/>
+              <rect x="50" y="180" width="65" height="70" rx="3" fill="none" stroke="#475569" stroke-dasharray="3,3" stroke-width="1.2"/>
+              <rect x="140" y="210" width="70" height="60" rx="3" fill="none" stroke="#475569" stroke-dasharray="3,3" stroke-width="1.2"/>
+              <rect x="260" y="190" width="60" height="80" rx="3" fill="none" stroke="#475569" stroke-dasharray="3,3" stroke-width="1.2"/>
+              <text x="95" y="150" fill="#475569" font-size="12" text-anchor="middle">~100,000 個 背景框 (Negative)</text>
+
+              <!-- Positive Target (Simulated Drone / Tiny Vehicle) -->
+              <rect x="195" y="125" width="45" height="40" rx="4" fill="#38bdf8" fill-opacity="0.15" stroke="#38bdf8" stroke-width="2"/>
+              <circle cx="217" cy="145" r="8" fill="#f43f5e"/>
+              <text x="217" y="112" fill="#f43f5e" font-size="11" font-weight="bold" text-anchor="middle">目標 (Positive)</text>
+              <line x1="217" y1="116" x2="217" y2="124" stroke="#f43f5e" stroke-width="1.5"/>
+
+              <!-- Statistics Legend Card -->
+              <g transform="translate(375, 45)">
+                <rect width="200" height="230" rx="10" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+                <text x="100" y="30" fill="#ffffff" font-size="13" font-weight="bold" text-anchor="middle">候選錨框比例對比</text>
+                
+                <!-- Background Bar -->
+                <text x="18" y="65" fill="#94a3b8" font-size="11">背景框 (99.9%):</text>
+                <rect x="18" y="75" width="164" height="14" rx="4" fill="#334155"/>
+                <rect x="18" y="75" width="162" height="14" rx="4" fill="#64748b"/>
+                <text x="100" y="86" fill="#f8fafc" font-size="9" font-weight="bold" text-anchor="middle">99,900 Boxes</text>
+
+                <!-- Foreground Bar -->
+                <text x="18" y="120" fill="#38bdf8" font-size="11">前景微小目標 (0.1%):</text>
+                <rect x="18" y="130" width="164" height="14" rx="4" fill="#334155"/>
+                <rect x="18" y="130" width="6" height="14" rx="3" fill="#f43f5e"/>
+                <text x="65" y="141" fill="#f43f5e" font-size="9" font-weight="bold">100 Boxes</text>
+
+                <!-- Impact statement -->
+                <rect x="12" y="160" width="176" height="55" rx="6" fill="#0f172a" stroke="#ef4444" stroke-opacity="0.5"/>
+                <text x="100" y="180" fill="#f87171" font-size="10" font-weight="bold" text-anchor="middle">標準 CE 梯度被吞沒</text>
+                <text x="100" y="198" fill="#cbd5e1" font-size="9" text-anchor="middle">Focal Loss 成功解除危機</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- SVG 3: RetinaNet Backbone + FPN + Focal Loss Head Architecture -->
+      <div class="p-6 rounded-2xl bg-slate-800/60 border border-slate-700/80 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider bg-indigo-950/60 border border-indigo-800 px-2.5 py-1 rounded-full">SVG 圖解 3</span>
+            <span class="text-xs text-slate-400">經典神經網路架構</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">RetinaNet (ResNet + FPN + Focal Loss Head)</h3>
+          <p class="text-xs text-slate-300 mb-4">
+            雙向特徵金字塔輸出多尺度特徵圖，分類分支全面搭載 Focal Loss 進行全卷積密集成像。
+          </p>
+          <div class="w-full bg-slate-950/90 rounded-xl p-3 border border-slate-800 flex items-center justify-center">
+            <svg viewBox="0 0 600 320" class="w-full h-auto max-h-72" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <marker id="arrowIndigo" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#818cf8"/>
+                </marker>
+              </defs>
+
+              <!-- Backbone ResNet (Bottom-up) -->
+              <polygon points="40,260 120,260 100,100 60,100" fill="#1e293b" stroke="#3b82f6" stroke-width="1.8"/>
+              <text x="80" y="280" fill="#93c5fd" font-size="11" font-weight="bold" text-anchor="middle">ResNet 骨幹</text>
+              <text x="80" y="200" fill="#cbd5e1" font-size="10" text-anchor="middle">自底向上</text>
+
+              <!-- FPN Pyramids (Top-down) -->
+              <polygon points="190,260 270,260 250,100 210,100" fill="#1e293b" stroke="#818cf8" stroke-width="1.8"/>
+              <text x="230" y="280" fill="#c7d2fe" font-size="11" font-weight="bold" text-anchor="middle">FPN 特徵金字塔</text>
+              
+              <!-- Connections from Backbone to FPN -->
+              <line x1="85" y1="130" x2="225" y2="130" stroke="#818cf8" stroke-dasharray="3,3" stroke-width="1.5" marker-end="url(#arrowIndigo)"/>
+              <line x1="80" y1="180" x2="230" y2="180" stroke="#818cf8" stroke-dasharray="3,3" stroke-width="1.5" marker-end="url(#arrowIndigo)"/>
+              <line x1="75" y1="230" x2="235" y2="230" stroke="#818cf8" stroke-dasharray="3,3" stroke-width="1.5" marker-end="url(#arrowIndigo)"/>
+
+              <!-- Subnets Branch -->
+              <!-- Classification Subnet -->
+              <rect x="340" y="80" width="220" height="85" rx="8" fill="#1e1b4b" stroke="#6366f1" stroke-width="2"/>
+              <text x="450" y="105" fill="#a5b4fc" font-size="12" font-weight="bold" text-anchor="middle">分類子網路 (Classification Subnet)</text>
+              <rect x="355" y="118" width="190" height="34" rx="6" fill="#312e81"/>
+              <text x="450" y="140" fill="#38bdf8" font-size="12" font-weight="black" text-anchor="middle">★ Focal Loss 損失計算點</text>
+
+              <!-- Box Reg Subnet -->
+              <rect x="340" y="195" width="220" height="75" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+              <text x="450" y="222" fill="#cbd5e1" font-size="12" font-weight="bold" text-anchor="middle">邊界框迴歸子網路 (Box Reg)</text>
+              <rect x="355" y="234" width="190" height="24" rx="4" fill="#0f172a"/>
+              <text x="450" y="250" fill="#94a3b8" font-size="11" text-anchor="middle">Smooth L1 / GIoU Loss</text>
+
+              <!-- Arrows to subnets -->
+              <line x1="255" y1="130" x2="340" y2="120" stroke="#818cf8" stroke-width="2" marker-end="url(#arrowIndigo)"/>
+              <line x1="260" y1="200" x2="340" y2="230" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- SVG 4: Industrial AOI Wafer Inspection Focus -->
+      <div class="p-6 rounded-2xl bg-slate-800/60 border border-slate-700/80 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider bg-emerald-950/60 border border-emerald-800 px-2.5 py-1 rounded-full">SVG 圖解 4</span>
+            <span class="text-xs text-slate-400">工業落地場景</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">半導體晶圓 AOI 微小瑕疵焦點放大</h3>
+          <p class="text-xs text-slate-300 mb-4">
+            整片矽晶圓 99.99% 皆為完整金屬電路（良品），Focal Loss 阻止良品主宰網路，精準鎖定微米裂痕。
+          </p>
+          <div class="w-full bg-slate-950/90 rounded-xl p-3 border border-slate-800 flex items-center justify-center">
+            <svg viewBox="0 0 600 320" class="w-full h-auto max-h-72" xmlns="http://www.w3.org/2000/svg">
+              <!-- Wafer Circle -->
+              <circle cx="160" cy="160" r="120" fill="#0f172a" stroke="#0284c7" stroke-width="3"/>
+              
+              <!-- Die grid on wafer -->
+              <g stroke="#1e293b" stroke-width="1">
+                <line x1="60" y1="120" x2="260" y2="120"/>
+                <line x1="45" y1="160" x2="275" y2="160"/>
+                <line x1="60" y1="200" x2="260" y2="200"/>
+                <line x1="120" y1="60" x2="120" y2="260"/>
+                <line x1="160" y1="45" x2="160" y2="275"/>
+                <line x1="200" y1="60" x2="200" y2="260"/>
+              </g>
+
+              <text x="160" y="270" fill="#38bdf8" font-size="11" font-weight="bold" text-anchor="middle">300mm 矽晶圓表面</text>
+
+              <!-- Tiny defect dot with focus box -->
+              <circle cx="178" cy="142" r="3" fill="#ef4444"/>
+              <rect x="170" y="134" width="16" height="16" rx="2" fill="none" stroke="#f43f5e" stroke-width="1.8"/>
+
+              <!-- Zoom Guide lines -->
+              <line x1="186" y1="134" x2="350" y2="50" stroke="#f43f5e" stroke-dasharray="3,3" stroke-width="1.5"/>
+              <line x1="186" y1="150" x2="350" y2="270" stroke="#f43f5e" stroke-dasharray="3,3" stroke-width="1.5"/>
+
+              <!-- Inspection Microscope Zoom Window -->
+              <rect x="350" y="50" width="220" height="220" rx="14" fill="#030712" stroke="#f43f5e" stroke-width="2"/>
+              <circle cx="460" cy="150" r="75" fill="#111827" stroke="#374151" stroke-width="1"/>
+              
+              <!-- Defect visual inside zoom -->
+              <path d="M 430 145 Q 460 160 480 135 Q 490 148 475 168" fill="none" stroke="#ef4444" stroke-width="4" stroke-linecap="round"/>
+              <circle cx="460" cy="155" r="4" fill="#facc15"/>
+
+              <rect x="365" y="235" width="190" height="26" rx="6" fill="#1f2937"/>
+              <text x="460" y="252" fill="#f87171" font-size="11" font-weight="bold" text-anchor="middle">檢出：微米金屬短路 (FL Active)</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16 flex-1">
+
+    <!-- Section 1: Theory & Formula -->
+    <section id="core-concept" class="space-y-6">
+      <div class="border-b border-slate-800 pb-4 flex items-center justify-between">
+        <div>
+          <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-square-root-variable text-brand-400"></i>
+            理論推導與公式結構
+          </h2>
+          <p class="text-slate-400 text-sm mt-1">從標準二元交叉熵 (BCE) 演繹至 $\alpha$-Balanced Focal Loss</p>
+        </div>
+        <span class="text-xs bg-slate-800 text-slate-400 px-3 py-1 rounded-full border border-slate-700">深度學習基礎</span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- BCE Card -->
+        <div class="p-6 rounded-2xl bg-slate-800/60 border border-slate-700/70 flex flex-col justify-between">
+          <div>
+            <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Step 1 • 基礎交叉熵</div>
+            <h3 class="text-lg font-bold text-white mb-2">標準 Binary Cross Entropy</h3>
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 my-4 text-center overflow-x-auto text-sm text-brand-300">
+              $$ \text{CE}(p_t) = -\log(p_t) $$
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              其中 $p_t = p$（若真值為前景），$p_t = 1-p$（若真值為背景）。<br>
+              <strong class="text-rose-400">痛點：</strong> 當 $p_t = 0.99$ 時，損失雖僅約 $0.01$，但乘上數十萬個簡單背景框後，累積梯度直接淹沒關鍵前景。
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-700 text-xs text-slate-400">
+            缺陷：無法區分「好學的樣本」與「棘手的樣本」。
+          </div>
+        </div>
+
+        <!-- Modulating Factor Card -->
+        <div class="p-6 rounded-2xl bg-slate-800/60 border border-slate-700/70 flex flex-col justify-between">
+          <div>
+            <div class="text-xs font-semibold text-brand-400 uppercase tracking-wider mb-2">Step 2 • 引入調節因子</div>
+            <h3 class="text-lg font-bold text-white mb-2">加入動態權重 $(1-p_t)^\gamma$</h3>
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 my-4 text-center overflow-x-auto text-sm text-brand-300">
+              $$ \text{FL}(p_t) = -(1 - p_t)^\gamma \log(p_t) $$
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              當樣本容易分類（$p_t \to 1$）時，$(1-p_t)^\gamma \to 0$，損失被強烈打壓！<br>
+              當樣本難分類（$p_t \to 0$）時，調製因子趨近於 1，完整保留其懲罰力道。
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-700 text-xs text-emerald-400">
+            突破：自動抑制已收斂良好樣本的梯度貢獻。
+          </div>
+        </div>
+
+        <!-- Alpha-Balanced FL Card -->
+        <div class="p-6 rounded-2xl bg-slate-800/60 border border-slate-700/70 flex flex-col justify-between">
+          <div>
+            <div class="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-2">Step 3 • 終極平衡形態</div>
+            <h3 class="text-lg font-bold text-white mb-2">$\alpha$-Balanced Focal Loss</h3>
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 my-4 text-center overflow-x-auto text-sm text-brand-300">
+              $$ \text{FL}(p_t) = -\alpha_t (1 - p_t)^\gamma \log(p_t) $$
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              加入 $\alpha_t$ 同步調節正負樣本基底比例。<br>
+              實務經典推薦超參數組合：<br>
+              <strong class="text-brand-300">$\alpha = 0.25, \gamma = 2.0$</strong>（兼顧樣本難易動態與正負比例靜態平衡）。
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-700 text-xs text-indigo-300">
+            工業標準：RetinaNet 與多數工業缺陷檢測預設設定。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Interactive Math & Curve Visualizer -->
+    <section id="math-curve" class="space-y-6">
+      <div class="border-b border-slate-800 pb-4">
+        <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-chart-line text-brand-400"></i>
+          互動實驗室：損失函數曲線與參數調控
+        </h2>
+        <p class="text-slate-400 text-sm mt-1">即時調整 $\gamma$ 與 $\alpha$ 觀察損失曲線衰減與單一樣本即時計算</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <!-- Controls Column -->
+        <div class="lg:col-span-5 bg-slate-800/70 p-6 rounded-2xl border border-slate-700/80 space-y-6">
+          <h3 class="font-bold text-lg text-white flex items-center gap-2 border-b border-slate-700 pb-3">
+            <i class="fa-solid fa-sliders text-indigo-400"></i> 超參數即時控制面板
+          </h3>
+
+          <!-- Gamma Slider -->
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <label for="gamma-slider" class="text-sm font-semibold text-slate-200">
+                聚焦參數 Focusing Parameter ($\gamma$):
+              </label>
+              <span id="gamma-val" class="text-brand-400 font-mono font-bold bg-slate-900 px-2 py-0.5 rounded border border-slate-700">2.0</span>
+            </div>
+            <input type="range" id="gamma-slider" min="0" max="5" step="0.2" value="2.0" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-brand-500">
+            <div class="flex justify-between text-xs text-slate-400 mt-1">
+              <span>0.0 (標準 CE)</span>
+              <span>1.0</span>
+              <span>2.0 (推薦)</span>
+              <span>5.0 (極度壓制)</span>
+            </div>
+          </div>
+
+          <!-- Alpha Slider -->
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <label for="alpha-slider" class="text-sm font-semibold text-slate-200">
+                類別平衡係數 Alpha ($\alpha$):
+              </label>
+              <span id="alpha-val" class="text-brand-400 font-mono font-bold bg-slate-900 px-2 py-0.5 rounded border border-slate-700">0.25</span>
+            </div>
+            <input type="range" id="alpha-slider" min="0.05" max="0.95" step="0.05" value="0.25" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-brand-500">
+            <p class="text-xs text-slate-400 mt-1">控制正負樣本的權重平衡比例</p>
+          </div>
+
+          <!-- Probe Sample Probability Slider -->
+          <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-700/80 space-y-3">
+            <div class="flex justify-between items-center">
+              <label for="prob-slider" class="text-sm font-semibold text-slate-200">
+                單一樣本真值機率 ($p_t$):
+              </label>
+              <span id="prob-val" class="text-amber-400 font-mono font-bold bg-slate-950 px-2 py-0.5 rounded border border-slate-800">0.90</span>
+            </div>
+            <input type="range" id="prob-slider" min="0.01" max="0.99" step="0.01" value="0.90" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500">
+            <div class="flex justify-between text-xs text-slate-400">
+              <span class="text-rose-400 font-medium">難分類 (0.01)</span>
+              <span class="text-amber-300">中等 (0.50)</span>
+              <span class="text-emerald-400 font-medium">易分類 (0.99)</span>
+            </div>
+
+            <!-- Instant Calculation Result Cards -->
+            <div class="grid grid-cols-2 gap-3 pt-3 border-t border-slate-800">
+              <div class="bg-slate-950/80 p-3 rounded-lg border border-slate-800">
+                <div class="text-xs text-slate-400">標準 CE 損失:</div>
+                <div id="calc-ce" class="text-lg font-mono font-bold text-rose-400">0.1054</div>
+              </div>
+              <div class="bg-slate-950/80 p-3 rounded-lg border border-slate-800">
+                <div class="text-xs text-slate-400">Focal Loss 損失:</div>
+                <div id="calc-fl" class="text-lg font-mono font-bold text-emerald-400">0.00026</div>
+              </div>
+            </div>
+            <div class="text-xs text-slate-300 bg-slate-800/80 p-2.5 rounded-lg border border-slate-700">
+              <span class="text-amber-300 font-bold">衰減比率：</span>
+              此時 Focal Loss 僅為標準 CE 的 <strong id="calc-ratio" class="text-brand-300 font-mono">0.25%</strong>，成功打壓高信心樣本！
+            </div>
+          </div>
+        </div>
+
+        <!-- Chart Column -->
+        <div class="lg:col-span-7 bg-slate-800/70 p-6 rounded-2xl border border-slate-700/80 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-bold text-lg text-white">損失值 vs. 樣本真值預測機率 ($p_t$) 曲線圖</h3>
+              <span class="text-xs text-slate-400"><i class="fa-solid fa-circle-info mr-1"></i>X 軸越往右代表樣本越容易預測</span>
+            </div>
+            <div class="relative w-full h-80 sm:h-96">
+              <canvas id="lossChart"></canvas>
+            </div>
+          </div>
+          <div class="mt-4 p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-300 flex items-center justify-between">
+            <span><strong class="text-brand-400">藍線：</strong>當前 Focal Loss ($\gamma$ 動態調節)</span>
+            <span><strong class="text-slate-400">灰虛線：</strong>標準 Cross Entropy ($\gamma = 0$)</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Step-by-Step Extreme Imbalance Simulation -->
+    <section id="step-simulation" class="space-y-6">
+      <div class="border-b border-slate-800 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+          <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-calculator text-brand-400"></i>
+            極端樣本不平衡數值實驗室（Step-by-Step & 一鍵模擬）
+          </h2>
+          <p class="text-slate-400 text-sm mt-1">模擬物件偵測 / 工業晶圓檢測中的 100,000 個候選框</p>
+        </div>
+        <div class="flex gap-2">
+          <button id="btn-run-sim" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-semibold px-4 py-2 rounded-lg transition shadow-md flex items-center gap-2">
+            <i class="fa-solid fa-bolt"></i>一鍵自動模擬
+          </button>
+          <button id="btn-step-sim" class="bg-slate-700 hover:bg-slate-600 text-white text-xs sm:text-sm font-semibold px-4 py-2 rounded-lg transition flex items-center gap-2">
+            <i class="fa-solid fa-shoe-prints"></i>逐步執行 (Step)
+          </button>
+        </div>
+      </div>
+
+      <!-- Simulation Scenario Card -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Scenario Preset -->
+        <div class="bg-slate-800/70 p-6 rounded-2xl border border-slate-700/80 space-y-4">
+          <h3 class="font-bold text-base text-white border-b border-slate-700 pb-2">場景設定 (100,000 個候選框)</h3>
+          
+          <div class="space-y-3 text-sm">
+            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800">
+              <div class="flex justify-between font-semibold">
+                <span class="text-slate-300"><i class="fa-solid fa-image text-slate-500 mr-2"></i>易分類背景框</span>
+                <span class="text-emerald-400">99,900 個 (99.9%)</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">預測信心極高：$p_t = 0.99$</p>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800">
+              <div class="flex justify-between font-semibold">
+                <span class="text-slate-300"><i class="fa-solid fa-crosshairs text-rose-500 mr-2"></i>難分類微小目標</span>
+                <span class="text-rose-400">100 個 (0.1%)</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">預測信心模糊：$p_t = 0.50$</p>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800">
+              <div class="flex justify-between font-semibold">
+                <span class="text-slate-300"><i class="fa-solid fa-gear text-brand-400 mr-2"></i>指定 Focal Loss 參數</span>
+                <span class="text-brand-300">$\gamma = 2.0, \alpha = 1.0$</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">純粹觀察調節因子 $(1-p_t)^\gamma$ 威力</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step-by-Step Visualization Flow -->
+        <div class="lg:col-span-2 bg-slate-800/70 p-6 rounded-2xl border border-slate-700/80 flex flex-col justify-between">
+          <div>
+            <h3 class="font-bold text-base text-white border-b border-slate-700 pb-2 flex justify-between items-center">
+              <span>運算演繹流程</span>
+              <span id="sim-status" class="text-xs font-mono font-normal text-amber-400 bg-amber-400/10 px-2.5 py-0.5 rounded-full border border-amber-400/30">待開始</span>
+            </h3>
+
+            <!-- Steps list -->
+            <div class="space-y-4 mt-4">
+              <!-- Step 1 -->
+              <div id="step-1-card" class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 transition-all opacity-40">
+                <div class="flex items-center gap-2 text-sm font-semibold text-slate-200">
+                  <span class="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs font-mono text-slate-300">1</span>
+                  單一樣本標準損失 (Standard BCE)
+                </div>
+                <div class="text-xs text-slate-400 mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>易背景: $-\log(0.99) = \mathbf{0.01005}$</div>
+                  <div>難目標: $-\log(0.50) = \mathbf{0.69315}$</div>
+                </div>
+              </div>
+
+              <!-- Step 2 -->
+              <div id="step-2-card" class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 transition-all opacity-40">
+                <div class="flex items-center gap-2 text-sm font-semibold text-slate-200">
+                  <span class="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs font-mono text-slate-300">2</span>
+                  標準交叉熵總合（全批次加總）
+                </div>
+                <div class="text-xs text-slate-400 mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>易背景總損失: $99900 \times 0.01005 = \mathbf{1,004.0}$</div>
+                  <div>難目標總損失: $100 \times 0.69315 = \mathbf{69.3}$</div>
+                </div>
+                <div class="text-xs text-rose-400 mt-2 font-medium">
+                  ⚠️ 災難：易背景產生的梯度是難目標的 14.5 倍！背景完全主導權重更新。
+                </div>
+              </div>
+
+              <!-- Step 3 -->
+              <div id="step-3-card" class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 transition-all opacity-40">
+                <div class="flex items-center gap-2 text-sm font-semibold text-slate-200">
+                  <span class="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs font-mono text-slate-300">3</span>
+                  Focal Loss ($\gamma=2$) 總合
+                </div>
+                <div class="text-xs text-slate-400 mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>易背景總損失: $99900 \times [(1-0.99)^2 \times 0.01005] \approx \mathbf{0.10}$</div>
+                  <div>難目標總損失: $100 \times [(1-0.50)^2 \times 0.69315] \approx \mathbf{17.33}$</div>
+                </div>
+                <div class="text-xs text-emerald-400 mt-2 font-medium">
+                  🎉 逆轉：難目標損失佔比暴增至 99.4%！模型真正聚焦於攻克難以辨識的目標！
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Progress / Reset Bar -->
+          <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center text-xs text-slate-400">
+            <span id="step-desc">點擊「逐步執行」或「一鍵自動模擬」</span>
+            <button id="btn-reset-sim" class="text-slate-400 hover:text-white transition">重置模擬</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Production PyTorch Code with Color Syntax -->
+    <section id="code-implementation" class="space-y-6">
+      <div class="border-b border-slate-800 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+          <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-code text-brand-400"></i>
+            PyTorch 工業級實作 (重點函式彩色標明)
+          </h2>
+          <p class="text-slate-400 text-sm mt-1">數值穩定（Logits-Based）且支援自定義 $\alpha$ 與 $\gamma$ 的完整 Module</p>
+        </div>
+        <button id="copy-code-btn" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs px-4 py-2 rounded-lg transition flex items-center gap-2 self-start sm:self-auto">
+          <i class="fa-regular fa-copy"></i>複製程式碼
+        </button>
+      </div>
+
+      <div class="relative rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-2xl">
+        <div class="flex items-center justify-between px-5 py-3 bg-slate-900 border-b border-slate-800 text-xs text-slate-400">
+          <div class="flex items-center space-x-2">
+            <div class="w-3 h-3 rounded-full bg-rose-500"></div>
+            <div class="w-3 h-3 rounded-full bg-amber-500"></div>
+            <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+            <span class="ml-2 font-mono text-slate-300">focal_loss.py</span>
+          </div>
+          <span>Python 3.8+ / PyTorch 1.10+</span>
+        </div>
+
+        <pre class="p-6 text-sm font-mono leading-relaxed overflow-x-auto text-slate-200"><code id="code-content"><span class="code-token-keyword">import</span> torch
+<span class="code-token-keyword">import</span> torch.nn <span class="code-token-keyword">as</span> nn
+<span class="code-token-keyword">import</span> torch.nn.functional <span class="code-token-keyword">as</span> F
+
+<span class="code-token-keyword">class</span> <span class="code-token-class">FocalLoss</span>(nn.Module):
+    <span class="code-token-str">"""
+    Focal Loss for Dense Object Detection & Imbalanced Classification
+    公式: FL(p_t) = -alpha_t * (1 - p_t)^gamma * log(p_t)
+    """</span>
+    <span class="code-token-keyword">def</span> <span class="code-token-func">__init__</span>(<span class="code-token-param">self</span>, <span class="code-token-param">alpha</span>: <span class="code-token-class">float</span> = <span class="code-token-num">0.25</span>, <span class="code-token-param">gamma</span>: <span class="code-token-class">float</span> = <span class="code-token-num">2.0</span>, <span class="code-token-param">reduction</span>: <span class="code-token-class">str</span> = <span class="code-token-str">'mean'</span>):
+        <span class="code-token-func">super</span>(FocalLoss, <span class="code-token-param">self</span>).<span class="code-token-func">__init__</span>()
+        <span class="code-token-param">self</span>.alpha = alpha
+        <span class="code-token-param">self</span>.gamma = gamma
+        <span class="code-token-param">self</span>.reduction = reduction
+
+    <span class="code-token-keyword">def</span> <span class="code-token-func">forward</span>(<span class="code-token-param">self</span>, <span class="code-token-param">inputs</span>: torch.Tensor, <span class="code-token-param">targets</span>: torch.Tensor) -> torch.Tensor:
+        <span class="code-token-comment"># inputs: 模型輸出之未經 Sigmoid 的 Logits 矩陣</span>
+        <span class="code-token-comment"># targets: 0 或 1 二元標籤</span>
+
+        <span class="code-token-comment"># 1. 計算數值穩定的基礎 BCE Loss (保持 element-wise, 不降維)</span>
+        bce_loss = F.<span class="code-token-func">binary_cross_entropy_with_logits</span>(
+            inputs, targets, reduction=<span class="code-token-str">'none'</span>
+        )
+
+        <span class="code-token-comment"># 2. 取得預測機率 p_t (True Class Probability)</span>
+        probs = torch.<span class="code-token-func">sigmoid</span>(inputs)
+        p_t = probs * targets + (<span class="code-token-num">1.0</span> - probs) * (<span class="code-token-num">1.0</span> - targets)
+
+        <span class="code-token-comment"># 3. 計算動態衰減調製因子 Modulating Factor: (1 - p_t)^gamma</span>
+        modulating_factor = torch.<span class="code-token-func">pow</span>((<span class="code-token-num">1.0</span> - p_t), <span class="code-token-param">self</span>.gamma)
+
+        <span class="code-token-comment"># 4. 取得類別平衡因子 alpha_t</span>
+        alpha_t = <span class="code-token-param">self</span>.alpha * targets + (<span class="code-token-num">1.0</span> - <span class="code-token-param">self</span>.alpha) * (<span class="code-token-num">1.0</span> - targets)
+
+        <span class="code-token-comment"># 5. 組合最終 Focal Loss</span>
+        focal_loss = alpha_t * modulating_factor * bce_loss
+
+        <span class="code-token-comment"># 6. 依據 reduction 策略聚合損失值</span>
+        <span class="code-token-keyword">if</span> <span class="code-token-param">self</span>.reduction == <span class="code-token-str">'mean'</span>:
+            <span class="code-token-keyword">return</span> focal_loss.<span class="code-token-func">mean</span>()
+        <span class="code-token-keyword">elif</span> <span class="code-token-param">self</span>.reduction == <span class="code-token-str">'sum'</span>:
+            <span class="code-token-keyword">return</span> focal_loss.<span class="code-token-func">sum</span>()
+        <span class="code-token-keyword">else</span>:
+            <span class="code-token-keyword">return</span> focal_loss</code></pre>
+      </div>
+      
+      <!-- Key notes -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-300">
+        <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60">
+          <strong class="text-rose-400 font-semibold flex items-center gap-1.5 mb-1">
+            <i class="fa-solid fa-triangle-exclamation"></i> 實務工程注意事項 1：避免數值溢位
+          </strong>
+          永遠優先使用 <code>binary_cross_entropy_with_logits</code> 搭配 <code>torch.sigmoid</code>，切勿在模型尾端自帶 Sigmoid 後再計算 <code>log()</code>，否則容易發生浮點下溢（Underflow / NaN）。
+        </div>
+        <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60">
+          <strong class="text-brand-400 font-semibold flex items-center gap-1.5 mb-1">
+            <i class="fa-solid fa-lightbulb"></i> 實務工程注意事項 2：Bias 初始化秘訣
+          </strong>
+          RetinaNet 論文特別指出，最後一層分類卷積的偏置（Bias）建議初始化為 $b = -\log((1-\pi)/\pi)$（如 $\pi=0.01$），防止剛開始訓練時大量背景產生巨大震盪。
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 5: iPAS AI 專業認證考題互動測驗 -->
+    <section id="ipas-quiz" class="space-y-6">
+      <div class="border-b border-slate-800 pb-4">
+        <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-graduation-cap text-brand-400"></i>
+          iPAS 經濟部 AI 應用規劃師 • 精選考題測驗
+        </h2>
+        <p class="text-slate-400 text-sm mt-1">檢驗學習成果，掌握認證高頻考點</p>
+      </div>
+
+      <div class="p-6 rounded-2xl bg-slate-800/70 border border-slate-700/80 space-y-6">
+        <div>
+          <span class="text-xs font-bold text-brand-400 bg-brand-400/10 px-2.5 py-1 rounded-full border border-brand-400/30">考題題號 #IPAS-DL-042</span>
+          <h3 class="text-lg font-bold text-white mt-3 leading-relaxed">
+            在單階段物件偵測演算法（如 RetinaNet）中，為何傳統交叉熵（Cross Entropy）難以獲得高精確度？而 Focal Loss 的核心數學機制又是如何解決此問題？
+          </h3>
+        </div>
+
+        <!-- Options Form -->
+        <div class="space-y-3" id="quiz-options">
+          <label class="flex items-start gap-3 p-4 rounded-xl bg-slate-900/60 border border-slate-700 hover:border-slate-500 cursor-pointer transition">
+            <input type="radio" name="ipas-answer" value="A" class="mt-1 accent-brand-500">
+            <span class="text-sm text-slate-300">
+              <strong>(A)</strong> 傳統交叉熵對旋轉不變形欠缺考量；Focal Loss 透過引進可變形卷積核（Deformable Convolution）強化多尺度提取能力。
+            </span>
+          </label>
+
+          <label class="flex items-start gap-3 p-4 rounded-xl bg-slate-900/60 border border-slate-700 hover:border-slate-500 cursor-pointer transition">
+            <input type="radio" name="ipas-answer" value="B" class="mt-1 accent-brand-500">
+            <span class="text-sm text-slate-300">
+              <strong>(B)</strong> 單階段偵測具有數十萬密集候選框，大量易分類背景累積的梯度淹沒稀少前景；Focal Loss 以 $(1-p_t)^\gamma$ 衰減高信心樣本損失。
+            </span>
+          </label>
+
+          <label class="flex items-start gap-3 p-4 rounded-xl bg-slate-900/60 border border-slate-700 hover:border-slate-500 cursor-pointer transition">
+            <input type="radio" name="ipas-answer" value="C" class="mt-1 accent-brand-500">
+            <span class="text-sm text-slate-300">
+              <strong>(C)</strong> 邊界框（Bounding Box）座標回歸誤差過大；Focal Loss 改採用 Complete IoU (CIoU) 損失進行梯度反向傳播。
+            </span>
+          </label>
+
+          <label class="flex items-start gap-3 p-4 rounded-xl bg-slate-900/60 border border-slate-700 hover:border-slate-500 cursor-pointer transition">
+            <input type="radio" name="ipas-answer" value="D" class="mt-1 accent-brand-500">
+            <span class="text-sm text-slate-300">
+              <strong>(D)</strong> 傳統交叉熵受限於 Sigmoid 梯度飽和；Focal Loss 透過加入跳躍殘差連接（Residual Skip Connection）解決梯度消失。
+            </span>
+          </label>
+        </div>
+
+        <!-- Submit & Feedback -->
+        <div class="pt-2">
+          <button id="btn-check-quiz" class="bg-brand-600 hover:bg-brand-500 text-white font-semibold px-6 py-2.5 rounded-xl transition shadow-lg shadow-brand-500/20 text-sm">
+            提交答案
+          </button>
+        </div>
+
+        <div id="quiz-feedback" class="hidden p-4 rounded-xl border"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 bg-slate-950/80 py-8 text-center text-xs text-slate-500">
+    <p>Focal Loss Interactive Lab • 根據經濟部 iPAS AI 應用規劃師與深度學習理論架構設計</p>
+  </footer>
+
+  <!-- Notification Toast Modal (No native alert) -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 bg-slate-800 border border-brand-500 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 pointer-events-none">
+    <i class="fa-solid fa-check text-brand-400"></i>
+    <span id="toast-text" class="text-sm font-medium">已複製到剪貼簿！</span>
+  </div>
+
+  <!-- Client-side Interactive Logic -->
+  <script>
+    // Initialize KaTeX auto-rendering
+    document.addEventListener("DOMContentLoaded", function() {
+      if (typeof renderMathInElement !== 'undefined') {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ],
+          throwOnError: false
+        });
+      }
+      initChart();
+      setupEventListeners();
+    });
+
+    let chartInstance = null;
+
+    // Toast helper
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const text = document.getElementById('toast-text');
+      text.textContent = msg;
+      toast.classList.remove('translate-y-24', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      setTimeout(() => {
+        toast.classList.add('translate-y-24', 'opacity-0');
+        toast.classList.remove('translate-y-0', 'opacity-100');
+      }, 2500);
+    }
+
+    // Chart logic
+    function computePoints(gamma, alpha) {
+      const pts = [];
+      const steps = 100;
+      for (let i = 1; i < steps; i++) {
+        const pt = i / steps; // 0.01 to 0.99
+        const ce = -Math.log(pt);
+        const fl = alpha * Math.pow(1 - pt, gamma) * ce;
+        pts.push({ x: pt, y: fl });
+      }
+      return pts;
+    }
+
+    function computeCEPoints() {
+      const pts = [];
+      const steps = 100;
+      for (let i = 1; i < steps; i++) {
+        const pt = i / steps;
+        pts.push({ x: pt, y: -Math.log(pt) });
+      }
+      return pts;
+    }
+
+    function initChart() {
+      const ctx = document.getElementById('lossChart').getContext('2d');
+      const gamma = parseFloat(document.getElementById('gamma-slider').value);
+      const alpha = parseFloat(document.getElementById('alpha-slider').value);
+
+      const ceData = computeCEPoints();
+      const flData = computePoints(gamma, alpha);
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: [
+            {
+              label: 'Focal Loss',
+              data: flData,
+              borderColor: '#3b82f6',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              borderWidth: 2.5,
+              tension: 0.1,
+              pointRadius: 0,
+              fill: true
+            },
+            {
+              label: 'Standard Cross Entropy (γ = 0)',
+              data: ceData,
+              borderColor: '#64748b',
+              borderWidth: 1.5,
+              borderDash: [5, 5],
+              tension: 0.1,
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              type: 'linear',
+              min: 0,
+              max: 1,
+              title: {
+                display: true,
+                text: '真值類別機率 pt (Ground Truth Class Probability)',
+                color: '#94a3b8'
+              },
+              grid: { color: 'rgba(51, 65, 85, 0.4)' },
+              ticks: { color: '#94a3b8' }
+            },
+            y: {
+              min: 0,
+              max: 5,
+              title: {
+                display: true,
+                text: '損失值 (Loss)',
+                color: '#94a3b8'
+              },
+              grid: { color: 'rgba(51, 65, 85, 0.4)' },
+              ticks: { color: '#94a3b8' }
+            }
+          },
+          plugins: {
+            legend: {
+              labels: { color: '#e2e8f0' }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ${context.parsed.y.toFixed(4)}`;
+                }
+              }
+            }
+          }
+        }
+      });
+
+      updateProbeCalculations();
+    }
+
+    function updateProbeCalculations() {
+      const gamma = parseFloat(document.getElementById('gamma-slider').value);
+      const alpha = parseFloat(document.getElementById('alpha-slider').value);
+      const pt = parseFloat(document.getElementById('prob-slider').value);
+
+      const ce = -Math.log(pt);
+      const fl = alpha * Math.pow(1 - pt, gamma) * ce;
+      const ratio = ce > 0 ? (fl / ce) * 100 : 0;
+
+      document.getElementById('calc-ce').textContent = ce.toFixed(4);
+      document.getElementById('calc-fl').textContent = fl.toFixed(5);
+      document.getElementById('calc-ratio').textContent = ratio.toFixed(2) + '%';
+    }
+
+    function setupEventListeners() {
+      const gammaSlider = document.getElementById('gamma-slider');
+      const alphaSlider = document.getElementById('alpha-slider');
+      const probSlider = document.getElementById('prob-slider');
+
+      const gammaVal = document.getElementById('gamma-val');
+      const alphaVal = document.getElementById('alpha-val');
+      const probVal = document.getElementById('prob-val');
+
+      function onParamChange() {
+        gammaVal.textContent = parseFloat(gammaSlider.value).toFixed(1);
+        alphaVal.textContent = parseFloat(alphaSlider.value).toFixed(2);
+        probVal.textContent = parseFloat(probSlider.value).toFixed(2);
+
+        if (chartInstance) {
+          chartInstance.data.datasets[0].data = computePoints(
+            parseFloat(gammaSlider.value),
+            parseFloat(alphaSlider.value)
+          );
+          chartInstance.update();
+        }
+        updateProbeCalculations();
+      }
+
+      gammaSlider.addEventListener('input', onParamChange);
+      alphaSlider.addEventListener('input', onParamChange);
+      probSlider.addEventListener('input', onParamChange);
+
+      // Simulation steps logic
+      let currentStep = 0;
+      const step1 = document.getElementById('step-1-card');
+      const step2 = document.getElementById('step-2-card');
+      const step3 = document.getElementById('step-3-card');
+      const simStatus = document.getElementById('sim-status');
+      const stepDesc = document.getElementById('step-desc');
+
+      function resetSimulation() {
+        currentStep = 0;
+        step1.classList.add('opacity-40');
+        step1.classList.remove('border-brand-500', 'bg-slate-900');
+        step2.classList.add('opacity-40');
+        step2.classList.remove('border-rose-500', 'bg-slate-900');
+        step3.classList.add('opacity-40');
+        step3.classList.remove('border-emerald-500', 'bg-slate-900');
+        simStatus.textContent = '待開始';
+        simStatus.className = 'text-xs font-mono font-normal text-amber-400 bg-amber-400/10 px-2.5 py-0.5 rounded-full border border-amber-400/30';
+        stepDesc.textContent = '點擊「逐步執行」或「一鍵自動模擬」';
+      }
+
+      function advanceStep() {
+        if (currentStep === 0) {
+          step1.classList.remove('opacity-40');
+          step1.classList.add('border-brand-500', 'bg-slate-900');
+          simStatus.textContent = '步驟 1 / 3 完成';
+          stepDesc.textContent = '已計算單樣本基礎交叉熵';
+          currentStep = 1;
+        } else if (currentStep === 1) {
+          step2.classList.remove('opacity-40');
+          step2.classList.add('border-rose-500', 'bg-slate-900');
+          simStatus.textContent = '步驟 2 / 3 完成';
+          stepDesc.textContent = '已計算批次累計標準損失 (易背景嚴重干擾)';
+          currentStep = 2;
+        } else if (currentStep === 2) {
+          step3.classList.remove('opacity-40');
+          step3.classList.add('border-emerald-500', 'bg-slate-900');
+          simStatus.textContent = '步驟 3 / 3 模擬完畢';
+          simStatus.className = 'text-xs font-mono font-normal text-emerald-400 bg-emerald-400/10 px-2.5 py-0.5 rounded-full border border-emerald-400/30';
+          stepDesc.textContent = 'Focal Loss 成功聚焦難分類樣本 (佔比 99.4%)';
+          currentStep = 3;
+        } else {
+          resetSimulation();
+        }
+      }
+
+      document.getElementById('btn-step-sim').addEventListener('click', advanceStep);
+      document.getElementById('btn-reset-sim').addEventListener('click', resetSimulation);
+
+      document.getElementById('btn-run-sim').addEventListener('click', function() {
+        resetSimulation();
+        let stepCount = 0;
+        const interval = setInterval(() => {
+          advanceStep();
+          stepCount++;
+          if (stepCount >= 3) {
+            clearInterval(interval);
+          }
+        }, 600);
+      });
+
+      // Copy Code implementation via execCommand fallback
+      document.getElementById('copy-code-btn').addEventListener('click', function() {
+        const codeElement = document.getElementById('code-content');
+        const textToCopy = codeElement.innerText;
+        const textArea = document.createElement("textarea");
+        textArea.value = textToCopy;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          showToast('PyTorch 實作程式碼已複製至剪貼簿！');
+        } catch (err) {
+          showToast('複製失敗，請手動選取複製');
+        }
+        document.body.removeChild(textArea);
+      });
+
+      // iPAS Quiz Evaluation
+      document.getElementById('btn-check-quiz').addEventListener('click', function() {
+        const selected = document.querySelector('input[name="ipas-answer"]:checked');
+        const feedback = document.getElementById('quiz-feedback');
+
+        if (!selected) {
+          feedback.className = 'p-4 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-300 text-sm';
+          feedback.innerHTML = '<i class="fa-solid fa-circle-exclamation mr-1.5"></i> 請先選擇一個選項再提交！';
+          feedback.classList.remove('hidden');
+          return;
+        }
+
+        if (selected.value === 'B') {
+          feedback.className = 'p-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 text-sm space-y-1.5';
+          feedback.innerHTML = `
+            <div class="font-bold flex items-center gap-1.5 text-emerald-400">
+              <i class="fa-solid fa-circle-check"></i> 恭喜回答正確！(選 B)
+            </div>
+            <p><strong>iPAS 考點精析：</strong>單階段（One-Stage）物件偵測因密集錨框（Dense Anchors）導致背景與前景比例極端懸殊。傳統 Cross Entropy 會因百萬個高信心背景樣本累計龐大梯度，使稀有目標被忽視。Focal Loss 透過動態調節因子 $(1-p_t)^\gamma$ 削弱容易樣本，使權重更新集中於難辨識目標。</p>
+          `;
+        } else {
+          feedback.className = 'p-4 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-200 text-sm space-y-1.5';
+          feedback.innerHTML = `
+            <div class="font-bold flex items-center gap-1.5 text-rose-400">
+              <i class="fa-solid fa-circle-xmark"></i> 答案不正確，標準答案為 (B)
+            </div>
+            <p><strong>解析：</strong>選項 (A) 為卷積架構變形、(C) 為 Bounding Box 迴歸損失（如 CIoU/GIoU）、(D) 為 ResNet 殘差結構。Focal Loss 專攻<strong>類別極端不平衡與前景背景難易樣本不平衡</strong>，其核心數學機制即為 $(1-p_t)^\gamma$。</p>
+          `;
+        }
+        feedback.classList.remove('hidden');
+      });
+    }
+  </script>
+</body>
+</html>
