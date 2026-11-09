@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>統計檢定選型教學指南 | 四大檢定快速對照與互動決策樹</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#075985',
+              900: '#0c4a6e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+  <!-- 頂部導航 -->
+  <header class="bg-white/90 backdrop-blur-md sticky top-0 z-40 border-b border-slate-200">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-sky-500/20">
+          <i class="ph-bold ph-chart-polar text-2xl"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-slate-900 leading-tight">統計檢定選型對照表</h1>
+          <p class="text-xs text-slate-500 hidden sm:block">Chi-Square · Z-Test · t-Test · ANOVA 互動學習指南</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-2">
+        <a href="#wizard-section" class="px-3.5 py-2 text-sm font-semibold rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 transition flex items-center gap-1.5 border border-sky-200">
+          <i class="ph-bold ph-magic-wand"></i>
+          <span>選型診斷精靈</span>
+        </a>
+        <a href="#table-section" class="px-3.5 py-2 text-sm font-medium rounded-lg text-slate-600 hover:bg-slate-100 transition hidden sm:inline-flex">
+          完整對照表
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主內容容器 -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 space-y-10">
+
+    <!-- Hero 簡介標題 -->
+    <section class="text-center max-w-3xl mx-auto pt-4 space-y-3">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-100 text-sky-800 text-xs font-semibold uppercase tracking-wider">
+        <i class="ph-bold ph-lightbulb"></i> 一秒判斷該用哪種檢定
+      </div>
+      <h2 class="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+        四大統計檢定選型決策指南
+      </h2>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
+        寫論文、做數據分析或考研面試時，最常遇到「該選哪種檢定？」。記住核心口訣：先看<span class="text-sky-700 font-semibold underline decoration-sky-300">依變數型態（類別 / 連續）</span>，再看<span class="text-sky-700 font-semibold underline decoration-sky-300">自變數組數</span>與<span class="text-sky-700 font-semibold underline decoration-sky-300">樣本變異數條件</span>！
+      </p>
+    </section>
+
+    <!-- 互動式選型診斷器 (Wizard) -->
+    <section id="wizard-section" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 relative overflow-hidden">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-100 gap-4">
+        <div>
+          <div class="flex items-center gap-2 text-sky-600 font-bold text-sm tracking-wide uppercase">
+            <i class="ph-bold ph-tree-structure text-lg"></i> 互動決策樹
+          </div>
+          <h3 class="text-xl font-bold text-slate-900 mt-0.5">3 步選出最適統計檢定</h3>
+        </div>
+        <button id="reset-wizard" class="text-xs font-medium text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition self-start sm:self-auto">
+          <i class="ph ph-arrow-counter-clockwise"></i> 重新診斷
+        </button>
+      </div>
+
+      <!-- 進度指示條 -->
+      <div class="my-6">
+        <div class="grid grid-cols-3 gap-2">
+          <div id="step-indicator-1" class="h-1.5 rounded-full bg-sky-600 transition-all duration-300"></div>
+          <div id="step-indicator-2" class="h-1.5 rounded-full bg-slate-200 transition-all duration-300"></div>
+          <div id="step-indicator-3" class="h-1.5 rounded-full bg-slate-200 transition-all duration-300"></div>
+        </div>
+        <div class="flex justify-between text-xs font-medium text-slate-400 mt-2">
+          <span id="label-step-1" class="text-sky-600 font-bold">1. 依變數性質</span>
+          <span id="label-step-2">2. 自變數組數</span>
+          <span id="label-step-3">3. 樣本與變異數</span>
+        </div>
+      </div>
+
+      <!-- 題目與互動區 -->
+      <div id="wizard-content" class="min-h-[220px] flex flex-col justify-center">
+        <!-- 第 1 步 -->
+        <div id="step-1" class="space-y-4">
+          <p class="text-sm sm:text-base font-semibold text-slate-800">
+            第一步：你的「依變數 (Y / 想評估的結果指標)」是什麼型態？
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button onclick="handleStep1('categorical')" class="group p-5 text-left border-2 border-slate-200 hover:border-sky-500 rounded-xl transition duration-200 hover:shadow-md bg-white flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-base font-bold text-slate-900 group-hover:text-sky-600 flex items-center gap-2">
+                    <i class="ph-bold ph-tag text-sky-500 text-lg"></i> 類別型變數 (Categorical)
+                  </span>
+                  <i class="ph-bold ph-arrow-right text-slate-400 group-hover:text-sky-600 transition-transform group-hover:translate-x-1"></i>
+                </div>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                  結果非具體數值，而是名義分類或標籤。例如：購買/不購買、存活/死亡、同意/不同意、滿意度級別。
+                </p>
+              </div>
+            </button>
+
+            <button onclick="handleStep1('continuous')" class="group p-5 text-left border-2 border-slate-200 hover:border-sky-500 rounded-xl transition duration-200 hover:shadow-md bg-white flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-base font-bold text-slate-900 group-hover:text-sky-600 flex items-center gap-2">
+                    <i class="ph-bold ph-chart-line-up text-sky-500 text-lg"></i> 連續/數值型變數 (Continuous)
+                  </span>
+                  <i class="ph-bold ph-arrow-right text-slate-400 group-hover:text-sky-600 transition-transform group-hover:translate-x-1"></i>
+                </div>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                  結果為可度量、計算平均值的實數。例如：營收金額、考試分數、頁面停留時間、身高、演算法準確率。
+                </p>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- 第 2 步 -->
+        <div id="step-2" class="space-y-4 hidden">
+          <p class="text-sm sm:text-base font-semibold text-slate-800">
+            第二步：你的「自變數 (X / 分組維度)」有幾組比較群體？
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button onclick="handleStep2('le2')" class="group p-5 text-left border-2 border-slate-200 hover:border-sky-500 rounded-xl transition duration-200 hover:shadow-md bg-white">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-base font-bold text-slate-900 group-hover:text-sky-600 flex items-center gap-2">
+                  <i class="ph-bold ph-users text-sky-500 text-lg"></i> 單組 或 最多 2 組 (≤ 2 組)
+                </span>
+                <i class="ph-bold ph-arrow-right text-slate-400 group-hover:text-sky-600 transition-transform group-hover:translate-x-1"></i>
+              </div>
+              <p class="text-xs text-slate-500 leading-relaxed">
+                例如：單組與常模比較、男生 vs 女生、實驗組 vs 對照組、新版首頁 vs 舊版首頁 (A/B Test)。
+              </p>
+            </button>
+
+            <button onclick="handleStep2('ge3')" class="group p-5 text-left border-2 border-slate-200 hover:border-sky-500 rounded-xl transition duration-200 hover:shadow-md bg-white">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-base font-bold text-slate-900 group-hover:text-sky-600 flex items-center gap-2">
+                  <i class="ph-bold ph-users-three text-sky-500 text-lg"></i> 3 組或以上 (≥ 3 組)
+                </span>
+                <i class="ph-bold ph-arrow-right text-slate-400 group-hover:text-sky-600 transition-transform group-hover:translate-x-1"></i>
+              </div>
+              <p class="text-xs text-slate-500 leading-relaxed">
+                例如：高中 / 大學 / 研究所、三種教學療法、四種定價策略方案比較。
+              </p>
+            </button>
+          </div>
+        </div>
+
+        <!-- 第 3 步 -->
+        <div id="step-3" class="space-y-4 hidden">
+          <p class="text-sm sm:text-base font-semibold text-slate-800">
+            第三步：評估你的樣本大小 (n) 與「母體變異數 (σ²)」是否已知？
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button onclick="handleStep3('t-test')" class="group p-5 text-left border-2 border-slate-200 hover:border-sky-500 rounded-xl transition duration-200 hover:shadow-md bg-white">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-base font-bold text-slate-900 group-hover:text-sky-600 flex items-center gap-2">
+                  <i class="ph-bold ph-flask text-emerald-500 text-lg"></i> 小樣本 (n &lt; 30) 或 母體變異數未知
+                </span>
+                <i class="ph-bold ph-arrow-right text-slate-400 group-hover:text-sky-600 transition-transform group-hover:translate-x-1"></i>
+              </div>
+              <p class="text-xs text-slate-500 leading-relaxed">
+                <strong class="text-slate-700">【實務最常見】</strong>大部分真實研究無法得知真實母體變異數，僅能從樣本估算標準差。
+              </p>
+            </button>
+
+            <button onclick="handleStep3('z-test')" class="group p-5 text-left border-2 border-slate-200 hover:border-sky-500 rounded-xl transition duration-200 hover:shadow-md bg-white">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-base font-bold text-slate-900 group-hover:text-sky-600 flex items-center gap-2">
+                  <i class="ph-bold ph-check-circle text-sky-500 text-lg"></i> 大樣本 (n ≥ 30) 且 母體變異數已知
+                </span>
+                <i class="ph-bold ph-arrow-right text-slate-400 group-hover:text-sky-600 transition-transform group-hover:translate-x-1"></i>
+              </div>
+              <p class="text-xs text-slate-500 leading-relaxed">
+                題目通常會明確給出母體標準差 σ，且樣本數充裕（符合中央極限定理）。
+              </p>
+            </button>
+          </div>
+        </div>
+
+        <!-- 結果展示區 -->
+        <div id="wizard-result" class="hidden">
+          <div id="result-card-inner" class="p-6 rounded-2xl border transition-all duration-300">
+            <!-- 透過 JS 注入內容 -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 篩選列與搜尋 -->
+    <section id="table-section" class="space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h3 class="text-xl font-bold text-slate-900">四大檢定選型對照表</h3>
+          <p class="text-xs text-slate-500">點選標籤過濾或點選檢定卡片檢視深度解析</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- 篩選按鈕組 -->
+          <div class="inline-flex rounded-lg border border-slate-200 bg-white p-1 text-xs font-medium shadow-sm">
+            <button onclick="filterTable('all')" class="tab-btn px-3 py-1.5 rounded-md bg-slate-900 text-white transition" data-filter="all">全部</button>
+            <button onclick="filterTable('categorical-y')" class="tab-btn px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 transition" data-filter="categorical-y">依變數：類別</button>
+            <button onclick="filterTable('continuous-y')" class="tab-btn px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 transition" data-filter="continuous-y">依變數：連續數值</button>
+          </div>
+          
+          <div class="relative w-full sm:w-56">
+            <i class="ph ph-magnifying-glass absolute left-3 top-2.5 text-slate-400"></i>
+            <input type="text" id="keyword-search" placeholder="搜尋情境關鍵字..." class="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-700">
+          </div>
+        </div>
+      </div>
+
+      <!-- 對照表格 (桌面端完整檢視) -->
+      <div class="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-50/80 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider">
+              <th class="py-4 px-6 w-1/5">檢定名稱</th>
+              <th class="py-4 px-5 w-1/5">自變數 (X / 分組)</th>
+              <th class="py-4 px-5 w-1/5">依變數 (Y / 評估指標)</th>
+              <th class="py-4 px-6 w-2/5">關鍵應用情境 / 題目字眼</th>
+            </tr>
+          </thead>
+          <tbody id="table-body" class="divide-y divide-slate-100 text-sm">
+            <!-- 由 JS 渲染表格項目 -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 卡片列表 (響應式流動檢視，移動端與桌面端通用) -->
+      <div id="cards-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- 由 JS 渲染動態卡片 -->
+      </div>
+    </section>
+
+    <!-- 概念記憶小抄 (Cheat Sheet) -->
+    <section class="bg-gradient-to-r from-sky-900 via-indigo-950 to-slate-900 rounded-2xl text-white p-6 sm:p-8 shadow-lg">
+      <div class="flex items-center gap-2 text-sky-400 font-bold text-sm tracking-wide mb-2 uppercase">
+        <i class="ph-bold ph-bookmarks"></i> 考前衝刺快速辨識記憶法
+      </div>
+      <h3 class="text-xl sm:text-2xl font-bold text-white mb-4">選型心法口訣總整理</h3>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+        <div class="bg-white/10 rounded-xl p-4 backdrop-blur-sm border border-white/10">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-base font-bold text-rose-300">卡方檢定</span>
+            <span class="text-xs bg-rose-500/30 text-rose-200 px-2 py-0.5 rounded font-mono">類別 × 類別</span>
+          </div>
+          <p class="text-xs text-slate-200 leading-relaxed">
+            只要看到「比例是否有關聯」、「性別與購買意願是否獨立」、「骰子是否公正（適合度）」，秒選卡方！
+          </p>
+        </div>
+
+        <div class="bg-white/10 rounded-xl p-4 backdrop-blur-sm border border-white/10">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-base font-bold text-amber-300">Z 檢定</span>
+            <span class="text-xs bg-amber-500/30 text-amber-200 px-2 py-0.5 rounded font-mono">母體 σ² 已知</span>
+          </div>
+          <p class="text-xs text-slate-200 leading-relaxed">
+            題目明講「母體標準差為 15」、「抽樣 n = 100」，大樣本且母體變異數一清二楚時採用。
+          </p>
+        </div>
+
+        <div class="bg-white/10 rounded-xl p-4 backdrop-blur-sm border border-white/10">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-base font-bold text-emerald-300">t 檢定</span>
+            <span class="text-xs bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded font-mono">母體 σ² 未知</span>
+          </div>
+          <p class="text-xs text-slate-200 leading-relaxed">
+            生活實務與論文中最泛用！「男女薪資比較」、「實驗組與對照組分數」，只要組數 ≤ 2 且不知母體 σ，就是 t 檢定。
+          </p>
+        </div>
+
+        <div class="bg-white/10 rounded-xl p-4 backdrop-blur-sm border border-white/10">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-base font-bold text-indigo-300">ANOVA</span>
+            <span class="text-xs bg-indigo-500/30 text-indigo-200 px-2 py-0.5 rounded font-mono">≥ 3 組平均值</span>
+          </div>
+          <p class="text-xs text-slate-200 leading-relaxed">
+            組數 ≥ 3 絕不能做多次 t 檢定（會累積型一錯誤 α 膨脹）！比較三組以上平均值請一律先做 ANOVA。
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 頁尾 -->
+  <footer class="bg-white border-t border-slate-200 mt-12 py-6 text-center text-xs text-slate-500">
+    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p>四大檢定選型對照教學指南 · 適用於統計學、資料分析、量化研究入門</p>
+      <p class="text-slate-400">© 互動教學模組 · 快速釐清假設檢定邏輯</p>
+    </div>
+  </footer>
+
+  <!-- 詳細資料彈窗 (Modal) -->
+  <div id="detail-modal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex items-center justify-between border-b pb-3 border-slate-100">
+        <div class="flex items-center gap-2">
+          <span id="modal-icon" class="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"></span>
+          <h4 id="modal-title" class="text-lg font-bold text-slate-900"></h4>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 text-xl transition">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-sm">
+        <div>
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">核心定義與用途</span>
+          <p id="modal-desc" class="text-slate-700 leading-relaxed"></p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+          <div>
+            <span class="text-xs text-slate-400 font-semibold block">自變數 (X)</span>
+            <span id="modal-iv" class="font-medium text-slate-800 text-xs sm:text-sm"></span>
+          </div>
+          <div>
+            <span class="text-xs text-slate-400 font-semibold block">依變數 (Y)</span>
+            <span id="modal-dv" class="font-medium text-slate-800 text-xs sm:text-sm"></span>
+          </div>
+        </div>
+
+        <div>
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">典型實務應用場景</span>
+          <ul id="modal-cases" class="list-disc list-inside text-slate-600 text-xs sm:text-sm space-y-1"></ul>
+        </div>
+
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-900 text-xs">
+          <span class="font-bold flex items-center gap-1 mb-1">
+            <i class="ph-bold ph-warning-circle"></i> 審題與常見陷阱提醒
+          </span>
+          <p id="modal-warning"></p>
+        </div>
+      </div>
+
+      <div class="pt-2 flex justify-end">
+        <button onclick="closeModal()" class="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 transition">
+          關閉了解
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 統計檢定基礎資料（完全依據原始圖片並擴充教學解析）
+    const testData = [
+      {
+        id: 'chi-square',
+        name: '卡方檢定',
+        enName: 'Chi-Square',
+        colorClass: 'text-rose-600',
+        badgeBg: 'bg-rose-50 text-rose-700 border-rose-200',
+        iconBg: 'bg-rose-500',
+        icon: 'ph-square-half',
+        ivType: '類別',
+        ivDetail: '如：性別、職業、居住地區',
+        ivGroupCount: '多類別皆可',
+        dvType: '類別',
+        dvCategory: 'categorical-y',
+        dvDetail: '如：購買/不購買、滿意度級別、贊成/反對',
+        context: '檢查兩類別變數的「獨立性」、「相關性」，或看實際值與期望值是否符合（適合度）。',
+        keywords: ['獨立性檢定', '適合度檢定', '同質性檢定', '期望頻次 vs 觀察頻次', '交叉分析列聯表'],
+        practicalCases: [
+          '行銷分析：調查使用者的「性別 (男/女)」與「是否點擊廣告 (是/否)」是否有關聯。',
+          '醫學評估：評估施打某疫苗與是否確診（確診/未確診）是否呈獨立分佈。',
+          '遺傳學適合度：檢驗豌豆後代性狀比例是否符合孟德爾定律 9:3:3:1。'
+        ],
+        caution: '卡方檢定適用於「頻率計數」，不能直接帶入平均值或比率；每個細格的期望值 (Expected Count) 建議大於 5，過小需採用費雪精確檢定 (Fisher Exact Test)。'
+      },
+      {
+        id: 'z-test',
+        name: 'Z 檢定',
+        enName: 'Z-Test',
+        colorClass: 'text-amber-600',
+        badgeBg: 'bg-amber-50 text-amber-700 border-amber-200',
+        iconBg: 'bg-amber-500',
+        icon: 'ph-trend-up',
+        ivType: '類別',
+        ivDetail: '最多 2 組 (單組與母體比較，或兩組對照)',
+        ivGroupCount: '≤ 2 組',
+        dvType: '連續 (數值)',
+        dvCategory: 'continuous-y',
+        dvDetail: '如：營收、考試分數、產出數量',
+        context: '大樣本 (n ≥ 30) 且「母體變異數已知」時，比較平均值。',
+        keywords: ['大樣本 (n≥30)', '母體標準差 σ 已知', '常態分佈標準化', 'Z值計算'],
+        practicalCases: [
+          '製造品管：已知某晶片良品率的母體標準差已知為 2.1，抽檢 100 顆樣品檢驗平均壽命是否達標。',
+          '全國大考：全國考生聯考平均數與變異數已知，欲檢定某特定明星學校 50 名學生之平均成績是否顯著高於全國水準。'
+        ],
+        caution: '現實研究中極少能預先得知「真正的母體變異數 σ²」。因此 Z 檢定通常出現在理論教科書或樣本量極龐大的標準化檢驗情境。'
+      },
+      {
+        id: 't-test',
+        name: 't 檢定',
+        enName: 't-Test',
+        colorClass: 'text-emerald-600',
+        badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        iconBg: 'bg-emerald-500',
+        icon: 'ph-scales',
+        ivType: '類別',
+        ivDetail: '最多 2 組 (單樣本、獨立雙樣本、配對雙樣本)',
+        ivGroupCount: '≤ 2 組',
+        dvType: '連續 (數值)',
+        dvCategory: 'continuous-y',
+        dvDetail: '如：點擊時間、身高、血壓降低幅度',
+        context: '小樣本 (n < 30) 或「母體變異數未知」（實務上最常用），比較兩組的平均值。',
+        keywords: ['小樣本 (n<30)', '母體變異數未知', '單組/兩組平均值比較', '自由度 (df)', 'A/B 測試'],
+        practicalCases: [
+          'UI/UX 測試：測試新版按鈕與舊版按鈕在「使用者停留秒數」上的差異 (獨立雙樣本 t-test)。',
+          '新藥療效：記錄同一組受試者在「服用降血壓藥前」與「服藥後」的血壓差值 (配對樣本 t-test)。',
+          '薪資調查：比較工程師性別（男 vs 女）之平均起薪是否有統計顯著差異。'
+        ],
+        caution: '若有 3 組以上欲比較平均值，切忌連續做多次雙樣本 t 檢定，否則型一錯誤率 (Type I Error) 會隨比較次數呈指數增加，此時必須改用 ANOVA！'
+      },
+      {
+        id: 'anova',
+        name: '變異數分析',
+        enName: 'ANOVA',
+        colorClass: 'text-indigo-600',
+        badgeBg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        iconBg: 'bg-indigo-600',
+        icon: 'ph-chart-bar',
+        ivType: '類別',
+        ivDetail: '3 組以上 (如：高中/大學/研究所三組)',
+        ivGroupCount: '≥ 3 組',
+        dvType: '連續 (數值)',
+        dvCategory: 'continuous-y',
+        dvDetail: '如：不同演算法的準確率、不同肥料之產量',
+        context: '比較 3 組以上（如：高中/大學/研究所三組）的平均值是否有顯著差異。',
+        keywords: ['3 組以上比較', '組間變異 vs 組內變異 (F 檢定)', '防止 α 錯誤膨脹', '事後檢定 (Post-hoc, Tukey/Scheffe)'],
+        practicalCases: [
+          '機器學習評估：比較「隨機森林」、「XGBoost」、「神經網路」三種演算法在 10-fold 交叉驗證上的準確率是否不同。',
+          '行銷定價：評估 3 種不同的促銷折扣方案 (9折 / 8折 / 滿千折百) 對顧客「平均客單價」的影響。',
+          '教育實驗：比較低、中、高三種教育程度受試者對於新數位工具的學習滿意度分數。'
+        ],
+        caution: 'ANOVA 只能告訴你「這幾組中是否有至少一組與他人不同」，但無法得知到底是哪兩組有差異，因此當 ANOVA 達到顯著 (p < .05) 時，必須接續進行「事後檢定 (Post-hoc test)」！'
+      }
+    ];
+
+    // 初始化渲染
+    function init() {
+      renderTable(testData);
+      renderCards(testData);
+      setupSearch();
+    }
+
+    // 渲染桌面表格
+    function renderTable(data) {
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = '';
+
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400">沒有符合搜尋條件的檢定</td></tr>`;
+        return;
+      }
+
+      data.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50/70 transition cursor-pointer group';
+        tr.onclick = () => openModal(item.id);
+        tr.innerHTML = `
+          <td class="py-4 px-6 align-top">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-slate-900 group-hover:text-sky-600 transition flex items-center gap-1.5">
+                ${item.name}
+              </span>
+              <span class="text-xs font-medium text-slate-400 italic">(${item.enName})</span>
+            </div>
+            <span class="inline-block mt-1 text-[11px] px-2 py-0.5 rounded ${item.badgeBg}">
+              點擊看詳情
+            </span>
+          </td>
+          <td class="py-4 px-5 align-top">
+            <span class="font-semibold text-slate-800">${item.ivType}</span>
+            <span class="text-xs ${item.colorClass} block font-medium mt-0.5">(${item.ivDetail})</span>
+          </td>
+          <td class="py-4 px-5 align-top">
+            <span class="font-semibold text-slate-800">${item.dvType}</span>
+            <span class="text-xs ${item.colorClass} block font-medium mt-0.5">(${item.dvDetail})</span>
+          </td>
+          <td class="py-4 px-6 align-top">
+            <p class="text-xs text-slate-700 leading-relaxed font-normal">${item.context}</p>
+            <div class="flex flex-wrap gap-1 mt-2">
+              ${item.keywords.map(kw => `<span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-full font-mono">${kw}</span>`).join('')}
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // 渲染卡片視圖 (行動/通用)
+    function renderCards(data) {
+      const container = document.getElementById('cards-container');
+      container.innerHTML = '';
+
+      if (data.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400 bg-white rounded-xl border border-slate-200">查無相關統計檢定</div>`;
+        return;
+      }
+
+      data.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition duration-200 flex flex-col justify-between hover:border-slate-300';
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg ${item.iconBg} flex items-center justify-center text-white">
+                  <i class="ph-bold ${item.icon} text-lg"></i>
+                </div>
+                <div>
+                  <h4 class="font-bold text-slate-900">${item.name}</h4>
+                  <span class="text-xs text-slate-400 italic font-mono">${item.enName}</span>
+                </div>
+              </div>
+              <span class="text-xs px-2.5 py-0.5 rounded-full border ${item.badgeBg} font-medium">
+                ${item.ivGroupCount}
+              </span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-lg mb-3 border border-slate-100">
+              <div>
+                <span class="text-slate-400 block font-medium">自變數 (X)</span>
+                <span class="font-semibold text-slate-800">${item.ivType}</span>
+                <span class="block ${item.colorClass} truncate mt-0.5 text-[11px]">${item.ivDetail}</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block font-medium">依變數 (Y)</span>
+                <span class="font-semibold text-slate-800">${item.dvType}</span>
+                <span class="block ${item.colorClass} truncate mt-0.5 text-[11px]">${item.dvDetail}</span>
+              </div>
+            </div>
+
+            <p class="text-xs text-slate-600 line-clamp-3 mb-3 leading-relaxed">
+              <span class="font-bold text-slate-700">情境：</span>${item.context}
+            </p>
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-1 text-[11px] text-slate-400 font-mono">
+              <i class="ph ph-hash"></i> 關鍵考題字眼
+            </div>
+            <button onclick="openModal('${item.id}')" class="text-xs font-semibold text-sky-600 hover:text-sky-700 flex items-center gap-1 group">
+              解析與實例 <i class="ph-bold ph-caret-right transition-transform group-hover:translate-x-0.5"></i>
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // 篩選標籤
+    let currentFilter = 'all';
+    function filterTable(category) {
+      currentFilter = category;
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        if (btn.dataset.filter === category) {
+          btn.className = 'tab-btn px-3 py-1.5 rounded-md bg-slate-900 text-white transition';
+        } else {
+          btn.className = 'tab-btn px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 transition';
+        }
+      });
+      applySearchAndFilter();
+    }
+
+    // 搜尋功能
+    function setupSearch() {
+      const searchInput = document.getElementById('keyword-search');
+      searchInput.addEventListener('input', () => {
+        applySearchAndFilter();
+      });
+    }
+
+    function applySearchAndFilter() {
+      const keyword = document.getElementById('keyword-search').value.toLowerCase().trim();
+
+      const filtered = testData.filter(item => {
+        const matchesCategory = (currentFilter === 'all') || (item.dvCategory === currentFilter);
+        const matchesText = item.name.toLowerCase().includes(keyword) ||
+          item.enName.toLowerCase().includes(keyword) ||
+          item.context.toLowerCase().includes(keyword) ||
+          item.ivDetail.toLowerCase().includes(keyword) ||
+          item.dvDetail.toLowerCase().includes(keyword) ||
+          item.keywords.some(k => k.toLowerCase().includes(keyword));
+
+        return matchesCategory && matchesText;
+      });
+
+      renderTable(filtered);
+      renderCards(filtered);
+    }
+
+    // 詳細 Modal 操作
+    function openModal(id) {
+      const data = testData.find(d => d.id === id);
+      if (!data) return;
+
+      document.getElementById('modal-title').innerText = `${data.name} (${data.enName})`;
+      const iconContainer = document.getElementById('modal-icon');
+      iconContainer.className = `w-8 h-8 rounded-lg flex items-center justify-center text-white ${data.iconBg}`;
+      iconContainer.innerHTML = `<i class="ph-bold ${data.icon} text-lg"></i>`;
+
+      document.getElementById('modal-desc').innerText = data.context;
+      document.getElementById('modal-iv').innerHTML = `${data.ivType} <span class="${data.colorClass} text-xs block">(${data.ivDetail})</span>`;
+      document.getElementById('modal-dv').innerHTML = `${data.dvType} <span class="${data.colorClass} text-xs block">(${data.dvDetail})</span>`;
+
+      const casesUl = document.getElementById('modal-cases');
+      casesUl.innerHTML = '';
+      data.practicalCases.forEach(cs => {
+        const li = document.createElement('li');
+        li.innerText = cs;
+        casesUl.appendChild(li);
+      });
+
+      document.getElementById('modal-warning').innerText = data.caution;
+
+      const modal = document.getElementById('detail-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('detail-modal');
+      modal.classList.remove('flex');
+      modal.classList.add('hidden');
+    }
+
+    // 點擊彈窗外關閉
+    window.addEventListener('click', (e) => {
+      const modal = document.getElementById('detail-modal');
+      if (e.target === modal) {
+        closeModal();
+      }
+    });
+
+    // 決策樹 Wizard 邏輯
+    let wizardState = {
+      yType: null,
+      xGroups: null,
+      sampleCondition: null
+    };
+
+    function handleStep1(type) {
+      wizardState.yType = type;
+      if (type === 'categorical') {
+        // 依變數是類別型，直接推薦卡方檢定！
+        showWizardResult('chi-square', '你的「依變數 (Y)」為類別型變數（如：購買/不買、滿意級別），此時無論自變數是哪種分類，重點在於檢驗類別之間的關聯度或期望次數之差異，應選用卡方檢定！');
+        updateIndicator(3);
+      } else {
+        // 連續變數，進入第二步
+        document.getElementById('step-1').classList.add('hidden');
+        document.getElementById('step-2').classList.remove('hidden');
+        updateIndicator(2);
+      }
+    }
+
+    function handleStep2(groupCount) {
+      wizardState.xGroups = groupCount;
+      if (groupCount === 'ge3') {
+        // 3組以上連續數值比較 -> ANOVA
+        showWizardResult('anova', '你的「依變數」為連續數值（可算平均值），且自變數有「3 組或以上」（如：高/中/大三組、三種治療法），為了避免型一錯誤 α 膨脹，標準方法即為單因子變異數分析 (One-way ANOVA)！');
+        updateIndicator(3);
+      } else {
+        // ≤ 2 組，需要看母體變異數已知與否
+        document.getElementById('step-2').classList.add('hidden');
+        document.getElementById('step-3').classList.remove('hidden');
+        updateIndicator(3);
+      }
+    }
+
+    function handleStep3(selectedTest) {
+      if (selectedTest === 'z-test') {
+        showWizardResult('z-test', '你的樣本數較大 (n ≥ 30) 且關鍵前提「母體變異數已知 (σ² 已知)」，比較兩組平均數可直接根據常態分佈性質採用 Z 檢定！');
+      } else {
+        showWizardResult('t-test', '在實務中最普遍的情境：母體變異數未知（僅能用樣本標準差 s 代替）或樣本數較小時 (n < 30)，比較最多兩組平均值一律採用 Student\'s t 檢定！');
+      }
+    }
+
+    function updateIndicator(step) {
+      const ind1 = document.getElementById('step-indicator-1');
+      const ind2 = document.getElementById('step-indicator-2');
+      const ind3 = document.getElementById('step-indicator-3');
+      const l1 = document.getElementById('label-step-1');
+      const l2 = document.getElementById('label-step-2');
+      const l3 = document.getElementById('label-step-3');
+
+      ind1.className = 'h-1.5 rounded-full transition-all duration-300 ' + (step >= 1 ? 'bg-sky-600' : 'bg-slate-200');
+      ind2.className = 'h-1.5 rounded-full transition-all duration-300 ' + (step >= 2 ? 'bg-sky-600' : 'bg-slate-200');
+      ind3.className = 'h-1.5 rounded-full transition-all duration-300 ' + (step >= 3 ? 'bg-sky-600' : 'bg-slate-200');
+
+      l1.className = step === 1 ? 'text-sky-600 font-bold' : 'text-slate-500';
+      l2.className = step === 2 ? 'text-sky-600 font-bold' : 'text-slate-500';
+      l3.className = step === 3 ? 'text-sky-600 font-bold' : 'text-slate-500';
+    }
+
+    function showWizardResult(testId, reason) {
+      const data = testData.find(d => d.id === testId);
+      document.getElementById('step-1').classList.add('hidden');
+      document.getElementById('step-2').classList.add('hidden');
+      document.getElementById('step-3').classList.add('hidden');
+
+      const resultBox = document.getElementById('wizard-result');
+      const inner = document.getElementById('result-card-inner');
+
+      inner.className = `p-6 sm:p-7 rounded-2xl border ${data.badgeBg} bg-white shadow-lg space-y-4`;
+      inner.innerHTML = `
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl ${data.iconBg} text-white flex items-center justify-center text-2xl shadow-md">
+              <i class="ph-bold ${data.icon}"></i>
+            </div>
+            <div>
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">診斷結果：最建議檢定方法</span>
+              <h4 class="text-2xl font-black text-slate-900">${data.name} <span class="text-base font-medium text-slate-500">(${data.enName})</span></h4>
+            </div>
+          </div>
+          <button onclick="openModal('${data.id}')" class="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-slate-900 text-white hover:bg-slate-800 transition shadow">
+            查看完整範例與陷阱
+          </button>
+        </div>
+
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
+          <p class="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
+            <i class="ph-bold ph-check text-emerald-600"></i> 推導依據
+          </p>
+          <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">${reason}</p>
+        </div>
+
+        <div class="pt-2 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2 border-t border-slate-100">
+          <div><strong class="text-slate-700">題目常見字眼：</strong>${data.keywords.slice(0, 3).join(' · ')}</div>
+          <button onclick="resetWizard()" class="text-sky-600 hover:text-sky-800 font-semibold flex items-center gap-1">
+            <i class="ph-bold ph-arrow-counter-clockwise"></i> 換題目再測一次
+          </button>
+        </div>
+      `;
+
+      resultBox.classList.remove('hidden');
+    }
+
+    function resetWizard() {
+      wizardState = { yType: null, xGroups: null, sampleCondition: null };
+      document.getElementById('step-1').classList.remove('hidden');
+      document.getElementById('step-2').classList.add('hidden');
+      document.getElementById('step-3').classList.add('hidden');
+      document.getElementById('wizard-result').classList.add('hidden');
+      updateIndicator(1);
+    }
+
+    document.getElementById('reset-wizard').addEventListener('click', resetWizard);
+
+    // 啟動程式
+    window.onload = function() {
+      init();
+    };
+  </script>
+</body>
+</html>
