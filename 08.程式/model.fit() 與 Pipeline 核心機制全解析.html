@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IPAS AI 核心解析：model.fit() vs Pipeline 深度教學</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <!-- KaTeX for math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    code, pre {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .flow-line {
+      stroke-dasharray: 6;
+      animation: dash 1.5s linear infinite;
+    }
+    @keyframes dash {
+      to {
+        stroke-dashoffset: -12;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen">
+
+  <!-- Top Navigation -->
+  <header class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="../index.html" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition shadow-sm mr-1">
+          <i class="ph ph-arrow-left"></i> 回首頁
+        </a>
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold shadow-md shadow-indigo-100">
+          <i class="ph ph-brackets-curly text-xl"></i>
+        </div>
+        <div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-indigo-600">IPAS 人工智慧應用工程師必備</span>
+          <h1 class="text-lg font-bold text-slate-900 leading-tight">model.fit() 與 Pipeline 核心機制全解析</h1>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 text-sm">
+        <a href="#simulator" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition font-medium">動態模擬器</a>
+        <a href="#math" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition font-medium">數學原理</a>
+        <a href="#ipas-quiz" class="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition font-medium flex items-center gap-1.5">
+          <i class="ph ph-exam"></i> IPAS 題庫考點
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+    <!-- Section 1: Hero & 1-sentence summary -->
+    <section class="bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 rounded-3xl p-8 sm:p-10 text-white shadow-xl relative overflow-hidden">
+      <div class="absolute -right-16 -bottom-16 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="max-w-3xl relative z-10 space-y-4">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold tracking-wide border border-indigo-400/20">
+          <i class="ph-fill ph-sparkle"></i> 關鍵考點提要
+        </div>
+        <h2 class="text-2xl sm:text-4xl font-extrabold tracking-tight">
+          單一學習動作 vs. 端到端工作流防護罩
+        </h2>
+        <p class="text-slate-300 text-base sm:text-lg leading-relaxed">
+          <strong class="text-indigo-300 font-semibold">一句話精準總結：</strong>
+          <code class="text-amber-300 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-500/30">model.fit()</code> 是單一估計器學習權重參數的「動態方法」；而 
+          <code class="text-indigo-300 bg-indigo-950/40 px-2 py-0.5 rounded border border-indigo-500/30">Pipeline</code> 則是將「資料清洗、特徵工程、模型擬合」包裝為一體的高階「封裝結構」，核心使命在於<strong class="text-rose-400 underline decoration-rose-400/50 underline-offset-4">杜絕資料外洩 (Data Leakage)</strong> 並實現生產環境零落差部署。
+        </p>
+
+        <!-- Quick 3 badges -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3">
+          <div class="bg-white/5 border border-white/10 rounded-xl p-3.5 backdrop-blur-sm">
+            <div class="text-xs text-indigo-300 font-medium">層級定位</div>
+            <div class="text-sm font-semibold mt-0.5">Method (方法) vs Class (容器架構)</div>
+          </div>
+          <div class="bg-white/5 border border-white/10 rounded-xl p-3.5 backdrop-blur-sm">
+            <div class="text-xs text-indigo-300 font-medium">防護機制</div>
+            <div class="text-sm font-semibold mt-0.5">自動隔絕 CV 訓練折與驗證折統計量</div>
+          </div>
+          <div class="bg-white/5 border border-white/10 rounded-xl p-3.5 backdrop-blur-sm">
+            <div class="text-xs text-indigo-300 font-medium">工業部署</div>
+            <div class="text-sm font-semibold mt-0.5">單一 Artifact 封裝，輸入 raw data 即預測</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- NEW SECTION: Fundamental Concepts & Analogies -->
+    <section class="space-y-6">
+      <!-- 觀念破題 -->
+      <div class="bg-white rounded-2xl border border-indigo-100 p-6 sm:p-7 shadow-xs">
+        <div class="flex items-center gap-2 text-indigo-600 font-bold text-sm mb-2">
+          <i class="ph-fill ph-lightbulb text-lg"></i> 核心觀念破題
+        </div>
+        <p class="text-base sm:text-lg font-medium text-slate-800 leading-relaxed">
+          在機器學習中，<span class="text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">Model Fit（模型訓練 / 擬合）</span>與 <span class="text-indigo-700 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">Pipeline（資料管線）</span>是完全不同層次的概念。簡單來說：<strong>Model Fit 是「動作/方法」</strong>（讓模型去學習資料），而 <strong>Pipeline 是「容器/架構」</strong>（把多個步驟與模型串接成一條龍的工具）。
+        </p>
+      </div>
+
+      <!-- 生活化生動比喻 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-gradient-to-br from-amber-50/80 to-amber-100/30 border border-amber-200 rounded-2xl p-5 flex items-start gap-4 shadow-2xs">
+          <div class="w-11 h-11 rounded-xl bg-amber-500 text-white flex-shrink-0 flex items-center justify-center text-2xl shadow-sm">
+            🎓
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-amber-900">比喻 Model Fit：學習動作</h4>
+            <p class="text-xs text-amber-800/90 mt-1 leading-relaxed">
+              就像是<strong>「讓學生（模型）上台聽課並把公式記下來」</strong>這個學習動作，把黑板上的規律與參數內化至自己的腦袋中。
+            </p>
+          </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-indigo-50/80 to-indigo-100/30 border border-indigo-200 rounded-2xl p-5 flex items-start gap-4 shadow-2xs">
+          <div class="w-11 h-11 rounded-xl bg-indigo-600 text-white flex-shrink-0 flex items-center justify-center text-2xl shadow-sm">
+            🎒
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-indigo-900">比喻 Pipeline：標準作業流程書包</h4>
+            <p class="text-xs text-indigo-800/90 mt-1 leading-relaxed">
+              就像是<strong>「從課本、筆記、計算機到考場的一整套標準作業流程書包」</strong>，確保學生在進考場前，每一道手續都按部就班、不漏抄資料、不偷看答案。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 雙欄詳細定義與核心功能 -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- 什麼是 Model Fit -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col justify-between">
+          <div class="space-y-3">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-800">概念解析 01</span>
+              <h4 class="text-base font-bold text-slate-800">什麼是 Model Fit？（學什麼、做什麼）</h4>
+            </div>
+            
+            <div class="space-y-2 text-xs text-slate-600 leading-relaxed">
+              <div>
+                <strong class="text-slate-800">● 定義：</strong>
+                <code>fit()</code> 是機器學習演算法（如邏輯斯迴歸、隨機森林、SVC 等）或前處理工具（如 StandardScaler）的<strong>「訓練 / 學習」方法</strong>。
+              </div>
+              <div>
+                <strong class="text-slate-800">● 核心功能：</strong>
+                讓物件從輸入的資料（\(X, y\)）中計算並記憶參數。
+                <ul class="list-disc list-inside pl-2 space-y-1 mt-1 text-slate-500">
+                  <li>讓 <code>StandardScaler.fit(X)</code> 算出整筆資料的<strong>「平均值」與「標準差」</strong>。</li>
+                  <li>讓 <code>LinearRegression.fit(X, y)</code> 算出迴歸線的<strong>「權重（weights）與截距（intercept）」</strong>。</li>
+                </ul>
+              </div>
+              <div>
+                <strong class="text-slate-800">● 實質特點：</strong>
+                <span class="text-amber-700 font-semibold">「Fit 就是學」</span>—— 每一站把學到的參數存進自己的口袋。單獨對單一模型執行 <code>model.fit(X, y)</code>，只會訓練該模型本身，無法自動協調前面的資料轉換步驟。
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400 font-mono">
+            角色定位：動詞 (Verb) / 參數計算與儲存
+          </div>
+        </div>
+
+        <!-- 什麼是 Pipeline -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col justify-between">
+          <div class="space-y-3">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-100 text-indigo-800">概念解析 02</span>
+              <h4 class="text-base font-bold text-slate-800">什麼是 Pipeline？（結構、功能）</h4>
+            </div>
+            
+            <div class="space-y-2 text-xs text-slate-600 leading-relaxed">
+              <div>
+                <strong class="text-slate-800">● 定義：</strong>
+                Pipeline（管道 / 流水線）是一個將<strong>「資料前處理步驟」</strong>與<strong>「最終機器學習模型」</strong>依序打包在一起的容器物件。
+              </div>
+              <div>
+                <strong class="text-slate-800">● 核心功能：</strong>
+                把一連串動作串成一條生產線（例如：<code>資料輸入 ➔ 標準化 (Scaler) ➔ 降維 (PCA) ➔ 分類模型 (Classifier)</code>），統一管理整個流程的執行順序。
+              </div>
+              <div>
+                <strong class="text-slate-800">● 最大優點（防 Data Leakage 資料洩漏）：</strong>
+                <ul class="list-disc list-inside pl-2 space-y-1 mt-1 text-slate-500">
+                  <li>當呼叫 <code>pipeline.fit(X_train, y_train)</code> 時，它會自動依序對每一站呼叫 fit，在交叉驗證中嚴格確保前處理<strong>只用訓練集算統計量</strong>，避免偷看未來資訊。</li>
+                  <li>呼叫 <code>pipeline.predict(X_test)</code> 時，資料會自動流過前面所有設定好的 transform，最後才交由模型預測。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400 font-mono">
+            角色定位：名詞 (Noun) / 多階段串接容器
+          </div>
+        </div>
+      </div>
+
+      <!-- 核心差別精簡對比表格 -->
+      <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+        <div class="bg-slate-50/80 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+            <i class="ph-bold ph-scales text-indigo-600"></i> Model Fit vs Pipeline 核心差別快速對照表
+          </span>
+          <span class="text-[11px] text-slate-400">Scikit-Learn 架構基礎</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-slate-100/60 text-slate-700 border-b border-slate-200 font-semibold">
+                <th class="p-3.5 w-1/5">比較維度</th>
+                <th class="p-3.5 w-2/5 text-amber-900 bg-amber-50/40">Model Fit (model.fit)</th>
+                <th class="p-3.5 w-2/5 text-indigo-900 bg-indigo-50/40">Pipeline (Pipeline)</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-slate-600">
+              <tr>
+                <td class="p-3.5 font-semibold text-slate-800">本質</td>
+                <td class="p-3.5">是一個<strong>方法（Method / Function）</strong></td>
+                <td class="p-3.5 font-medium text-indigo-700">是一個<strong>物件 / 架構（Object / Wrapper）</strong></td>
+              </tr>
+              <tr>
+                <td class="p-3.5 font-semibold text-slate-800">主要角色</td>
+                <td class="p-3.5">負責讓單一元件「從資料中學習參數」</td>
+                <td class="p-3.5">負責把「多個前處理步驟與模型」串接成一條龍</td>
+              </tr>
+              <tr>
+                <td class="p-3.5 font-semibold text-slate-800">操作對象</td>
+                <td class="p-3.5">單一 Estimator 或 Transformer</td>
+                <td class="p-3.5">一組按順序排列的 <code>(name, transformer/estimator)</code> 列表</td>
+              </tr>
+              <tr>
+                <td class="p-3.5 font-semibold text-slate-800">與 Fit 的關係</td>
+                <td class="p-3.5"><code>fit()</code> 是<strong>動詞</strong>，用來執行學習動作</td>
+                <td class="p-3.5">你可以對整條 Pipeline 執行 <code>pipeline.fit()</code>，它會<strong>連動去幫裡面每一站執行 fit</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Detailed Matrix comparison -->
+    <section class="space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+          <i class="ph ph-table text-indigo-600"></i> 核心原理與實務特性對比矩陣
+        </h3>
+        <span class="text-xs text-slate-500">Scikit-Learn 規範視角</span>
+      </div>
+
+      <div class="overflow-x-auto bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="bg-slate-50/80 border-b border-slate-200 text-slate-700">
+              <th class="p-4 font-semibold w-1/5">比較維度</th>
+              <th class="p-4 font-semibold w-2/5 text-amber-900 bg-amber-50/40">傳統單獨調用 model.fit()</th>
+              <th class="p-4 font-semibold w-2/5 text-indigo-900 bg-indigo-50/40">採用 Pipeline 封裝架構</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 text-slate-600">
+            <tr>
+              <td class="p-4 font-semibold text-slate-800">物件定位</td>
+              <td class="p-4">單一估計器 (Estimator) 的內建訓練函式</td>
+              <td class="p-4 font-medium text-indigo-600">串接多個 Transformer 與最後 Estimator 的整合管道</td>
+            </tr>
+            <tr>
+              <td class="p-4 font-semibold text-slate-800">資料流動控制</td>
+              <td class="p-4">需手動逐一調用 <code>fit_transform()</code> 再轉交至下一階段，繁瑣且容易寫錯對象</td>
+              <td class="p-4">內部自動依序前傳：前面步驟自動 <code>fit_transform</code>，終點步驟自動執行 <code>fit</code></td>
+            </tr>
+            <tr class="bg-rose-50/30">
+              <td class="p-4 font-semibold text-rose-900 flex items-center gap-1">
+                <i class="ph ph-warning-circle text-rose-500"></i> 資料外洩風險
+              </td>
+              <td class="p-4 text-rose-700">
+                <strong>極高</strong>。工程師常在 <code>train_test_split</code> 前對全體資料標準化或填補缺失值，污染測試集。
+              </td>
+              <td class="p-4 text-emerald-800 font-medium">
+                <strong>近乎為零</strong>。在交叉驗證中，嚴格確保每個折 (Fold) 的 Transformer 只自訓練子集學習 &mu; 與 &sigma;。
+              </td>
+            </tr>
+            <tr>
+              <td class="p-4 font-semibold text-slate-800">超參數調校 (Tuning)</td>
+              <td class="p-4">通常只能透過 GridSearchCV 搜尋模型超參數，難以聯調前處理參數 (如 PCA 維度)</td>
+              <td class="p-4">可用雙底線命名法 (<code>pca__n_components</code>, <code>clf__C</code>) 一同聯合網格搜尋最佳化</td>
+            </tr>
+            <tr>
+              <td class="p-4 font-semibold text-slate-800">生產環境推論</td>
+              <td class="p-4">需序列化 (pickle) 多個檔案：<code>scaler.pkl</code>, <code>imputer.pkl</code>, <code>model.pkl</code>，推論程式碼維護成本高</td>
+              <td class="p-4">僅需導出單一 <code>pipeline.pkl</code>，推論時輸入原始特徵即輸出結果：<code>pipe.predict(raw_X)</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section 3: Interactive Data Flow & Leakage Simulator -->
+    <section id="simulator" class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">互動式實驗模組</span>
+          <h3 class="text-xl font-bold text-slate-900 mt-0.5">資料流向與「資料外洩 (Data Leakage)」動態模擬器</h3>
+          <p class="text-xs text-slate-500 mt-1">切換模式觀察：資料前處理的統計資訊是在何時被計算的？為何會導致測試評估虛高？</p>
+        </div>
+        
+        <!-- Mode Switcher -->
+        <div class="flex items-center bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+          <button id="btn-mode-leak" onclick="setMode('leak')" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition bg-rose-500 text-white shadow-sm flex items-center gap-1.5">
+            <i class="ph-fill ph-x-circle"></i> 傳統錯誤方式 (造成外洩)
+          </button>
+          <button id="btn-mode-pipe" onclick="setMode('pipe')" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-indigo-600 transition flex items-center gap-1.5">
+            <i class="ph-fill ph-check-circle"></i> Pipeline 規範方式 (嚴密隔離)
+          </button>
+        </div>
+      </div>
+
+      <!-- Simulator Stage -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Visual Board -->
+        <div class="lg:col-span-8 bg-slate-50 rounded-2xl p-6 border border-slate-200 flex flex-col justify-between min-h-[380px] relative">
+          
+          <!-- Step indicator header -->
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-4">
+            <span id="sim-step-title">步驟 1/3: 準備全量資料集</span>
+            <div class="flex items-center gap-2">
+              <span id="sim-status-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700">
+                外洩風險警戒
+              </span>
+            </div>
+          </div>
+
+          <!-- Dynamic SVG / Graphic Canvas Area -->
+          <div id="canvas-area" class="w-full flex-1 flex flex-col items-center justify-center gap-6 py-4">
+            <!-- Dynamic DOM generated by JS -->
+          </div>
+
+          <!-- Simulation Controller Bar -->
+          <div class="mt-4 pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+              <button onclick="prevStep()" id="btn-prev" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40">
+                <i class="ph ph-arrow-left"></i> 上一步
+              </button>
+              <button onclick="nextStep()" id="btn-next" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm">
+                下一步 <i class="ph ph-arrow-right"></i>
+              </button>
+              <button onclick="autoPlay()" id="btn-auto" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center gap-1">
+                <i class="ph ph-play"></i> 一鍵自動演練
+              </button>
+            </div>
+            <button onclick="resetSim()" class="text-xs text-slate-500 hover:text-slate-800 underline">
+              重置演練
+            </button>
+          </div>
+        </div>
+
+        <!-- Explanation Panel -->
+        <div class="lg:col-span-4 bg-slate-900 text-slate-200 rounded-2xl p-5 border border-slate-800 flex flex-col justify-between">
+          <div class="space-y-4">
+            <div class="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-wider">
+              <i class="ph ph-info"></i> 機制解密說明
+            </div>
+            <h4 id="panel-title" class="text-base font-bold text-white">全體數據集未分割</h4>
+            <p id="panel-desc" class="text-xs leading-relaxed text-slate-300">
+              包含 1,000 筆客戶特徵資料。包含訓練資料與將來要驗證泛化能力的測試資料。
+            </p>
+            <div id="panel-math-box" class="bg-slate-800/80 rounded-xl p-3 border border-slate-700 text-xs font-mono text-indigo-200">
+              計算範疇：等待操作...
+            </div>
+          </div>
+
+          <div class="mt-6 pt-4 border-t border-slate-800 text-[11px] text-slate-400">
+            <i class="ph ph-lightbulb text-amber-400 mr-1"></i>
+            <span id="panel-tip">提示：在機器學習中，模型絕不能提前「窺探」到測試集的均值與標準差。</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Math Behind fit vs transform -->
+    <section id="math" class="space-y-6">
+      <div class="flex items-center justify-between">
+        <h3 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+          <i class="ph ph-function text-indigo-600"></i> fit() 與 transform() 數學本質剖析
+        </h3>
+        <span class="text-xs text-slate-500">以特徵標準化 (Z-Score) 為例</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- fit() card -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-800">1. fit(X) 的本質</span>
+            <span class="text-xs text-slate-400 font-mono">統計量參數估計 (Learn Parameters)</span>
+          </div>
+          <h4 class="text-lg font-bold text-slate-800">只計算並儲存數據分佈特徵</h4>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            執行 <code>fit()</code> 時，<strong>並不會改變原始資料數值</strong>。估計器只遍歷輸入的特徵維度，計算樣本平均數 &mu; 與標準差 &sigma; 並保存在內部狀態中（如 <code>scaler.mean_</code> 與 <code>scaler.scale_</code>）。
+          </p>
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-sm space-y-2">
+            <div class="text-xs text-slate-500 font-medium">數學公式：</div>
+            <div class="text-center font-serif text-slate-800 py-1" id="formula-fit">
+              $$\mu = \frac{1}{N}\sum_{i=1}^{N} x_i, \quad \sigma = \sqrt{\frac{1}{N}\sum_{i=1}^{N}(x_i - \mu)^2}$$
+            </div>
+          </div>
+          <div class="text-xs text-slate-500">
+            ⚠️ <strong>關鍵規則：</strong> 嚴格只能在 <strong>訓練集 (Train Set)</strong> 上呼叫 <code>fit()</code>！
+          </div>
+        </div>
+
+        <!-- transform() card -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-100 text-indigo-800">2. transform(X) 的本質</span>
+            <span class="text-xs text-slate-400 font-mono">數值位移與縮放 (Apply Transform)</span>
+          </div>
+          <h4 class="text-lg font-bold text-slate-800">套用已學會的統計量進行轉換</h4>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            執行 <code>transform()</code> 時，<strong>不再重新計算均值與標準差</strong>，而是直接調用先前 <code>fit()</code> 留下的 &mu;<sub>train</sub> 和 &sigma;<sub>train</sub>，將給定數據投影到標準常態分佈空間中。
+          </p>
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-sm space-y-2">
+            <div class="text-xs text-slate-500 font-medium">轉換計算：</div>
+            <div class="text-center font-serif text-slate-800 py-1" id="formula-transform">
+              $$z_{\text{any}} = \frac{x_{\text{any}} - \mu_{\text{train}}}{\sigma_{\text{train}}}$$
+            </div>
+          </div>
+          <div class="text-xs text-emerald-600 font-medium">
+            ✅ <strong>Pipeline 的好處：</strong> 測試集送進去時，Pipeline 自動使用訓練集學到的 &mu;<sub>train</sub> 進行轉換，絕不重新計算測試集本身的均值。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 5: Code Comparison -->
+    <section class="space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+          <i class="ph ph-code-block text-indigo-600"></i> Python 實作比對：容易出錯 vs 標準優雅
+        </h3>
+        <span class="text-xs text-slate-500">Scikit-Learn 最佳實踐</span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Wrong Way -->
+        <div class="bg-white rounded-2xl border border-rose-200 overflow-hidden shadow-sm flex flex-col">
+          <div class="bg-rose-50 px-4 py-3 border-b border-rose-100 flex items-center justify-between">
+            <span class="text-xs font-bold text-rose-700 flex items-center gap-1.5">
+              <i class="ph-bold ph-x"></i> 錯誤做法：在分割前進行全局 fit_transform
+            </span>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-rose-200/60 text-rose-800 font-semibold">Data Leakage!</span>
+          </div>
+          <div class="p-4 bg-slate-900 text-slate-100 text-xs flex-1 custom-scrollbar overflow-x-auto">
+<pre><code><span class="text-slate-500"># ❌ 典型錯誤範例：全域前處理導致洩漏</span>
+<span class="text-rose-400">from</span> sklearn.preprocessing <span class="text-rose-400">import</span> StandardScaler
+<span class="text-rose-400">from</span> sklearn.linear_model <span class="text-rose-400">import</span> LogisticRegression
+<span class="text-rose-400">from</span> sklearn.model_selection <span class="text-rose-400">import</span> train_test_split
+
+<span class="text-slate-500"># 致命錯誤：對所有資料 (包含即將被切出去的測試集) 一起計算 mu 和 sigma！</span>
+scaler = StandardScaler()
+<span class="text-rose-300 font-bold">X_scaled = scaler.fit_transform(X)</span>  <span class="text-rose-400"># ❌ 測試集統計量被吸收了</span>
+
+<span class="text-slate-500"># 分割資料</span>
+X_train, X_test, y_train, y_test = train_test_split(
+    X_scaled, y, test_size=<span class="text-amber-300">0.2</span>
+)
+
+model = LogisticRegression()
+<span class="text-yellow-300 font-bold">model.fit(X_train, y_train)</span>
+score = model.score(X_test, y_test)  <span class="text-slate-500"># 虛高的指標，上線即劣化</span></code></pre>
+          </div>
+          <div class="p-3.5 bg-rose-50/50 border-t border-rose-100 text-xs text-rose-800">
+            <strong>盲點：</strong> 在交叉驗證 <code>cross_val_score</code> 前若先跑了全局特徵選擇或標準化，每一折驗證集都已知曉全域分佈。
+          </div>
+        </div>
+
+        <!-- Correct Way (Pipeline) -->
+        <div class="bg-white rounded-2xl border border-emerald-200 overflow-hidden shadow-sm flex flex-col">
+          <div class="bg-emerald-50 px-4 py-3 border-b border-emerald-100 flex items-center justify-between">
+            <span class="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+              <i class="ph-bold ph-check"></i> 規範做法：使用 Pipeline 封裝完整流程
+            </span>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-emerald-200/60 text-emerald-900 font-semibold">Production Ready</span>
+          </div>
+          <div class="p-4 bg-slate-900 text-slate-100 text-xs flex-1 custom-scrollbar overflow-x-auto">
+<pre><code><span class="text-emerald-400">from</span> sklearn.pipeline <span class="text-emerald-400">import</span> Pipeline
+<span class="text-emerald-400">from</span> sklearn.preprocessing <span class="text-emerald-400">import</span> StandardScaler
+<span class="text-emerald-400">from</span> sklearn.linear_model <span class="text-emerald-400">import</span> LogisticRegression
+<span class="text-emerald-400">from</span> sklearn.model_selection <span class="text-emerald-400">import</span> cross_val_score, train_test_split
+
+<span class="text-slate-500"># 1. 建立管線：定義步驟 (轉換器 + 最終評估器)</span>
+pipe = <span class="text-indigo-300 font-bold">Pipeline</span>([
+    (<span class="text-amber-300">'scaler'</span>, StandardScaler()),       <span class="text-slate-500"># 必須實作 fit & transform</span>
+    (<span class="text-amber-300">'classifier'</span>, LogisticRegression()) <span class="text-slate-500"># 必須實作 fit</span>
+])
+
+<span class="text-slate-500"># 2. 正確交叉驗證：每一折內部自動獨立 fit_transform</span>
+scores = cross_val_score(pipe, X, y, cv=<span class="text-amber-300">5</span>)
+
+<span class="text-slate-500"># 3. 實務訓練與部署</span>
+pipe.<span class="text-yellow-300 font-bold">fit(X_train, y_train)</span>
+<span class="text-slate-500"># 推論時自動套用訓練集之 mu/sigma 進行 transform，再 predict：</span>
+preds = pipe.predict(X_test)</code></pre>
+          </div>
+          <div class="p-3.5 bg-emerald-50/50 border-t border-emerald-100 text-xs text-emerald-900">
+            <strong>優勢：</strong> 程式碼緊湊、超參數可用 <code>GridSearchCV(pipe, param_grid={...})</code> 聯合搜尋，且徹底杜絕洩漏。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 6: IPAS Exam Questions & Interactive Quiz -->
+    <section id="ipas-quiz" class="bg-gradient-to-b from-white to-slate-50 rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-md shadow-amber-100">
+          <i class="ph ph-exam text-2xl"></i>
+        </div>
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-amber-600">IPAS 經濟部人工智慧工程師能力鑑定</span>
+          <h3 class="text-xl font-bold text-slate-900">真題演練與破題解析</h3>
+        </div>
+      </div>
+
+      <div class="space-y-6">
+        <!-- Question 1 -->
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded text-xs font-bold bg-indigo-100 text-indigo-700">歷屆考點 01</span>
+            <span class="text-xs text-slate-400">機器學習模型評估與特徵工程規範</span>
+          </div>
+          <p class="text-sm font-semibold text-slate-800 leading-relaxed">
+            【單選題】在機器學習建模流程中，若在進行 K-Fold 交叉驗證之前，就對「全體資料集」執行缺失值中位數填補與特徵正規化，會造成下列何種最直接的後果？
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <button onclick="checkQuiz(1, 'A', this)" class="quiz-opt-1 p-3 text-left rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition">
+              A. 容易產生模型欠擬合 (Underfitting)，使訓練誤差大幅升高
+            </button>
+            <button onclick="checkQuiz(1, 'B', this)" class="quiz-opt-1 p-3 text-left rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition">
+              B. 資料外洩 (Data Leakage)，造成交叉驗證成效評估虛高且泛化能力不可信
+            </button>
+            <button onclick="checkQuiz(1, 'C', this)" class="quiz-opt-1 p-3 text-left rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition">
+              C. 導致模型無法收斂，在反向傳播時引發梯度消失 (Vanishing Gradient)
+            </button>
+            <button onclick="checkQuiz(1, 'D', this)" class="quiz-opt-1 p-3 text-left rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition">
+              D. 特徵維度爆炸，增加推論時間複雜度
+            </button>
+          </div>
+          <!-- Answer Box (Hidden by default) -->
+          <div id="quiz-ans-1" class="hidden mt-3 p-4 rounded-xl text-xs bg-slate-50 border border-slate-200">
+            <div class="font-bold text-slate-800 mb-1" id="quiz-feedback-1"></div>
+            <div class="text-slate-600 leading-relaxed">
+              <strong>IPAS 官方解析重點：</strong> 在切分資料前對全體數據進行填補或正規化，驗證集（Validation Fold）的資訊（如中位數、平均值）已經混入了預處理參數中。這稱作<strong>資料外洩（Data Leakage）</strong>。正確做法是使用 <code>Pipeline</code>，讓交叉驗證的每一折都在各自的訓練折上計算統計量，再套用至驗證折。
+            </div>
+          </div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded text-xs font-bold bg-indigo-100 text-indigo-700">歷屆考點 02</span>
+            <span class="text-xs text-slate-400">Scikit-Learn API 設計規範</span>
+          </div>
+          <p class="text-sm font-semibold text-slate-800 leading-relaxed">
+            【單選題】關於 Scikit-Learn 中的 <code>Pipeline</code> 物件，下列敘述何者<strong>錯誤</strong>？
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <button onclick="checkQuiz(2, 'A', this)" class="quiz-opt-2 p-3 text-left rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition">
+              A. 管線中除了最後一個估計器外，前面的所有步驟都必須實作 fit() 與 transform() 方法
+            </button>
+            <button onclick="checkQuiz(2, 'B', this)" class="quiz-opt-2 p-3 text-left rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition">
+              B. 對 Pipeline 呼叫 fit() 時，最後一個步驟會被呼叫 fit()，而中間步驟會依序被呼叫 fit_transform()
+            </button>
+            <button onclick="checkQuiz(2, 'C', this)" class="quiz-opt-2 p-3 text-left rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition">
+              C. 對 Pipeline 呼叫 predict() 時，中間所有步驟會重新 fit_transform() 測試資料
+            </button>
+            <button onclick="checkQuiz(2, 'D', this)" class="quiz-opt-2 p-3 text-left rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition">
+              D. 透過 GridSearchCV 調整管線參數時，可使用「步驟名稱__參數名稱」之格式進行超參數指定
+            </button>
+          </div>
+          <!-- Answer Box (Hidden by default) -->
+          <div id="quiz-ans-2" class="hidden mt-3 p-4 rounded-xl text-xs bg-slate-50 border border-slate-200">
+            <div class="font-bold text-slate-800 mb-1" id="quiz-feedback-2"></div>
+            <div class="text-slate-600 leading-relaxed">
+              <strong>IPAS 官方解析重點：</strong> 選項 <strong>C</strong> 錯誤。在推論階段呼叫 <code>predict(X_test)</code> 時，Pipeline 的中間 Transformer <strong>只會呼叫 <code>transform()</code></strong>，直接使用先前訓練時學到的統計量進行轉換，<strong>絕對不能</strong>再次呼叫 <code>fit</code> 或 <code>fit_transform</code>。
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 7: Industrial Case Study -->
+    <section class="bg-indigo-50/60 rounded-3xl p-6 sm:p-8 border border-indigo-100 space-y-4">
+      <div class="flex items-center gap-2 text-indigo-900 font-bold text-lg">
+        <i class="ph ph-factory text-2xl text-indigo-600"></i> 工業落地案例：半導體晶圓瑕疵預測產線
+      </div>
+      <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+        在智慧製造場域中，機台感測器會即時回傳數百維度的數值（如腔體壓力、溫度、RF 射頻功率）。如果研發工程師以傳統方式分開維護 <code>StandardScaler</code>、<code>SimpleImputer</code> 與 <code>XGBoostClassifier</code>，在產線邊緣端（Edge Device）整合時，時常發生「前處理程式版本更新，但模型端沒更新」或「推論腳本漏執行某一項正規化」的維運災難。
+      </p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+        <div class="bg-white p-4 rounded-xl border border-indigo-100 shadow-xs">
+          <div class="text-indigo-600 font-bold text-xs">單一 Artifact 匯出</div>
+          <div class="text-xs text-slate-600 mt-1">使用 <code>joblib.dump(pipeline, 'model_v2.pkl')</code>，將特徵邏輯與分類決策合併打包。</div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-indigo-100 shadow-xs">
+          <div class="text-indigo-600 font-bold text-xs">避免訓練/推論不一致</div>
+          <div class="text-xs text-slate-600 mt-1">產線軟體工程師只需呼叫單一 API <code>pipeline.predict(sensor_payload)</code>，極低出錯率。</div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-indigo-100 shadow-xs">
+          <div class="text-indigo-600 font-bold text-xs">特徵工程與模型聯調</div>
+          <div class="text-xs text-slate-600 mt-1">能在 MLOps 流程中直接利用 AutoML 同時尋找最佳 Imputer 策略與最佳樹深度。</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="border-t border-slate-200 bg-white py-8 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4">
+      IPAS 人工智慧應用工程師 · 機器學習精選考點實務教學 · 單一自包含頁面
+    </div>
+  </footer>
+
+  <!-- Script for Interactive Simulator & Quiz -->
+  <script>
+    // State management for Simulator
+    let currentMode = 'leak'; // 'leak' or 'pipe'
+    let currentStep = 0;
+    let autoInterval = null;
+
+    const simData = {
+      leak: [
+        {
+          title: "步驟 1/3: 全局 fit_transform (高危險動作)",
+          statusText: "外洩觸發中！",
+          statusClass: "bg-rose-100 text-rose-700",
+          panelTitle: "在資料分割前直接計算統計量",
+          panelDesc: "工程師在尚未執行 train_test_split 前，便先對包含 1000 筆的全量資料 (包含未來將成為測試集的樣本) 執行了 scaler.fit_transform()。",
+          panelMath: "計算範圍：μ_all (包含 200 筆測試資料) 與 σ_all",
+          panelTip: "危險：測試集的數值大小已經直接影響了 μ 和 σ 的數值！",
+          render: () => `
+            <div class="w-full flex flex-col items-center gap-4">
+              <div class="w-full max-w-md p-4 rounded-2xl bg-rose-50 border-2 border-rose-400 text-center shadow-sm">
+                <span class="text-xs font-bold text-rose-700">全量資料集 (100% 數據)</span>
+                <div class="mt-2 text-xs text-rose-900 font-mono">
+                  scaler.fit_transform(X_all) <br>
+                  <span class="text-[11px] text-rose-600">❌ 同時吸收了【訓練樣本】與【測試樣本】的均值</span>
+                </div>
+              </div>
+              <div class="text-rose-500 text-xl font-bold">↓ 污染後的數據進行分割 ↓</div>
+              <div class="flex gap-4 w-full max-w-md justify-center">
+                <div class="p-3 bg-slate-200 rounded-xl text-center flex-1 border border-slate-300">
+                  <div class="text-xs font-semibold">訓練集 (80%)</div>
+                  <div class="text-[10px] text-slate-500">帶有已被全域均值標準化的數值</div>
+                </div>
+                <div class="p-3 bg-rose-100 border border-rose-300 rounded-xl text-center flex-1">
+                  <div class="text-xs font-semibold text-rose-800">測試集 (20%)</div>
+                  <div class="text-[10px] text-rose-600">已非盲測 (已參與前處理計算)</div>
+                </div>
+              </div>
+            </div>
+          `
+        },
+        {
+          title: "步驟 2/3: 模型個別擬合 model.fit()",
+          statusText: "模型已獲取作弊資訊",
+          statusClass: "bg-rose-100 text-rose-700",
+          panelTitle: "單獨對訓練集擬合模型權重",
+          panelDesc: "調用 model.fit(X_train_scaled, y_train)。表面上看似只餵給模型訓練集，但其實輸入的特徵早已浸染了測試集的尺度邊界與分佈。",
+          panelMath: "模型學習目標：y = W · X_train_scaled + b",
+          panelTip: "模型在無意識中學到了測試集的分佈特性，泛化能力評估指標已不可信。",
+          render: () => `
+            <div class="w-full flex flex-col items-center gap-4">
+              <div class="flex items-center gap-4 w-full max-w-md justify-center">
+                <div class="p-3 bg-amber-50 border border-amber-300 rounded-xl text-center flex-1">
+                  <span class="text-xs font-bold text-amber-800">X_train_scaled</span>
+                  <div class="text-[10px] text-amber-700 mt-1">隱含全域統計量</div>
+                </div>
+                <span class="text-slate-400 font-bold">➔</span>
+                <div class="p-4 bg-indigo-900 text-white rounded-xl text-center flex-1 shadow-md">
+                  <span class="text-xs font-bold text-indigo-200">model.fit()</span>
+                  <div class="text-[10px] text-slate-300 mt-1">求解權重矩陣 W, b</div>
+                </div>
+              </div>
+              <div class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 text-center max-w-md">
+                <i class="ph ph-warning"></i> 模型權重受到測試集統計偏誤影響，造成虛假的高效能記憶。
+              </div>
+            </div>
+          `
+        },
+        {
+          title: "步驟 3/3: 評估指標虛高 (上線崩潰)",
+          statusText: "上線產生重大偏差",
+          statusClass: "bg-rose-500 text-white",
+          panelTitle: "離線指標極佳，線上即時預測失效",
+          panelDesc: "在測試集上計算 Accuracy 或 AUC 呈現 96% 的優異成效。但當模型部署到產線接收真正未見過的即時資料時，效能雪崩式滑落至 74%。",
+          panelMath: "離線測試準確率: 96.5% (虛假) ➔ 線上真實準確率: 74.2%",
+          panelTip: "這就是工業界典型的「實驗室很準、工廠不會準」的資料外洩現象。",
+          render: () => `
+            <div class="w-full flex flex-col items-center gap-4">
+              <div class="grid grid-cols-2 gap-4 w-full max-w-md">
+                <div class="p-4 rounded-xl bg-white border border-slate-200 text-center shadow-xs">
+                  <div class="text-xs text-slate-500">測試集離線指標</div>
+                  <div class="text-2xl font-black text-rose-600 mt-1">96.5%</div>
+                  <div class="text-[10px] text-rose-500 mt-1">受到資料外洩虛高影響</div>
+                </div>
+                <div class="p-4 rounded-xl bg-white border border-slate-200 text-center shadow-xs">
+                  <div class="text-xs text-slate-500">產線真實資料指標</div>
+                  <div class="text-2xl font-black text-slate-700 mt-1">74.2%</div>
+                  <div class="text-[10px] text-slate-400 mt-1">無法應對未知分佈</div>
+                </div>
+              </div>
+              <div class="text-xs text-center text-slate-600 max-w-md bg-slate-100 p-2 rounded-lg">
+                結論：缺乏 Pipeline 隔離導致的資料外洩，是機器學習專案失敗的主因之一。
+              </div>
+            </div>
+          `
+        }
+      ],
+      pipe: [
+        {
+          title: "步驟 1/3: 嚴格隔離分割 (Train/Test Split)",
+          statusText: "標準工程隔離",
+          statusClass: "bg-emerald-100 text-emerald-800",
+          panelTitle: "在進行任何計算前先切分盲測集",
+          panelDesc: "第一時間先將資料切分為訓練集與測試集。測試集被封存放入保險箱，絕不參與任何前處理的統計估計。",
+          panelMath: "測試集狀態：完全隔離 (Locked & Untouched)",
+          panelTip: "黃金原則：測試集僅作為模型最後的盲測評估，不可洩漏任何特徵維度的統計資訊。",
+          render: () => `
+            <div class="w-full flex flex-col items-center gap-4">
+              <div class="w-full max-w-md p-3 rounded-2xl bg-slate-100 border border-slate-300 text-center">
+                <span class="text-xs font-bold text-slate-700">原始資料集 (Raw Data)</span>
+              </div>
+              <div class="text-slate-400 text-sm font-bold">↓ 嚴格優先分割 ↓</div>
+              <div class="flex gap-4 w-full max-w-md justify-center">
+                <div class="p-4 bg-indigo-50 border-2 border-indigo-400 rounded-xl text-center flex-1 shadow-xs">
+                  <div class="text-xs font-bold text-indigo-800">訓練集 X_train (80%)</div>
+                  <div class="text-[10px] text-indigo-600 mt-1">唯一的參數學習來源</div>
+                </div>
+                <div class="p-4 bg-slate-100 border border-dashed border-slate-400 rounded-xl text-center flex-1">
+                  <div class="text-xs font-bold text-slate-700 flex items-center justify-center gap-1">
+                    <i class="ph ph-lock-key"></i> 測試集 (20%)
+                  </div>
+                  <div class="text-[10px] text-slate-500 mt-1">嚴格保密・未被觸及</div>
+                </div>
+              </div>
+            </div>
+          `
+        },
+        {
+          title: "步驟 2/3: Pipeline.fit(X_train, y_train)",
+          statusText: "Pipeline 內部自動依序流動",
+          statusClass: "bg-emerald-100 text-emerald-800",
+          panelTitle: "管線內自動完成 fit_transform 與 fit",
+          panelDesc: "呼叫 pipe.fit(X_train, y_train)。管線內部依序觸發：前級 Transformer (Scaler) 僅根據 X_train 計算均值與標準差，再自動傳入模型進行 fit()。",
+          panelMath: "內部計算：μ_train = mean(X_train), σ_train = std(X_train)",
+          panelTip: "所有前處理器學得的統計參數，都完整固化在該 Pipeline 物件中。",
+          render: () => `
+            <div class="w-full max-w-md p-4 rounded-2xl bg-indigo-900 text-white shadow-md space-y-3">
+              <div class="flex items-center justify-between text-xs border-b border-indigo-700/60 pb-2">
+                <span class="font-bold text-indigo-300">Pipeline.fit() 內部容器機制</span>
+                <span class="text-[10px] bg-indigo-800 px-2 py-0.5 rounded text-indigo-200">一鍵依序執行</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="bg-indigo-800 p-2.5 rounded-lg text-center flex-1 border border-indigo-700">
+                  <div class="text-xs font-semibold text-amber-300">StandardScaler</div>
+                  <div class="text-[10px] text-indigo-300">內部呼叫 fit_transform()</div>
+                </div>
+                <span class="text-indigo-400 font-bold">➔</span>
+                <div class="bg-indigo-800 p-2.5 rounded-lg text-center flex-1 border border-indigo-700">
+                  <div class="text-xs font-semibold text-emerald-300">Classifier</div>
+                  <div class="text-[10px] text-indigo-300">接收轉換數據呼叫 fit()</div>
+                </div>
+              </div>
+            </div>
+          `
+        },
+        {
+          title: "步驟 3/3: Pipeline.predict(X_test) 純淨推論",
+          statusText: "真實泛化能力驗證",
+          statusClass: "bg-emerald-600 text-white",
+          panelTitle: "推論階段絕不呼叫 fit，僅用 transform",
+          panelDesc: "對測試集呼叫 pipe.predict(X_test)。Pipeline 自動調用剛才從訓練集學到的 μ_train 與 σ_train 進行縮放，隨後直接交由模型產出預測標籤。",
+          panelMath: "Z_test = (X_test - μ_train) / σ_train  ➔ Predict(Z_test)",
+          panelTip: "無任何資料外洩！離線測試結果與線上真實成效保持高度一致。",
+          render: () => `
+            <div class="w-full flex flex-col items-center gap-4">
+              <div class="w-full max-w-md p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-center">
+                <div class="text-xs font-bold">乾淨的泛化能力評估</div>
+                <div class="text-2xl font-black text-emerald-700 mt-1">88.3%</div>
+                <div class="text-[11px] text-emerald-600 mt-1">線上與線下表現一致，具備高信賴度</div>
+              </div>
+              <div class="p-3 bg-white rounded-xl border border-slate-200 text-xs text-slate-600 max-w-md text-center">
+                <i class="ph ph-check-circle text-emerald-600"></i> 在 5-Fold 交叉驗證中，每個折均能保持完美的獨立性！
+              </div>
+            </div>
+          `
+        }
+      ]
+    };
+
+    function updateSimUI() {
+      const currentList = simData[currentMode];
+      const step = currentList[currentStep];
+
+      // Update Top indicators
+      document.getElementById('sim-step-title').innerText = step.title;
+      const statusBadge = document.getElementById('sim-status-badge');
+      statusBadge.innerText = step.statusText;
+      statusBadge.className = `px-2.5 py-0.5 rounded-full text-xs font-bold ${step.statusClass}`;
+
+      // Update Graphic
+      document.getElementById('canvas-area').innerHTML = step.render();
+
+      // Update Explanation Panel
+      document.getElementById('panel-title').innerText = step.panelTitle;
+      document.getElementById('panel-desc').innerText = step.panelDesc;
+      document.getElementById('panel-math-box').innerText = step.panelMath;
+      document.getElementById('panel-tip').innerText = step.panelTip;
+
+      // Update button states
+      document.getElementById('btn-prev').disabled = currentStep === 0;
+      document.getElementById('btn-next').disabled = currentStep === currentList.length - 1;
+
+      // Render math if KaTeX is available
+      if (window.renderMathInElement) {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false},
+            {left: '\\(', right: '\\)', display: false},
+            {left: '\\[', right: '\\]', display: true}
+          ],
+          throwOnError: false
+        });
+      }
+    }
+
+    function setMode(mode) {
+      if (autoInterval) clearInterval(autoInterval);
+      currentMode = mode;
+      currentStep = 0;
+
+      const btnLeak = document.getElementById('btn-mode-leak');
+      const btnPipe = document.getElementById('btn-mode-pipe');
+
+      if (mode === 'leak') {
+        btnLeak.className = "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition bg-rose-500 text-white shadow-sm flex items-center gap-1.5";
+        btnPipe.className = "px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-indigo-600 transition flex items-center gap-1.5";
+      } else {
+        btnPipe.className = "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition bg-emerald-600 text-white shadow-sm flex items-center gap-1.5";
+        btnLeak.className = "px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-rose-600 transition flex items-center gap-1.5";
+      }
+      updateSimUI();
+    }
+
+    function nextStep() {
+      if (currentStep < simData[currentMode].length - 1) {
+        currentStep++;
+        updateSimUI();
+      }
+    }
+
+    function prevStep() {
+      if (currentStep > 0) {
+        currentStep--;
+        updateSimUI();
+      }
+    }
+
+    function resetSim() {
+      if (autoInterval) clearInterval(autoInterval);
+      currentStep = 0;
+      updateSimUI();
+    }
+
+    function autoPlay() {
+      if (autoInterval) clearInterval(autoInterval);
+      currentStep = 0;
+      updateSimUI();
+      autoInterval = setInterval(() => {
+        if (currentStep < simData[currentMode].length - 1) {
+          currentStep++;
+          updateSimUI();
+        } else {
+          clearInterval(autoInterval);
+        }
+      }, 2500);
+    }
+
+    // Quiz logic
+    function checkQuiz(qNum, selectedOption, btnElem) {
+      const ansBox = document.getElementById(`quiz-ans-${qNum}`);
+      const feedback = document.getElementById(`quiz-feedback-${qNum}`);
+      const allBtns = document.querySelectorAll(`.quiz-opt-${qNum}`);
+      
+      allBtns.forEach(b => {
+        b.classList.remove('bg-emerald-100', 'border-emerald-500', 'bg-rose-100', 'border-rose-500');
+      });
+
+      if (qNum === 1) {
+        ansBox.classList.remove('hidden');
+        if (selectedOption === 'B') {
+          btnElem.classList.add('bg-emerald-100', 'border-emerald-500');
+          feedback.innerHTML = `<span class="text-emerald-700"><i class="ph-bold ph-check"></i> 回答正確！答案為 (B)</span>`;
+        } else {
+          btnElem.classList.add('bg-rose-100', 'border-rose-500');
+          feedback.innerHTML = `<span class="text-rose-700"><i class="ph-bold ph-x"></i> 回答錯誤。正確答案為 (B)</span>`;
+        }
+      } else if (qNum === 2) {
+        ansBox.classList.remove('hidden');
+        if (selectedOption === 'C') {
+          btnElem.classList.add('bg-emerald-100', 'border-emerald-500');
+          feedback.innerHTML = `<span class="text-emerald-700"><i class="ph-bold ph-check"></i> 回答正確！答案為 (C)</span>`;
+        } else {
+          btnElem.classList.add('bg-rose-100', 'border-rose-500');
+          feedback.innerHTML = `<span class="text-rose-700"><i class="ph-bold ph-x"></i> 回答錯誤。正確答案為 (C)</span>`;
+        }
+      }
+    }
+
+    // Initialize Simulator on load
+    window.onload = function() {
+      if (window.renderMathInElement) {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false},
+            {left: '\\(', right: '\\)', display: false},
+            {left: '\\[', right: '\\]', display: true}
+          ],
+          throwOnError: false
+        });
+      }
+      updateSimUI();
+    };
+  </script>
+</body>
+</html>
