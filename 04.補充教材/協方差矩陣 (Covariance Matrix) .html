@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iPAS AI 實戰教學：協方差矩陣 (Covariance Matrix) 互動實驗室</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- KaTeX for math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+TC:wght@300;400;600;700;900&display=swap');
+    body {
+      font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .code-font {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+
+  <!-- Navigation Bar -->
+  <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-400 flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/20">
+          $\mathbf{\Sigma}$
+        </div>
+        <div>
+          <span class="text-xs uppercase tracking-wider text-indigo-400 font-semibold block">iPAS AI 鑑定必考精要</span>
+          <h1 class="text-lg font-bold text-slate-100 leading-tight">協方差矩陣 (Covariance Matrix) 視覺實驗室</h1>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2">
+        <a href="../index.html" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs sm:text-sm font-medium border border-slate-700 text-slate-300 hover:text-white transition flex items-center gap-1.5">
+          <i data-lucide="home" class="w-4 h-4"></i> 回首頁
+        </a>
+        <a href="#lab-section" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs sm:text-sm font-medium transition flex items-center gap-1.5 shadow-md shadow-indigo-500/30">
+          <i data-lucide="play" class="w-4 h-4"></i> 動態模擬器
+        </a>
+        <a href="#quiz-section" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs sm:text-sm font-medium border border-slate-700 transition flex items-center gap-1.5">
+          <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> 考題實戰
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+    <!-- 一句話解說 Banner -->
+    <section class="bg-gradient-to-r from-indigo-900/60 via-slate-900 to-cyan-950/60 border border-indigo-500/30 p-5 rounded-2xl shadow-lg relative overflow-hidden">
+      <div class="flex items-start sm:items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0 text-indigo-300">
+          <i data-lucide="zap" class="w-6 h-6"></i>
+        </div>
+        <div class="space-y-1">
+          <span class="text-xs uppercase tracking-widest text-indigo-400 font-bold flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span> 一句話解說
+          </span>
+          <p class="text-base sm:text-lg font-bold text-white leading-relaxed">
+            協方差矩陣是用來衡量多維資料中「各維度自身離散程度（方差）」與「維度兩兩之間協同變動趨勢（協方差）」的對稱半正定方陣。
+          </p>
+          <p class="text-xs sm:text-sm text-slate-300 pt-1.5 leading-relaxed border-t border-indigo-500/20">
+            協方差矩陣（Covariance Matrix，又稱共變異數矩陣）是一張用來記錄「多個項目各自的波動程度」以及「項目彼此之間如何連動」的統計表格。它能幫助我們一眼看穿多組數據是同漲同跌、此消彼長，還是完全不相干。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 生活化例子 (日常生活購物與投資理財) -->
+    <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl space-y-6">
+      <div class="border-b border-slate-800 pb-3">
+        <span class="text-xs font-bold text-amber-400 tracking-wider uppercase">Real-World Intuition</span>
+        <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+          <i data-lucide="coffee" class="w-6 h-6 text-amber-400"></i> 生活化例子：拆解協方差矩陣的運作邏輯
+        </h2>
+        <p class="text-xs sm:text-sm text-slate-400 mt-1">
+          以下透過「日常購物支出」與「投資理財」兩個生活例子，帶你輕鬆直觀看懂數值背後的意義。
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- 生活例子一：每週超市購物籃 -->
+        <div class="bg-slate-950 p-5 sm:p-6 rounded-xl border border-slate-800 space-y-4">
+          <div class="flex items-center gap-2.5">
+            <span class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-xs border border-amber-500/30">1</span>
+            <h3 class="text-base font-bold text-white">生活例子一：每週超市購物籃</h3>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            假設你記錄了連續幾週去超市買「咖啡豆」與「牛奶」的花費，並整理出一張 $2 \times 2$ 的協方差矩陣：
+          </p>
+          
+          <!-- 表格展示 -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left border-collapse border border-slate-800 rounded-lg overflow-hidden">
+              <thead>
+                <tr class="bg-slate-900 text-slate-300 border-b border-slate-800">
+                  <th class="p-2.5 border-r border-slate-800 font-semibold text-slate-400">項目</th>
+                  <th class="p-2.5 border-r border-slate-800 font-semibold text-amber-300">咖啡豆花費</th>
+                  <th class="p-2.5 font-semibold text-cyan-300">牛奶花費</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800/80">
+                <tr class="hover:bg-slate-900/40">
+                  <td class="p-2.5 border-r border-slate-800 font-semibold text-amber-300">咖啡豆花費</td>
+                  <td class="p-2.5 border-r border-slate-800 font-mono text-indigo-300 font-bold bg-indigo-950/20">100 <span class="text-[10px] text-slate-400 font-normal">（咖啡豆變異數）</span></td>
+                  <td class="p-2.5 font-mono text-amber-300 font-bold">60 <span class="text-[10px] text-slate-400 font-normal">（兩者協方差）</span></td>
+                </tr>
+                <tr class="hover:bg-slate-900/40">
+                  <td class="p-2.5 border-r border-slate-800 font-semibold text-cyan-300">牛奶花費</td>
+                  <td class="p-2.5 border-r border-slate-800 font-mono text-amber-300 font-bold">60 <span class="text-[10px] text-slate-400 font-normal">（兩者協方差）</span></td>
+                  <td class="p-2.5 font-mono text-indigo-300 font-bold bg-indigo-950/20">80 <span class="text-[10px] text-slate-400 font-normal">（牛奶變異數）</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="space-y-3 pt-1 text-xs">
+            <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800/80">
+              <span class="font-bold text-indigo-300 block mb-1">● 對角線數字（變異數 Variance）</span>
+              <p class="text-slate-400 leading-relaxed">
+                左上角的 <strong>100</strong> 代表咖啡豆每週花費的波動幅度。數值越大，代表你買咖啡豆的金額越不固定（有時買特價品，有時買高單價莊園豆）。右下角的 <strong>80</strong> 則是牛奶花費的波動幅度。
+              </p>
+            </div>
+            <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800/80">
+              <span class="font-bold text-amber-300 block mb-1">● 非對角線數字（協方差 Covariance）</span>
+              <p class="text-slate-400 leading-relaxed">
+                右上與左下都是 <strong>60（正數）</strong>，代表兩者呈現正向連動。因為你習慣喝拿鐵，只要這週多買了咖啡豆，通常也會順手多買幾瓶牛奶。
+              </p>
+            </div>
+            <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800/80">
+              <span class="font-bold text-slate-300 block mb-1">● 如果加入「衛生紙」</span>
+              <p class="text-slate-400 leading-relaxed">
+                若矩陣加入第三項「衛生紙」，它與咖啡豆的協方差可能會<strong>接近 0</strong>。這代表買不買衛生紙，跟這週有沒有買咖啡豆完全沒有關係。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 生活例子二：投資組合的風險分散 -->
+        <div class="bg-slate-950 p-5 sm:p-6 rounded-xl border border-slate-800 space-y-4">
+          <div class="flex items-center gap-2.5">
+            <span class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-bold text-xs border border-emerald-500/30">2</span>
+            <h3 class="text-base font-bold text-white">生活例子二：投資組合的風險分散</h3>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            在理財規劃中，協方差矩陣是「雞蛋不要放在同一個籃子裡」的數學依據。假設你同時觀察「科技股」、「雨傘工廠股票」與「黃金」：
+          </p>
+
+          <div class="space-y-3 pt-1 text-xs">
+            <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800/80">
+              <span class="font-bold text-emerald-400 block mb-1">● 正協方差（同漲同跌）</span>
+              <p class="text-slate-400 leading-relaxed">
+                科技股與半導體設備股的協方差是很大的正數。景氣好時兩者一起大漲，景氣差時也一起暴跌，同時持有無法有效分散風險。
+              </p>
+            </div>
+            <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800/80">
+              <span class="font-bold text-rose-400 block mb-1">● 負協方差（此消彼長）</span>
+              <p class="text-slate-400 leading-relaxed">
+                「冰淇淋店」與「雨傘工廠」的協方差通常是負數。大太陽時冰淇淋大賣、雨傘滯銷；連續豪雨時雨傘大賣、冰淇淋沒人買。把這兩者放進同一個投資組合，整體收益就會變得非常平穩。
+              </p>
+            </div>
+            <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800/80">
+              <span class="font-bold text-slate-300 block mb-1">● 零協方差（互不干擾）</span>
+              <p class="text-slate-400 leading-relaxed">
+                「黃金價格」與「本地餐飲業營收」的協方差接近 0。兩者受不同的市場因素影響，各自獨立波動。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 快速判讀口訣 -->
+      <div class="bg-gradient-to-r from-amber-950/40 via-slate-950 to-indigo-950/40 p-4 sm:p-5 rounded-xl border border-amber-500/30">
+        <h4 class="text-sm font-bold text-amber-300 flex items-center gap-2 mb-2">
+          <i data-lucide="lightbulb" class="w-4 h-4 text-amber-400"></i> 快速判讀口訣
+        </h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          <div class="bg-slate-900/70 p-3 rounded-lg border border-slate-800">
+            <span class="font-semibold text-indigo-300 block mb-1">1. 看對角線（左上到右下）</span>
+            <span class="text-slate-300">數字越大，代表該項目自己越不穩定（波動幅度大）。</span>
+          </div>
+          <div class="bg-slate-900/70 p-3 rounded-lg border border-slate-800 space-y-1">
+            <span class="font-semibold text-amber-300 block">2. 看其他格子（非對角線）</span>
+            <div class="text-slate-300 flex items-center gap-2">
+              <span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 font-mono text-[10px] border border-emerald-800">正數 &gt; 0</span>
+              <span>好兄弟，一起變大或一起變小。</span>
+            </div>
+            <div class="text-slate-300 flex items-center gap-2">
+              <span class="px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 font-mono text-[10px] border border-rose-800">負數 &lt; 0</span>
+              <span>蹺蹺板，一個變大、另一個就變小。</span>
+            </div>
+            <div class="text-slate-300 flex items-center gap-2">
+              <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px] border border-slate-700">接近 0</span>
+              <span>陌生人，各走各的路、互不干擾。</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Hero / Summary Card -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/40 border border-slate-800 p-6 sm:p-8 rounded-2xl shadow-xl flex flex-col justify-between">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 text-xs font-semibold mb-4 border border-indigo-500/20">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> 核心定義精要
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-4 leading-snug">
+            捕捉多維隨機變數的「分散度」與「聯動趨勢」
+          </h2>
+          <p class="text-slate-300 text-sm sm:text-base leading-relaxed mb-6">
+            協方差矩陣 $\mathbf{\Sigma} \in \mathbb{R}^{d \times d}$ 是機器學習與特徵工程的幾何基石。對角線反映單特徵自身的<strong>變異數（Variance）</strong>，非對角線則刻劃兩特徵間的<strong>共變異（Covariance）</strong>。在 PCA 降維、馬氏距離與異常檢測中扮演中樞角色。
+          </p>
+        </div>
+        <!-- 3 Feature Chips -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-slate-800/80">
+          <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-xs text-slate-400 block mb-1">矩陣對稱性</span>
+            <span class="text-sm font-bold text-amber-400">$\mathbf{\Sigma} = \mathbf{\Sigma}^T$ (對稱)</span>
+            <p class="text-xs text-slate-500 mt-1">兩兩變數間的關聯方向對等</p>
+          </div>
+          <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-xs text-slate-400 block mb-1">幾何定性</span>
+            <span class="text-sm font-bold text-cyan-400">半正定 (Positive Semi-Definite)</span>
+            <p class="text-xs text-slate-500 mt-1">特徵值 $\lambda_i \ge 0$，無負方差</p>
+          </div>
+          <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-xs text-slate-400 block mb-1">PCA 物理意義</span>
+            <span class="text-sm font-bold text-emerald-400">特徵向量 = 主軸方向</span>
+            <p class="text-xs text-slate-500 mt-1">特徵值對應投影方差大小</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Formula Card -->
+      <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between shadow-xl">
+        <div>
+          <h3 class="text-base font-bold text-white flex items-center gap-2 mb-3">
+            <i data-lucide="binary" class="w-4 h-4 text-indigo-400"></i> 樣本協方差矩陣公式
+          </h3>
+          <p class="text-xs text-slate-400 mb-4">
+            設資料矩陣 $\tilde{\mathbf{X}} \in \mathbb{R}^{n \times d}$ 為已經過中心化（Zero-centered）之樣本矩陣：
+          </p>
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 mb-4 text-center">
+            <div class="text-lg text-indigo-300 font-semibold mb-1">
+              $$\mathbf{\Sigma} = \frac{1}{n - 1} \tilde{\mathbf{X}}^T \tilde{\mathbf{X}}$$
+            </div>
+            <div class="text-xs text-slate-400">
+              $$\Sigma_{ij} = \frac{1}{n-1} \sum_{k=1}^n (x_{ki} - \mu_i)(x_{kj} - \mu_j)$$
+            </div>
+          </div>
+          <ul class="text-xs space-y-2 text-slate-300">
+            <li class="flex items-start gap-2">
+              <span class="text-indigo-400 font-bold">•</span>
+              <span>$n - 1$：貝塞爾校正（Bessel's correction），確保無偏估計。</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-indigo-400 font-bold">•</span>
+              <span>若特徵經 Z-score 標準化，則協方差矩陣即等同<strong>相關係數矩陣 (Correlation Matrix)</strong>。</span>
+            </li>
+          </ul>
+        </div>
+        <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-500 flex justify-between">
+          <span>維度：$d$ 個特徵時為 $d \times d$</span>
+          <span class="text-emerald-400 font-medium">iPAS 常用 2D & 3D 運算</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive Simulation & PCA Visualization Lab -->
+    <section id="lab-section" class="space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        <div>
+          <span class="text-xs font-bold text-indigo-400 tracking-wider uppercase">Hands-on Experience</span>
+          <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+            <i data-lucide="sliders" class="w-6 h-6 text-indigo-500"></i> 動態幾何分佈與協方差實驗室
+          </h2>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="preset-pos" class="px-3 py-1.5 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+            正相關 (Positive)
+          </button>
+          <button id="preset-neg" class="px-3 py-1.5 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+            負相關 (Negative)
+          </button>
+          <button id="preset-indep" class="px-3 py-1.5 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+            獨立/無相關 (Zero)
+          </button>
+          <button id="btn-randomize" class="px-3 py-1.5 rounded-lg text-xs bg-indigo-600/80 hover:bg-indigo-600 text-white font-medium transition flex items-center gap-1">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> 重抽樣本
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Canvas Visualizer (7 cols) -->
+        <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-xl">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span> 2D 數據點分佈 (N=120)
+              </span>
+              <span class="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+                <span class="w-3 h-0.5 bg-emerald-400"></span> 第一主成分 (PC1)
+              </span>
+              <span class="text-xs font-semibold text-rose-400 flex items-center gap-1.5">
+                <span class="w-3 h-0.5 bg-rose-400"></span> 第二主成分 (PC2)
+              </span>
+            </div>
+            <span class="text-[11px] text-slate-500">支援即時滑鼠懸停</span>
+          </div>
+
+          <!-- Canvas Container -->
+          <div class="relative w-full aspect-[4/3] bg-slate-950 rounded-xl overflow-hidden border border-slate-800">
+            <canvas id="scatterCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+            <div id="canvasTooltip" class="absolute hidden px-2 py-1 bg-slate-800 text-slate-200 text-xs rounded border border-slate-700 shadow pointer-events-none"></div>
+          </div>
+
+          <!-- Interactive Controls Below Canvas -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5 pt-4 border-t border-slate-800">
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-400">X1 變異量 ($\sigma_1^2$)</span>
+                <span id="label-var1" class="text-indigo-400 font-mono font-bold">2.0</span>
+              </div>
+              <input type="range" id="slider-var1" min="0.2" max="5.0" step="0.1" value="2.0" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-400">X2 變異量 ($\sigma_2^2$)</span>
+                <span id="label-var2" class="text-indigo-400 font-mono font-bold">1.2</span>
+              </div>
+              <input type="range" id="slider-var2" min="0.2" max="5.0" step="0.1" value="1.2" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-400">相關性 ($\rho_{12}$)</span>
+                <span id="label-corr" class="text-amber-400 font-mono font-bold">0.75</span>
+              </div>
+              <input type="range" id="slider-corr" min="-0.95" max="0.95" step="0.05" value="0.75" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- Real-time Matrix & Mathematical Inspector (5 cols) -->
+        <div class="lg:col-span-5 space-y-4">
+          <!-- Real-time Calculated Matrix Card -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+            <h3 class="text-sm font-bold text-white mb-3 flex items-center justify-between">
+              <span class="flex items-center gap-2">
+                <i data-lucide="layout-grid" class="w-4 h-4 text-cyan-400"></i> 即時經驗協方差矩陣 $\mathbf{\Sigma}$
+              </span>
+              <span class="text-[11px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800/60 font-mono">2×2 S-P-D</span>
+            </h3>
+
+            <!-- 2x2 Matrix Render Block -->
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-center">
+              <div class="text-center font-mono">
+                <span class="text-2xl text-slate-500">[</span>
+                <div class="inline-grid grid-cols-2 gap-3 text-center align-middle mx-2 my-1">
+                  <!-- Row 1 -->
+                  <div class="p-2.5 rounded-lg bg-indigo-950/40 border border-indigo-500/30">
+                    <span class="text-[10px] text-slate-400 block">Var(X1)</span>
+                    <span id="mat-c11" class="text-base font-bold text-indigo-300">2.04</span>
+                  </div>
+                  <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                    <span class="text-[10px] text-slate-400 block">Cov(X1, X2)</span>
+                    <span id="mat-c12" class="text-base font-bold text-amber-300">1.18</span>
+                  </div>
+                  <!-- Row 2 -->
+                  <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                    <span class="text-[10px] text-slate-400 block">Cov(X2, X1)</span>
+                    <span id="mat-c21" class="text-base font-bold text-amber-300">1.18</span>
+                  </div>
+                  <div class="p-2.5 rounded-lg bg-indigo-950/40 border border-indigo-500/30">
+                    <span class="text-[10px] text-slate-400 block">Var(X2)</span>
+                    <span id="mat-c22" class="text-base font-bold text-indigo-300">1.21</span>
+                  </div>
+                </div>
+                <span class="text-2xl text-slate-500">]</span>
+              </div>
+            </div>
+
+            <!-- Matrix Invariants / Statistics -->
+        <div class="grid grid-cols-2 gap-3 mt-3">
+          <div class="bg-slate-950/80 p-3 rounded-lg border border-slate-800">
+            <span class="text-[11px] text-slate-400 block">跡 (Trace / 總方差)</span>
+            <span id="stat-trace" class="text-sm font-bold text-emerald-400 font-mono">3.25</span>
+            <span class="text-[10px] text-slate-500 block">$\text{Tr}(\mathbf{\Sigma}) = \lambda_1 + \lambda_2$</span>
+          </div>
+          <div class="bg-slate-950/80 p-3 rounded-lg border border-slate-800">
+            <span class="text-[11px] text-slate-400 block">行列式 (Determinant)</span>
+            <span id="stat-det" class="text-sm font-bold text-cyan-400 font-mono">1.08</span>
+            <span class="text-[10px] text-slate-500 block">幾何體積廣義方差</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Eigenvalues & PCA Direction Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+        <h3 class="text-sm font-bold text-white mb-2 flex items-center gap-2">
+          <i data-lucide="compass" class="w-4 h-4 text-emerald-400"></i> PCA 特徵分解 (Spectral Decomposition)
+        </h3>
+        <p class="text-xs text-slate-400 mb-3">協方差矩陣之特徵向量即主成分投影向量：</p>
+        <div class="space-y-2 text-xs">
+          <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 flex items-center justify-between">
+            <div>
+              <span class="font-bold text-emerald-400">PC1: $\lambda_1 = $ <span id="val-lambda1" class="font-mono">2.85</span></span>
+              <div class="text-[11px] text-slate-500">解釋方差比：<span id="val-ratio1" class="text-emerald-300 font-mono">87.7%</span></div>
+            </div>
+            <span id="vec-v1" class="font-mono text-slate-300 text-[11px] bg-slate-900 px-2 py-1 rounded">[0.82, 0.57]</span>
+          </div>
+          <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 flex items-center justify-between">
+            <div>
+              <span class="font-bold text-rose-400">PC2: $\lambda_2 = $ <span id="val-lambda2" class="font-mono">0.40</span></span>
+              <div class="text-[11px] text-slate-500">解釋方差比：<span id="val-ratio2" class="text-rose-300 font-mono">12.3%</span></div>
+            </div>
+            <span id="vec-v2" class="font-mono text-slate-300 text-[11px] bg-slate-900 px-2 py-1 rounded">[-0.57, 0.82]</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+    <!-- 核心演算法與機器學習應用 (三大關鍵應用) -->
+    <section class="space-y-4">
+      <div class="border-b border-slate-800 pb-3">
+        <span class="text-xs font-bold text-indigo-400 tracking-wider uppercase">Machine Learning Applications</span>
+        <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+          <i data-lucide="layers" class="w-6 h-6 text-indigo-400"></i> 機器學習核心三大演算法應用
+        </h2>
+        <p class="text-xs sm:text-sm text-slate-400 mt-1">
+          協方差矩陣在降維、機率生成分類模型與異常偵測的關鍵作用與數學原理：
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- PCA -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between hover:border-emerald-500/50 transition shadow-xl">
+          <div>
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center mb-4">
+              <i data-lucide="maximize-2" class="w-5 h-5"></i>
+            </div>
+            <h3 class="text-base font-bold text-white mb-2 flex items-center gap-2">
+              主成分分析 (PCA)
+            </h3>
+            <p class="text-xs text-slate-300 leading-relaxed mb-4">
+              對協方差矩陣進行<strong>特徵分解（Eigendecomposition）</strong>，可找出資料方差最大的方向（即主成分）。
+            </p>
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 text-xs font-mono text-emerald-300 space-y-1">
+              <div>$$\mathbf{\Sigma} \mathbf{w} = \lambda \mathbf{w}$$</div>
+              <div class="text-[11px] text-slate-400 text-center">$\max_{\|\mathbf{w}\|=1} \operatorname{Var}(\mathbf{Xw}) = \lambda_{\max}$</div>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800/70 text-[11px] text-slate-400">
+            📌 特徵向量即為保留最大資訊量的正交投影基底。
+          </div>
+        </div>
+
+        <!-- LDA / GDA -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between hover:border-indigo-500/50 transition shadow-xl">
+          <div>
+            <div class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mb-4">
+              <i data-lucide="git-merge" class="w-5 h-5"></i>
+            </div>
+            <h3 class="text-base font-bold text-white mb-2 flex items-center gap-2">
+              線性與高斯判別分析 (LDA / GDA)
+            </h3>
+            <p class="text-xs text-slate-300 leading-relaxed mb-4">
+              作為<strong>多變量常態分布</strong>的核心參數，用來決定各類別的幾何分佈形狀與分類決策邊界。
+            </p>
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 text-xs font-mono text-indigo-300 space-y-1">
+              <div class="text-[10px] text-center overflow-x-auto">$$p(\mathbf{x}|y) \sim \mathcal{N}(\boldsymbol{\mu}_k, \mathbf{\Sigma})$$</div>
+              <div class="text-[11px] text-slate-400 text-center">等方差時為線性邊界 (LDA)，不等時為二次邊界 (QDA)</div>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800/70 text-[11px] text-slate-400">
+            📌 共用協方差矩陣決定類別內分散度（Within-class scatter）。
+          </div>
+        </div>
+
+        <!-- Mahalanobis Distance -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between hover:border-cyan-500/50 transition shadow-xl">
+          <div>
+            <div class="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center justify-center mb-4">
+              <i data-lucide="crosshair" class="w-5 h-5"></i>
+            </div>
+            <h3 class="text-base font-bold text-white mb-2 flex items-center gap-2">
+              馬哈拉諾比斯距離 (Mahalanobis Distance)
+            </h3>
+            <p class="text-xs text-slate-300 leading-relaxed mb-4">
+              在<strong>異常值偵測</strong>中，利用協方差矩陣的逆矩陣 $\mathbf{\Sigma}^{-1}$，計算考慮到特徵尺度與維度相關性的統計距離。
+            </p>
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 text-xs font-mono text-cyan-300 space-y-1">
+              <div class="text-[11px] text-center">$$D_M(\mathbf{x}) = \sqrt{(\mathbf{x}-\boldsymbol{\mu})^T \mathbf{\Sigma}^{-1} (\mathbf{x}-\boldsymbol{\mu})}$$</div>
+              <div class="text-[11px] text-slate-400 text-center">消除維度相關性與各向異性</div>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800/70 text-[11px] text-slate-400">
+            📌 形成等機率橢球面，精準偵測常態多維分佈的離群點。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step-by-Step Numerical Calculation Sandbox -->
+    <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <span class="text-xs font-bold text-indigo-400 tracking-wider uppercase">Step-by-Step Calculator</span>
+          <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+            <i data-lucide="calculator" class="w-6 h-6 text-indigo-400"></i> 協方差矩陣分步手算演算法
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">
+            模擬 iPAS 手算考題，自動將輸入的 3 筆樣本資料逐步展開中心化與矩陣乘積。
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btn-calc-step" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-md shadow-indigo-600/30">
+            <i data-lucide="play" class="w-4 h-4"></i> 單步執行演練
+          </button>
+          <button id="btn-calc-reset" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 transition">
+            重設
+          </button>
+        </div>
+      </div>
+
+      <!-- Step Cards Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <!-- Step 1 -->
+        <div id="step-card-1" class="bg-slate-950 p-4 rounded-xl border border-indigo-500/40 relative">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-indigo-400 flex items-center gap-1.5">
+              <span class="w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[10px]">1</span> 原始輸入資料
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400 mb-2">3 筆二維數據 ($n=3$)</p>
+          <div class="font-mono text-xs text-slate-300 space-y-1 bg-slate-900/80 p-2.5 rounded border border-slate-800">
+            <div>P1: (1, 2)</div>
+            <div>P2: (3, 4)</div>
+            <div>P3: (5, 9)</div>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div id="step-card-2" class="bg-slate-950 p-4 rounded-xl border border-slate-800 transition duration-300">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+              <span class="w-5 h-5 rounded-full bg-slate-700 text-white flex items-center justify-center text-[10px]">2</span> 均值與中心化
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400 mb-2">求 $\mu_1, \mu_2$ 並減去</p>
+          <div id="calc-step2-content" class="font-mono text-xs text-slate-400 space-y-1 bg-slate-900/80 p-2.5 rounded border border-slate-800">
+            <div>$\mu_1 = 3, \mu_2 = 5$</div>
+            <div class="text-[10px] text-slate-500">$\tilde{X}_1 = [-2, 0, 2]^T$</div>
+            <div class="text-[10px] text-slate-500">$\tilde{X}_2 = [-3, -1, 4]^T$</div>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div id="step-card-3" class="bg-slate-950 p-4 rounded-xl border border-slate-800 transition duration-300">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+              <span class="w-5 h-5 rounded-full bg-slate-700 text-white flex items-center justify-center text-[10px]">3</span> 外積轉置相乘
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400 mb-2">計算 $\tilde{\mathbf{X}}^T \tilde{\mathbf{X}}$ 元素和</p>
+          <div id="calc-step3-content" class="font-mono text-[11px] text-slate-400 space-y-1 bg-slate-900/80 p-2.5 rounded border border-slate-800">
+            <div>$S_{11} = 4 + 0 + 4 = 8$</div>
+            <div>$S_{22} = 9 + 1 + 16 = 26$</div>
+            <div>$S_{12} = 6 + 0 + 8 = 14$</div>
+          </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div id="step-card-4" class="bg-slate-950 p-4 rounded-xl border border-slate-800 transition duration-300">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+              <span class="w-5 h-5 rounded-full bg-slate-700 text-white flex items-center justify-center text-[10px]">4</span> 除以自由度
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400 mb-2">除以無偏自由度 $(n-1 = 2)$</p>
+          <div id="calc-step4-content" class="font-mono text-xs text-emerald-400 bg-slate-900/80 p-2.5 rounded border border-slate-800 text-center font-bold">
+            $$\mathbf{\Sigma} = \begin{bmatrix} 4 & 7 \\ 7 & 13 \end{bmatrix}$$
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Industry Case Studies & Applications -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 hover:border-indigo-500/50 transition">
+        <div class="w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-4">
+          <i data-lucide="cpu" class="w-5 h-5"></i>
+        </div>
+        <h3 class="text-base font-bold text-white mb-2">半導體製程異常監控</h3>
+        <p class="text-xs text-slate-400 leading-relaxed">
+          晶圓蝕刻涉及腔體壓力、射頻功率、氣體流量等百種變數。利用<strong>馬氏距離</strong> $D_M = \sqrt{(\mathbf{x}-\boldsymbol{\mu})^T \mathbf{\Sigma}^{-1} (\mathbf{x}-\boldsymbol{\mu})}$ 解耦維度共線性，可偵測各維度均在規格內、但「多變量組合失衡」的致命漂移。
+        </p>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 hover:border-cyan-500/50 transition">
+        <div class="w-10 h-10 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-4">
+          <i data-lucide="activity" class="w-5 h-5"></i>
+        </div>
+        <h3 class="text-base font-bold text-white mb-2">旋轉機械震動頻譜解耦</h3>
+        <p class="text-xs text-slate-400 leading-relaxed">
+          工業三軸加速度感測器 ($X, Y, Z$) 採集主軸震動訊號。透過計算協方差矩陣並執行特徵分解，第一特徵向量即指示偏心離心力的主延伸軸，第二特徵向量指示軸承滾珠受損的衝擊方向。
+        </p>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 hover:border-emerald-500/50 transition">
+        <div class="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-4">
+          <i data-lucide="navigation" class="w-5 h-5"></i>
+        </div>
+        <h3 class="text-base font-bold text-white mb-2">卡爾曼濾波與導航融合</h3>
+        <p class="text-xs text-slate-400 leading-relaxed">
+          自駕車將輪速計與光達/IMU 融合時，狀態協方差矩陣 $\mathbf{P}$ 與量測雜訊協方差矩陣 $\mathbf{R}$ 控制著預測更新權重，保證系統在嘈雜感測器數據下具備最優不確定性估計。
+        </p>
+      </div>
+    </section>
+
+    <!-- Python & PyTorch Code Lab with Syntax Highlight Feel -->
+    <section class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50">
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+          <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+          <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+          <span class="text-xs font-semibold text-slate-300 ml-2">實戰程式碼對比：NumPy vs PyTorch Tensor</span>
+        </div>
+        <button id="btn-copy-code" class="text-xs px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1.5">
+          <i data-lucide="copy" class="w-3.5 h-3.5"></i> 複製程式碼
+        </button>
+      </div>
+      <div class="p-6 bg-slate-950 overflow-x-auto text-xs sm:text-sm code-font leading-relaxed">
+<pre id="code-snippet"><span class="text-purple-400">import</span> numpy <span class="text-purple-400">as</span> np
+<span class="text-purple-400">import</span> torch
+
+<span class="text-slate-500"># 建立 5 筆樣本、3 個特徵的資料矩陣 (n=5, d=3)</span>
+X = np.array([
+    [<span class="text-cyan-300">2.5</span>, <span class="text-cyan-300">2.4</span>, <span class="text-cyan-300">0.5</span>],
+    [<span class="text-cyan-300">0.5</span>, <span class="text-cyan-300">0.7</span>, <span class="text-cyan-300">0.2</span>],
+    [<span class="text-cyan-300">2.2</span>, <span class="text-cyan-300">2.9</span>, <span class="text-cyan-300">0.8</span>],
+    [<span class="text-cyan-300">1.9</span>, <span class="text-cyan-300">2.2</span>, <span class="text-cyan-300">0.6</span>],
+    [<span class="text-cyan-300">3.1</span>, <span class="text-cyan-300">3.0</span>, <span class="text-cyan-300">0.9</span>]
+])
+n = X.shape[<span class="text-cyan-300">0</span>]
+
+<span class="text-slate-500"># 步驟 1: 計算特徵中心化 (Zero-center)</span>
+X_mean = np.<span class="text-emerald-400 font-bold">mean</span>(X, axis=<span class="text-cyan-300">0</span>)
+X_centered = X - X_mean
+
+<span class="text-slate-500"># 步驟 2: 向量化外積相乘，除以自由度 (n - 1)</span>
+cov_manual = (X_centered.T <span class="text-amber-300">@</span> X_centered) / (n - <span class="text-cyan-300">1</span>)
+
+<span class="text-slate-500"># 步驟 3: PyTorch GPU 特徵分解 (PCA 降維核心)</span>
+X_tensor = torch.<span class="text-emerald-400 font-bold">tensor</span>(X_centered, dtype=torch.float32)
+cov_torch = torch.<span class="text-emerald-400 font-bold">mm</span>(X_tensor.t(), X_tensor) / (n - <span class="text-cyan-300">1</span>)
+eigenvalues, eigenvectors = torch.linalg.<span class="text-emerald-400 font-bold">eigh</span>(cov_torch)
+
+<span class="text-purple-400">print</span>(<span class="text-amber-200">"協方差矩陣:\n"</span>, cov_manual)
+<span class="text-purple-400">print</span>(<span class="text-amber-200">"特徵向量 (主軸):\n"</span>, eigenvectors)</pre>
+      </div>
+    </section>
+
+    <!-- iPAS AI Certification Quiz Section -->
+    <section id="quiz-section" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl">
+      <div class="mb-6">
+        <span class="text-xs font-bold text-emerald-400 tracking-wider uppercase">Exam Simulation</span>
+        <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+          <i data-lucide="check-square" class="w-6 h-6 text-emerald-400"></i> iPAS AI 實務認證精選模擬試題
+        </h2>
+        <p class="text-xs sm:text-sm text-slate-400 mt-1">
+          點擊選項即可即時批改並查閱深度考題解析。
+        </p>
+      </div>
+
+      <div class="space-y-6">
+        <!-- Question 1 -->
+        <div class="bg-slate-950 p-5 rounded-xl border border-slate-800">
+          <span class="text-xs font-semibold text-indigo-400 mb-1 block">題號 01 ｜ 主成分分析 (PCA)</span>
+          <p class="text-sm font-medium text-slate-200 mb-3">
+            在對零均值化的高維資料集進行主成分分析（PCA）降維時，資料投影後方差最大的方向是透過求解協方差矩陣的何種屬性獲得？
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs" data-quiz="q1">
+            <button onclick="checkAnswer('q1', 'A')" class="quiz-btn text-left p-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 transition">
+              (A) 行列式（Determinant）最小的列向量
+            </button>
+            <button onclick="checkAnswer('q1', 'B')" class="quiz-btn text-left p-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 transition">
+              (B) 最大特徵值（Eigenvalue）所對應的特徵向量（Eigenvector）
+            </button>
+            <button onclick="checkAnswer('q1', 'C')" class="quiz-btn text-left p-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 transition">
+              (C) 協方差矩陣的跡（Trace）的倒數
+            </button>
+            <button onclick="checkAnswer('q1', 'D')" class="quiz-btn text-left p-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 transition">
+              (D) 逆矩陣的對角線元素平均值
+            </button>
+          </div>
+          <div id="q1-explanation" class="hidden mt-3 p-3 rounded-lg bg-indigo-950/40 border border-indigo-500/30 text-xs text-slate-300">
+            <span class="font-bold text-indigo-300">正確解答：(B)</span>
+            <p class="mt-1">
+              解析：投影後方差目標函數為 $\max_{\mathbf{w}} \mathbf{w}^T \mathbf{\Sigma} \mathbf{w}$ 滿足 $\|\mathbf{w}\|=1$。透過拉格朗日乘子法可得 $\mathbf{\Sigma}\mathbf{w} = \lambda\mathbf{w}$，目標最大方差即為協方差矩陣的最大特徵值 $\lambda$，其方向為對應之特徵向量 $\mathbf{w}$。
+            </p>
+          </div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="bg-slate-950 p-5 rounded-xl border border-slate-800">
+          <span class="text-xs font-semibold text-indigo-400 mb-1 block">題號 02 ｜ 矩陣基本性質</span>
+          <p class="text-sm font-medium text-slate-200 mb-3">
+            若有一組實數隨機變數計算所得的協方差矩陣為 $\mathbf{\Sigma}$，下列敘述何者<strong>錯誤</strong>？
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs" data-quiz="q2">
+            <button onclick="checkAnswer('q2', 'A')" class="quiz-btn text-left p-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 transition">
+              (A) $\mathbf{\Sigma}$ 必定為對稱矩陣，即 $\mathbf{\Sigma} = \mathbf{\Sigma}^T$
+            </button>
+            <button onclick="checkAnswer('q2', 'B')" class="quiz-btn text-left p-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 transition">
+              (B) $\mathbf{\Sigma}$ 必定為半正定矩陣（Positive Semi-Definite）
+            </button>
+            <button onclick="checkAnswer('q2', 'C')" class="quiz-btn text-left p-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 transition">
+              (C) $\mathbf{\Sigma}$ 的主對角線元素可能為負數
+            </button>
+            <button onclick="checkAnswer('q2', 'D')" class="quiz-btn text-left p-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 transition">
+              (D) 若對資料進行 Z-score 標準化，所得協方差矩陣即為皮爾森相關矩陣
+            </button>
+          </div>
+          <div id="q2-explanation" class="hidden mt-3 p-3 rounded-lg bg-indigo-950/40 border border-indigo-500/30 text-xs text-slate-300">
+            <span class="font-bold text-indigo-300">正確解答：(C)</span>
+            <p class="mt-1">
+              解析：主對角線元素 $\Sigma_{ii} = \operatorname{Var}(X_i) = \mathbb{E}[(X_i - \mu_i)^2] \ge 0$，變異數為平方期望值，永遠不可能為負數，故 (C) 敘述錯誤。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Global Footer -->
+  <footer class="border-t border-slate-800 bg-slate-950 py-6 text-center text-xs text-slate-500">
+    <p>iPAS 人工智慧應用工程師能力鑑定 · 協方差矩陣 (Covariance Matrix) 視覺教學系統</p>
+  </footer>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-5 right-5 bg-indigo-600 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-2xl opacity-0 pointer-events-none transition duration-300 transform translate-y-2">
+    已複製到剪貼簿！
+  </div>
+
+  <!-- Interactive Logic Engine -->
+  <script>
+    // State Variables
+    let points = [];
+    const NUM_POINTS = 120;
+    const canvas = document.getElementById('scatterCanvas');
+    const ctx = canvas.getContext('2d');
+    const tooltip = document.getElementById('canvasTooltip');
+
+    // Controls
+    const sliderVar1 = document.getElementById('slider-var1');
+    const sliderVar2 = document.getElementById('slider-var2');
+    const sliderCorr = document.getElementById('slider-corr');
+    const labelVar1 = document.getElementById('label-var1');
+    const labelVar2 = document.getElementById('label-var2');
+    const labelCorr = document.getElementById('label-corr');
+
+    // UI Elements
+    const matC11 = document.getElementById('mat-c11');
+    const matC12 = document.getElementById('mat-c12');
+    const matC21 = document.getElementById('mat-c21');
+    const matC22 = document.getElementById('mat-c22');
+    const statTrace = document.getElementById('stat-trace');
+    const statDet = document.getElementById('stat-det');
+    const valLambda1 = document.getElementById('val-lambda1');
+    const valRatio1 = document.getElementById('val-ratio1');
+    const valLambda2 = document.getElementById('val-lambda2');
+    const valRatio2 = document.getElementById('val-ratio2');
+    const vecV1 = document.getElementById('vec-v1');
+    const vecV2 = document.getElementById('vec-v2');
+
+    // Box-Muller standard normal generator
+    function randn() {
+      let u = 0, v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    }
+
+    // Generate bivariate normal data with target variances and covariance
+    function generateData() {
+      const v1 = parseFloat(sliderVar1.value);
+      const v2 = parseFloat(sliderVar2.value);
+      const rho = parseFloat(sliderCorr.value);
+
+      // Cholesky decomposition of target 2x2 covariance
+      // L = [[s1, 0], [rho*s2, s2*sqrt(1-rho^2)]]
+      const s1 = Math.sqrt(v1);
+      const s2 = Math.sqrt(v2);
+      const l11 = s1;
+      const l21 = rho * s2;
+      const l22 = s2 * Math.sqrt(Math.max(0.0001, 1 - rho * rho));
+
+      points = [];
+      for (let i = 0; i < NUM_POINTS; i++) {
+        const z1 = randn();
+        const z2 = randn();
+        const x = l11 * z1;
+        const y = l21 * z1 + l22 * z2;
+        points.push({ x, y });
+      }
+      updateAnalyticsAndDraw();
+    }
+
+    // Calculate Empirical Covariance Matrix and Eigenvalues
+    function updateAnalyticsAndDraw() {
+      const n = points.length;
+      if (n === 0) return;
+
+      // 1. Means
+      let sumX = 0, sumY = 0;
+      for (let p of points) {
+        sumX += p.x;
+        sumY += p.y;
+      }
+      const meanX = sumX / n;
+      const meanY = sumY / n;
+
+      // 2. Covariance Matrix elements
+      let cov11 = 0, cov22 = 0, cov12 = 0;
+      for (let p of points) {
+        const dx = p.x - meanX;
+        const dy = p.y - meanY;
+        cov11 += dx * dx;
+        cov22 += dy * dy;
+        cov12 += dx * dy;
+      }
+      cov11 /= (n - 1);
+      cov22 /= (n - 1);
+      cov12 /= (n - 1);
+
+      // 3. Matrix Invariants
+      const trace = cov11 + cov22;
+      const det = cov11 * cov22 - cov12 * cov12;
+
+      // 4. Eigenvalues for 2x2: lambda^2 - trace*lambda + det = 0
+      const delta = Math.sqrt(Math.max(0, trace * trace - 4 * det));
+      const lambda1 = (trace + delta) / 2;
+      const lambda2 = (trace - delta) / 2;
+
+      // 5. Eigenvector for lambda1
+      let ev1_x = 1, ev1_y = 0;
+      if (Math.abs(cov12) > 1e-5) {
+        ev1_x = lambda1 - cov22;
+        ev1_y = cov12;
+      } else if (cov11 >= cov22) {
+        ev1_x = 1; ev1_y = 0;
+      } else {
+        ev1_x = 0; ev1_y = 1;
+      }
+      const norm1 = Math.hypot(ev1_x, ev1_y) || 1;
+      ev1_x /= norm1;
+      ev1_y /= norm1;
+
+      // Orthogonal PC2
+      const ev2_x = -ev1_y;
+      const ev2_y = ev1_x;
+
+      // Update UI numbers
+      matC11.textContent = cov11.toFixed(2);
+      matC12.textContent = cov12.toFixed(2);
+      matC21.textContent = cov12.toFixed(2);
+      matC22.textContent = cov22.toFixed(2);
+
+      statTrace.textContent = trace.toFixed(2);
+      statDet.textContent = det.toFixed(2);
+
+      valLambda1.textContent = lambda1.toFixed(2);
+      valLambda2.textContent = lambda2.toFixed(2);
+
+      const ratio1 = trace > 0 ? (lambda1 / trace * 100) : 0;
+      const ratio2 = trace > 0 ? (lambda2 / trace * 100) : 0;
+      valRatio1.textContent = ratio1.toFixed(1) + '%';
+      valRatio2.textContent = ratio2.toFixed(1) + '%';
+
+      vecV1.textContent = `[${ev1_x.toFixed(2)}, ${ev1_y.toFixed(2)}]`;
+      vecV2.textContent = `[${ev2_x.toFixed(2)}, ${ev2_y.toFixed(2)}]`;
+
+      // Draw canvas
+      drawCanvas(meanX, meanY, lambda1, lambda2, ev1_x, ev1_y, ev2_x, ev2_y);
+    }
+
+    // Canvas Rendering
+    function drawCanvas(mx, my, l1, l2, v1x, v1y, v2x, v2y) {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.resetTransform();
+      ctx.scale(dpr, dpr);
+
+      const w = rect.width;
+      const h = rect.height;
+      const originX = w / 2;
+      const originY = h / 2;
+      const scale = Math.min(w, h) / 12; // units scale
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Grid Lines
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      for (let x = originX % scale; x < w; x += scale) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      for (let y = originY % scale; y < h; y += scale) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      // Main Axes
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, originY);
+      ctx.lineTo(w, originY);
+      ctx.moveTo(originX, 0);
+      ctx.lineTo(originX, h);
+      ctx.stroke();
+
+      // Axis Labels
+      ctx.fillStyle = '#64748b';
+      ctx.font = '10px JetBrains Mono, monospace';
+      ctx.fillText('+X1', w - 24, originY - 6);
+      ctx.fillText('+X2', originX + 6, 14);
+
+      // Scatter Points
+      for (let p of points) {
+        const px = originX + p.x * scale;
+        const py = originY - p.y * scale; // canvas y inverted
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Draw Covariance Confidence Ellipse
+      ctx.save();
+      ctx.translate(originX + mx * scale, originY - my * scale);
+      const angle = Math.atan2(-v1y, v1x); // screen coords
+      ctx.rotate(angle);
+      ctx.strokeStyle = 'rgba(99, 102, 241, 0.45)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      // 2-sigma ellipse
+      const radiusX = 2 * Math.sqrt(Math.max(0, l1)) * scale;
+      const radiusY = 2 * Math.sqrt(Math.max(0, l2)) * scale;
+      ctx.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // Draw Principal Component Vectors (Eigenvectors scaled by sqrt(eigenvalue))
+      function drawVector(vx, vy, len, color, label) {
+        const endX = originX + mx * scale + vx * len * scale;
+        const endY = originY - (my * scale + vy * len * scale);
+
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(originX + mx * scale, originY - my * scale);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+
+        // Arrow head
+        const headlen = 8;
+        const arrowAngle = Math.atan2(endY - (originY - my * scale), endX - (originX + mx * scale));
+        ctx.beginPath();
+        ctx.moveTo(endX, endY);
+        ctx.lineTo(endX - headlen * Math.cos(arrowAngle - Math.PI / 6), endY - headlen * Math.sin(arrowAngle - Math.PI / 6));
+        ctx.lineTo(endX - headlen * Math.cos(arrowAngle + Math.PI / 6), endY - headlen * Math.sin(arrowAngle + Math.PI / 6));
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.font = 'bold 11px sans-serif';
+        ctx.fillText(label, endX + 8, endY - 4);
+      }
+
+      const sL1 = 2 * Math.sqrt(Math.max(0, l1));
+      const sL2 = 2 * Math.sqrt(Math.max(0, l2));
+      drawVector(v1x, v1y, sL1, '#34d399', 'PC1');
+      drawVector(v2x, v2y, sL2, '#fb7185', 'PC2');
+    }
+
+    // Sliders listeners
+    sliderVar1.addEventListener('input', (e) => {
+      labelVar1.textContent = parseFloat(e.target.value).toFixed(1);
+      generateData();
+    });
+    sliderVar2.addEventListener('input', (e) => {
+      labelVar2.textContent = parseFloat(e.target.value).toFixed(1);
+      generateData();
+    });
+    sliderCorr.addEventListener('input', (e) => {
+      labelCorr.textContent = parseFloat(e.target.value).toFixed(2);
+      generateData();
+    });
+
+    // Presets
+    document.getElementById('preset-pos').addEventListener('click', () => {
+      sliderVar1.value = 2.4; labelVar1.textContent = '2.4';
+      sliderVar2.value = 1.8; labelVar2.textContent = '1.8';
+      sliderCorr.value = 0.85; labelCorr.textContent = '0.85';
+      generateData();
+    });
+    document.getElementById('preset-neg').addEventListener('click', () => {
+      sliderVar1.value = 2.0; labelVar1.textContent = '2.0';
+      sliderVar2.value = 1.5; labelVar2.textContent = '1.5';
+      sliderCorr.value = -0.85; labelCorr.textContent = '-0.85';
+      generateData();
+    });
+    document.getElementById('preset-indep').addEventListener('click', () => {
+      sliderVar1.value = 2.0; labelVar1.textContent = '2.0';
+      sliderVar2.value = 2.0; labelVar2.textContent = '2.0';
+      sliderCorr.value = 0.0; labelCorr.textContent = '0.00';
+      generateData();
+    });
+    document.getElementById('btn-randomize').addEventListener('click', generateData);
+
+    // Step-by-Step Numerical Walkthrough
+    let currentStep = 1;
+    const btnCalcStep = document.getElementById('btn-calc-step');
+    const btnCalcReset = document.getElementById('btn-calc-reset');
+
+    function highlightStep(step) {
+      for (let s = 1; s <= 4; s++) {
+        const card = document.getElementById(`step-card-${s}`);
+        if (s === step) {
+          card.classList.add('border-indigo-500', 'bg-indigo-950/20');
+          card.classList.remove('border-slate-800', 'bg-slate-950');
+        } else {
+          card.classList.remove('border-indigo-500', 'bg-indigo-950/20');
+          card.classList.add('border-slate-800', 'bg-slate-950');
+        }
+      }
+    }
+
+    btnCalcStep.addEventListener('click', () => {
+      currentStep = (currentStep % 4) + 1;
+      highlightStep(currentStep);
+    });
+
+    btnCalcReset.addEventListener('click', () => {
+      currentStep = 1;
+      highlightStep(1);
+    });
+
+    // Quiz evaluation
+    window.checkAnswer = function(qid, opt) {
+      const container = document.querySelector(`[data-quiz="${qid}"]`);
+      const buttons = container.querySelectorAll('.quiz-btn');
+      const explanation = document.getElementById(`${qid}-explanation`);
+
+      const correctAnswers = {
+        q1: 'B',
+        q2: 'C'
+      };
+
+      buttons.forEach(b => {
+        b.classList.remove('bg-emerald-950', 'border-emerald-500', 'bg-rose-950', 'border-rose-500');
+        if (b.textContent.includes(`(${opt})`)) {
+          if (opt === correctAnswers[qid]) {
+            b.classList.add('bg-emerald-950/60', 'border-emerald-500', 'text-emerald-200');
+          } else {
+            b.classList.add('bg-rose-950/60', 'border-rose-500', 'text-rose-200');
+          }
+        }
+      });
+      explanation.classList.remove('hidden');
+    };
+
+    // Copy snippet button
+    document.getElementById('btn-copy-code').addEventListener('click', () => {
+      const code = document.getElementById('code-snippet').innerText;
+      const el = document.createElement('textarea');
+      el.value = code;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+
+      const toast = document.getElementById('toast');
+      toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-2');
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-2');
+      }, 2000);
+    });
+
+    // Window Resize Handler
+    window.addEventListener('resize', () => {
+      updateAnalyticsAndDraw();
+    });
+
+    // Init Lucide Icons and Simulation
+    window.onload = function() {
+      lucide.createIcons();
+      generateData();
+    };
+  </script>
+</body>
+</html>
