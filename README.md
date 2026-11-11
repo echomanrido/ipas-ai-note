@@ -52,7 +52,8 @@
 │   ├── 0201.stable_diffusion(潛在擴散模型).html # Stable Diffusion 核心架構解析與互動模擬
 │   ├── 0202.autoencoder(自編碼器).html         # Autoencoder 自編碼器全方位指南與實驗室
 │   ├── 0203.VGG16 深度學習互動全解析.html     # VGG16 經典卷積神經網路全方位解析與互動模擬
-│   └── 0204.Autoencoder (AE, 自編碼器) 與 VAE (Variational Autoencoder, 變分自編碼器).html # AE vs VAE 原理剖析、數學推導與互動視覺化
+│   ├── 0204.Autoencoder (AE, 自編碼器) 與 VAE (Variational Autoencoder, 變分自編碼器).html # AE vs VAE 原理剖析、數學推導與互動視覺化
+│   └── 水豚_cnn.html                         # 水豚的影像分類冒險 · CNN 步驟詳解、互動卷積核與特徵圖計算機
 ├── 03.生成式AI/                 # 生成式AI單元筆記（持續更新）
 ├── 04.補充教材/                 # 精選專題深入教材 (Cross-Entropy, MSE/MAE, YOLO vs TM分類, Focal Loss, 協方差矩陣 等 8篇)
 ├── 05.讀學時光 Rido(Read) & Learn/  # 讀學時光專題實驗室 (波動力學、AI網頁感知操作)
@@ -69,7 +70,7 @@
 ├── 10.Sean愛AI/                 # 機器學習核心觀念、評估指標、分群生成與中級證照考前總複習 (11篇)
 │   └── 中級/                    # iPAS AI 應用規劃師 中級科目一、科目二、科目三 TOP10 考前總複習精華講義 (6篇)
 ├── 11.統計與機率/               # 機器學習與統計基石 (離散/連續型機率分佈、四大統計檢定、假設檢定動態拒絕域、蒙地卡羅、馬可夫鏈/MCMC、隱馬可夫模型 HMM 9篇)
-├── 12.Xiao Ai/                   # Xiao Ai 老師 iPAS 中級科目一與科目三觀念辨析及真題拆解 (含時間軸逐字稿、速記卡與互動實驗室 2篇)
+├── 12.Xiao Ai/                   # Xiao Ai 老師 iPAS 中級科目一與科目三觀念辨析及真題拆解 (含 9大考點SVG向量圖解、科目一最容易混淆對比速記、時間軸逐字稿與互動實驗室 3篇)
 ├── index.html                   # 投影片單頁應用（SPA）
 ├── 程式心智圖.html              # AI 程式架構與核心函式呼叫心智圖 (含抽屜詳解與範例程式碼)
 ├── 考試科目與評鑑內容.html        # 經濟部 iPAS「AI 應用規劃師」官方考試科目與評鑑內容全覽 (初級與中級考綱)
