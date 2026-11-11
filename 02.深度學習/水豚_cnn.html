@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>水豚的影像分類冒險 - CNN 步驟詳解</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- KaTeX for formula rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&family=Noto+Sans+TC:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            capy: {
+              50: '#FDFBF7',
+              100: '#F5EFE6',
+              200: '#E8DCC4',
+              300: '#D5C0A1',
+              400: '#B8976C',
+              500: '#946F43',
+              600: '#755431',
+              700: '#563C21',
+              800: '#3D2A16',
+              900: '#23180B',
+            },
+            sage: {
+              50: '#F4F7F4',
+              100: '#E3ECE3',
+              500: '#628B67',
+              700: '#3D5E41',
+              900: '#233825'
+            },
+            terracotta: {
+              500: '#D97757',
+              600: '#C05936'
+            }
+          },
+          fontFamily: {
+            cute: ['"Zen Maru Gothic"', 'sans-serif'],
+            sans: ['"Noto Sans TC"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #F8F5EE;
+      color: #382E25;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background-color: #D5C0A1;
+      border-radius: 9999px;
+    }
+    .capy-shadow {
+      box-shadow: 0 10px 25px -5px rgba(117, 84, 49, 0.12), 0 8px 10px -6px rgba(117, 84, 49, 0.08);
+    }
+    .badge-tensor {
+      background-color: #EBF4FF;
+      color: #1E40AF;
+      border: 1px solid #BFDBFE;
+    }
+    .badge-calc {
+      background-color: #FEF3C7;
+      color: #92400E;
+      border: 1px solid #FDE68A;
+    }
+    @keyframes bob {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-5px) rotate(1deg); }
+    }
+    .animate-bob {
+      animation: bob 3.5s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased selection:bg-amber-200 selection:text-amber-900">
+
+  <!-- 頂部導航列 -->
+  <header class="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-capy-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <!-- 水豚可愛圖標 -->
+        <div class="w-10 h-10 rounded-2xl bg-capy-500 text-white flex items-center justify-center font-cute text-2xl shadow-md cursor-pointer hover:rotate-6 transition">
+          🦫
+        </div>
+        <div>
+          <h1 class="font-cute font-bold text-lg sm:text-xl text-capy-900 tracking-tight flex items-center gap-2">
+            水豚的影像分類冒險
+            <span class="text-xs bg-sage-100 text-sage-700 px-2.5 py-0.5 rounded-full font-sans font-semibold border border-sage-500/20 hidden sm:inline">CNN 視覺化課堂</span>
+          </h1>
+          <p class="text-xs text-capy-600 hidden md:block">Capybara's Image Classification Tensor Journey</p>
+        </div>
+      </div>
+
+      <!-- 快速跳轉錨點 -->
+      <nav class="hidden lg:flex items-center gap-1.5 text-xs font-semibold text-capy-700">
+        <button onclick="scrollToStep(1)" class="px-2.5 py-1.5 rounded-lg hover:bg-capy-100 transition">① 輸入層</button>
+        <button onclick="scrollToStep(2)" class="px-2.5 py-1.5 rounded-lg hover:bg-capy-100 transition">② 卷積層</button>
+        <button onclick="scrollToStep(3)" class="px-2.5 py-1.5 rounded-lg hover:bg-capy-100 transition">③ 池化層</button>
+        <button onclick="scrollToStep(4)" class="px-2.5 py-1.5 rounded-lg hover:bg-capy-100 transition">④ 攤平層</button>
+        <button onclick="scrollToStep(5)" class="px-2.5 py-1.5 rounded-lg hover:bg-capy-100 transition">⑤ 全連接層</button>
+        <div class="h-4 w-[1px] bg-capy-300 mx-1"></div>
+        <button onclick="scrollToCalculator()" class="px-3 py-1.5 rounded-lg bg-sage-500 hover:bg-sage-700 text-white transition flex items-center gap-1">
+          <i data-lucide="calculator" class="w-3.5 h-3.5"></i> 互動計算器
+        </button>
+      </nav>
+
+      <!-- 標籤圖例 -->
+      <div class="flex items-center gap-2 text-xs font-medium">
+        <span class="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-md border border-amber-200 text-amber-800">
+          <i data-lucide="box" class="w-3.5 h-3.5 text-amber-600"></i> 張量 (Tensor)
+        </span>
+        <span class="flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-200 text-emerald-800 hidden sm:flex">
+          <i data-lucide="function-square" class="w-3.5 h-3.5 text-emerald-600"></i> 數學計算
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主內容容器 -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+    <!-- Hero 介紹橫幅 -->
+    <section class="bg-gradient-to-r from-capy-100 via-white to-amber-50 rounded-3xl p-6 sm:p-8 border border-capy-200 shadow-sm relative overflow-hidden">
+      <div class="max-w-3xl space-y-3 relative z-10">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-capy-500/10 text-capy-700 text-xs font-bold">
+          <span>🌿 水豚博士的神經網絡工坊</span>
+          <span>•</span>
+          <span>CIFAR-10 經典架構</span>
+        </div>
+        <h2 class="text-2xl sm:text-3xl font-cute font-bold text-capy-900 leading-tight">
+          跟著溫馴的水豚，一步步拆解電腦如何「看懂」圖片！
+        </h2>
+        <p class="text-sm sm:text-base text-capy-700 leading-relaxed">
+          影像在電腦眼中不是色彩，而是由<strong>長度、寬度、色彩通道與批次</strong>組成的多維陣列（張量）。讓我們跟著拿放大鏡、測量儀與桿麵棍的水豚，觀察特徵圖在神經網絡每一步的尺寸魔術！
+        </p>
+      </div>
+      <!-- 裝飾浮水印 -->
+      <div class="absolute -right-4 -bottom-6 text-9xl opacity-15 select-none pointer-events-none">
+        🦫
+      </div>
+    </section>
+
+    <!-- 原創架構全景展示專區（新增於最前面） -->
+    <section class="bg-white rounded-3xl border-2 border-capy-200 p-5 sm:p-7 capy-shadow space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-capy-100 pb-3">
+        <div>
+          <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-xs font-bold mb-1">
+            <i data-lucide="image" class="w-3.5 h-3.5 text-amber-700"></i> 全景手繪架構圖
+          </div>
+          <h3 class="text-xl font-cute font-bold text-capy-900">
+            水豚的影像分類冒險 (Capybara's Image Classifics) - 神經網絡步驟詳解
+          </h3>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- 本地載入圖片按鈕（解決瀏覽器無法存取本機檔名問題） -->
+          <label class="cursor-pointer bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition flex items-center gap-1.5">
+            <i data-lucide="upload" class="w-3.5 h-3.5"></i> 選擇您剛才的圖片
+            <input type="file" id="localImgUpload" accept="image/*" class="hidden" onchange="loadUserLocalImage(event)">
+          </label>
+          <div class="flex items-center gap-1 text-xs font-mono text-capy-600">
+            <span class="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-md border border-amber-200">📦 Tensor</span>
+            <span class="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-md border border-amber-200">✖️ 計算</span>
+            <span class="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-md border border-amber-200">🦫 Illustration</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 全景圖展示外框（預設高清晰向量圖 + 支援本機圖即時展示） -->
+      <div id="imageDisplayContainer" class="relative group rounded-2xl overflow-hidden border-2 border-capy-200 bg-[#F5EFE6] cursor-pointer" onclick="openImageModal()">
+        
+        <!-- 當使用者載入真實圖片時顯示 -->
+        <img 
+          id="mainDiagramImg"
+          src="" 
+          alt="水豚的影像分類冒險 - 神經網絡步驟詳解完整架構圖" 
+          class="hidden w-full h-auto object-contain mx-auto block max-h-[560px] transition-transform duration-300 group-hover:scale-[1.01]"
+        />
+
+        <!-- 預設的原生向量架構示意圖（100% 保證渲染，永不破圖、無任何問號亂碼） -->
+        <div id="svgBackupDiagram" class="w-full p-4 sm:p-6 select-none">
+          <div class="bg-[#F8F4EC] border-2 border-amber-200/90 rounded-2xl p-4 sm:p-6 space-y-5">
+            <!-- 頂部橫幅 -->
+            <div class="bg-amber-200/70 border border-amber-300 text-capy-900 text-center py-2 px-4 rounded-full font-cute font-bold text-base sm:text-lg flex items-center justify-center gap-2">
+              <span>🌿 水豚的影像分類冒險 (Capybara's Image Classifics) - 神經網絡步驟詳解</span>
+            </div>
+
+            <!-- 五步驟橫向看板 -->
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-3 text-xs">
+              <!-- 步驟 1 -->
+              <div class="bg-white/90 p-3 rounded-xl border border-amber-200 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center gap-1.5 font-bold text-capy-900 border-b border-amber-100 pb-1.5 mb-2">
+                    <span class="w-5 h-5 rounded-full bg-sage-500 text-white flex items-center justify-center text-[11px]">1</span>
+                    <span>原始圖片進場</span>
+                  </div>
+                  <p class="text-capy-700 text-[11px] leading-relaxed">
+                    輸入 32 張相片，3 通道 (RGB)，32×32 像素
+                  </p>
+                </div>
+                <div class="mt-3 p-1.5 bg-amber-50 rounded font-mono font-bold text-amber-900 text-center text-[11px] border border-amber-200">
+                  📦 [32, 3, 32, 32]
+                </div>
+              </div>
+
+              <!-- 步驟 2 -->
+              <div class="bg-white/90 p-3 rounded-xl border border-amber-200 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center gap-1.5 font-bold text-capy-900 border-b border-amber-100 pb-1.5 mb-2">
+                    <span class="w-5 h-5 rounded-full bg-sage-500 text-white flex items-center justify-center text-[11px]">2</span>
+                    <span>卷積層 (Conv)</span>
+                  </div>
+                  <p class="text-capy-700 text-[11px] leading-relaxed">
+                    16 個 3×3 濾波器<br>
+                    公式：(32-3+0)/1 + 1 = 30
+                  </p>
+                </div>
+                <div class="mt-3 p-1.5 bg-amber-50 rounded font-mono font-bold text-amber-900 text-center text-[11px] border border-amber-200">
+                  📦 [32, 16, 30, 30]
+                </div>
+              </div>
+
+              <!-- 步驟 3 -->
+              <div class="bg-white/90 p-3 rounded-xl border border-amber-200 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center gap-1.5 font-bold text-capy-900 border-b border-amber-100 pb-1.5 mb-2">
+                    <span class="w-5 h-5 rounded-full bg-sage-500 text-white flex items-center justify-center text-[11px]">3</span>
+                    <span>池化層 (Pool)</span>
+                  </div>
+                  <p class="text-capy-700 text-[11px] leading-relaxed">
+                    特徵濃縮減半<br>
+                    計算：(30 / 2) = 15
+                  </p>
+                </div>
+                <div class="mt-3 p-1.5 bg-amber-50 rounded font-mono font-bold text-amber-900 text-center text-[11px] border border-amber-200">
+                  📦 [32, 16, 15, 15]
+                </div>
+              </div>
+
+              <!-- 步驟 4 -->
+              <div class="bg-white/90 p-3 rounded-xl border border-amber-200 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center gap-1.5 font-bold text-capy-900 border-b border-amber-100 pb-1.5 mb-2">
+                    <span class="w-5 h-5 rounded-full bg-sage-500 text-white flex items-center justify-center text-[11px]">4</span>
+                    <span>攤平層 (Flatten)</span>
+                  </div>
+                  <p class="text-capy-700 text-[11px] leading-relaxed">
+                    桿麵棍壓平成 1D<br>
+                    16 × 15 × 15 = 3600
+                  </p>
+                </div>
+                <div class="mt-3 p-1.5 bg-amber-50 rounded font-mono font-bold text-amber-900 text-center text-[11px] border border-amber-200">
+                  📦 [32, 3600]
+                </div>
+              </div>
+
+              <!-- 步驟 5 -->
+              <div class="bg-white/90 p-3 rounded-xl border border-emerald-200 flex flex-col justify-between bg-emerald-50/30">
+                <div>
+                  <div class="flex items-center gap-1.5 font-bold text-emerald-950 border-b border-emerald-100 pb-1.5 mb-2">
+                    <span class="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[11px]">5</span>
+                    <span>全連接層 (FC)</span>
+                  </div>
+                  <p class="text-capy-700 text-[11px] leading-relaxed">
+                    輸出 10 個類別機率<br>
+                    3600 → 10 類別
+                  </p>
+                </div>
+                <div class="mt-3 p-1.5 bg-emerald-100 rounded font-mono font-bold text-emerald-900 text-center text-[11px] border border-emerald-300">
+                  📦 [32, 10]
+                </div>
+              </div>
+            </div>
+
+            <!-- 水豚提示資訊 -->
+            <div class="flex items-center justify-center gap-2 text-xs text-amber-900 bg-amber-100/60 py-2 rounded-xl">
+              <span class="text-base">🦫</span>
+              <span>如需載入原圖高解析 JPG，可點擊右上角「選擇您剛才的圖片」即刻套用！</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 懸浮提示覆蓋層 -->
+        <div class="absolute inset-0 bg-capy-900/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+          <span class="bg-white/95 text-capy-900 text-xs sm:text-sm font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+            <i data-lucide="zoom-in" class="w-4 h-4 text-amber-700"></i> 點擊放大檢視
+          </span>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between text-xs text-capy-600 gap-2 px-1">
+        <p>💡 支援點擊放大預覽，下方章節已依圖中 5 大步驟拆解互動教學！</p>
+        <span class="font-mono text-capy-400 text-[11px]">輸入 [32, 3, 32, 32] ➔ 輸出 [32, 10]</span>
+      </div>
+    </section>
+
+    <!-- 步驟卡片流程總覽 -->
+    <section class="space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-xl font-cute font-bold text-capy-900 flex items-center gap-2">
+            <span>神經網絡五大步驟解構流程</span>
+            <span class="text-xs bg-capy-200 text-capy-800 font-sans px-2 py-0.5 rounded-full">點擊可展開詳解</span>
+          </h3>
+          <p class="text-xs sm:text-sm text-capy-600">清晰掌握 [Batch, Channels, Height, Width] 變化</p>
+        </div>
+        <button id="toggleAllBtn" class="text-xs font-semibold text-capy-600 hover:text-capy-900 border border-capy-300 rounded-lg px-3 py-1.5 bg-white">
+          收合全部
+        </button>
+      </div>
+
+      <!-- 五大步驟垂直時間軸 / 卡片 -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- 左側主步驟卡片群 -->
+        <div class="lg:col-span-8 space-y-6" id="stepsContainer">
+
+          <!-- 步驟 1: 原始圖片進場 -->
+          <article id="step-1" class="step-card bg-white rounded-2xl border-2 border-capy-200 p-5 sm:p-6 transition hover:border-capy-400 capy-shadow">
+            <div class="flex items-start justify-between cursor-pointer" onclick="toggleStepContent(1)">
+              <div class="flex items-center gap-3.5">
+                <div class="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-lg shadow-inner">
+                  1
+                </div>
+                <div>
+                  <h4 class="text-lg font-cute font-bold text-capy-900 flex items-center gap-2">
+                    原始圖片進場 (Input)
+                  </h4>
+                  <p class="text-xs text-capy-500 font-mono">輸入尺寸：[32, 3, 32, 32]</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="badge-tensor text-xs px-2.5 py-1 rounded-lg font-mono font-medium flex items-center gap-1">
+                  <i data-lucide="layers" class="w-3.5 h-3.5"></i> [B, C, H, W]
+                </span>
+                <i data-lucide="chevron-down" id="chevron-1" class="w-5 h-5 text-capy-400 transition-transform duration-300"></i>
+              </div>
+            </div>
+
+            <!-- 折疊內容區 -->
+            <div id="content-1" class="mt-4 pt-4 border-t border-capy-100 space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="space-y-2 text-sm text-capy-700">
+                  <p class="font-medium text-capy-900">📌 輸入維度拆解：</p>
+                  <ul class="space-y-1 text-xs sm:text-sm list-disc pl-5">
+                    <li><strong class="text-amber-800">32</strong>：批次大小 (Batch Size)，一次打包 32 張相片訓練。</li>
+                    <li><strong class="text-amber-800">3</strong>：顏色通道數 (RGB 三原色)。</li>
+                    <li><strong class="text-amber-800">32 × 32</strong>：圖片的高 (H) 與寬 (W)，共 1024 像素。</li>
+                  </ul>
+                  <div class="p-3 bg-capy-50 rounded-xl text-xs text-capy-700 border border-capy-200">
+                    💡 <strong>水豚小百科：</strong>此處的輸入規格是機器學習非常知名的 <strong>CIFAR-10</strong> 資料集標準格式！
+                  </div>
+                </div>
+
+                <!-- 互動微圖形：模擬色彩通道 -->
+                <div class="bg-amber-50/50 rounded-xl p-3 border border-dashed border-capy-300 flex flex-col items-center justify-center text-center">
+                  <div class="flex -space-x-3 items-center mb-2">
+                    <div class="w-12 h-12 rounded-lg bg-red-400/80 shadow border border-white flex items-center justify-center text-white text-xs font-mono font-bold">R</div>
+                    <div class="w-12 h-12 rounded-lg bg-green-400/80 shadow border border-white flex items-center justify-center text-white text-xs font-mono font-bold">G</div>
+                    <div class="w-12 h-12 rounded-lg bg-blue-400/80 shadow border border-white flex items-center justify-center text-white text-xs font-mono font-bold">B</div>
+                  </div>
+                  <span class="text-xs font-mono text-capy-600">3 Channels × (32 × 32 Pixels)</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- 步驟 2: 卷積層 -->
+          <article id="step-2" class="step-card bg-white rounded-2xl border-2 border-capy-200 p-5 sm:p-6 transition hover:border-capy-400 capy-shadow">
+            <div class="flex items-start justify-between cursor-pointer" onclick="toggleStepContent(2)">
+              <div class="flex items-center gap-3.5">
+                <div class="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-lg shadow-inner">
+                  2
+                </div>
+                <div>
+                  <h4 class="text-lg font-cute font-bold text-capy-900 flex items-center gap-2">
+                    卷積層 (Convolution Layer)
+                    <span class="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-sans">核心運算</span>
+                  </h4>
+                  <p class="text-xs text-capy-500 font-mono">輸出尺寸：[32, 16, 30, 30]</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="badge-calc text-xs px-2.5 py-1 rounded-lg font-medium flex items-center gap-1">
+                  <i data-lucide="calculator" class="w-3.5 h-3.5"></i> 尺寸計算
+                </span>
+                <i data-lucide="chevron-down" id="chevron-2" class="w-5 h-5 text-capy-400 transition-transform duration-300"></i>
+              </div>
+            </div>
+
+            <div id="content-2" class="mt-4 pt-4 border-t border-capy-100 space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-2 text-xs sm:text-sm text-capy-700">
+                  <p class="font-medium text-capy-900">🔍 水豚拿放大鏡做什麼？</p>
+                  <p>水豚拿著 <strong>16 個不同的 3×3 放大鏡（濾波器 / Filter）</strong>在圖片上滑動。每個濾波器專注尋找一種幾何線條或邊緣！</p>
+                  <ul class="space-y-1.5 text-xs text-capy-800 font-sans mt-2">
+                    <li class="flex items-center gap-2">
+                      <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                      <span>圖片尺寸 (Input Dim)：</span>
+                      <span class="font-mono font-bold bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded text-[11px]">W = 32</span>
+                    </li>
+                    <li class="flex items-center gap-2">
+                      <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                      <span>濾波器大小 (Filter / Kernel)：</span>
+                      <span class="font-mono font-bold bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded text-[11px]">K = 3×3</span>
+                    </li>
+                    <li class="flex items-center gap-2">
+                      <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                      <span>外圍填充 (Padding)：</span>
+                      <span class="font-mono font-bold bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded text-[11px]">P = 0</span>
+                    </li>
+                    <li class="flex items-center gap-2">
+                      <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                      <span>滑動步長 (Stride)：</span>
+                      <span class="font-mono font-bold bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded text-[11px]">S = 1</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <!-- 公式展示區 -->
+                <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 flex flex-col justify-center">
+                  <span class="text-xs font-bold text-amber-900 mb-2 flex items-center gap-1">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-600"></i> 空間尺寸計算公式：
+                  </span>
+                  <!-- 漂亮且相容性100%的清晰公式卡片，解決 LaTeX 原始碼亂碼 -->
+                  <div class="p-3 bg-white rounded-xl border border-amber-200 text-capy-900 my-1 shadow-sm flex items-center justify-center gap-2 font-mono text-sm sm:text-base">
+                    <span class="font-bold text-capy-700">輸出尺寸 =</span>
+                    <span class="text-xl font-bold text-amber-700">[</span>
+                    <div class="inline-flex flex-col items-center justify-center align-middle mx-1">
+                      <span class="border-b-2 border-capy-600 px-2 py-0.5 font-bold">W - K + 2P</span>
+                      <span class="px-2 py-0.5 font-bold">S</span>
+                    </div>
+                    <span class="text-xl font-bold text-amber-700">]</span>
+                    <span class="font-bold text-capy-800">+ 1</span>
+                  </div>
+
+                  <!-- 步驟2具體數字代入 -->
+                  <div class="p-2.5 bg-amber-100/70 rounded-lg border border-amber-300/80 text-capy-900 my-1 flex items-center justify-center gap-2 font-mono text-xs sm:text-sm">
+                    <span class="text-capy-600">代入數值：</span>
+                    <span class="text-lg font-bold text-amber-800">[</span>
+                    <div class="inline-flex flex-col items-center justify-center align-middle mx-1">
+                      <span class="border-b border-capy-600 px-1 font-semibold">32 - 3 + 2×0</span>
+                      <span class="px-1 font-semibold">1</span>
+                    </div>
+                    <span class="text-lg font-bold text-amber-800">]</span>
+                    <span class="font-bold text-capy-800">+ 1 = <strong class="text-amber-800 text-base">30</strong></span>
+                  </div>
+                  <p class="text-[11px] text-center text-capy-500 mt-1.5">長寬由 32×32 變為 30×30；通道由 16 個濾波器擴增為 16！</p>
+                </div>
+              </div>
+
+              <!-- 濾波器特徵圖簡化可視化 -->
+              <div class="bg-capy-50 p-3 rounded-xl border border-capy-200">
+                <p class="text-xs font-bold text-capy-800 mb-2">🔎 16 個特徵圖 (Feature Maps) 示意：</p>
+                <div class="grid grid-cols-8 sm:grid-cols-16 gap-1.5 text-center">
+                  <!-- 生成 16 個小格子代表 16 個通道 -->
+                  <div class="h-7 bg-amber-200 rounded flex items-center justify-center text-[10px] font-mono text-amber-900 border border-amber-300">1</div>
+                  <div class="h-7 bg-amber-200 rounded flex items-center justify-center text-[10px] font-mono text-amber-900 border border-amber-300">2</div>
+                  <div class="h-7 bg-amber-200 rounded flex items-center justify-center text-[10px] font-mono text-amber-900 border border-amber-300">3</div>
+                  <div class="h-7 bg-amber-200 rounded flex items-center justify-center text-[10px] font-mono text-amber-900 border border-amber-300">4</div>
+                  <div class="h-7 bg-amber-200 rounded flex items-center justify-center text-[10px] font-mono text-amber-900 border border-amber-300">5</div>
+                  <div class="h-7 bg-amber-200 rounded flex items-center justify-center text-[10px] font-mono text-amber-900 border border-amber-300">6</div>
+                  <div class="h-7 bg-amber-200 rounded flex items-center justify-center text-[10px] font-mono text-amber-900 border border-amber-300">7</div>
+                  <div class="h-7 bg-amber-200 rounded flex items-center justify-center text-[10px] font-mono text-amber-900 border border-amber-300">8</div>
+                  <div class="h-7 bg-amber-200 rounded flex items-center justify-center text-[10px] font-mono text-amber-900 border border-amber-300">9</div>
+                  <div class="h-7 bg-amber-200 rounded flex items-center justify-center text-[10px] font-mono text-amber-900 border border-amber-300">10</div>
+                  <div class="h-7 bg-amber-200 rounded flex items-center justify-center text-[10px] font-mono text-amber-900 border border-amber-300">11</div>
+                  <div class="h-7 bg-amber-200 rounded flex items-center justify-center text-[10px] font-mono text-amber-900 border border-amber-300">12</div>
+                  <div class="h-7 bg-amber-200 rounded flex items-center justify-center text-[10px] font-mono text-amber-900 border border-amber-300">13</div>
+                  <div class="h-7 bg-amber-200 rounded flex items-center justify-center text-[10px] font-mono text-amber-900 border border-amber-300">14</div>
+                  <div class="h-7 bg-amber-200 rounded flex items-center justify-center text-[10px] font-mono text-amber-900 border border-amber-300">15</div>
+                  <div class="h-7 bg-amber-200 rounded flex items-center justify-center text-[10px] font-mono text-amber-900 border border-amber-300">16</div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- 步驟 3: 池化層 -->
+          <article id="step-3" class="step-card bg-white rounded-2xl border-2 border-capy-200 p-5 sm:p-6 transition hover:border-capy-400 capy-shadow">
+            <div class="flex items-start justify-between cursor-pointer" onclick="toggleStepContent(3)">
+              <div class="flex items-center gap-3.5">
+                <div class="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-lg shadow-inner">
+                  3
+                </div>
+                <div>
+                  <h4 class="text-lg font-cute font-bold text-capy-900 flex items-center gap-2">
+                    池化層 (Pooling Layer)
+                  </h4>
+                  <p class="text-xs text-capy-500 font-mono">輸出尺寸：[32, 16, 15, 15]</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="badge-tensor text-xs px-2.5 py-1 rounded-lg font-medium flex items-center gap-1">
+                  特徵濃縮
+                </span>
+                <i data-lucide="chevron-down" id="chevron-3" class="w-5 h-5 text-capy-400 transition-transform duration-300"></i>
+              </div>
+            </div>
+
+            <div id="content-3" class="mt-4 pt-4 border-t border-capy-100 space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="text-xs sm:text-sm text-capy-700 space-y-2">
+                  <p class="font-medium text-capy-900">📐 水豚拿卡尺量測與瘦身：</p>
+                  <p>池化層（通常是最大池化 Max Pooling 2×2）就像精簡摘要。保留每個小區塊內最強烈顯著的特徵，同時大幅減半長寬，減輕後續運算負擔！</p>
+                  <div class="p-2.5 bg-emerald-50 text-emerald-800 rounded-lg text-xs border border-emerald-200">
+                    💡 <strong>通道數保持不變：</strong>依然是 16 個通道，只是每個平面由 30×30 減半為 15×15！
+                  </div>
+                </div>
+
+                <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 flex flex-col justify-center items-center">
+                  <span class="text-xs font-bold text-capy-800 mb-2">計算過程</span>
+                  <div class="font-mono text-xl text-amber-900 font-bold bg-white px-6 py-2 rounded-xl shadow-sm border border-amber-200">
+                    (30 / 2) = 15
+                  </div>
+                  <span class="text-[11px] text-capy-600 mt-2 font-mono">輸出: [32, 16, 15, 15]</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- 步驟 4: 攤平層 -->
+          <article id="step-4" class="step-card bg-white rounded-2xl border-2 border-capy-200 p-5 sm:p-6 transition hover:border-capy-400 capy-shadow">
+            <div class="flex items-start justify-between cursor-pointer" onclick="toggleStepContent(4)">
+              <div class="flex items-center gap-3.5">
+                <div class="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-lg shadow-inner">
+                  4
+                </div>
+                <div>
+                  <h4 class="text-lg font-cute font-bold text-capy-900 flex items-center gap-2">
+                    攤平層 (Flattening Layer)
+                  </h4>
+                  <p class="text-xs text-capy-500 font-mono">輸出尺寸：[32, 3600]</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="badge-calc text-xs px-2.5 py-1 rounded-lg font-medium">
+                  3D → 1D 向量
+                </span>
+                <i data-lucide="chevron-down" id="chevron-4" class="w-5 h-5 text-capy-400 transition-transform duration-300"></i>
+              </div>
+            </div>
+
+            <div id="content-4" class="mt-4 pt-4 border-t border-capy-100 space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                <div class="text-xs sm:text-sm text-capy-700 space-y-2">
+                  <p class="font-medium text-capy-900">🥖 水豚出動桿麵棍！</p>
+                  <p>原先具有空間結構（通道、高、寬）的立體特徵方塊，全連接神經元無法直接接收，因此需要水豚用桿麵棍把它「壓平」成一維陣列。</p>
+                  <p class="font-bold text-amber-900 text-xs">
+                    ⚠️ H（高）、W（寬）維度在此步驟徹底消失！
+                  </p>
+                </div>
+
+                <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 text-center">
+                  <p class="text-xs font-semibold text-capy-700">單張圖片特徵數乘積：</p>
+                  <div class="text-base sm:text-lg font-mono font-bold text-amber-950 mt-1">
+                    16 通道 × 15 高度 × 15 寬度
+                  </div>
+                  <div class="text-2xl font-mono font-black text-amber-600 mt-1">
+                    = 3600 個特徵
+                  </div>
+                  <div class="mt-2 text-xs font-mono bg-white px-3 py-1 rounded-lg inline-block border border-amber-200">
+                    輸出張量：[32, 3600]
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- 步驟 5: 全連接層 -->
+          <article id="step-5" class="step-card bg-white rounded-2xl border-2 border-capy-200 p-5 sm:p-6 transition hover:border-capy-400 capy-shadow">
+            <div class="flex items-start justify-between cursor-pointer" onclick="toggleStepContent(5)">
+              <div class="flex items-center gap-3.5">
+                <div class="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-lg shadow-inner">
+                  5
+                </div>
+                <div>
+                  <h4 class="text-lg font-cute font-bold text-capy-900 flex items-center gap-2">
+                    全連接層 (Dense / FC Layer)
+                  </h4>
+                  <p class="text-xs text-capy-500 font-mono">最終輸出：[32, 10]</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="badge-tensor text-xs px-2.5 py-1 rounded-lg font-medium">
+                  輸出 10 類別
+                </span>
+                <i data-lucide="chevron-down" id="chevron-5" class="w-5 h-5 text-capy-400 transition-transform duration-300"></i>
+              </div>
+            </div>
+
+            <div id="content-5" class="mt-4 pt-4 border-t border-capy-100 space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="text-xs sm:text-sm text-capy-700 space-y-2">
+                  <p class="font-medium text-capy-900">🎯 最後投票：找出圖中是哪種物體！</p>
+                  <p>這 3600 個特徵與全連接層的每個輸出神經元全面相連。經過權重加權與 Softmax 運算後，吐出 10 個數字，代表屬於不同類別（如水豚、飛機、小狗、汽車等）的機率得分。</p>
+                  <ul class="list-disc pl-5 font-mono text-xs space-y-1">
+                    <li>輸入特徵數：3600</li>
+                    <li>輸出類別數：10</li>
+                  </ul>
+                </div>
+
+                <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 flex flex-col justify-center items-center">
+                  <span class="text-xs font-bold text-capy-800 mb-1">最終辨識輸出</span>
+                  <div class="w-full grid grid-cols-5 gap-1.5 text-center mt-2 font-mono text-xs">
+                    <span class="p-1 bg-white rounded border border-capy-200">0: 飛機</span>
+                    <span class="p-1 bg-white rounded border border-capy-200">1: 汽車</span>
+                    <span class="p-1 bg-white rounded border border-capy-200">2: 鳥類</span>
+                    <span class="p-1 bg-white rounded border border-capy-200">3: 貓咪</span>
+                    <span class="p-1 bg-white rounded border border-capy-200">4: 鹿</span>
+                    <span class="p-1 bg-white rounded border border-capy-200">5: 小狗</span>
+                    <span class="p-1 bg-white rounded border border-capy-200">6: 青蛙</span>
+                    <span class="p-1 bg-white rounded border border-capy-200">7: 馬</span>
+                    <span class="p-1 bg-white rounded border border-capy-200">8: 船</span>
+                    <span class="p-1 bg-amber-400 font-bold rounded border border-amber-500 text-amber-950">9: 水豚✨</span>
+                  </div>
+                  <span class="text-xs font-mono font-bold text-amber-900 mt-3">輸出尺寸 = [32, 10]</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+        </div>
+
+        <!-- 右側輔助欄：張量變化總結樹 + 快速小抄 -->
+        <aside class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
+          <!-- 張量尺寸總結地圖 -->
+          <div class="bg-white rounded-2xl border-2 border-capy-200 p-5 capy-shadow space-y-4">
+            <h4 class="font-cute font-bold text-base text-capy-900 flex items-center justify-between">
+              <span>🧭 張量流動縮圖</span>
+              <span class="text-[11px] font-sans font-normal text-capy-500">Tensor Flow</span>
+            </h4>
+            
+            <div class="space-y-3 font-mono text-xs">
+              <div class="flex items-center justify-between p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/60">
+                <span class="text-capy-600 font-sans font-medium">① 輸入原圖</span>
+                <span class="font-bold text-amber-800">[32, 3, 32, 32]</span>
+              </div>
+              <div class="flex justify-center text-capy-400 text-xs">↓ 卷積 Conv2D</div>
+              <div class="flex items-center justify-between p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/60">
+                <span class="text-capy-600 font-sans font-medium">② 16個特徵濾波器</span>
+                <span class="font-bold text-amber-800">[32, 16, 30, 30]</span>
+              </div>
+              <div class="flex justify-center text-capy-400 text-xs">↓ 最大池化 Pooling</div>
+              <div class="flex items-center justify-between p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/60">
+                <span class="text-capy-600 font-sans font-medium">③ 尺寸半減濃縮</span>
+                <span class="font-bold text-amber-800">[32, 16, 15, 15]</span>
+              </div>
+              <div class="flex justify-center text-capy-400 text-xs">↓ 水豚桿麵棍 Flatten</div>
+              <div class="flex items-center justify-between p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/60">
+                <span class="text-capy-600 font-sans font-medium">④ 展開一維向量</span>
+                <span class="font-bold text-amber-800">[32, 3600]</span>
+              </div>
+              <div class="flex justify-center text-capy-400 text-xs">↓ 全連接 Dense</div>
+              <div class="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                <span class="text-emerald-900 font-sans font-semibold">⑤ 10類分類機率</span>
+                <span class="font-bold text-emerald-800">[32, 10]</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 水豚吉祥物趣味小卡 -->
+          <div class="bg-gradient-to-br from-amber-100 to-amber-200/60 rounded-2xl p-4 border border-amber-300/80 flex items-center gap-3">
+            <div class="text-3xl animate-bob">🦫</div>
+            <div class="text-xs text-amber-900 leading-snug">
+              <strong class="font-bold">水豚悄悄話：</strong>
+              神經網絡中維度變化是最容易出錯的環節。只要記住核心公式，就算換成其他解析度也不會迷路囉！
+            </div>
+          </div>
+        </aside>
+
+      </div>
+    </section>
+
+    <!-- 互動專區：動態卷積尺寸計算器 -->
+    <section id="interactive-calculator" class="bg-white rounded-3xl border-2 border-capy-200 p-6 sm:p-8 capy-shadow space-y-6">
+      <div class="border-b border-capy-200 pb-4">
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-sage-50 text-sage-700 rounded-full text-xs font-bold mb-2">
+          <i data-lucide="sliders" class="w-3.5 h-3.5"></i> 自由調整實驗室
+        </div>
+        <h3 class="text-2xl font-cute font-bold text-capy-900">
+          水豚卷積與張量即時計算機
+        </h3>
+        <p class="text-xs sm:text-sm text-capy-600 mt-1">
+          試著更動輸入解析度、濾波器大小或 Padding，看看特徵圖尺寸如何即時變化！
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        <!-- 控制參數區 -->
+        <div class="lg:col-span-5 space-y-4 bg-capy-50 p-5 rounded-2xl border border-capy-200">
+          <!-- 圖片尺寸 W -->
+          <div>
+            <div class="flex justify-between text-xs font-semibold text-capy-800 mb-1">
+              <span>輸入尺寸 (W_in)</span>
+              <span id="val_win" class="font-mono text-amber-700">32 px</span>
+            </div>
+            <input type="range" id="input_win" min="16" max="128" step="2" value="32" class="w-full accent-amber-600 cursor-pointer">
+          </div>
+
+          <!-- 濾波器大小 K -->
+          <div>
+            <div class="flex justify-between text-xs font-semibold text-capy-800 mb-1">
+              <span>濾波器尺寸 (Filter / K)</span>
+              <span id="val_k" class="font-mono text-amber-700">3 × 3</span>
+            </div>
+            <input type="range" id="input_k" min="1" max="9" step="2" value="3" class="w-full accent-amber-600 cursor-pointer">
+          </div>
+
+          <!-- 填充 Padding P -->
+          <div>
+            <div class="flex justify-between text-xs font-semibold text-capy-800 mb-1">
+              <span>填充 (Padding / P)</span>
+              <span id="val_p" class="font-mono text-amber-700">0</span>
+            </div>
+            <input type="range" id="input_p" min="0" max="4" step="1" value="0" class="w-full accent-amber-600 cursor-pointer">
+          </div>
+
+          <!-- 步長 Stride S -->
+          <div>
+            <div class="flex justify-between text-xs font-semibold text-capy-800 mb-1">
+              <span>步長 (Stride / S)</span>
+              <span id="val_s" class="font-mono text-amber-700">1</span>
+            </div>
+            <input type="range" id="input_s" min="1" max="4" step="1" value="1" class="w-full accent-amber-600 cursor-pointer">
+          </div>
+
+          <!-- 濾波器數量 -->
+          <div>
+            <div class="flex justify-between text-xs font-semibold text-capy-800 mb-1">
+              <span>濾波器數量 (輸出通道)</span>
+              <span id="val_channels" class="font-mono text-amber-700">16</span>
+            </div>
+            <input type="range" id="input_channels" min="4" max="64" step="4" value="16" class="w-full accent-amber-600 cursor-pointer">
+          </div>
+        </div>
+
+        <!-- 運算結果視覺化區 -->
+        <div class="lg:col-span-7 space-y-4">
+          <div class="p-6 bg-amber-50/50 rounded-2xl border-2 border-dashed border-amber-300 space-y-4">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-amber-900 uppercase tracking-wider">即時運算輸出結果</span>
+              <span id="valid_status" class="text-xs bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded">有效尺寸</span>
+            </div>
+
+            <!-- 計算結果張量卡 -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+              <div class="bg-white p-3 rounded-xl border border-amber-200">
+                <span class="text-[10px] text-capy-500 block">卷積後尺寸</span>
+                <span id="res_conv_size" class="text-lg font-mono font-bold text-amber-900">30 × 30</span>
+              </div>
+              <div class="bg-white p-3 rounded-xl border border-amber-200">
+                <span class="text-[10px] text-capy-500 block">池化(÷2)尺寸</span>
+                <span id="res_pool_size" class="text-lg font-mono font-bold text-amber-900">15 × 15</span>
+              </div>
+              <div class="bg-white p-3 rounded-xl border border-amber-200">
+                <span class="text-[10px] text-capy-500 block">攤平特徵數</span>
+                <span id="res_flatten_size" class="text-lg font-mono font-bold text-amber-900">3,600</span>
+              </div>
+              <div class="bg-white p-3 rounded-xl border border-amber-200">
+                <span class="text-[10px] text-capy-500 block">全連接權重數 (10類)</span>
+                <span id="res_dense_params" class="text-lg font-mono font-bold text-amber-900">36,010</span>
+              </div>
+            </div>
+
+            <!-- 算式動態回顯 -->
+            <div class="bg-white p-4 rounded-xl border border-amber-200 text-xs sm:text-sm font-mono text-capy-800 space-y-2">
+              <p class="text-capy-500 text-[11px] font-sans font-medium">即時公式運算細節：</p>
+              <div id="dynamic_formula_box" class="flex flex-wrap items-center justify-center gap-2 py-2 bg-amber-50/50 rounded-lg border border-amber-100 font-bold text-amber-950">
+                <span>輸出 =</span>
+                <span class="text-lg text-amber-700">[</span>
+                <div class="inline-flex flex-col items-center text-xs">
+                  <span id="formula_top" class="border-b border-capy-700 px-2 py-0.5">32 - 3 + 2(0)</span>
+                  <span id="formula_bot" class="px-2 py-0.5">1</span>
+                </div>
+                <span class="text-lg text-amber-700">]</span>
+                <span>+ 1 =</span>
+                <span id="formula_res" class="text-amber-600 text-base font-extrabold">30</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 隨堂小測驗 (驗收學習成果) -->
+    <section class="bg-white rounded-3xl border-2 border-capy-200 p-6 sm:p-8 capy-shadow space-y-6">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold text-xl shadow">
+          ❓
+        </div>
+        <div>
+          <h3 class="text-xl font-cute font-bold text-capy-900">水豚隨堂考：小測驗</h3>
+          <p class="text-xs sm:text-sm text-capy-600">檢驗你是否已經完全掌握卷積與攤平的觀念！</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 題目 1 -->
+        <div class="bg-capy-50 p-5 rounded-2xl border border-capy-200 space-y-3">
+          <p class="text-sm font-semibold text-capy-900">
+            Q1. 如果池化後的張量是 <code class="bg-white px-1.5 py-0.5 rounded text-amber-900 font-mono">[32, 16, 15, 15]</code>，攤平層 (Flatten) 之後每張圖片會變成多少維的特徵向量？
+          </p>
+          <div class="space-y-2 text-xs font-mono">
+            <button onclick="checkAnswer(1, 'A')" class="quiz-btn-1 w-full text-left p-2.5 rounded-xl border border-capy-300 bg-white hover:bg-amber-100 transition">
+              A) 240
+            </button>
+            <button onclick="checkAnswer(1, 'B')" class="quiz-btn-1 w-full text-left p-2.5 rounded-xl border border-capy-300 bg-white hover:bg-amber-100 transition">
+              B) 3600 (16 × 15 × 15)
+            </button>
+            <button onclick="checkAnswer(1, 'C')" class="quiz-btn-1 w-full text-left p-2.5 rounded-xl border border-capy-300 bg-white hover:bg-amber-100 transition">
+              C) 3200
+            </button>
+          </div>
+          <div id="feedback-1" class="text-xs font-semibold hidden p-2 rounded-lg"></div>
+        </div>
+
+        <!-- 題目 2 -->
+        <div class="bg-capy-50 p-5 rounded-2xl border border-capy-200 space-y-3">
+          <p class="text-sm font-semibold text-capy-900">
+            Q2. 在卷積層中，如果輸入是 30×30，使用 3×3 濾波器、Stride=1、Padding=1，輸出尺寸會是？
+          </p>
+          <div class="space-y-2 text-xs font-mono">
+            <button onclick="checkAnswer(2, 'A')" class="quiz-btn-2 w-full text-left p-2.5 rounded-xl border border-capy-300 bg-white hover:bg-amber-100 transition">
+              A) 28 × 28
+            </button>
+            <button onclick="checkAnswer(2, 'B')" class="quiz-btn-2 w-full text-left p-2.5 rounded-xl border border-capy-300 bg-white hover:bg-amber-100 transition">
+              B) 30 × 30 (Same Convolution)
+            </button>
+            <button onclick="checkAnswer(2, 'C')" class="quiz-btn-2 w-full text-left p-2.5 rounded-xl border border-capy-300 bg-white hover:bg-amber-100 transition">
+              C) 32 × 32
+            </button>
+          </div>
+          <div id="feedback-2" class="text-xs font-semibold hidden p-2 rounded-lg"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 頁尾 -->
+  <footer class="bg-white border-t border-capy-200 py-6 mt-12 text-center text-xs text-capy-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="text-lg">🦫</span>
+        <span>水豚的影像分類冒險 (Capybara's Image Classification Adventure)</span>
+      </div>
+      <div>
+        <span>基於經典卷積神經網絡視覺化設計 • 隨時探索多維張量結構</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- 圖片全螢幕檢視彈窗 (Modal) -->
+  <div id="imageModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4" onclick="closeImageModal()">
+    <div class="relative max-w-5xl w-full max-h-[90vh] flex flex-col items-center" onclick="event.stopPropagation()">
+      <button onclick="closeImageModal()" class="absolute -top-10 right-0 text-white hover:text-amber-300 text-sm font-bold flex items-center gap-1 bg-black/50 px-3 py-1 rounded-full border border-white/20 transition">
+        <i data-lucide="x" class="w-4 h-4"></i> 關閉預覽
+      </button>
+      <div id="modalContentWrapper" class="w-full flex justify-center">
+        <img id="modalImg" src="" alt="放大圖" class="hidden w-full h-auto max-h-[85vh] object-contain rounded-2xl shadow-2xl border border-white/20 bg-[#F5EFE6]">
+        <div id="modalSvgContainer" class="w-full bg-[#F5EFE6] rounded-2xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto">
+          <!-- 會同步載入 SVG 看板 -->
+        </div>
+      </div>
+      <p class="text-amber-100 text-xs font-mono mt-3">水豚的影像分類冒險 - 神經網絡步驟詳解 (點擊外圍任意區域可關閉)</p>
+    </div>
+  </div>
+
+  <!-- 互動邏輯 JavaScript -->
+  <script>
+    // 初始化 Lucide 圖標
+    document.addEventListener("DOMContentLoaded", () => {
+      lucide.createIcons();
+      updateCalculator();
+      
+      // 將預設 SVG 同步放入彈窗備用
+      const svgOriginal = document.getElementById('svgBackupDiagram');
+      if (svgOriginal) {
+        document.getElementById('modalSvgContainer').innerHTML = svgOriginal.innerHTML;
+      }
+    });
+
+    // 讓使用者可直接從本地瀏覽器選取圖片檔案，100% 解決沙盒環境無法讀取本地檔名之問題
+    function loadUserLocalImage(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const dataUrl = e.target.result;
+        
+        // 替換主圖片
+        const mainImg = document.getElementById('mainDiagramImg');
+        const svgBackup = document.getElementById('svgBackupDiagram');
+        mainImg.src = dataUrl;
+        mainImg.classList.remove('hidden');
+        svgBackup.classList.add('hidden');
+
+        // 替換彈窗圖片
+        const modalImg = document.getElementById('modalImg');
+        const modalSvg = document.getElementById('modalSvgContainer');
+        modalImg.src = dataUrl;
+        modalImg.classList.remove('hidden');
+        modalSvg.classList.add('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // 放大檢視彈窗控制
+    function openImageModal() {
+      const modal = document.getElementById('imageModal');
+      modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      lucide.createIcons();
+    }
+
+    function closeImageModal() {
+      const modal = document.getElementById('imageModal');
+      modal.classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+
+    // ESC 鍵關閉彈窗
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeImageModal();
+    });
+
+    // 展開/收合步驟卡片
+    function toggleStepContent(stepNum) {
+      const content = document.getElementById(`content-${stepNum}`);
+      const chevron = document.getElementById(`chevron-${stepNum}`);
+      if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        chevron.style.transform = 'rotate(0deg)';
+      } else {
+        content.classList.add('hidden');
+        chevron.style.transform = 'rotate(-90deg)';
+      }
+    }
+
+    // 全部展開或收合
+    let allExpanded = true;
+    document.getElementById('toggleAllBtn').addEventListener('click', () => {
+      allExpanded = !allExpanded;
+      for (let i = 1; i <= 5; i++) {
+        const content = document.getElementById(`content-${i}`);
+        const chevron = document.getElementById(`chevron-${i}`);
+        if (allExpanded) {
+          content.classList.remove('hidden');
+          chevron.style.transform = 'rotate(0deg)';
+        } else {
+          content.classList.add('hidden');
+          chevron.style.transform = 'rotate(-90deg)';
+        }
+      }
+      document.getElementById('toggleAllBtn').innerText = allExpanded ? '收合全部' : '展開全部';
+    });
+
+    // 平滑捲動至指定步驟
+    function scrollToStep(step) {
+      const element = document.getElementById(`step-${step}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // 確保展開
+        const content = document.getElementById(`content-${step}`);
+        const chevron = document.getElementById(`chevron-${step}`);
+        content.classList.remove('hidden');
+        chevron.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    function scrollToCalculator() {
+      const calc = document.getElementById('interactive-calculator');
+      if (calc) {
+        calc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    // 計算器邏輯
+    const inWin = document.getElementById('input_win');
+    const inK = document.getElementById('input_k');
+    const inP = document.getElementById('input_p');
+    const inS = document.getElementById('input_s');
+    const inC = document.getElementById('input_channels');
+
+    const inputs = [inWin, inK, inP, inS, inC];
+    inputs.forEach(input => input.addEventListener('input', updateCalculator));
+
+    function updateCalculator() {
+      const W = parseInt(inWin.value);
+      const K = parseInt(inK.value);
+      const P = parseInt(inP.value);
+      const S = parseInt(inS.value);
+      const C = parseInt(inC.value);
+
+      // 更新數字標籤
+      document.getElementById('val_win').innerText = `${W} px`;
+      document.getElementById('val_k').innerText = `${K} × ${K}`;
+      document.getElementById('val_p').innerText = `${P}`;
+      document.getElementById('val_s').innerText = `${S}`;
+      document.getElementById('val_channels').innerText = `${C}`;
+
+      // 卷積尺寸計算: Math.floor((W - K + 2*P) / S) + 1
+      const convOut = Math.floor((W - K + 2 * P) / S) + 1;
+      const statusBadge = document.getElementById('valid_status');
+
+      if (convOut <= 0) {
+        statusBadge.innerText = '尺寸異常 (小於1)';
+        statusBadge.className = 'text-xs bg-red-100 text-red-800 font-semibold px-2 py-0.5 rounded';
+        document.getElementById('res_conv_size').innerText = '無效';
+        document.getElementById('res_pool_size').innerText = '無效';
+        document.getElementById('res_flatten_size').innerText = '無效';
+        document.getElementById('res_dense_params').innerText = '無效';
+        return;
+      }
+
+      statusBadge.innerText = '有效運算';
+      statusBadge.className = 'text-xs bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded';
+
+      const poolOut = Math.floor(convOut / 2);
+      const flattenOut = C * poolOut * poolOut;
+      const denseParams = (flattenOut * 10) + 10; // Weights + Biases
+
+      document.getElementById('res_conv_size').innerText = `${convOut} × ${convOut}`;
+      document.getElementById('res_pool_size').innerText = `${poolOut} × ${poolOut}`;
+      document.getElementById('res_flatten_size').innerText = flattenOut.toLocaleString();
+      document.getElementById('res_dense_params').innerText = denseParams.toLocaleString();
+
+      // 即時更新純 HTML 算式卡片（杜絕任何 LaTeX 原始碼文字外漏與亂碼）
+      document.getElementById('formula_top').innerText = `${W} - ${K} + 2(${P})`;
+      document.getElementById('formula_bot').innerText = `${S}`;
+      document.getElementById('formula_res').innerText = `${convOut}`;
+    }
+
+    // 隨堂測驗評分邏輯
+    function checkAnswer(questionNum, option) {
+      const feedback = document.getElementById(`feedback-${questionNum}`);
+      feedback.classList.remove('hidden');
+
+      if (questionNum === 1) {
+        if (option === 'B') {
+          feedback.className = 'text-xs font-semibold p-2.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200';
+          feedback.innerHTML = '🎉 答對了！16 通道 × 15 高度 × 15 寬度 = 3600 個特徵點。水豚為你鼓掌！';
+        } else {
+          feedback.className = 'text-xs font-semibold p-2.5 rounded-lg bg-red-100 text-red-800 border border-red-200';
+          feedback.innerHTML = '❌ 不太對喔！記得把三個維度 (Channels × H × W) 全部相乘！';
+        }
+      } else if (questionNum === 2) {
+        if (option === 'B') {
+          feedback.className = 'text-xs font-semibold p-2.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200';
+          feedback.innerHTML = '🎉 太棒了！代入公式 (30 - 3 + 2×1)/1 + 1 = 30，這就是維持長寬不變的 Same Padding！';
+        } else {
+          feedback.className = 'text-xs font-semibold p-2.5 rounded-lg bg-red-100 text-red-800 border border-red-200';
+          feedback.innerHTML = '❌ 算式是 (30 - 3 + 2)/1 + 1 = 30 喔！再試一次看看～';
+        }
+      }
+    }
+  </script>
+</body>
+</html>
