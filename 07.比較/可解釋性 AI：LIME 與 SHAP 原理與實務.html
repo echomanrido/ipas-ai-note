@@ -1,0 +1,2354 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>可解釋性 AI (XAI)：LIME 與 SHAP 原理與實務 | iPAS AI 互動教學</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & Noto Sans TC & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <!-- KaTeX for Mathematical Rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            cyber: {
+              bg: '#090d16',
+              card: '#111827',
+              cardHover: '#1a2333',
+              border: '#1f2937',
+              cyan: '#06b6d4',
+              indigo: '#6366f1',
+              emerald: '#10b981',
+              rose: '#f43f5e',
+              amber: '#f59e0b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #090d16;
+      color: #e2e8f0;
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090d16;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+    .glass-panel {
+      background: rgba(17, 24, 39, 0.78);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(56, 189, 248, 0.16);
+    }
+    .glow-cyan {
+      box-shadow: 0 0 24px rgba(6, 182, 212, 0.15);
+    }
+    .glow-indigo {
+      box-shadow: 0 0 24px rgba(99, 102, 241, 0.15);
+    }
+    .katex {
+      font-size: 1.08em;
+    }
+    .katex-display {
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 0.5rem 0;
+    }
+    input[type="range"] {
+      accent-color: #06b6d4;
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-50 glass-panel border-b border-slate-800/80">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-indigo-600 flex items-center justify-center font-mono font-bold text-white shadow-lg shadow-cyan-500/20">
+            XAI
+          </div>
+          <div>
+            <span class="font-bold text-base sm:text-lg tracking-tight text-white">LIME & SHAP 互動實驗室</span>
+            <span class="hidden md:inline-block ml-2 text-xs px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-mono">iPAS AI 應用規劃師實戰</span>
+          </div>
+        </div>
+
+        <!-- Desktop Nav Links -->
+        <nav class="hidden lg:flex items-center space-x-1 text-sm font-medium">
+          <a href="#overview" class="px-3 py-2 rounded-lg text-slate-300 hover:text-cyan-400 hover:bg-slate-800/60 transition">1. 核心總覽 & 考題</a>
+          <a href="#history" class="px-3 py-2 rounded-lg text-slate-300 hover:text-cyan-400 hover:bg-slate-800/60 transition">2. 演進歷史</a>
+          <a href="#cases" class="px-3 py-2 rounded-lg text-slate-300 hover:text-cyan-400 hover:bg-slate-800/60 transition">3. 生活與工業案例</a>
+          <a href="#math" class="px-3 py-2 rounded-lg text-slate-300 hover:text-cyan-400 hover:bg-slate-800/60 transition">4. 數學推導互動</a>
+          <a href="#lab" class="px-3 py-2 rounded-lg text-cyan-300 bg-cyan-950/50 border border-cyan-500/30 hover:bg-cyan-900/50 transition">5. Canvas 模擬器</a>
+          <a href="#code" class="px-3 py-2 rounded-lg text-slate-300 hover:text-cyan-400 hover:bg-slate-800/60 transition">6. Python 實作</a>
+        </nav>
+
+        <!-- Mobile Menu Button -->
+        <button id="mobileMenuBtn" class="lg:hidden p-2 rounded-lg text-slate-300 hover:bg-slate-800 focus:outline-none" aria-label="開啟選單">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Nav Drawer -->
+    <div id="mobileMenu" class="hidden lg:hidden border-t border-slate-800 bg-slate-900/95 px-4 pt-2 pb-4 space-y-1">
+      <a href="#overview" class="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-800">1. 核心總覽 & iPAS 考題</a>
+      <a href="#history" class="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-800">2. 由來與演進歷史</a>
+      <a href="#cases" class="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-800">3. 生活與工業應用</a>
+      <a href="#math" class="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-800">4. 互動式數學推導</a>
+      <a href="#lab" class="block px-3 py-2 rounded-lg text-cyan-400 font-semibold hover:bg-slate-800">5. 機器學習互動實驗室</a>
+      <a href="#code" class="block px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-800">6. Python 實作程式碼</a>
+    </div>
+  </header>
+
+  <!-- Hero Banner -->
+  <section class="relative overflow-hidden border-b border-slate-800/80 pt-10 pb-12 sm:pt-14 sm:pb-16">
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-cyan-900/20 via-slate-950 to-slate-950 pointer-events-none"></div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-mono mb-4">
+        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+        Explainable AI (XAI) • 打開機器學習黑盒子
+      </div>
+      <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
+        可解釋性 AI：<span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400">LIME 與 SHAP</span> 原理與實務
+      </h1>
+      <div class="mt-5 p-4 sm:p-5 rounded-2xl bg-slate-900/85 border border-cyan-500/30 shadow-lg shadow-cyan-500/10 max-w-4xl">
+        <p class="text-base sm:text-lg text-slate-100 font-medium leading-relaxed">
+          SHAP 與 LIME 都是機器學習領域中<strong class="text-cyan-400">「可解釋 AI（XAI, Explainable AI）」</strong>的核心工具，用來解決複雜黑箱模型（如隨機森林、XGBoost、深度學習）難以解讀內部邏輯的痛點。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-20">
+
+    <!-- ========================================================= -->
+    <!-- MODULE 1: 總覽儀表板 (LIME/SHAP 詳解 / 對比表 / iPAS 考題)  -->
+    <!-- ========================================================= -->
+    <section id="overview" class="scroll-mt-24 space-y-8">
+      <div class="flex items-center gap-3">
+        <span class="px-3 py-1 rounded-lg bg-cyan-500/15 text-cyan-400 font-mono text-sm font-bold border border-cyan-500/30">MODULE 01</span>
+        <h2 class="text-2xl sm:text-3xl font-bold text-white">核心概念總覽與 iPAS AI 實戰測驗</h2>
+      </div>
+
+      <!-- 什麼是 LIME？ & 什麼是 SHAP？ 結構化詳細卡片 -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Card 1: 什麼是 LIME？ -->
+        <div class="glass-panel rounded-2xl p-6 glow-cyan border-l-4 border-l-cyan-400 flex flex-col justify-between space-y-5">
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-mono uppercase tracking-wider text-cyan-400 bg-cyan-950/80 px-2.5 py-1 rounded-md border border-cyan-500/30">LIME 局部近似代理</span>
+              <span class="text-2xl">🔍</span>
+            </div>
+            <div>
+              <h3 class="text-xl sm:text-2xl font-bold text-white">什麼是 LIME？</h3>
+              <p class="text-xs sm:text-sm font-mono text-cyan-300 mt-1">
+                全名：Local Interpretable Model-agnostic Explanations（局部可解釋模型無關解釋）
+              </p>
+            </div>
+
+            <div class="bg-slate-900/80 rounded-xl p-4 border border-slate-800 space-y-2.5">
+              <div class="text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider">核心概念</div>
+              <ul class="space-y-2 text-xs sm:text-sm text-slate-300 leading-relaxed list-disc list-inside">
+                <li>
+                  <strong class="text-white">模型無關（Model-Agnostic）：</strong>不需管底層模型怎麼運作，只要能輸入資料、取得輸出即可。
+                </li>
+                <li>
+                  <strong class="text-white">局部近似（Local Approximation）：</strong>針對單一筆預測樣本，在其周圍進行隨機微調（擾動），產生一組鄰域資料，再用一個簡單的線性模型去近似模擬這個局部的行為。
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div class="bg-emerald-950/35 border border-emerald-500/30 rounded-xl p-3.5">
+              <div class="text-xs font-mono font-bold text-emerald-400 mb-1">✓ 優點</div>
+              <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                運算速度快、直觀易懂，特別適合影像（遮蔽超像素）或文字（隨機刪除詞彙）的視覺化解釋。
+              </p>
+            </div>
+            <div class="bg-rose-950/35 border border-rose-500/30 rounded-xl p-3.5">
+              <div class="text-xs font-mono font-bold text-rose-400 mb-1">✕ 缺點</div>
+              <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                具有隨機性，多次執行的結果可能略有不同；無法提供全體樣本的「全局」解釋。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: 什麼是 SHAP？ -->
+        <div class="glass-panel rounded-2xl p-6 glow-indigo border-l-4 border-l-indigo-400 flex flex-col justify-between space-y-5">
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-mono uppercase tracking-wider text-indigo-400 bg-indigo-950/80 px-2.5 py-1 rounded-md border border-indigo-500/30">SHAP 賽局理論歸因</span>
+              <span class="text-2xl">⚖️</span>
+            </div>
+            <div>
+              <h3 class="text-xl sm:text-2xl font-bold text-white">什麼是 SHAP？</h3>
+              <p class="text-xs sm:text-sm font-mono text-indigo-300 mt-1">
+                全名：SHapley Additive exPlanations（夏普利加性解釋）
+              </p>
+            </div>
+
+            <div class="bg-slate-900/80 rounded-xl p-4 border border-slate-800 space-y-2.5">
+              <div class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">核心概念</div>
+              <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                根源於<strong class="text-white">賽局理論（Game Theory）中的夏普利值（Shapley Value）</strong>，把每個特徵視為「合作遊戲中的球員」，公平計算並分配每個特徵對最終預測結果的貢獻度。
+              </p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div class="bg-emerald-950/35 border border-emerald-500/30 rounded-xl p-3.5">
+              <div class="text-xs font-mono font-bold text-emerald-400 mb-1">✓ 優點</div>
+              <ul class="text-xs sm:text-sm text-slate-300 leading-relaxed space-y-1.5 list-disc list-inside">
+                <li><strong class="text-white">兼顧局部與全局：</strong>既能解釋單一筆預測，也能彙整出全局特徵重要性。</li>
+                <li><strong class="text-white">數學保證：</strong>具有一致性與加總性（所有特徵貢獻加總等於預測值與基準值的差）。</li>
+              </ul>
+            </div>
+            <div class="bg-rose-950/35 border border-rose-500/30 rounded-xl p-3.5">
+              <div class="text-xs font-mono font-bold text-rose-400 mb-1">✕ 缺點</div>
+              <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                理論與計算複雜，運算成本通常比 LIME 高出許多（雖然針對樹模型有 <code class="font-mono text-indigo-300">TreeExplainer</code> 等優化加速）。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 核心差異比較表 -->
+      <div class="glass-panel rounded-2xl overflow-hidden border border-slate-800">
+        <div class="p-6 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 class="text-lg sm:text-xl font-bold text-white">核心差異比較表：LIME vs SHAP</h3>
+            <p class="text-xs sm:text-sm text-slate-400 mt-1">五大核心維度快速掌握選型決策與 iPAS AI 考試重點</p>
+          </div>
+          <span class="text-xs font-mono px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-cyan-300 self-start sm:self-auto">
+            XAI 演算法選型矩陣
+          </span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="bg-slate-900/95 text-slate-200 border-b border-slate-800">
+                <th class="py-3.5 px-5 font-bold w-1/5">比較項目</th>
+                <th class="py-3.5 px-5 font-bold text-cyan-400 w-2/5">LIME</th>
+                <th class="py-3.5 px-5 font-bold text-indigo-400 w-2/5">SHAP</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/80 text-slate-300">
+              <tr class="hover:bg-slate-800/35 transition">
+                <td class="py-3.5 px-5 font-semibold text-white">理論基礎</td>
+                <td class="py-3.5 px-5">局部線性模型擬合</td>
+                <td class="py-3.5 px-5">賽局理論 / Shapley 值</td>
+              </tr>
+              <tr class="hover:bg-slate-800/35 transition">
+                <td class="py-3.5 px-5 font-semibold text-white">解釋範圍</td>
+                <td class="py-3.5 px-5"><span class="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 text-xs font-mono mr-1.5">Local</span>僅限局部（單一樣本）</td>
+                <td class="py-3.5 px-5"><span class="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 text-xs font-mono mr-1.5">Local + Global</span>兼具局部與全局</td>
+              </tr>
+              <tr class="hover:bg-slate-800/35 transition">
+                <td class="py-3.5 px-5 font-semibold text-white">運算速度</td>
+                <td class="py-3.5 px-5 text-emerald-400 font-medium">較快</td>
+                <td class="py-3.5 px-5 text-amber-300">較慢（視 Explainer 種類而定）</td>
+              </tr>
+              <tr class="hover:bg-slate-800/35 transition">
+                <td class="py-3.5 px-5 font-semibold text-white">穩定性</td>
+                <td class="py-3.5 px-5">受隨機擾動影響，結果可能略有波動</td>
+                <td class="py-3.5 px-5 text-emerald-300">結果具數學一致性，較為穩定</td>
+              </tr>
+              <tr class="hover:bg-slate-800/35 transition">
+                <td class="py-3.5 px-5 font-semibold text-white">常見應用</td>
+                <td class="py-3.5 px-5">快速產出單一案例報告、非結構化資料（圖像/文字）快篩</td>
+                <td class="py-3.5 px-5">金融風控、醫療診斷等重度合規與精確度需求的場景</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 機器學習標準流程與 LIME / SHAP 介入位置 (ML Pipeline & XAI Placement) -->
+      <div class="glass-panel rounded-2xl p-6 sm:p-7 border border-cyan-500/35 glow-cyan space-y-6">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div>
+            <div class="inline-flex items-center gap-2 text-cyan-400 text-xs font-mono font-bold uppercase tracking-wider mb-1">
+              <span>🧭 ML Workflow & XAI Architecture • 定位黑盒子解密節點</span>
+            </div>
+            <h3 class="text-xl sm:text-2xl font-bold text-white">機器學習標準流程與 LIME / SHAP 介入位置</h3>
+            <p class="text-xs sm:text-sm text-slate-300 mt-1">
+              點擊下方任一流程階段，檢視各步驟的輸入輸出，以及 <strong class="text-cyan-300">LIME / SHAP 如何作為「事後解釋層 (Post-hoc Layer)」</strong> 串接模型與業務決策：
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2 text-xs font-mono shrink-0">
+            <span class="px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/30">
+              ★ LIME / SHAP 位置：模型推論後 (Post-hoc)
+            </span>
+          </div>
+        </div>
+
+        <!-- Visual Flow Diagram: 資料 -> 特徵 -> 模型訓練 -> 推論 -> [LIME/SHAP] -> 決策 -->
+        <div class="relative">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-stretch">
+            <!-- Step 1 -->
+            <button onclick="selectMlStage(0)" id="mlStageBtn0" class="ml-stage-btn text-left p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-cyan-500/50 transition flex flex-col justify-between relative group">
+              <div>
+                <div class="flex items-center justify-between text-xs font-mono text-slate-400 mb-1">
+                  <span>STEP 01</span>
+                  <span>🗄️</span>
+                </div>
+                <div class="font-bold text-white text-sm">資料收集與前處理</div>
+                <p class="text-[11px] text-slate-400 mt-1">清洗、缺失值填補、訓練/測試集切分</p>
+                <div class="mt-2 px-2 py-1 rounded bg-slate-950/90 border border-slate-800 font-mono text-[10px] text-sky-300 truncate">
+                  df.dropna() • train_test_split()
+                </div>
+              </div>
+              <div class="mt-3 text-[10px] font-mono text-slate-500 group-hover:text-cyan-400">點擊查看程式碼與詳情 →</div>
+            </button>
+
+            <!-- Step 2 -->
+            <button onclick="selectMlStage(1)" id="mlStageBtn1" class="ml-stage-btn text-left p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-cyan-500/50 transition flex flex-col justify-between relative group">
+              <div>
+                <div class="flex items-center justify-between text-xs font-mono text-slate-400 mb-1">
+                  <span>STEP 02</span>
+                  <span>⚙️</span>
+                </div>
+                <div class="font-bold text-white text-sm">特徵工程 (Features)</div>
+                <p class="text-[11px] text-slate-400 mt-1">特徵萃取、編碼、超像素/詞彙切分</p>
+                <div class="mt-2 px-2 py-1 rounded bg-slate-950/90 border border-slate-800 font-mono text-[10px] text-emerald-300 truncate">
+                  StandardScaler().fit_transform(X)
+                </div>
+              </div>
+              <div class="mt-3 text-[10px] font-mono text-cyan-400/80">提供可解釋特徵基底 →</div>
+            </button>
+
+            <!-- Step 3 -->
+            <button onclick="selectMlStage(2)" id="mlStageBtn2" class="ml-stage-btn text-left p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-cyan-500/50 transition flex flex-col justify-between relative group">
+              <div>
+                <div class="flex items-center justify-between text-xs font-mono text-slate-400 mb-1">
+                  <span>STEP 03</span>
+                  <span>⬛</span>
+                </div>
+                <div class="font-bold text-white text-sm">模型訓練 (黑箱模型)</div>
+                <p class="text-[11px] text-slate-400 mt-1">XGBoost / 隨機森林 / 深度神經網路</p>
+                <div class="mt-2 px-2 py-1 rounded bg-slate-950/90 border border-amber-500/30 font-mono text-[10px] text-amber-300 font-bold truncate">
+                  model.fit(X_train, y_train)
+                </div>
+              </div>
+              <div class="mt-3 text-[10px] font-mono text-slate-400">產出已訓練黑箱 f(x) →</div>
+            </button>
+
+            <!-- Step 4 -->
+            <button onclick="selectMlStage(3)" id="mlStageBtn3" class="ml-stage-btn text-left p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-cyan-500/50 transition flex flex-col justify-between relative group">
+              <div>
+                <div class="flex items-center justify-between text-xs font-mono text-slate-400 mb-1">
+                  <span>STEP 04</span>
+                  <span>🎯</span>
+                </div>
+                <div class="font-bold text-white text-sm">模型推論與預測</div>
+                <p class="text-[11px] text-slate-400 mt-1">輸入新樣本 x，輸出預測值 / 機率 f(x)</p>
+                <div class="mt-2 px-2 py-1 rounded bg-slate-950/90 border border-purple-500/30 font-mono text-[10px] text-purple-300 font-bold truncate">
+                  model.predict_proba(X_test)
+                </div>
+              </div>
+              <div class="mt-3 text-[10px] font-mono text-amber-400/90">觸發事後解釋需求 →</div>
+            </button>
+
+            <!-- Step 5: LIME / SHAP Highlighted Stage -->
+            <button onclick="selectMlStage(4)" id="mlStageBtn4" class="ml-stage-btn text-left p-3.5 rounded-xl bg-gradient-to-br from-cyan-950/90 to-indigo-950/90 border-2 border-cyan-400 shadow-lg shadow-cyan-500/20 transition flex flex-col justify-between relative">
+              <div class="absolute -top-2.5 right-2 px-2 py-0.5 rounded-full bg-cyan-400 text-slate-950 font-mono text-[10px] font-extrabold tracking-tight shadow">
+                📍 LIME / SHAP 在這！
+              </div>
+              <div>
+                <div class="flex items-center justify-between text-xs font-mono text-cyan-300 font-bold mb-1">
+                  <span>STEP 05 (XAI)</span>
+                  <span>🔍⚖️</span>
+                </div>
+                <div class="font-bold text-white text-sm">LIME / SHAP 事後解釋</div>
+                <p class="text-[11px] text-cyan-100/90 mt-1">拆解黑箱輸出，計算各特徵貢獻權重</p>
+                <div class="mt-2 px-2 py-1 rounded bg-slate-950/90 border border-cyan-400/40 font-mono text-[10px] text-cyan-300 font-bold truncate">
+                  explain_instance() • shap_values()
+                </div>
+              </div>
+              <div class="mt-3 text-[10px] font-mono text-cyan-300 font-bold">Post-hoc 模型無關層 →</div>
+            </button>
+
+            <!-- Step 6 -->
+            <button onclick="selectMlStage(5)" id="mlStageBtn5" class="ml-stage-btn text-left p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-cyan-500/50 transition flex flex-col justify-between relative group">
+              <div>
+                <div class="flex items-center justify-between text-xs font-mono text-slate-400 mb-1">
+                  <span>STEP 06</span>
+                  <span>🚀</span>
+                </div>
+                <div class="font-bold text-white text-sm">決策落地與回饋優化</div>
+                <p class="text-[11px] text-slate-400 mt-1">合規稽核、偏見修正、特徵迭代優化</p>
+                <div class="mt-2 px-2 py-1 rounded bg-slate-950/90 border border-slate-800 font-mono text-[10px] text-rose-300 truncate">
+                  audit_report() • retrain_pipeline()
+                </div>
+              </div>
+              <div class="mt-3 text-[10px] font-mono text-emerald-400/90">閉環回饋至 Step 02 ↺</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Interactive Stage Detail Inspector Panel -->
+        <div id="pipeline-detail" class="bg-slate-950/90 rounded-xl p-5 border border-slate-800 transition-all">
+          <!-- Populated dynamically by JS -->
+        </div>
+
+        <!-- Ante-hoc vs Post-hoc Quick Comparison Callout -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1 text-xs sm:text-sm">
+          <div class="bg-slate-900/70 rounded-xl p-4 border border-slate-800">
+            <div class="font-mono text-xs font-bold text-slate-400 mb-1">對照組：事前可解釋模型 (Intrinsic / Ante-hoc)</div>
+            <p class="text-slate-300 leading-relaxed">
+              如<strong>線性迴歸、邏輯斯迴歸、淺層決策樹</strong>，在 <span class="text-white font-semibold">Step 03 模型訓練階段</span> 本身就具備透明結構，無需額外外掛工具，但面對複雜非線性任務時準確率往往受限。
+            </p>
+          </div>
+          <div class="bg-cyan-950/30 rounded-xl p-4 border border-cyan-500/30">
+            <div class="font-mono text-xs font-bold text-cyan-400 mb-1">核心定位：事後解釋工具 (Post-hoc • LIME & SHAP)</div>
+            <p class="text-slate-200 leading-relaxed">
+              位於 <span class="text-cyan-300 font-semibold">Step 03 訓練完成與 Step 04 推論之後</span>。它不干涉模型訓練，而是透過讀取「輸入特徵 $x$」與「黑箱預測函數 $f(\cdot)$」，為高準確率黑箱模型補上人類可理解的歸因報告。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 實務關鍵特徵 Badges -->
+      <div class="glass-panel rounded-2xl p-6">
+        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <span class="text-cyan-400">✦</span> XAI 實務三大核心架構特徵
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-mono text-xs font-bold border border-emerald-500/30">Model-Agnostic</span>
+              <span class="font-bold text-white text-sm">模型無關性</span>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">
+              不需拆解模型內部權重或神經網路架構，僅需將黑盒子視為「輸入 $X \rightarrow$ 輸出 $f(X)$」的查詢介面，即可套用於 XGBoost、SVM、CNN 或 Transformer。
+            </p>
+          </div>
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 font-mono text-xs font-bold border border-amber-500/30">Post-hoc</span>
+              <span class="font-bold text-white text-sm">事後解釋機制</span>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">
+              在模型訓練完成並部署後才進行解釋，完全不會犧牲原始高準確率模型的預測效能（打破「準確率 vs 可解釋性」的傳統權衡）。
+            </p>
+          </div>
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="px-2 py-0.5 rounded bg-rose-500/15 text-rose-400 font-mono text-xs font-bold border border-rose-500/30">Perturbation</span>
+              <span class="font-bold text-white text-sm">擾動採樣 / 遮罩技術</span>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">
+              透過對輸入特徵施加微小高斯雜訊（LIME）或遮蔽部分特徵子集（KernelSHAP），觀察黑盒子預測機率的變化幅度來反推特徵重要性。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 核心原理全方位對比表 -->
+      <div class="glass-panel rounded-2xl overflow-hidden">
+        <div class="p-6 border-b border-slate-800">
+          <h3 class="text-lg font-bold text-white">LIME vs SHAP 核心原理全方位對比表</h3>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">iPAS AI 應用規劃師考試最常考的四大比較維度</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="bg-slate-900/90 text-slate-300 border-b border-slate-800">
+                <th class="py-3.5 px-4 font-semibold w-1/5">比較維度</th>
+                <th class="py-3.5 px-4 font-semibold text-cyan-400 w-2/5">LIME (局部代理模型)</th>
+                <th class="py-3.5 px-4 font-semibold text-indigo-400 w-2/5">SHAP (夏普利加性解釋)</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/80 text-slate-300">
+              <tr class="hover:bg-slate-800/30 transition">
+                <td class="py-3.5 px-4 font-semibold text-white">1. 理論基礎</td>
+                <td class="py-3.5 px-4">局部線性逼近（Local Surrogate Model），以加權最小平方法擬合鄰近擾動樣本。</td>
+                <td class="py-3.5 px-4">合作賽局理論（Cooperative Game Theory）之 <strong class="text-indigo-300">Shapley Value</strong>，計算所有特徵子集的邊際貢獻期望值。</td>
+              </tr>
+              <tr class="hover:bg-slate-800/30 transition">
+                <td class="py-3.5 px-4 font-semibold text-white">2. 解釋範圍</td>
+                <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 text-xs font-mono">純局部解釋 (Local)</span> 僅針對單筆預測樣本 $x$ 有效，無法直接加總代表全域模型行為。</td>
+                <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 text-xs font-mono">局部 + 全域聚合 (Local & Global)</span> 單筆為局部歸因，將全體樣本的 $|\phi_i|$ 平均即可得嚴謹的全域特徵重要性（Summary Plot）。</td>
+              </tr>
+              <tr class="hover:bg-slate-800/30 transition">
+                <td class="py-3.5 px-4 font-semibold text-white">3. 計算速度</td>
+                <td class="py-3.5 px-4"><strong class="text-emerald-400">較快</strong>：僅需採樣固定數量（如 5,000 筆）擾動資料並訓練一個稀疏線性模型。</td>
+                <td class="py-3.5 px-4">精確 KernelSHAP 呈指數級複雜度 $O(2^M)$ <strong class="text-rose-400">較慢</strong>；但針對樹模型（XGBoost/LightGBM）的 <strong class="text-emerald-400">TreeSHAP 極快</strong> $O(TLD^2)$。</td>
+              </tr>
+              <tr class="hover:bg-slate-800/30 transition">
+                <td class="py-3.5 px-4 font-semibold text-white">4. 數學一致性與公理保證</td>
+                <td class="py-3.5 px-4"><strong class="text-amber-400">無嚴格公理保證</strong>：結果對核寬度 $\sigma$（Kernel Width）與隨機採樣種子敏感，鄰近點可能出現解釋不穩定。</td>
+                <td class="py-3.5 px-4"><strong class="text-emerald-400">具備三大唯一性公理保證</strong>：局部準確性（Local Accuracy）、缺失性（Missingness）、一致性（Consistency）。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- iPAS AI 應用規劃師實戰考題互動區 -->
+      <div class="glass-panel rounded-2xl p-6 border border-amber-500/30">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+          <div>
+            <div class="inline-flex items-center gap-2 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider mb-1">
+              <span>🏆 iPAS 經濟部 AI 應用規劃師（中級）實戰模擬題庫</span>
+            </div>
+            <h3 class="text-xl font-bold text-white">可解釋 AI (XAI) 倫理、治理與演算法考點測驗</h3>
+          </div>
+          <div class="flex items-center gap-3 bg-slate-900 px-4 py-2 rounded-xl border border-slate-800">
+            <span class="text-xs text-slate-400">答對統計：</span>
+            <span id="quizScore" class="font-mono font-bold text-lg text-emerald-400">0 / 3</span>
+            <button onclick="resetQuiz()" class="text-xs text-slate-400 hover:text-white underline ml-2">重設測驗</button>
+          </div>
+        </div>
+
+        <div id="quizContainer" class="space-y-6">
+          <!-- Questions rendered by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- MODULE 2: 由來與演進歷史                                    -->
+    <!-- ========================================================= -->
+    <section id="history" class="scroll-mt-24 space-y-8">
+      <div class="flex items-center gap-3">
+        <span class="px-3 py-1 rounded-lg bg-indigo-500/15 text-indigo-400 font-mono text-sm font-bold border border-indigo-500/30">MODULE 02</span>
+        <h2 class="text-2xl sm:text-3xl font-bold text-white">由來與演進歷史：從雪地哈士奇到賽局理論</h2>
+      </div>
+
+      <div class="relative border-l-2 border-slate-700 ml-4 sm:ml-6 space-y-10 pl-6 sm:pl-8 py-2">
+        <!-- 1953 -->
+        <div class="relative">
+          <div class="absolute -left-[33px] sm:-left-[41px] top-1 w-4 h-4 rounded-full bg-amber-400 ring-4 ring-slate-900"></div>
+          <span class="text-xs font-mono text-amber-400 font-bold">1953 年 • 合作賽局理論基石</span>
+          <h3 class="text-lg font-bold text-white mt-1">Lloyd Shapley 提出「夏普利值 (Shapley Value)」</h3>
+          <p class="text-slate-300 text-sm sm:text-base mt-2 leading-relaxed">
+            美國數學家與經濟學家 Lloyd Shapley（2012 年諾貝爾經濟學獎得主）為解決合作賽局中「聯盟總收益如何公平分配給每位參與者」的問題，證明了唯一同時滿足效率性、對稱性、虛擬玩家與可加性的分配公式，奠定了日後 SHAP 的數學靈魂。
+          </p>
+        </div>
+
+        <!-- 2016 -->
+        <div class="relative">
+          <div class="absolute -left-[33px] sm:-left-[41px] top-1 w-4 h-4 rounded-full bg-cyan-400 ring-4 ring-slate-900"></div>
+          <span class="text-xs font-mono text-cyan-400 font-bold">2016 年 • ACM SIGKDD 經典論文</span>
+          <h3 class="text-lg font-bold text-white mt-1">LIME 誕生與著名的「哈士奇 vs 狼（雪地背景）」實驗</h3>
+          <p class="text-slate-300 text-sm sm:text-base mt-2 leading-relaxed">
+            Marco Tulio Ribeiro、Sameer Singh 與 Carlos Guestrin 發表論文 <em>《"Why Should I Trust You?": Explaining the Predictions of Any Classifier》</em>。他們訓練了一個準確率極高的「哈士奇 vs 狼」影像分類器，但透過 LIME 遮蔽超像素（Superpixels）檢視模型依據時，驚訝地發現模型並非看五官，而是<strong class="text-cyan-300">只要背景有「雪地」就一律預測為狼</strong>！這個案例成為 XAI 發展史上最著名的「資料洩漏與偏見偵測」里程碑。
+          </p>
+          <!-- Visual Illustration of Husky vs Wolf -->
+          <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-900/80 border border-slate-800 rounded-xl p-4">
+            <div class="flex items-start gap-3">
+              <div class="text-3xl bg-slate-800 p-2.5 rounded-lg">🐺❄️</div>
+              <div>
+                <div class="text-xs font-mono text-rose-400 font-bold">黑盒子表面高準確率</div>
+                <div class="text-sm font-semibold text-white">測試集準確率高達 90%</div>
+                <p class="text-xs text-slate-400 mt-1">開發者誤以為模型學會了分辨犬科動物特徵，準備直接上線部署。</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-3">
+              <div class="text-3xl bg-cyan-950/70 border border-cyan-500/30 p-2.5 rounded-lg">🔍🏔️</div>
+              <div>
+                <div class="text-xs font-mono text-cyan-400 font-bold">LIME 局部歸因揭露真相</div>
+                <div class="text-sm font-semibold text-white">決策依據 = 背景積雪像素</div>
+                <p class="text-xs text-slate-400 mt-1">模型其實是一個「雪地偵測器」！若沒有 LIME 事後解釋，上線後將產生嚴重誤判。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2017 -->
+        <div class="relative">
+          <div class="absolute -left-[33px] sm:-left-[41px] top-1 w-4 h-4 rounded-full bg-indigo-400 ring-4 ring-slate-900"></div>
+          <span class="text-xs font-mono text-indigo-400 font-bold">2017 年 • NeurIPS 里程碑論文</span>
+          <h3 class="text-lg font-bold text-white mt-1">SHAP 統一框架（Scott Lundberg & Su-In Lee）</h3>
+          <p class="text-slate-300 text-sm sm:text-base mt-2 leading-relaxed">
+            華盛頓大學研究團隊發表 <em>《A Unified Approach to Interpreting Model Predictions》</em>，提出加性特徵歸因方法（Additive Feature Attribution Methods）統一框架，證明 LIME、DeepLIFT 與 LRP 本質上皆屬於同一家族，並推導出唯一符合人類直覺一致性的 <strong class="text-indigo-300">SHAP 值</strong>與高速演算法 <strong class="text-indigo-300">TreeSHAP</strong>。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- MODULE 3: 生活化例子 & 工業上應用                          -->
+    <!-- ========================================================= -->
+    <section id="cases" class="scroll-mt-24 space-y-8">
+      <div class="flex items-center gap-3">
+        <span class="px-3 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 font-mono text-sm font-bold border border-emerald-500/30">MODULE 03</span>
+        <h2 class="text-2xl sm:text-3xl font-bold text-white">生活化例子與智慧製造工業實務應用</h2>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- 生活化例子：銀行房貸審核 -->
+        <div class="glass-panel rounded-2xl p-6 flex flex-col justify-between border-t-4 border-t-rose-500">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="px-2.5 py-1 rounded-md bg-rose-500/15 text-rose-400 font-mono text-xs font-bold">生活化金融案例 • 公平信貸法規</span>
+              <span class="text-2xl">🏦</span>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-2">銀行房貸審核拒貸原因解釋</h3>
+            <p class="text-sm text-slate-300 leading-relaxed mb-4">
+              王先生向銀行申請房貸，AI 徵信模型預測其<strong class="text-rose-400">違約風險高達 82%</strong>（系統自動拒貸），而所有申請人的基準平均違約率為 <strong class="text-slate-200">20%</strong>。依金融監理規定，銀行必須向王先生說明具體拒貸理由：
+            </p>
+
+            <div class="space-y-3 bg-slate-900/90 rounded-xl p-4 border border-slate-800">
+              <div class="border-b border-slate-800 pb-3">
+                <div class="text-xs font-mono text-cyan-400 font-bold mb-1">🔍 LIME 的做法：在王先生條件附近「微調測試」</div>
+                <p class="text-xs sm:text-sm text-slate-300">
+                  系統在王先生（年收 80 萬、負債比 65%、年資 1 年）周圍隨機生成 5,000 個模擬申請人，觀察黑盒子如何給分，擬合出一條局部直線，發現<strong class="text-cyan-300">「負債比」斜率最陡峭</strong>，建議王先生先將負債比降至 45% 以下即可核貸。
+                </p>
+              </div>
+              <div>
+                <div class="text-xs font-mono text-indigo-400 font-bold mb-1">⚖️ SHAP 的做法：精準「責任分攤」加總方程式</div>
+                <p class="text-xs sm:text-sm text-slate-300 mb-2">
+                  SHAP 如同團隊績效獎懲分配，從基準值 <span class="font-mono text-white">20%</span> 出發，精準計算每個條件推升或拉低的百分比：
+                </p>
+                <div class="font-mono text-xs bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
+                  <div class="flex justify-between text-slate-400"><span>基準平均違約率 E[f(X)]</span><span>20%</span></div>
+                  <div class="flex justify-between text-rose-400"><span>+ 負債比過高 (65%)</span><span>+35%</span></div>
+                  <div class="flex justify-between text-rose-400"><span>+ 現職工作年資短 (1年)</span><span>+20%</span></div>
+                  <div class="flex justify-between text-rose-400"><span>+ 近期聯徵查詢次數多</span><span>+15%</span></div>
+                  <div class="flex justify-between text-emerald-400"><span>- 碩士高學歷與無遲繳紀錄</span><span>-8%</span></div>
+                  <div class="border-t border-slate-800 pt-1 flex justify-between font-bold text-white">
+                    <span>= 最終預測違約率 f(x)</span>
+                    <span class="text-rose-400">82% (20+35+20+15-8)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 工業上應用：智慧製造預知保養 PdM -->
+        <div class="glass-panel rounded-2xl p-6 flex flex-col justify-between border-t-4 border-t-amber-500">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="px-2.5 py-1 rounded-md bg-amber-500/15 text-amber-400 font-mono text-xs font-bold">智慧製造工業實務 • 預知保養 (PdM)</span>
+              <span class="text-2xl">🏭</span>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-2">半導體蝕刻機台 / CNC 主軸異常歸因</h3>
+            <p class="text-sm text-slate-300 leading-relaxed mb-4">
+              在晶圓廠或精密 CNC 產線中，無預警停機每小時損失高達數百萬。XGBoost 預知保養模型整合 120 顆感測器數據，突然發出<strong class="text-amber-400">「主軸軸承異常預警（故障機率 91%）」</strong>。
+            </p>
+
+            <div class="space-y-3 bg-slate-900/90 rounded-xl p-4 border border-slate-800">
+              <div class="flex items-start gap-3">
+                <span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 text-xs font-mono shrink-0 mt-0.5">痛點</span>
+                <p class="text-xs sm:text-sm text-slate-300">
+                  若模型只輸出「91% 會壞掉」，現場設備工程師不敢貿然停機拆解 120 個零件，容易產生「警報疲勞（Alert Fatigue）」。
+                </p>
+              </div>
+              <div class="flex items-start gap-3">
+                <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-xs font-mono shrink-0 mt-0.5">XAI 解法</span>
+                <p class="text-xs sm:text-sm text-slate-300">
+                  即時串接 <strong class="text-indigo-300">TreeSHAP</strong> 產出當下感測器歸因排序：發現<strong class="text-amber-300">「主軸 4kHz 高頻振動能量 (+42%)」</strong>與<strong class="text-amber-300">「冷卻液出口溫差 (+23%)」</strong>是兩大主因，而電流負載正常 (-4%)。
+                </p>
+              </div>
+              <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                <div class="text-xs font-mono text-emerald-400 font-bold mb-1">✓ 工業落地效益與 AI 治理合規</div>
+                <ul class="text-xs text-slate-300 space-y-1 list-disc list-inside">
+                  <li><strong>縮短 MTTR（平均修復時間）：</strong>工程師直接針對軸承潤滑與冷卻迴路檢修，修復時間縮短 60%。</li>
+                  <li><strong>符合 ISO/IEC 42001 與歐盟 AI 法案：</strong>留下完整的演算法決策可追溯稽核軌跡（Audit Trail）。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- MODULE 4: 理論簡介與互動式數學推導 (KaTeX 渲染)             -->
+    <!-- ========================================================= -->
+    <section id="math" class="scroll-mt-24 space-y-8">
+      <div class="flex items-center gap-3">
+        <span class="px-3 py-1 rounded-lg bg-cyan-500/15 text-cyan-400 font-mono text-sm font-bold border border-cyan-500/30">MODULE 04</span>
+        <h2 class="text-2xl sm:text-3xl font-bold text-white">核心理論與互動式數學推導（KaTeX 即時運算）</h2>
+      </div>
+
+      <!-- 4.1 LIME 數學推導與核寬度互動器 -->
+      <div class="glass-panel rounded-2xl p-6 space-y-6 border-l-4 border-l-cyan-400">
+        <div>
+          <h3 class="text-xl font-bold text-white">1. LIME 最佳化目標函數推導</h3>
+          <p class="text-sm text-slate-300 mt-1">
+            LIME 尋找一個可解釋模型 $g \in G$（例如線性模型），在樣本 $x$ 的局部鄰域 $\pi_x$ 內盡可能貼近黑盒子 $f$，同時保持自身結構簡單：
+          </p>
+          <div class="my-4 p-4 bg-slate-950/90 rounded-xl border border-slate-800 text-center">
+            $$\xi(x) = \arg\min_{g \in G} \; \mathcal{L}(f, g, \pi_x) + \Omega(g)$$
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
+            <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+              <div class="font-mono text-cyan-400 font-bold mb-1">局部保真度損失 $\mathcal{L}(f, g, \pi_x)$</div>
+              <p class="text-slate-300">加權平方誤差：$\sum_{z, z' \in \mathcal{Z}} \pi_x(z) \big(f(z) - g(z')\big)^2$，確保距離 $x$ 越近的擾動樣本 $z$ 擬合得越準。</p>
+            </div>
+            <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+              <div class="font-mono text-cyan-400 font-bold mb-1">指數核距離權重 $\pi_x(z)$</div>
+              <p class="text-slate-300">$\pi_x(z) = \exp\left(-\frac{D(x, z)^2}{\sigma^2}\right)$，其中 $D(x,z)$ 為距離（歐氏或餘弦），$\sigma$ 為<strong>核寬度（Kernel Width）</strong>。</p>
+            </div>
+            <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+              <div class="font-mono text-cyan-400 font-bold mb-1">複雜度懲罰項 $\Omega(g)$</div>
+              <p class="text-slate-300">限制代理模型特徵數（如 Lasso $L_1$ 正則化，強制僅保留前 $K$ 個最重要特徵），避免人類無法閱讀。</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 互動滑桿：核寬度 σ 對距離權重 π_x(z) 的影響 -->
+        <div class="bg-slate-900/90 rounded-xl p-5 border border-cyan-500/30">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            <div>
+              <h4 class="font-bold text-white text-base">🎛️ 互動式核寬度 $\sigma$ 權重衰減實驗器</h4>
+              <p class="text-xs text-slate-400">拖動 $\sigma$ 觀察不同距離 $D(x,z)$ 的擾動樣本所獲得的權重 $\pi_x(z) = \exp(-D^2 / \sigma^2)$</p>
+            </div>
+            <div class="flex items-center gap-3 bg-slate-950 px-4 py-2 rounded-lg border border-slate-800">
+              <label for="sigmaMathSlider" class="text-xs font-mono text-cyan-300">核寬度 $\sigma$ =</label>
+              <input id="sigmaMathSlider" type="range" min="0.2" max="2.5" step="0.1" value="0.8" class="w-32 sm:w-40 cursor-pointer">
+              <span id="sigmaMathVal" class="font-mono font-bold text-cyan-400 w-10 text-right">0.8</span>
+            </div>
+          </div>
+
+          <div id="kernelWeightBars" class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <!-- Dynamically populated by JS -->
+          </div>
+          <p id="sigmaInsightText" class="text-xs text-cyan-300/90 mt-3 font-mono bg-cyan-950/40 p-2.5 rounded-lg border border-cyan-500/20"></p>
+        </div>
+      </div>
+
+      <!-- 4.2 SHAP 夏普利值推導與 $2^3=8$ 子集互動計算器 -->
+      <div class="glass-panel rounded-2xl p-6 space-y-6 border-l-4 border-l-indigo-400">
+        <div>
+          <h3 class="text-xl font-bold text-white">2. SHAP 夏普利值（Shapley Value）數學公式推導</h3>
+          <p class="text-sm text-slate-300 mt-1">
+            特徵 $i$ 的 SHAP 值 $\phi_i$ 定義為：在所有不包含特徵 $i$ 的特徵子集 $S \subseteq F \setminus \{i\}$ 中，加入特徵 $i$ 後所帶來的邊際預測變化量之加權平均：
+          </p>
+          <div class="my-4 p-4 bg-slate-950/90 rounded-xl border border-slate-800 text-center">
+            $$\phi_i(f, x) = \sum_{S \subseteq F \setminus \{i\}} \underbrace{\frac{|S|!(|F| - |S| - 1)!}{|F|!}}_{\text{組合排列權重 } w(S)} \underbrace{\Big[ f_x(S \cup \{i\}) - f_x(S) \Big]}_{\text{特徵 } i \text{ 的邊際貢獻}}$$
+          </div>
+          <div class="flex flex-wrap gap-3 text-xs font-mono">
+            <span class="px-3 py-1.5 rounded-lg bg-indigo-950/80 border border-indigo-500/30 text-indigo-300">
+              效率性公理 (Efficiency): $\phi_0 + \sum_{i=1}^{|F|} \phi_i = f(x)$
+            </span>
+            <span class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-300">
+              $|F|$: 總特徵數 &nbsp;|&nbsp; $S$: 不含特徵 $i$ 的特徵子集 &nbsp;|&nbsp; $\phi_0 = E[f(X)]$: 基準預測值
+            </span>
+          </div>
+        </div>
+
+        <!-- 互動式 2^3=8 特徵子集 Shapley Value 計算器 -->
+        <div class="bg-slate-900/90 rounded-xl p-5 border border-indigo-500/30 space-y-4">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <h4 class="font-bold text-white text-base">🧮 互動式 Shapley Value 精確計算器（3 特徵工業機台故障預測）</h4>
+              <p class="text-xs text-slate-400">特徵集合 $F = \{X_1:\text{主軸振動}, \; X_2:\text{冷卻溫差}, \; X_3:\text{異常電流}\}$，共 $2^3 = 8$ 種特徵子集組合。點擊切換欲檢視的特徵 $\phi_i$：</p>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="selectShapFeature(0)" id="shapFeatBtn0" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow">計算 $\phi_1$ (振動)</button>
+              <button onclick="selectShapFeature(1)" id="shapFeatBtn1" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700">計算 $\phi_2$ (溫差)</button>
+              <button onclick="selectShapFeature(2)" id="shapFeatBtn2" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700">計算 $\phi_3$ (電流)</button>
+            </div>
+          </div>
+
+          <!-- 8 Subsets Reference Table -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 text-center font-mono text-xs">
+            <div class="bg-slate-950 p-2 rounded-lg border border-slate-800"><div class="text-slate-400">$f(\emptyset)$</div><div class="text-white font-bold mt-0.5">10%</div></div>
+            <div class="bg-slate-950 p-2 rounded-lg border border-slate-800"><div class="text-cyan-400">$f(\{X_1\})$</div><div class="text-white font-bold mt-0.5">45%</div></div>
+            <div class="bg-slate-950 p-2 rounded-lg border border-slate-800"><div class="text-indigo-400">$f(\{X_2\})$</div><div class="text-white font-bold mt-0.5">25%</div></div>
+            <div class="bg-slate-950 p-2 rounded-lg border border-slate-800"><div class="text-emerald-400">$f(\{X_3\})$</div><div class="text-white font-bold mt-0.5">15%</div></div>
+            <div class="bg-slate-950 p-2 rounded-lg border border-slate-800"><div class="text-slate-300">$f(\{X_1,X_2\})$</div><div class="text-white font-bold mt-0.5">75%</div></div>
+            <div class="bg-slate-950 p-2 rounded-lg border border-slate-800"><div class="text-slate-300">$f(\{X_1,X_3\})$</div><div class="text-white font-bold mt-0.5">55%</div></div>
+            <div class="bg-slate-950 p-2 rounded-lg border border-slate-800"><div class="text-slate-300">$f(\{X_2,X_3\})$</div><div class="text-white font-bold mt-0.5">35%</div></div>
+            <div class="bg-rose-950/60 p-2 rounded-lg border border-rose-500/40"><div class="text-rose-300">$f(\{X_1,X_2,X_3\})$</div><div class="text-rose-400 font-bold mt-0.5">90%</div></div>
+          </div>
+
+          <!-- Marginal Contribution Breakdown Table -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs sm:text-sm border-collapse">
+              <thead>
+                <tr class="bg-slate-950 text-slate-300 border-b border-slate-800">
+                  <th class="py-2.5 px-3">不含該特徵的子集 $S$</th>
+                  <th class="py-2.5 px-3">子集大小 $|S|$</th>
+                  <th class="py-2.5 px-3">組合權重 $\frac{|S|!(3-|S|-1)!}{3!}$</th>
+                  <th class="py-2.5 px-3">邊際貢獻 $f(S \cup \{i\}) - f(S)$</th>
+                  <th class="py-2.5 px-3 text-right">加權貢獻值</th>
+                </tr>
+              </thead>
+              <tbody id="shapCalcTableBody" class="divide-y divide-slate-800/80 font-mono">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Efficiency Axiom Verification Box -->
+          <div id="shapEfficiencySummary" class="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs sm:text-sm font-mono">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- MODULE 5: 機器學習應用互動實驗室 (Canvas 視覺化 & Step-by-Step) -->
+    <!-- ========================================================= -->
+    <section id="lab" class="scroll-mt-24 space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <span class="px-3 py-1 rounded-lg bg-cyan-500/15 text-cyan-400 font-mono text-sm font-bold border border-cyan-500/30">MODULE 05</span>
+          <div>
+            <h2 class="text-2xl sm:text-3xl font-bold text-white">機器學習 XAI 互動模擬實驗室</h2>
+            <p class="text-xs sm:text-sm text-slate-400 mt-0.5">支援 Step-by-Step 單步演算與即時參數互動調整</p>
+          </div>
+        </div>
+
+        <!-- Lab Mode Switcher Tabs -->
+        <div class="inline-flex p-1 rounded-xl bg-slate-900 border border-slate-800 self-start">
+          <button id="tabLimeBtn" onclick="switchLabTab('lime')" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-bold bg-cyan-600 text-white shadow transition">
+            分頁 A：LIME 2D 決策邊界模擬器
+          </button>
+          <button id="tabShapBtn" onclick="switchLabTab('shap')" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-bold text-slate-300 hover:text-white transition">
+            分頁 B：SHAP 力圖 & 瀑布圖模擬器
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB A: LIME 2D 決策邊界 Canvas 模擬器 -->
+      <div id="labPaneLime" class="glass-panel rounded-2xl p-5 sm:p-6 space-y-6 glow-cyan">
+        <!-- Step-by-Step Control Header -->
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-900/90 p-4 rounded-xl border border-slate-800">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span id="limeStepBadge" class="px-2.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono text-xs font-bold border border-cyan-500/30">Step 5 / 5 (已完成局部逼近)</span>
+              <span class="text-xs text-slate-400">點擊畫布任意位置可移動待解釋樣本 $x$</span>
+            </div>
+            <p id="limeStepDesc" class="text-sm text-white font-medium">
+              已擬合加權線性代理模型 $g(z)$（白色虛線），精準貼合該處非線性黑盒子邊界切線！
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <button onclick="resetLimeSim()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition">
+              ↺ 重置步驟
+            </button>
+            <button onclick="nextLimeStep()" class="px-3.5 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold shadow-lg shadow-cyan-500/20 transition">
+              ▶ 下一步 (Step-by-Step)
+            </button>
+            <button onclick="runAllLimeSteps()" class="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-500/20 transition">
+              ⚡ 一鍵自動模擬
+            </button>
+          </div>
+        </div>
+
+        <!-- Canvas + Controls Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <!-- Left: 2D Decision Boundary Canvas -->
+          <div class="lg:col-span-7 space-y-3">
+            <div class="relative w-full aspect-[4/3] rounded-xl overflow-hidden border border-slate-700 bg-slate-950 shadow-inner">
+              <canvas id="limeCanvas" class="w-full h-full cursor-crosshair block"></canvas>
+              <!-- Legend Overlay -->
+              <div class="absolute bottom-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 bg-slate-950/85 backdrop-blur-md px-3 py-2 rounded-lg border border-slate-800 text-[11px] font-mono">
+                <div class="flex items-center gap-3">
+                  <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span>高風險 (類別 1)</span>
+                  <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block"></span>低風險 (類別 0)</span>
+                  <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-amber-400 border-2 border-white inline-block"></span>目標點 $x$</span>
+                </div>
+                <span class="text-cyan-300">--- LIME 局部線性邊界</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Parameters & Local Feature Weights -->
+          <div class="lg:col-span-5 space-y-5 bg-slate-900/80 p-5 rounded-xl border border-slate-800">
+            <div>
+              <h4 class="font-bold text-white text-sm mb-3">調整局部鄰域參數</h4>
+              <div class="space-y-4">
+                <div>
+                  <div class="flex justify-between text-xs font-mono mb-1">
+                    <span class="text-slate-300">核寬度 $\sigma$ (Kernel Width)</span>
+                    <span id="limeCanvasSigmaVal" class="text-cyan-400 font-bold">0.22</span>
+                  </div>
+                  <input id="limeCanvasSigma" type="range" min="0.08" max="0.55" step="0.02" value="0.22" class="w-full cursor-pointer">
+                  <p class="text-[11px] text-slate-400 mt-1">$\sigma$ 越小越聚焦於極局部切線；$\sigma$ 過大則退化為全域線性近似，失去局部精準度。</p>
+                </div>
+
+                <div>
+                  <div class="flex justify-between text-xs font-mono mb-1">
+                    <span class="text-slate-300">擾動採樣數 $N$ (Perturbed Samples)</span>
+                    <span id="limeSampleCountVal" class="text-cyan-400 font-bold">180</span>
+                  </div>
+                  <input id="limeSampleCount" type="range" min="60" max="350" step="20" value="180" class="w-full cursor-pointer">
+                </div>
+              </div>
+            </div>
+
+            <!-- Target Point Info -->
+            <div class="p-3.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1.5 font-mono text-xs">
+              <div class="text-slate-400">目標樣本座標 $x = (X_1\text{ 負債比}, \; X_2\text{ 收入波動})$</div>
+              <div id="limeTargetCoords" class="text-amber-300 font-bold">X1 = 0.56, X2 = 0.48 | 黑盒子預測風險: 74.2%</div>
+            </div>
+
+            <!-- Local Linear Surrogate Feature Weights -->
+            <div>
+              <h4 class="font-bold text-white text-sm mb-2">局部線性代理模型 $g(z)$ 特徵權重</h4>
+              <p class="text-xs text-slate-400 mb-3">觀察點的大小代表距離權重 $\pi_x(z)$，線性回歸斜率即為以下特徵貢獻權重：</p>
+              <div id="limeWeightsOutput" class="space-y-3">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB B: SHAP 力圖 (Force Plot) & 瀑布圖 (Waterfall Plot) 互動模擬器 -->
+      <div id="labPaneShap" class="hidden glass-panel rounded-2xl p-5 sm:p-6 space-y-6 glow-indigo">
+        <!-- Step-by-Step Header -->
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-900/90 p-4 rounded-xl border border-slate-800">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span id="shapStepBadge" class="px-2.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono text-xs font-bold border border-indigo-500/30">Step 5 / 5 (顯示完整歸因瀑布)</span>
+              <span class="text-xs text-slate-400">拖動左側特徵滑桿可即時更新 SHAP 力圖與瀑布圖</span>
+            </div>
+            <p id="shapStepDesc" class="text-sm text-white font-medium">
+              從基準平均違約率 $E[f(X)] = 20.0\%$ 開始，累加所有特徵的 Shapley Value，精準抵達最終預測輸出 $f(x)$！
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <button onclick="resetShapSim()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition">
+              ↺ 回到基準值
+            </button>
+            <button onclick="nextShapStep()" class="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-500/20 transition">
+              ▶ 逐步加入特徵 (Step-by-Step)
+            </button>
+            <button onclick="runAllShapSteps()" class="px-3.5 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold shadow-lg shadow-cyan-500/20 transition">
+              ⚡ 顯示全部特徵
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- Left: Interactive Feature Sliders -->
+          <div class="lg:col-span-4 bg-slate-900/80 p-5 rounded-xl border border-slate-800 space-y-4">
+            <h4 class="font-bold text-white text-sm flex items-center justify-between">
+              <span>🎛️ 調整王先生房貸申請特徵</span>
+              <span class="text-xs font-mono text-slate-400">基準值 = 20%</span>
+            </h4>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300">1. 負債收入比 (DTI)</span>
+                <span id="valDti" class="font-mono font-bold text-rose-400">65%</span>
+              </div>
+              <input id="sliderDti" type="range" min="15" max="85" step="1" value="65" class="w-full cursor-pointer">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300">2. 現職工作年資 (年)</span>
+                <span id="valTenure" class="font-mono font-bold text-amber-400">1.0 年</span>
+              </div>
+              <input id="sliderTenure" type="range" min="0.5" max="15" step="0.5" value="1.0" class="w-full cursor-pointer">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300">3. 信用評分 (FICO)</span>
+                <span id="valCredit" class="font-mono font-bold text-emerald-400">740 分</span>
+              </div>
+              <input id="sliderCredit" type="range" min="500" max="850" step="10" value="740" class="w-full cursor-pointer">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300">4. 貸款成數 (LTV)</span>
+                <span id="valLtv" class="font-mono font-bold text-rose-400">85%</span>
+              </div>
+              <input id="sliderLtv" type="range" min="40" max="95" step="5" value="85" class="w-full cursor-pointer">
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex items-center justify-between">
+              <span class="text-xs text-slate-400">最終模型預測違約率 $f(x)$：</span>
+              <span id="shapFinalPredBadge" class="px-3 py-1 rounded-lg font-mono font-bold text-base bg-rose-500/20 text-rose-400 border border-rose-500/40">72.0%</span>
+            </div>
+          </div>
+
+          <!-- Right: SHAP Force Plot & Waterfall Plot SVG/HTML -->
+          <div class="lg:col-span-8 space-y-6">
+            <!-- SHAP Force Plot -->
+            <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-800">
+              <div class="flex items-center justify-between mb-3">
+                <h4 class="font-bold text-white text-sm">SHAP Force Plot（紅藍推拉力圖）</h4>
+                <div class="flex items-center gap-3 text-xs font-mono">
+                  <span class="text-rose-400">▶ 推高風險 ($\phi_i > 0$)</span>
+                  <span class="text-sky-400">◀ 拉低風險 ($\phi_i < 0$)</span>
+                </div>
+              </div>
+              <div id="shapForcePlotContainer" class="w-full">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+
+            <!-- SHAP Waterfall Plot -->
+            <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-800">
+              <div class="flex items-center justify-between mb-3">
+                <h4 class="font-bold text-white text-sm">SHAP Waterfall Plot（特征邊際貢獻瀑布圖）</h4>
+                <span class="text-xs font-mono text-slate-400">滿足效率性：$\phi_0 + \sum \phi_i = f(x)$</span>
+              </div>
+              <div id="shapWaterfallContainer" class="w-full overflow-x-auto">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- MODULE 6: Python 實作程式碼 (語法高亮 + 重點函式色彩標註)     -->
+    <!-- ========================================================= -->
+    <section id="code" class="scroll-mt-24 space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <span class="px-3 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 font-mono text-sm font-bold border border-emerald-500/30">MODULE 06</span>
+          <div>
+            <h2 class="text-2xl sm:text-3xl font-bold text-white">Python 實戰程式碼：LIME 與 SHAP 完整範例</h2>
+            <p class="text-xs sm:text-sm text-slate-400 mt-0.5">重點類別與核心解釋函式已使用鮮明色彩標註</p>
+          </div>
+        </div>
+
+        <button onclick="copyPythonCode()" id="copyBtn" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 text-xs sm:text-sm font-semibold transition self-start">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          <span id="copyBtnText">一鍵複製完整程式碼</span>
+        </button>
+      </div>
+
+      <!-- Key Function Legend Badges -->
+      <div class="flex flex-wrap items-center gap-2 text-xs font-mono bg-slate-900/90 p-3.5 rounded-xl border border-slate-800">
+        <span class="text-slate-400 mr-1">核心 API 色彩圖例：</span>
+        <span class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold">LimeTabularExplainer</span>
+        <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">explain_instance()</span>
+        <span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-bold">shap.TreeExplainer</span>
+        <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">shap_values()</span>
+        <span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold">shap.plots.waterfall()</span>
+      </div>
+
+      <!-- Syntax Highlighted Code Block -->
+      <div class="glass-panel rounded-2xl overflow-hidden border border-slate-800">
+        <div class="flex items-center justify-between px-4 py-2.5 bg-slate-900 border-b border-slate-800 text-xs font-mono text-slate-400">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+            <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+            <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+            <span class="ml-2 text-slate-300">xai_lime_shap_demo.py</span>
+          </div>
+          <span>Python 3.10+ • scikit-learn / lime / shap</span>
+        </div>
+
+        <pre class="p-4 sm:p-6 overflow-x-auto text-xs sm:text-sm font-mono leading-relaxed text-slate-200 bg-[#0b101b]"><code><span class="text-slate-500"># 安裝套件: pip install scikit-learn lime shap numpy pandas</span>
+<span class="text-purple-400">import</span> numpy <span class="text-purple-400">as</span> np
+<span class="text-purple-400">import</span> pandas <span class="text-purple-400">as</span> pd
+<span class="text-purple-400">from</span> sklearn.datasets <span class="text-purple-400">import</span> load_breast_cancer
+<span class="text-purple-400">from</span> sklearn.model_selection <span class="text-purple-400">import</span> train_test_split
+<span class="text-purple-400">from</span> sklearn.ensemble <span class="text-purple-400">import</span> RandomForestClassifier
+
+<span class="text-slate-500"># 匯入 XAI 兩大核心套件</span>
+<span class="text-purple-400">import</span> lime
+<span class="text-purple-400">import</span> lime.lime_tabular
+<span class="text-purple-400">import</span> shap
+
+<span class="text-slate-500"># 1. 載入資料集並訓練黑盒子模型 (Random Forest)</span>
+data = load_breast_cancer()
+X = pd.DataFrame(data.data, columns=data.feature_names)
+y = data.target
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=<span class="text-amber-300">0.2</span>, random_state=<span class="text-amber-300">42</span>)
+
+blackbox_model = RandomForestClassifier(n_estimators=<span class="text-amber-300">100</span>, random_state=<span class="text-amber-300">42</span>)
+blackbox_model.fit(X_train, y_train)
+
+<span class="text-slate-500"># 選取第 0 筆測試樣本作為「待解釋目標實例 x」</span>
+sample_idx = <span class="text-amber-300">0</span>
+target_instance = X_test.iloc[sample_idx]
+
+<span class="text-slate-500"># =====================================================================</span>
+<span class="text-slate-500"># PART A: LIME 局部可解釋代理模型實作</span>
+<span class="text-slate-500"># =====================================================================</span>
+<span class="text-slate-500"># 初始化表格型 LIME 解釋器 (需傳入訓練集統計分佈以生成擾動樣本)</span>
+lime_explainer = lime.lime_tabular.<span class="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold">LimeTabularExplainer</span>(
+    training_data=X_train.values,
+    feature_names=data.feature_names,
+    class_names=[<span class="text-emerald-300">'惡性 (Malignant)'</span>, <span class="text-emerald-300">'良性 (Benign)'</span>],
+    mode=<span class="text-emerald-300">'classification'</span>,
+    kernel_width=<span class="text-amber-300">3.0</span>,  <span class="text-slate-500"># 控制局部鄰域核寬度 σ</span>
+    random_state=<span class="text-amber-300">42</span>
+)
+
+<span class="text-slate-500"># 針對單一樣本執行局部擾動採樣與加權線性回歸擬合 (num_features 限制顯示前 5 大特徵)</span>
+lime_exp = lime_explainer.<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">explain_instance</span>(
+    data_row=target_instance.values,
+    predict_fn=blackbox_model.predict_proba,
+    num_features=<span class="text-amber-300">5</span>
+)
+
+<span class="text-sky-300">print</span>(<span class="text-emerald-300">"=== LIME 局部特徵權重解釋 ==="</span>)
+<span class="text-purple-400">for</span> feature_rule, weight <span class="text-purple-400">in</span> lime_exp.as_list():
+    <span class="text-sky-300">print</span>(<span class="text-emerald-300">f"規則: </span>{feature_rule:<span class="text-amber-300">35s</span>}<span class="text-emerald-300"> | 權重: </span>{weight:<span class="text-amber-300">+.4f</span>}<span class="text-emerald-300">"</span>)
+
+
+<span class="text-slate-500"># =====================================================================</span>
+<span class="text-slate-500"># PART B: SHAP 夏普利加性解釋實作 (使用高速 TreeSHAP)</span>
+<span class="text-slate-500"># =====================================================================</span>
+<span class="text-slate-500"># 針對樹狀模型建立專屬高速 TreeExplainer (多項式時間複雜度)</span>
+shap_explainer = <span class="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-bold">shap.TreeExplainer</span>(blackbox_model)
+
+<span class="text-slate-500"># 計算測試集所有樣本的 Shapley Values (新版 API 可直接呼叫 shap_explainer(X_test))</span>
+shap_values_raw = shap_explainer.<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">shap_values</span>(X_test)
+explanation_obj = shap_explainer(X_test)
+
+<span class="text-slate-500"># 驗證 SHAP 效率性公理: 基準值 expected_value + sum(shap_values) == 模型預測機率</span>
+base_val = shap_explainer.expected_value[<span class="text-amber-300">1</span>]
+sample_shap = explanation_obj[sample_idx, :, <span class="text-amber-300">1</span>]
+<span class="text-sky-300">print</span>(<span class="text-emerald-300">f"\n=== SHAP 效率性公理驗證 (類別 1) ==="</span>)
+<span class="text-sky-300">print</span>(<span class="text-emerald-300">f"基準值 E[f(X)]: </span>{base_val:<span class="text-amber-300">.4f</span>}<span class="text-emerald-300"> + SHAP 總和: </span>{sample_shap.values.sum():<span class="text-amber-300">+.4f</span>}<span class="text-emerald-300"> = </span>{base_val + sample_shap.values.sum():<span class="text-amber-300">.4f</span>}<span class="text-emerald-300">"</span>)
+
+<span class="text-slate-500"># 繪製單一樣本 SHAP 瀑布圖 (Waterfall Plot) 呈現每個特徵的邊際推拉力</span>
+<span class="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold">shap.plots.waterfall</span>(sample_shap, max_display=<span class="text-amber-300">8</span>)</code></pre>
+      </div>
+
+      <!-- Raw Python Code Hidden Textarea for Clean Copy -->
+      <textarea id="rawPythonCode" class="hidden" aria-hidden="true"># 安裝套件: pip install scikit-learn lime shap numpy pandas
+import numpy as np
+import pandas as pd
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+
+# 匯入 XAI 兩大核心套件
+import lime
+import lime.lime_tabular
+import shap
+
+# 1. 載入資料集並訓練黑盒子模型 (Random Forest)
+data = load_breast_cancer()
+X = pd.DataFrame(data.data, columns=data.feature_names)
+y = data.target
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+blackbox_model = RandomForestClassifier(n_estimators=100, random_state=42)
+blackbox_model.fit(X_train, y_train)
+
+# 選取第 0 筆測試樣本作為「待解釋目標實例 x」
+sample_idx = 0
+target_instance = X_test.iloc[sample_idx]
+
+# =====================================================================
+# PART A: LIME 局部可解釋代理模型實作
+# =====================================================================
+lime_explainer = lime.lime_tabular.LimeTabularExplainer(
+    training_data=X_train.values,
+    feature_names=data.feature_names,
+    class_names=['惡性 (Malignant)', '良性 (Benign)'],
+    mode='classification',
+    kernel_width=3.0,
+    random_state=42
+)
+
+lime_exp = lime_explainer.explain_instance(
+    data_row=target_instance.values,
+    predict_fn=blackbox_model.predict_proba,
+    num_features=5
+)
+
+print("=== LIME 局部特徵權重解釋 ===")
+for feature_rule, weight in lime_exp.as_list():
+    print(f"規則: {feature_rule:35s} | 權重: {weight:+.4f}")
+
+# =====================================================================
+# PART B: SHAP 夏普利加性解釋實作 (使用高速 TreeSHAP)
+# =====================================================================
+shap_explainer = shap.TreeExplainer(blackbox_model)
+shap_values_raw = shap_explainer.shap_values(X_test)
+explanation_obj = shap_explainer(X_test)
+
+base_val = shap_explainer.expected_value[1]
+sample_shap = explanation_obj[sample_idx, :, 1]
+print(f"\n=== SHAP 效率性公理驗證 (類別 1) ===")
+print(f"基準值 E[f(X)]: {base_val:.4f} + SHAP 總和: {sample_shap.values.sum():+.4f} = {base_val + sample_shap.values.sum():.4f}")
+
+shap.plots.waterfall(sample_shap, max_display=8)</textarea>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-slate-950 py-8 mt-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+      <div>
+        <strong class="text-slate-200">可解釋性 AI (XAI) 互動教學平台</strong> • LIME 與 SHAP 機器學習原理與實務
+      </div>
+      <div class="font-mono">
+        適用對象：iPAS 經濟部 AI 應用規劃師考生 / 資料科學家 / 智慧製造工程師
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast Notification -->
+  <div id="toastMsg" class="fixed bottom-5 right-5 z-50 hidden px-4 py-3 rounded-xl bg-emerald-600 text-white text-sm font-semibold shadow-xl transition-opacity">
+    已成功複製完整 Python 程式碼！
+  </div>
+  <textarea id="stageRawCodeBuffer" class="hidden" aria-hidden="true"></textarea>
+
+  <!-- ========================================================= -->
+  <!-- INTERACTIVE JAVASCRIPT ENGINE                             -->
+  <!-- ========================================================= -->
+  <script>
+    // Mobile menu toggle
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const mobileMenu = document.getElementById('mobileMenu');
+    mobileMenuBtn.addEventListener('click', () => {
+      mobileMenu.classList.toggle('hidden');
+    });
+
+    // ---------------------------------------------------------
+    // 0. 機器學習標準流程與 LIME / SHAP 介入位置互動邏輯
+    // ---------------------------------------------------------
+    const mlStagesData = [
+      {
+        step: "STEP 01 • 資料收集與前處理 (Data Collection & Preprocessing)",
+        title: "建立高品質資料基底，並保留背景分佈供 SHAP / LIME 參考",
+        input: "原始資料庫日誌、感測器時序流、客戶申請表單、影像或文本資料。",
+        output: "清洗後的結構化資料表（X_train, X_test）與標籤（y）。",
+        xaiRole: "此階段尚未進入 LIME / SHAP 運算，但切分出的訓練集（X_train）統計分佈（如平均值、標準差或背景樣本集 Background Dataset），將成為後續 LIME 生成局部擾動樣本與 SHAP 計算基準期望值 E[f(X)] 的重要依據。",
+        fileName: "step01_data_preprocessing.py",
+        rawCode: `import pandas as pd
+from sklearn.model_selection import train_test_split
+
+# 1. 讀取原始業務或感測器資料並清除異常缺失值
+df = pd.read_csv("credit_or_sensor_data.csv").dropna()
+X = df.drop(columns=["target_label"])
+y = df["target_label"]
+
+# 2. 切分訓練集與測試集 (X_train 將作為 LIME/SHAP 的背景分佈參考)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, stratify=y, random_state=42
+)`,
+        highlightedCode: `<span class="text-purple-400">import</span> pandas <span class="text-purple-400">as</span> pd
+<span class="text-purple-400">from</span> sklearn.model_selection <span class="text-purple-400">import</span> train_test_split
+
+<span class="text-slate-500"># 1. 讀取原始業務或感測器資料並清除異常缺失值</span>
+df = pd.<span class="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40 font-bold">read_csv</span>(<span class="text-emerald-300">"credit_or_sensor_data.csv"</span>).<span class="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40 font-bold">dropna</span>()
+X = df.drop(columns=[<span class="text-emerald-300">"target_label"</span>])
+y = df[<span class="text-emerald-300">"target_label"</span>]
+
+<span class="text-slate-500"># 2. 切分訓練集與測試集 (X_train 將作為 LIME/SHAP 的背景分佈參考)</span>
+X_train, X_test, y_train, y_test = <span class="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold">train_test_split</span>(
+    X, y, test_size=<span class="text-amber-300">0.2</span>, stratify=y, random_state=<span class="text-amber-300">42</span>
+)`
+      },
+      {
+        step: "STEP 02 • 特徵工程 (Feature Engineering)",
+        title: "定義「人類看得懂的解釋單位」",
+        input: "清洗後的原始欄位、非結構化影像或文字序列。",
+        output: "模型輸入特徵向量 X（如負債比、高頻振動能量、超像素 Superpixels 或關鍵詞 Token）。",
+        xaiRole: "特徵工程直接決定了 LIME 與 SHAP 解釋結果的「可讀性」！例如：在影像任務中，LIME 會先在此階段將圖片切割為多個超像素（Superpixels）作為可解釋特徵；在金融風控中，具業務意義的衍生特徵（如負債收入比）能讓 SHAP 瀑布圖一目了然。",
+        fileName: "step02_feature_engineering.py",
+        rawCode: `from sklearn.preprocessing import StandardScaler
+import pandas as pd
+
+# 1. 建立具業務可解釋性的衍生特徵 (例如：負債收入比 DTI)
+X_train["dti_ratio"] = X_train["total_debt"] / (X_train["annual_income"] + 1e-5)
+X_test["dti_ratio"] = X_test["total_debt"] / (X_test["annual_income"] + 1e-5)
+
+# 2. 特徵標準化 (保留 DataFrame 欄位名稱，確保 SHAP/LIME 顯示精準特徵名)
+scaler = StandardScaler()
+X_train_scaled = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
+X_test_scaled = pd.DataFrame(scaler.transform(X_test), columns=X_test.columns)`,
+        highlightedCode: `<span class="text-purple-400">from</span> sklearn.preprocessing <span class="text-purple-400">import</span> StandardScaler
+<span class="text-purple-400">import</span> pandas <span class="text-purple-400">as</span> pd
+
+<span class="text-slate-500"># 1. 建立具業務可解釋性的衍生特徵 (例如：負債收入比 DTI)</span>
+X_train[<span class="text-emerald-300">"dti_ratio"</span>] = X_train[<span class="text-emerald-300">"total_debt"</span>] / (X_train[<span class="text-emerald-300">"annual_income"</span>] + <span class="text-amber-300">1e-5</span>)
+X_test[<span class="text-emerald-300">"dti_ratio"</span>] = X_test[<span class="text-emerald-300">"total_debt"</span>] / (X_test[<span class="text-emerald-300">"annual_income"</span>] + <span class="text-amber-300">1e-5</span>)
+
+<span class="text-slate-500"># 2. 特徵標準化 (保留 DataFrame 欄位名稱，確保 SHAP/LIME 顯示精準特徵名)</span>
+scaler = <span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">StandardScaler</span>()
+X_train_scaled = pd.DataFrame(scaler.<span class="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold">fit_transform</span>(X_train), columns=X_train.columns)
+X_test_scaled = pd.DataFrame(scaler.<span class="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold">transform</span>(X_test), columns=X_test.columns)`
+      },
+      {
+        step: "STEP 03 • 模型訓練 (Model Training - 黑箱模型建構)",
+        title: "追求最高預測準確率（不犧牲模型複雜度）",
+        input: "訓練特徵矩陣 X_train 與目標標籤 y_train。",
+        output: "訓練完成的複雜黑箱模型 f(·)（如 XGBoost、LightGBM、Random Forest 或深度神經網路）。",
+        xaiRole: "LIME 與 SHAP 完全不介入或修改此階段的損失函數與訓練過程（屬於 Post-hoc 事後解釋）。唯獨針對樹狀模型，SHAP 提供專屬的 TreeExplainer，會在訓練完成後直接解析樹結構的節點分裂路徑以實現極速計算。",
+        fileName: "step03_model_training.py",
+        rawCode: `from xgboost import XGBClassifier
+
+# 訓練高準確率的非線性黑箱模型 (無需為了可解釋性而降級為線性模型)
+model = XGBClassifier(
+    n_estimators=200,
+    max_depth=5,
+    learning_rate=0.05,
+    random_state=42
+)
+model.fit(X_train_scaled, y_train)  # <-- 核心訓練步驟：產出已擬合黑箱 f(·)`,
+        highlightedCode: `<span class="text-purple-400">from</span> xgboost <span class="text-purple-400">import</span> XGBClassifier
+
+<span class="text-slate-500"># 訓練高準確率的非線性黑箱模型 (無需為了可解釋性而降級為線性模型)</span>
+model = <span class="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-bold">XGBClassifier</span>(
+    n_estimators=<span class="text-amber-300">200</span>,
+    max_depth=<span class="text-amber-300">5</span>,
+    learning_rate=<span class="text-amber-300">0.05</span>,
+    random_state=<span class="text-amber-300">42</span>
+)
+model.<span class="px-1.5 py-0.5 rounded bg-amber-500/25 text-amber-300 border border-amber-400/50 font-bold">fit</span>(X_train_scaled, y_train)  <span class="text-slate-500"># &lt;-- 核心訓練步驟：產出已擬合黑箱 f(·)</span>`
+      },
+      {
+        step: "STEP 04 • 模型推論與預測 (Model Inference & Prediction)",
+        title: "輸入待測樣本，產出預測結果 f(x)",
+        input: "單筆或多筆待預測新樣本 x（例如：王先生的房貸申請資料、機台 A 即時感測數據）。",
+        output: "黑箱模型的預測類別或機率值 f(x)（例如：違約機率 82%、主軸異常機率 91%）。",
+        xaiRole: "黑箱模型在此階段給出了「是什麼（What）」的預測結論，但無法回答「為什麼（Why）」。當預測結果觸發高風險警報或需向客戶/監理機關說明時，系統便會立即呼叫下一階段的 LIME 或 SHAP。",
+        fileName: "step04_model_inference.py",
+        rawCode: `# 針對測試集或線上單筆新樣本 x 進行推論預測
+y_pred_proba = model.predict_proba(X_test_scaled)[:, 1]
+
+# 檢視第 0 筆樣本 (例如：王先生房貸申請) 的預測違約風險
+sample_idx = 0
+x_instance = X_test_scaled.iloc[sample_idx]
+print(f"黑箱模型預測違約機率 f(x): {y_pred_proba[sample_idx]:.2%}")
+# 輸出僅有數字 (如 82.00%)，尚無法得知背後的決策原因 -> 觸發 Step 05！`,
+        highlightedCode: `<span class="text-slate-500"># 針對測試集或線上單筆新樣本 x 進行推論預測</span>
+y_pred_proba = model.<span class="px-1.5 py-0.5 rounded bg-purple-500/25 text-purple-300 border border-purple-400/50 font-bold">predict_proba</span>(X_test_scaled)[:, <span class="text-amber-300">1</span>]
+
+<span class="text-slate-500"># 檢視第 0 筆樣本 (例如：王先生房貸申請) 的預測違約風險</span>
+sample_idx = <span class="text-amber-300">0</span>
+x_instance = X_test_scaled.iloc[sample_idx]
+<span class="text-sky-300">print</span>(<span class="text-emerald-300">f"黑箱模型預測違約機率 f(x): </span>{y_pred_proba[sample_idx]:<span class="text-amber-300">.2%</span>}<span class="text-emerald-300">"</span>)
+<span class="text-slate-500"># 輸出僅有數字 (如 82.00%)，尚無法得知背後的決策原因 -&gt; 觸發 Step 05！</span>`
+      },
+      {
+        step: "STEP 05 • 【核心位置】LIME / SHAP 事後解釋層 (Post-hoc XAI Layer)",
+        title: "📍 LIME 與 SHAP 正式介入！打開黑箱子的核心樞紐",
+        input: "① 待解釋樣本 x ＋ ② 黑箱模型預測介面 predict_proba() / 樹結構 ＋ ③ 背景資料集。",
+        output: "局部特徵貢獻權重（LIME 局部線性係數 / SHAP 值 φ_i）、Force Plot 力圖、Waterfall 瀑布圖與全域 Summary Plot。",
+        xaiRole: "這正是 LIME 與 SHAP 在機器學習流程中的標準位置！兩者皆在「模型訓練完成與推論後」介入：(1) LIME 在樣本 x 周圍進行隨機擾動並查詢黑箱輸出，擬合局部線性代理模型；(2) SHAP 透過合作賽局夏普利值，精準計算每個特徵將基準值 E[f(X)] 推向最終預測 f(x) 的邊際貢獻。",
+        fileName: "step05_xai_lime_shap_posthoc.py",
+        rawCode: `import lime.lime_tabular
+import shap
+
+# 【方法 A：LIME 局部近似】傳入訓練集分佈與黑箱 predict_proba 介面
+lime_explainer = lime.lime_tabular.LimeTabularExplainer(
+    training_data=X_train_scaled.values,
+    feature_names=X_train_scaled.columns,
+    mode="classification"
+)
+lime_exp = lime_explainer.explain_instance(
+    x_instance.values, model.predict_proba, num_features=5
+)
+
+# 【方法 B：SHAP 賽局歸因】直接解析已訓練的樹模型計算精確 Shapley Values
+shap_explainer = shap.TreeExplainer(model)
+shap_values = shap_explainer.shap_values(X_test_scaled)`,
+        highlightedCode: `<span class="text-purple-400">import</span> lime.lime_tabular
+<span class="text-purple-400">import</span> shap
+
+<span class="text-slate-500"># 【方法 A：LIME 局部近似】傳入訓練集分佈與黑箱 predict_proba 介面</span>
+lime_explainer = lime.lime_tabular.<span class="px-1.5 py-0.5 rounded bg-cyan-500/25 text-cyan-300 border border-cyan-400/50 font-bold">LimeTabularExplainer</span>(
+    training_data=X_train_scaled.values,
+    feature_names=X_train_scaled.columns,
+    mode=<span class="text-emerald-300">"classification"</span>
+)
+lime_exp = lime_explainer.<span class="px-1.5 py-0.5 rounded bg-amber-500/25 text-amber-300 border border-amber-400/50 font-bold">explain_instance</span>(
+    x_instance.values, model.<span class="text-purple-300 font-semibold">predict_proba</span>, num_features=<span class="text-amber-300">5</span>
+)
+
+<span class="text-slate-500"># 【方法 B：SHAP 賽局歸因】直接解析已訓練的樹模型計算精確 Shapley Values</span>
+shap_explainer = <span class="px-1.5 py-0.5 rounded bg-indigo-500/25 text-indigo-300 border border-indigo-400/50 font-bold">shap.TreeExplainer</span>(model)
+shap_values = shap_explainer.<span class="px-1.5 py-0.5 rounded bg-emerald-500/25 text-emerald-300 border border-emerald-400/50 font-bold">shap_values</span>(X_test_scaled)`
+      },
+      {
+        step: "STEP 06 • 決策落地、合規稽核與模型監控 (Decision & Feedback Loop)",
+        title: "從解釋報告走向業務行動與模型迭代",
+        input: "模型預測值 f(x) ＋ LIME / SHAP 特徵歸因解釋報告。",
+        output: "人機協作決策（核貸/拒貸說明書、設備精準維修工單）、AI 倫理偏見稽核紀錄與特徵工程回饋優化。",
+        xaiRole: "XAI 的最終價值體現在此階段：(1) 對外合規：向客戶或主管機關提供合法透明的決策依據；(2) 除錯回饋（閉環回到 Step 02）：若發現模型依賴「雪地背景」等虛假相關（Spurious Correlation），工程師可立即回頭修正資料集與特徵工程。",
+        fileName: "step06_governance_and_retrain.py",
+        rawCode: `import numpy as np
+import pandas as pd
+
+# 1. 彙整全域 SHAP 重要性進行合規與偏見稽核 (Audit Trail)
+global_importance = pd.Series(
+    np.abs(shap_values).mean(axis=0), index=X_test_scaled.columns
+).sort_values(ascending=False)
+
+# 2. 若偵測到「資料洩漏 / 虛假相關特徵」，剔除後閉環重訓模型 (回饋至 Step 02)
+if "snow_background_leakage" in global_importance.head(3).index:
+    X_clean = X_train_scaled.drop(columns=["snow_background_leakage"])
+    model.fit(X_clean, y_train)  # <-- 修正偏見後重新訓練`,
+        highlightedCode: `<span class="text-purple-400">import</span> numpy <span class="text-purple-400">as</span> np
+<span class="text-purple-400">import</span> pandas <span class="text-purple-400">as</span> pd
+
+<span class="text-slate-500"># 1. 彙整全域 SHAP 重要性進行合規與偏見稽核 (Audit Trail)</span>
+global_importance = pd.Series(
+    np.abs(shap_values).<span class="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-bold">mean</span>(axis=<span class="text-amber-300">0</span>), index=X_test_scaled.columns
+).sort_values(ascending=<span class="text-amber-300">False</span>)
+
+<span class="text-slate-500"># 2. 若偵測到「資料洩漏 / 虛假相關特徵」，剔除後閉環重訓模型 (回饋至 Step 02)</span>
+<span class="text-purple-400">if</span> <span class="text-emerald-300">"snow_background_leakage"</span> <span class="text-purple-400">in</span> global_importance.head(<span class="text-amber-300">3</span>).index:
+    X_clean = X_train_scaled.<span class="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold">drop</span>(columns=[<span class="text-emerald-300">"snow_background_leakage"</span>])
+    model.<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">fit</span>(X_clean, y_train)  <span class="text-slate-500"># &lt;-- 修正偏見後重新訓練</span>`
+      }
+    ];
+
+    function copyStageCode() {
+      const textarea = document.getElementById('stageRawCodeBuffer');
+      textarea.classList.remove('hidden');
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        const toast = document.getElementById('toastMsg');
+        toast.textContent = "已成功複製本階段 Python 程式碼！";
+        toast.classList.remove('hidden');
+        setTimeout(() => {
+          toast.classList.add('hidden');
+          toast.textContent = "已成功複製完整 Python 程式碼！";
+        }, 2400);
+      } catch (err) {
+        console.error('Stage code copy failed', err);
+      }
+      textarea.classList.add('hidden');
+    }
+
+    function selectMlStage(idx) {
+      mlStagesData.forEach((_, i) => {
+        const btn = document.getElementById(`mlStageBtn${i}`);
+        if (!btn) return;
+        if (i === 4) {
+          // Keep Stage 5 (LIME/SHAP) distinctly highlighted, emphasize ring when selected
+          btn.className = idx === 4
+            ? "ml-stage-btn text-left p-3.5 rounded-xl bg-gradient-to-br from-cyan-900 to-indigo-900 border-2 border-cyan-300 ring-2 ring-cyan-400/50 shadow-lg shadow-cyan-500/30 transition flex flex-col justify-between relative"
+            : "ml-stage-btn text-left p-3.5 rounded-xl bg-gradient-to-br from-cyan-950/90 to-indigo-950/90 border-2 border-cyan-500/70 hover:border-cyan-300 shadow-md transition flex flex-col justify-between relative";
+        } else {
+          btn.className = idx === i
+            ? "ml-stage-btn text-left p-3.5 rounded-xl bg-slate-800 border-2 border-cyan-400 shadow-lg shadow-cyan-500/15 transition flex flex-col justify-between relative group"
+            : "ml-stage-btn text-left p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-cyan-500/50 transition flex flex-col justify-between relative group";
+        }
+      });
+
+      const data = mlStagesData[idx];
+      const isXaiStage = idx === 4;
+      const panel = document.getElementById('pipeline-detail');
+      document.getElementById('stageRawCodeBuffer').value = data.rawCode;
+
+      panel.className = isXaiStage
+        ? "bg-gradient-to-r from-cyan-950/50 to-indigo-950/50 rounded-xl p-5 border border-cyan-400/50 transition-all space-y-4"
+        : "bg-slate-950/90 rounded-xl p-5 border border-slate-800 transition-all space-y-4";
+
+      panel.innerHTML = `
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <span class="text-xs font-mono font-bold ${isXaiStage ? 'text-cyan-300' : 'text-indigo-400'}">${data.step}</span>
+          ${isXaiStage ? '<span class="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 text-xs font-mono font-bold self-start">★ 當前檢視：XAI 核心介入節點</span>' : ''}
+        </div>
+        <h4 class="text-base sm:text-lg font-bold text-white">${data.title}</h4>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
+          <div class="bg-slate-900/90 p-3.5 rounded-lg border border-slate-800">
+            <div class="font-mono text-xs text-slate-400 font-bold mb-1">📥 本階段輸入 (Input)</div>
+            <p class="text-slate-200 leading-relaxed">${data.input}</p>
+          </div>
+          <div class="bg-slate-900/90 p-3.5 rounded-lg border border-slate-800">
+            <div class="font-mono text-xs text-slate-400 font-bold mb-1">📤 本階段輸出 (Output)</div>
+            <p class="text-slate-200 leading-relaxed">${data.output}</p>
+          </div>
+          <div class="bg-slate-900/90 p-3.5 rounded-lg border ${isXaiStage ? 'border-cyan-500/40' : 'border-slate-800'}">
+            <div class="font-mono text-xs ${isXaiStage ? 'text-cyan-400' : 'text-amber-400'} font-bold mb-1">🔍 與 LIME / SHAP 的關聯</div>
+            <p class="text-slate-200 leading-relaxed">${data.xaiRole}</p>
+          </div>
+        </div>
+
+        <!-- Stage-Specific Python Code Viewer (#pipe-code) -->
+        <div id="pipe-code" class="rounded-xl overflow-hidden border ${isXaiStage ? 'border-cyan-500/40' : 'border-slate-800'} bg-[#0b101b]">
+          <div class="flex items-center justify-between px-4 py-2 bg-slate-900/95 border-b border-slate-800 text-xs font-mono">
+            <div class="flex items-center gap-2 text-slate-300">
+              <span class="text-cyan-400 font-bold">🐍 Python 實作範例</span>
+              <span class="text-slate-500">|</span>
+              <span class="text-slate-400">${data.fileName}</span>
+            </div>
+            <button onclick="copyStageCode()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 text-[11px] font-semibold transition">
+              📋 複製此階段程式碼
+            </button>
+          </div>
+          <pre class="p-4 overflow-x-auto text-xs sm:text-sm font-mono leading-relaxed text-slate-200"><code>${data.highlightedCode}</code></pre>
+        </div>
+      `;
+    }
+
+    // ---------------------------------------------------------
+    // 1. iPAS AI 應用規劃師實戰考題邏輯
+    // ---------------------------------------------------------
+    const ipasQuestions = [
+      {
+        id: 1,
+        tag: "考點：LIME 與 SHAP 核心理論與性質比較",
+        q: "某銀行導入深度神經網路進行信用貸款審核，為符合金融監理與可信任 AI 治理規範，團隊評估採用 LIME 或 SHAP 進行模型解釋。下列關於兩者之敘述何者「正確」？",
+        options: [
+          "A. LIME 基於合作賽局理論，能嚴格保證全域解釋與局部解釋的一致性（Consistency）",
+          "B. SHAP 透過在目標樣本鄰近區域進行高斯擾動並擬合線性代理模型，因此計算速度永遠比 TreeSHAP 快",
+          "C. SHAP 具備局部準確性、缺失性與一致性三大公理保證，且可將多筆樣本的 SHAP 值聚合以呈現全域特徵重要性",
+          "D. LIME 與 SHAP 皆屬於模型特定（Model-Specific）方法，必須修改神經網路的損失函數重新訓練才能使用"
+        ],
+        answer: 2,
+        explanation: "正確答案為 (C)。SHAP 源自合作賽局理論的 Shapley Value，唯一同時滿足局部準確性（Efficiency）、缺失性與一致性三大公理，且單筆局部歸因可聚合為全域特徵重要性（如 Summary Plot）。選項 (A) 敘述的是 SHAP 而非 LIME；選項 (B) 敘述的是 LIME 的局部線性代理機制，且 TreeSHAP 針對樹模型具有多項式時間的極高效率；選項 (D) 錯誤，兩者皆屬於模型無關（Model-Agnostic）的事後解釋（Post-hoc）技術。"
+      },
+      {
+        id: 2,
+        tag: "考點：AI 倫理偏見偵測與事後解釋應用",
+        q: "在經典的「哈士奇與狼」影像分類案例中，模型在測試集上達到 90% 的高準確率，但研究人員使用 LIME 進行解釋後，發現模型幾乎完全依據背景是否有「積雪」來判斷是否為狼。此現象在 AI 治理與實務上主要彰顯了可解釋性 AI（XAI）的何種價值？",
+        options: [
+          "A. 證明卷積神經網路（CNN）不需要任何資料前處理即可自動消除資料集偏見",
+          "B. 揭露模型學習到虛假相關（Spurious Correlation）與資料洩漏偏見，避免高準確率背後的泛化失效風險",
+          "C. 說明只要增加訓練集的影像解析度，LIME 的核寬度（Kernel Width）就會自動收斂為零",
+          "D. 證明黑盒子模型在任何情況下都比可解釋的線性模型更值得信賴"
+        ],
+        answer: 1,
+        explanation: "正確答案為 (B)。該案例是 LIME 論文（Ribeiro et al., 2016）最著名的實證：高測試準確率可能掩蓋了資料集本身的採樣偏見（狼的照片多在雪地拍攝），XAI 能幫助人類審查模型決策依據是否合理，防止「虛假相關（Spurious Correlation）」導致上線後嚴重誤判。"
+      },
+      {
+        id: 3,
+        tag: "考點：SHAP 數學公理與效率性（Efficiency）計算",
+        q: "已知某智慧製造設備故障預測模型的基準平均故障率（Expected Value）為 15%。針對機台 A 的當下感測數據，TreeSHAP 計算出三個關鍵特徵的 SHAP 值分別為：主軸振動 +32%、冷卻液溫差 +18%、電流負載 -5%（其餘特徵 SHAP 值皆為 0）。請問模型對機台 A 預測的最終故障機率為何？",
+        options: [
+          "A. 45%",
+          "B. 50%",
+          "C. 60%",
+          "D. 65%"
+        ],
+        answer: 2,
+        explanation: "正確答案為 (C)。根據 SHAP 的效率性公理（Efficiency / Local Accuracy）：基準值 + 所有特徵 SHAP 值總和 = 模型最終預測輸出 f(x)。計算式為：15% + (+32%) + (+18%) + (-5%) = 60%。"
+      }
+    ];
+
+    let userAnswers = {};
+
+    function renderQuiz() {
+      const container = document.getElementById('quizContainer');
+      container.innerHTML = ipasQuestions.map((item, qIdx) => {
+        const answered = userAnswers[qIdx] !== undefined;
+        const selected = userAnswers[qIdx];
+        const isCorrect = selected === item.answer;
+
+        return `
+          <div class="bg-slate-900/90 rounded-xl p-5 border ${answered ? (isCorrect ? 'border-emerald-500/50' : 'border-rose-500/50') : 'border-slate-800'} transition">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <span class="text-xs font-mono px-2.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30">${item.tag}</span>
+              <span class="text-xs font-mono text-slate-400">第 ${qIdx + 1} 題 / 共 3 題</span>
+            </div>
+            <p class="text-sm sm:text-base font-semibold text-white mb-4 leading-relaxed">${item.q}</p>
+            <div class="space-y-2.5">
+              ${item.options.map((opt, oIdx) => {
+                let btnClass = "bg-slate-950/80 border-slate-800 text-slate-300 hover:border-cyan-500/50 hover:bg-slate-800/80";
+                if (answered) {
+                  if (oIdx === item.answer) {
+                    btnClass = "bg-emerald-950/70 border-emerald-500 text-emerald-200 font-semibold";
+                  } else if (oIdx === selected) {
+                    btnClass = "bg-rose-950/70 border-rose-500 text-rose-200";
+                  } else {
+                    btnClass = "bg-slate-950/40 border-slate-800/50 text-slate-500";
+                  }
+                }
+                return `
+                  <button onclick="answerQuestion(${qIdx}, ${oIdx})" class="w-full text-left p-3.5 rounded-xl border text-xs sm:text-sm transition flex items-start justify-between gap-3 ${btnClass}">
+                    <span>${opt}</span>
+                    ${answered && oIdx === item.answer ? '<span class="text-emerald-400 font-bold shrink-0">✓ 正解</span>' : ''}
+                    ${answered && oIdx === selected && oIdx !== item.answer ? '<span class="text-rose-400 font-bold shrink-0">✗ 誤選</span>' : ''}
+                  </button>
+                `;
+              }).join('')}
+            </div>
+            ${answered ? `
+              <div class="mt-4 p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs sm:text-sm text-slate-300 leading-relaxed">
+                <span class="font-bold ${isCorrect ? 'text-emerald-400' : 'text-amber-400'}">${isCorrect ? '🎉 回答正確！' : '💡 考點解析：'}</span>
+                ${item.explanation}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+      const correctCount = Object.keys(userAnswers).filter(k => userAnswers[k] === ipasQuestions[k].answer).length;
+      document.getElementById('quizScore').textContent = `${correctCount} / ${ipasQuestions.length}`;
+    }
+
+    function answerQuestion(qIdx, oIdx) {
+      userAnswers[qIdx] = oIdx;
+      renderQuiz();
+    }
+
+    function resetQuiz() {
+      userAnswers = {};
+      renderQuiz();
+    }
+
+    // ---------------------------------------------------------
+    // 2. Module 4: 互動式核寬度 σ 權重衰減實驗器
+    // ---------------------------------------------------------
+    const sigmaMathSlider = document.getElementById('sigmaMathSlider');
+    const sigmaMathVal = document.getElementById('sigmaMathVal');
+    const kernelWeightBars = document.getElementById('kernelWeightBars');
+    const sigmaInsightText = document.getElementById('sigmaInsightText');
+
+    function updateKernelMathDemo() {
+      const sigma = parseFloat(sigmaMathSlider.value);
+      sigmaMathVal.textContent = sigma.toFixed(1);
+      const distances = [0.0, 0.3, 0.6, 1.0, 1.5];
+
+      kernelWeightBars.innerHTML = distances.map(d => {
+        const w = Math.exp(-(d * d) / (sigma * sigma));
+        const pct = Math.round(w * 100);
+        return `
+          <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center">
+            <div class="text-[11px] font-mono text-slate-400">距離 $D = ${d.toFixed(1)}$</div>
+            <div class="text-base font-mono font-bold text-cyan-400 my-1">${w.toFixed(3)}</div>
+            <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-cyan-500 to-indigo-500 transition-all duration-200" style="width: ${pct}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      if (sigma <= 0.4) {
+        sigmaInsightText.textContent = `目前 σ = ${sigma.toFixed(1)}（極窄鄰域）：僅有 D ≤ 0.3 的極近擾動樣本具備高權重，能精準捕捉高度彎曲的局部切線，但若採樣數不足易受雜訊干擾。`;
+      } else if (sigma <= 1.2) {
+        sigmaInsightText.textContent = `目前 σ = ${sigma.toFixed(1)}（適中鄰域）：在局部保真度與樣本穩定性之間取得良好平衡，是實務上最常設定的核寬度區間。`;
+      } else {
+        sigmaInsightText.textContent = `目前 σ = ${sigma.toFixed(1)}（寬廣鄰域）：即使距離遠達 D = 1.5 仍保有 ${(Math.exp(-(1.5*1.5)/(sigma*sigma))*100).toFixed(0)}% 權重，代理模型會退化為「全域線性回歸」，失去局部解釋意義！`;
+      }
+    }
+    sigmaMathSlider.addEventListener('input', updateKernelMathDemo);
+
+    // ---------------------------------------------------------
+    // 3. Module 4: 互動式 2^3=8 Shapley Value 計算器
+    // ---------------------------------------------------------
+    // 8 subsets predictions in %
+    const subsetPreds = {
+      "": 10,
+      "1": 45,
+      "2": 25,
+      "3": 15,
+      "1,2": 75,
+      "1,3": 55,
+      "2,3": 35,
+      "1,2,3": 90
+    };
+
+    const featureMeta = [
+      { id: "1", name: "X1 (主軸振動)", others: ["2", "3"], color: "text-cyan-400" },
+      { id: "2", name: "X2 (冷卻溫差)", others: ["1", "3"], color: "text-indigo-400" },
+      { id: "3", name: "X3 (異常電流)", others: ["1", "2"], color: "text-emerald-400" }
+    ];
+
+    function getSubsetKey(arr) {
+      return arr.slice().sort().join(",");
+    }
+
+    function formatSubsetLabel(arr) {
+      if (arr.length === 0) return "∅ (空集合)";
+      return "{" + arr.map(x => "X" + x).join(", ") + "}";
+    }
+
+    function computeSingleShapley(featIdx) {
+      const feat = featureMeta[featIdx];
+      const [o1, o2] = feat.others;
+      const coalitions = [
+        [],
+        [o1],
+        [o2],
+        [o1, o2]
+      ];
+      // |F| = 3 => 3! = 6
+      // weights: |S|=0 -> 0!*2!/6 = 2/6 = 1/3; |S|=1 -> 1!*1!/6 = 1/6; |S|=2 -> 2!*0!/6 = 2/6 = 1/3
+      let totalPhi = 0;
+      const rows = coalitions.map(S => {
+        const sSize = S.length;
+        const weightNum = sSize === 1 ? 1 : 2;
+        const weightStr = `${weightNum}/6`;
+        const weightVal = weightNum / 6;
+
+        const keyWithout = getSubsetKey(S);
+        const keyWith = getSubsetKey([...S, feat.id]);
+        const valWithout = subsetPreds[keyWithout];
+        const valWith = subsetPreds[keyWith];
+        const marginal = valWith - valWithout;
+        const weightedMarginal = weightVal * marginal;
+        totalPhi += weightedMarginal;
+
+        return {
+          sLabel: formatSubsetLabel(S),
+          sSize,
+          weightStr,
+          valWith,
+          valWithout,
+          marginal,
+          weightedMarginal
+        };
+      });
+      return { totalPhi, rows };
+    }
+
+    function selectShapFeature(featIdx) {
+      [0, 1, 2].forEach(idx => {
+        const btn = document.getElementById(`shapFeatBtn${idx}`);
+        if (idx === featIdx) {
+          btn.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow";
+        } else {
+          btn.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700";
+        }
+      });
+
+      const { totalPhi, rows } = computeSingleShapley(featIdx);
+      const tbody = document.getElementById('shapCalcTableBody');
+      tbody.innerHTML = rows.map(r => `
+        <tr class="hover:bg-slate-800/40">
+          <td class="py-2.5 px-3 text-slate-200">${r.sLabel}</td>
+          <td class="py-2.5 px-3 text-slate-400">${r.sSize}</td>
+          <td class="py-2.5 px-3 text-amber-300">${r.weightStr}</td>
+          <td class="py-2.5 px-3 text-slate-200">${r.valWith}% - ${r.valWithout}% = <span class="text-rose-400 font-bold">+${r.marginal}%</span></td>
+          <td class="py-2.5 px-3 text-right text-indigo-300 font-bold">+${r.weightedMarginal.toFixed(2)}%</td>
+        </tr>
+      `).join('') + `
+        <tr class="bg-indigo-950/50 font-bold">
+          <td colspan="4" class="py-2.5 px-3 text-right text-white">特徵 ${featureMeta[featIdx].name} 之精確 Shapley Value ($\phi_${featIdx + 1}$) =</td>
+          <td class="py-2.5 px-3 text-right text-indigo-300 text-base">+${totalPhi.toFixed(2)}%</td>
+        </tr>
+      `;
+
+      const phi1 = computeSingleShapley(0).totalPhi;
+      const phi2 = computeSingleShapley(1).totalPhi;
+      const phi3 = computeSingleShapley(2).totalPhi;
+      const base = subsetPreds[""];
+      const sumAll = base + phi1 + phi2 + phi3;
+
+      document.getElementById('shapEfficiencySummary').innerHTML = `
+        <div class="text-emerald-300">
+          <strong>✓ 效率性公理驗證：</strong> $\phi_0$ (${base}%) + $\phi_1$ (+${phi1.toFixed(1)}%) + $\phi_2$ (+${phi2.toFixed(1)}%) + $\phi_3$ (+${phi3.toFixed(1)}%) = <strong class="text-white underline">${sumAll.toFixed(1)}%</strong>
+        </div>
+        <div class="text-slate-300">
+          全特徵實際預測 $f(\{X_1,X_2,X_3\}) = \mathbf{90.0\%}$ (完全相等！)
+        </div>
+      `;
+    }
+
+    // ---------------------------------------------------------
+    // 4. Module 5: 雙分頁切換
+    // ---------------------------------------------------------
+    function switchLabTab(tab) {
+      const paneLime = document.getElementById('labPaneLime');
+      const paneShap = document.getElementById('labPaneShap');
+      const btnLime = document.getElementById('tabLimeBtn');
+      const btnShap = document.getElementById('tabShapBtn');
+
+      if (tab === 'lime') {
+        paneLime.classList.remove('hidden');
+        paneShap.classList.add('hidden');
+        btnLime.className = "px-4 py-2 rounded-lg text-xs sm:text-sm font-bold bg-cyan-600 text-white shadow transition";
+        btnShap.className = "px-4 py-2 rounded-lg text-xs sm:text-sm font-bold text-slate-300 hover:text-white transition";
+        resizeLimeCanvas();
+      } else {
+        paneLime.classList.add('hidden');
+        paneShap.classList.remove('hidden');
+        btnShap.className = "px-4 py-2 rounded-lg text-xs sm:text-sm font-bold bg-indigo-600 text-white shadow transition";
+        btnLime.className = "px-4 py-2 rounded-lg text-xs sm:text-sm font-bold text-slate-300 hover:text-white transition";
+        updateShapVisuals();
+      }
+    }
+
+    // ---------------------------------------------------------
+    // 5. Module 5A: LIME 2D 決策邊界 Canvas 互動模擬器
+    // ---------------------------------------------------------
+    const limeCanvas = document.getElementById('limeCanvas');
+    const limeCtx = limeCanvas.getContext('2d');
+    const limeSigmaInput = document.getElementById('limeCanvasSigma');
+    const limeSampleInput = document.getElementById('limeSampleCount');
+
+    let limeState = {
+      step: 5, // 1 to 5
+      targetX: 0.56,
+      targetY: 0.48,
+      sigma: 0.22,
+      numSamples: 180,
+      samples: [],
+      weights: [0, 0],
+      intercept: 0,
+      bgCanvas: null
+    };
+
+    // Complex non-linear black-box model f(x1, x2) in [0, 1]^2 -> probability [0, 1]
+    function blackboxPredict(x, y) {
+      // Curved crescent / wave boundary
+      const boundaryY = 0.50 + 0.24 * Math.sin(x * Math.PI * 2.1 - 0.5) - 0.15 * Math.cos(x * 4.5);
+      const dist = (y - boundaryY) + 0.35 * (x - 0.48);
+      const prob = 1 / (1 + Math.exp(-dist * 11.5));
+      return prob;
+    }
+
+    // Pre-render smooth non-linear decision boundary background onto offscreen canvas
+    function buildBackgroundCache(w, h) {
+      const off = document.createElement('canvas');
+      off.width = w;
+      off.height = h;
+      const octx = off.getContext('2d');
+      const imgData = octx.createImageData(w, h);
+      const data = imgData.data;
+
+      for (let py = 0; py < h; py++) {
+        const ny = 1 - py / h; // y=1 at top, y=0 at bottom
+        for (let px = 0; px < w; px++) {
+          const nx = px / w;
+          const p = blackboxPredict(nx, ny);
+          const idx = (py * w + px) * 4;
+
+          // Blend Sky Blue (low risk) to Rose Red (high risk)
+          const r = Math.round(14 + p * (225 - 14));
+          const g = Math.round(116 + p * (29 - 116));
+          const b = Math.round(144 + p * (72 - 144));
+
+          // Highlight decision boundary contour near p = 0.5
+          const isContour = Math.abs(p - 0.5) < 0.025;
+          if (isContour) {
+            data[idx] = 250;
+            data[idx + 1] = 204;
+            data[idx + 2] = 21;
+            data[idx + 3] = 170;
+          } else {
+            data[idx] = r;
+            data[idx + 1] = g;
+            data[idx + 2] = b;
+            data[idx + 3] = 95;
+          }
+        }
+      }
+      octx.putImageData(imgData, 0, 0);
+      limeState.bgCanvas = off;
+    }
+
+    function generateLimeSamplesAndFit() {
+      const n = limeState.numSamples;
+      const tx = limeState.targetX;
+      const ty = limeState.targetY;
+      const sigma = limeState.sigma;
+      const samples = [];
+
+      // Deterministic pseudo-random helper for smooth slider dragging
+      let seed = Math.round(tx * 1000 + ty * 777 + n);
+      function rand() {
+        seed = (seed * 9301 + 49297) % 233280;
+        return seed / 233280;
+      }
+      function randNorm() {
+        const u1 = Math.max(1e-6, rand());
+        const u2 = rand();
+        return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+      }
+
+      for (let i = 0; i < n; i++) {
+        // Sample around target with spread
+        const sx = Math.min(0.98, Math.max(0.02, tx + randNorm() * 0.24));
+        const sy = Math.min(0.98, Math.max(0.02, ty + randNorm() * 0.24));
+        const prob = blackboxPredict(sx, sy);
+        const distSq = (sx - tx) ** 2 + (sy - ty) ** 2;
+        const weight = Math.exp(-distSq / (sigma * sigma));
+        samples.push({ x: sx, y: sy, prob, weight });
+      }
+
+      // Weighted Linear Least Squares: y_hat = w0 + w1*x1 + w2*x2
+      // Solve normal equations (X^T W X) beta = X^T W y
+      let sW = 0, sWx = 0, sWy = 0, sWxx = 0, sWxy = 0, sWyy = 0;
+      let sWz = 0, sWxz = 0, sWyz = 0;
+
+      for (const s of samples) {
+        const w = s.weight;
+        const dx = s.x - tx;
+        const dy = s.y - ty;
+        const z = s.prob;
+        sW += w;
+        sWx += w * dx;
+        sWy += w * dy;
+        sWxx += w * dx * dx;
+        sWxy += w * dx * dy;
+        sWyy += w * dy * dy;
+        sWz += w * z;
+        sWxz += w * dx * z;
+        sWyz += w * dy * z;
+      }
+
+      // Ridge regularization +1e-4 for numerical stability
+      const A00 = sW + 1e-4, A01 = sWx, A02 = sWy;
+      const A10 = sWx, A11 = sWxx + 1e-4, A12 = sWxy;
+      const A20 = sWy, A21 = sWxy, A22 = sWyy + 1e-4;
+
+      // Cramer's rule for 3x3 system
+      const detA = A00 * (A11 * A22 - A12 * A21) - A01 * (A10 * A22 - A12 * A20) + A02 * (A10 * A21 - A11 * A20);
+      const b0 = (sWz * (A11 * A22 - A12 * A21) - A01 * (sWxz * A22 - A12 * sWyz) + A02 * (sWxz * A21 - A11 * sWyz)) / detA;
+      const w1 = (A00 * (sWxz * A22 - A12 * sWyz) - sWz * (A10 * A22 - A12 * A20) + A02 * (A10 * sWyz - sWxz * A20)) / detA;
+      const w2 = (A00 * (A11 * sWyz - sWxz * A21) - A01 * (A10 * sWyz - sWxz * A20) + sWz * (A10 * A21 - A11 * A20)) / detA;
+
+      limeState.samples = samples;
+      limeState.intercept = b0;
+      limeState.weights = [w1, w2];
+    }
+
+    function updateLimeStepUI() {
+      const stepTexts = {
+        1: ["Step 1 / 5：選定待解釋目標樣本 x", "已鎖定畫布上的待解釋樣本 x（金色圓點），準備探索其周圍的黑盒子決策行為。"],
+        2: ["Step 2 / 5：生成局部擾動樣本 z", `在樣本 x 周圍隨機採樣生成 ${limeState.numSamples} 個擾動資料點（灰色小點），尚未取得模型預測。`],
+        3: ["Step 3 / 5：黑盒子模型預測類別", "將所有擾動樣本送入複雜黑盒子模型 f(z)，依據輸出風險機率標記為紅色（高風險）或藍色（低風險）。"],
+        4: ["Step 4 / 5：計算指數核距離權重 π_x(z)", `依據距離 D(x,z) 與核寬度 σ=${limeState.sigma.toFixed(2)} 賦予權重（畫布上圓點半徑越大代表權重越高）。`],
+        5: ["Step 5 / 5：擬合局部線性代理模型 g(z)", "以加權最小平方法擬合出白色虛線（局部線性決策邊界），精準切齊該處的非線性黑盒子邊界！"]
+      };
+      document.getElementById('limeStepBadge').textContent = stepTexts[limeState.step][0];
+      document.getElementById('limeStepDesc').textContent = stepTexts[limeState.step][1];
+
+      const probPct = (blackboxPredict(limeState.targetX, limeState.targetY) * 100).toFixed(1);
+      document.getElementById('limeTargetCoords').textContent =
+        `X1(負債比)=${limeState.targetX.toFixed(2)}, X2(收入波動)=${limeState.targetY.toFixed(2)} | 黑盒子預測風險: ${probPct}%`;
+
+      // Update local feature weight bars
+      const [w1, w2] = limeState.weights;
+      const maxAbs = Math.max(0.5, Math.abs(w1), Math.abs(w2));
+      const features = [
+        { name: "X1：負債收入比 (DTI)", val: w1 },
+        { name: "X2：月收入波動率", val: w2 }
+      ];
+
+      document.getElementById('limeWeightsOutput').innerHTML = features.map(f => {
+        const isPos = f.val >= 0;
+        const pct = Math.min(100, Math.round((Math.abs(f.val) / maxAbs) * 100));
+        return `
+          <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+            <div class="flex justify-between text-xs font-mono mb-1.5">
+              <span class="text-slate-200">${f.name}</span>
+              <span class="${isPos ? 'text-rose-400' : 'text-sky-400'} font-bold">${f.val >= 0 ? '+' : ''}${f.val.toFixed(3)}</span>
+            </div>
+            <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+              <div class="h-full ${isPos ? 'bg-rose-500' : 'bg-sky-500'} transition-all duration-200" style="width: ${limeState.step >= 5 ? pct : 0}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function drawLimeCanvas() {
+      const w = limeCanvas.width;
+      const h = limeCanvas.height;
+      if (!w || !h) return;
+
+      limeCtx.clearRect(0, 0, w, h);
+
+      // Draw pre-rendered non-linear background
+      if (limeState.bgCanvas) {
+        limeCtx.drawImage(limeState.bgCanvas, 0, 0, w, h);
+      }
+
+      // Draw subtle grid lines
+      limeCtx.strokeStyle = "rgba(148, 163, 184, 0.12)";
+      limeCtx.lineWidth = 1;
+      for (let i = 1; i < 5; i++) {
+        limeCtx.beginPath();
+        limeCtx.moveTo((w / 5) * i, 0);
+        limeCtx.lineTo((w / 5) * i, h);
+        limeCtx.stroke();
+        limeCtx.beginPath();
+        limeCtx.moveTo(0, (h / 5) * i);
+        limeCtx.lineTo(w, (h / 5) * i);
+        limeCtx.stroke();
+      }
+
+      const txPx = limeState.targetX * w;
+      const tyPx = (1 - limeState.targetY) * h;
+
+      // Draw kernel width σ visual ring in Step 4+
+      if (limeState.step >= 4) {
+        const radiusPx = limeState.sigma * w;
+        const grad = limeCtx.createRadialGradient(txPx, tyPx, 4, txPx, tyPx, radiusPx * 1.4);
+        grad.addColorStop(0, "rgba(6, 182, 212, 0.25)");
+        grad.addColorStop(1, "rgba(6, 182, 212, 0.0)");
+        limeCtx.fillStyle = grad;
+        limeCtx.beginPath();
+        limeCtx.arc(txPx, tyPx, radiusPx * 1.4, 0, Math.PI * 2);
+        limeCtx.fill();
+
+        limeCtx.strokeStyle = "rgba(34, 211, 238, 0.45)";
+        limeCtx.setLineDash([4, 4]);
+        limeCtx.beginPath();
+        limeCtx.arc(txPx, tyPx, radiusPx, 0, Math.PI * 2);
+        limeCtx.stroke();
+        limeCtx.setLineDash([]);
+      }
+
+      // Step 2+: Draw perturbed samples
+      if (limeState.step >= 2) {
+        for (const s of limeState.samples) {
+          const sx = s.x * w;
+          const sy = (1 - s.y) * h;
+
+          // Radius scaled by weight in Step 4+
+          const r = limeState.step >= 4 ? (2.2 + s.weight * 6.5) : 3.8;
+
+          limeCtx.beginPath();
+          limeCtx.arc(sx, sy, r, 0, Math.PI * 2);
+
+          if (limeState.step === 2) {
+            limeCtx.fillStyle = "rgba(226, 232, 240, 0.75)";
+          } else {
+            // Colored by blackbox prediction
+            limeCtx.fillStyle = s.prob >= 0.5 ? "rgba(244, 63, 94, 0.88)" : "rgba(56, 189, 248, 0.88)";
+          }
+          limeCtx.fill();
+          limeCtx.strokeStyle = "rgba(15, 23, 42, 0.7)";
+          limeCtx.lineWidth = 1;
+          limeCtx.stroke();
+        }
+      }
+
+      // Step 5: Draw local linear surrogate decision boundary g(z) = 0.5
+      if (limeState.step >= 5) {
+        const [w1, w2] = limeState.weights;
+        const b0 = limeState.intercept;
+        // Local linear equation around (tx, ty): b0 + w1*(x - tx) + w2*(y - ty) = 0.5
+        if (Math.abs(w2) > 1e-4) {
+          const xStart = 0;
+          const xEnd = 1;
+          const yStart = limeState.targetY + (0.5 - b0 - w1 * (xStart - limeState.targetX)) / w2;
+          const yEnd = limeState.targetY + (0.5 - b0 - w1 * (xEnd - limeState.targetX)) / w2;
+
+          limeCtx.save();
+          limeCtx.strokeStyle = "#ffffff";
+          limeCtx.lineWidth = 3.2;
+          limeCtx.setLineDash([8, 6]);
+          limeCtx.shadowColor = "rgba(6, 182, 212, 0.9)";
+          limeCtx.shadowBlur = 10;
+          limeCtx.beginPath();
+          limeCtx.moveTo(xStart * w, (1 - yStart) * h);
+          limeCtx.lineTo(xEnd * w, (1 - yEnd) * h);
+          limeCtx.stroke();
+          limeCtx.restore();
+        }
+      }
+
+      // Step 1+: Draw target instance x
+      limeCtx.save();
+      limeCtx.beginPath();
+      limeCtx.arc(txPx, tyPx, 8.5, 0, Math.PI * 2);
+      limeCtx.fillStyle = "#facc15";
+      limeCtx.fill();
+      limeCtx.lineWidth = 3;
+      limeCtx.strokeStyle = "#ffffff";
+      limeCtx.stroke();
+
+      limeCtx.fillStyle = "#ffffff";
+      limeCtx.font = "bold 12px Inter, sans-serif";
+      limeCtx.fillText("目標點 x", txPx + 12, tyPx - 10);
+      limeCtx.restore();
+    }
+
+    function refreshLimeAll() {
+      generateLimeSamplesAndFit();
+      updateLimeStepUI();
+      drawLimeCanvas();
+    }
+
+    function resetLimeSim() {
+      limeState.step = 1;
+      refreshLimeAll();
+    }
+
+    function nextLimeStep() {
+      limeState.step = limeState.step < 5 ? limeState.step + 1 : 1;
+      refreshLimeAll();
+    }
+
+    function runAllLimeSteps() {
+      limeState.step = 5;
+      refreshLimeAll();
+    }
+
+    function resizeLimeCanvas() {
+      const rect = limeCanvas.parentElement.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        limeCanvas.width = Math.round(rect.width);
+        limeCanvas.height = Math.round(rect.height);
+        buildBackgroundCache(limeCanvas.width, limeCanvas.height);
+        refreshLimeAll();
+      }
+    }
+
+    // Canvas click / touch to move target sample x
+    function handleCanvasPointer(clientX, clientY) {
+      const rect = limeCanvas.getBoundingClientRect();
+      const nx = Math.min(0.96, Math.max(0.04, (clientX - rect.left) / rect.width));
+      const ny = Math.min(0.96, Math.max(0.04, 1 - (clientY - rect.top) / rect.height));
+      limeState.targetX = nx;
+      limeState.targetY = ny;
+      refreshLimeAll();
+    }
+
+    limeCanvas.addEventListener('click', (e) => handleCanvasPointer(e.clientX, e.clientY));
+    limeCanvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length > 0) {
+        handleCanvasPointer(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+
+    limeSigmaInput.addEventListener('input', () => {
+      limeState.sigma = parseFloat(limeSigmaInput.value);
+      document.getElementById('limeCanvasSigmaVal').textContent = limeState.sigma.toFixed(2);
+      refreshLimeAll();
+    });
+
+    limeSampleInput.addEventListener('input', () => {
+      limeState.numSamples = parseInt(limeSampleInput.value, 10);
+      document.getElementById('limeSampleCountVal').textContent = limeState.numSamples;
+      refreshLimeAll();
+    });
+
+    // ---------------------------------------------------------
+    // 6. Module 5B: SHAP 力圖 (Force Plot) & 瀑布圖 (Waterfall Plot)
+    // ---------------------------------------------------------
+    let shapStep = 4; // 0 = base only, 1..4 = number of features revealed
+    const sliderDti = document.getElementById('sliderDti');
+    const sliderTenure = document.getElementById('sliderTenure');
+    const sliderCredit = document.getElementById('sliderCredit');
+    const sliderLtv = document.getElementById('sliderLtv');
+
+    function computeShapContributions() {
+      const dti = parseFloat(sliderDti.value);       // baseline 35%
+      const tenure = parseFloat(sliderTenure.value); // baseline 5 yrs
+      const credit = parseFloat(sliderCredit.value); // baseline 680
+      const ltv = parseFloat(sliderLtv.value);       // baseline 70%
+
+      document.getElementById('valDti').textContent = `${dti}%`;
+      document.getElementById('valTenure').textContent = `${tenure.toFixed(1)} 年`;
+      document.getElementById('valCredit').textContent = `${credit} 分`;
+      document.getElementById('valLtv').textContent = `${ltv}%`;
+
+      // Realistic additive SHAP attributions around base 20.0%
+      const phiDti = (dti - 35) * 0.95;          // +28.5% at 65%
+      const phiTenure = (5.0 - tenure) * 3.8;    // +15.2% at 1.0 yr
+      const phiCredit = (680 - credit) * 0.14;   // -8.4% at 740
+      const phiLtv = (ltv - 70) * 1.1;           // +16.5% at 85%
+
+      const items = [
+        { name: `負債收入比 = ${dti}%`, phi: phiDti },
+        { name: `工作年資 = ${tenure.toFixed(1)} 年`, phi: phiTenure },
+        { name: `貸款成數 = ${ltv}%`, phi: phiLtv },
+        { name: `信用評分 = ${credit} 分`, phi: phiCredit }
+      ];
+
+      // Sort by absolute impact descending (standard SHAP waterfall ordering)
+      items.sort((a, b) => Math.abs(b.phi) - Math.abs(a.phi));
+      return items;
+    }
+
+    function updateShapVisuals() {
+      const baseVal = 20.0;
+      const allItems = computeShapContributions();
+      const activeItems = allItems.slice(0, shapStep);
+
+      let currentVal = baseVal;
+      activeItems.forEach(it => currentVal += it.phi);
+      const clampedFinal = Math.min(99.5, Math.max(0.5, currentVal));
+
+      // Update Step Header
+      const badge = document.getElementById('shapStepBadge');
+      const desc = document.getElementById('shapStepDesc');
+      if (shapStep === 0) {
+        badge.textContent = "Step 0 / 4 (基準值 E[f(X)])";
+        desc.textContent = "尚未加入任何個人特徵前，模型對全體申請人的基準平均違約率為 E[f(X)] = 20.0%。";
+      } else {
+        badge.textContent = `Step ${shapStep} / 4 (已累加 ${shapStep} 項特徵歸因)`;
+        const last = activeItems[shapStep - 1];
+        desc.textContent = `加入「${last.name}」，其邊際貢獻為 ${last.phi >= 0 ? '+' : ''}${last.phi.toFixed(1)}%，累計預測風險來到 ${clampedFinal.toFixed(1)}%。`;
+      }
+
+      const finalBadge = document.getElementById('shapFinalPredBadge');
+      finalBadge.textContent = `${clampedFinal.toFixed(1)}%`;
+      finalBadge.className = clampedFinal >= 50
+        ? "px-3 py-1 rounded-lg font-mono font-bold text-base bg-rose-500/20 text-rose-400 border border-rose-500/40"
+        : "px-3 py-1 rounded-lg font-mono font-bold text-base bg-emerald-500/20 text-emerald-400 border border-emerald-500/40";
+
+      // 1. Render Force Plot
+      const posItems = activeItems.filter(i => i.phi > 0);
+      const negItems = activeItems.filter(i => i.phi < 0);
+      const posSum = posItems.reduce((s, i) => s + i.phi, 0);
+      const negSum = Math.abs(negItems.reduce((s, i) => s + i.phi, 0));
+      const totalSpan = Math.max(10, posSum + negSum);
+
+      const posWidthPct = Math.round((posSum / totalSpan) * 100);
+      const negWidthPct = Math.round((negSum / totalSpan) * 100);
+
+      document.getElementById('shapForcePlotContainer').innerHTML = `
+        <div class="space-y-2">
+          <div class="flex justify-between text-xs font-mono text-slate-400">
+            <span>基準值 E[f(X)] = ${baseVal.toFixed(1)}%</span>
+            <span class="text-white font-bold">目前輸出 f(x) = ${clampedFinal.toFixed(1)}%</span>
+          </div>
+          <div class="w-full h-10 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden flex items-center p-1 gap-1">
+            ${posItems.length > 0 ? `
+              <div style="width: ${Math.max(18, posWidthPct)}%" class="h-full bg-gradient-to-r from-rose-600 to-rose-500 rounded-l-lg flex items-center justify-center px-2 text-xs font-mono font-bold text-white truncate transition-all duration-300">
+                正向推高 +${posSum.toFixed(1)}% ▶
+              </div>
+            ` : ''}
+            <div class="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 font-mono text-xs font-bold text-amber-300 shrink-0">
+              ${clampedFinal.toFixed(1)}%
+            </div>
+            ${negItems.length > 0 ? `
+              <div style="width: ${Math.max(18, negWidthPct)}%" class="h-full bg-gradient-to-l from-sky-600 to-sky-500 rounded-r-lg flex items-center justify-center px-2 text-xs font-mono font-bold text-white truncate transition-all duration-300">
+                ◀ 負向拉低 -${negSum.toFixed(1)}%
+              </div>
+            ` : ''}
+          </div>
+          <div class="flex flex-wrap gap-2 pt-1">
+            ${activeItems.map(it => `
+              <span class="text-[11px] font-mono px-2 py-0.5 rounded border ${it.phi >= 0 ? 'bg-rose-950/60 border-rose-500/30 text-rose-300' : 'bg-sky-950/60 border-sky-500/30 text-sky-300'}">
+                ${it.name}: ${it.phi >= 0 ? '+' : ''}${it.phi.toFixed(1)}%
+              </span>
+            `).join('')}
+          </div>
+        </div>
+      `;
+
+      // 2. Render Waterfall Plot
+      let running = baseVal;
+      const rowsHtml = activeItems.map(it => {
+        const start = running;
+        const end = running + it.phi;
+        running = end;
+
+        const minPos = Math.max(0, Math.min(start, end));
+        const width = Math.min(100 - minPos, Math.abs(it.phi));
+        const isPos = it.phi >= 0;
+
+        return `
+          <div class="grid grid-cols-12 items-center gap-2 py-2 border-b border-slate-800/60 text-xs font-mono">
+            <div class="col-span-4 sm:col-span-3 text-slate-300 truncate" title="${it.name}">${it.name}</div>
+            <div class="col-span-6 sm:col-span-7 relative h-6 bg-slate-950 rounded-md border border-slate-800/80 overflow-hidden">
+              <!-- Base reference dashed line at 20% -->
+              <div style="left: 20%" class="absolute top-0 bottom-0 w-px bg-slate-600/70"></div>
+              <div style="left: ${minPos}%; width: ${Math.max(2, width)}%"
+                   class="absolute top-1 bottom-1 rounded ${isPos ? 'bg-rose-500' : 'bg-sky-500'} transition-all duration-300">
+              </div>
+            </div>
+            <div class="col-span-2 text-right font-bold ${isPos ? 'text-rose-400' : 'text-sky-400'}">
+              ${isPos ? '+' : ''}${it.phi.toFixed(1)}%
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('shapWaterfallContainer').innerHTML = `
+        <div class="space-y-1">
+          <div class="grid grid-cols-12 items-center gap-2 pb-2 border-b border-slate-800 text-xs font-mono text-slate-400">
+            <div class="col-span-4 sm:col-span-3">基準值 E[f(X)]</div>
+            <div class="col-span-6 sm:col-span-7 relative h-5 bg-slate-950 rounded border border-slate-800">
+              <div style="width: 20%" class="h-full bg-slate-700/70 rounded-l"></div>
+            </div>
+            <div class="col-span-2 text-right text-slate-200 font-bold">20.0%</div>
+          </div>
+          ${rowsHtml}
+          <div class="grid grid-cols-12 items-center gap-2 pt-2 text-xs font-mono">
+            <div class="col-span-4 sm:col-span-3 font-bold text-white">最終預測 f(x)</div>
+            <div class="col-span-6 sm:col-span-7 relative h-6 bg-slate-950 rounded border border-slate-700 overflow-hidden">
+              <div style="width: ${clampedFinal}%" class="h-full bg-gradient-to-r from-indigo-500 to-rose-500 transition-all duration-300"></div>
+            </div>
+            <div class="col-span-2 text-right font-bold text-amber-300 text-sm">${clampedFinal.toFixed(1)}%</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function resetShapSim() {
+      shapStep = 0;
+      updateShapVisuals();
+    }
+
+    function nextShapStep() {
+      shapStep = shapStep < 4 ? shapStep + 1 : 0;
+      updateShapVisuals();
+    }
+
+    function runAllShapSteps() {
+      shapStep = 4;
+      updateShapVisuals();
+    }
+
+    [sliderDti, sliderTenure, sliderCredit, sliderLtv].forEach(el => {
+      el.addEventListener('input', updateShapVisuals);
+    });
+
+    // ---------------------------------------------------------
+    // 7. Copy Python Code Helper (using execCommand fallback)
+    // ---------------------------------------------------------
+    function copyPythonCode() {
+      const textarea = document.getElementById('rawPythonCode');
+      textarea.classList.remove('hidden');
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        const toast = document.getElementById('toastMsg');
+        toast.classList.remove('hidden');
+        setTimeout(() => toast.classList.add('hidden'), 2600);
+      } catch (err) {
+        console.error('Copy failed', err);
+      }
+      textarea.classList.add('hidden');
+    }
+
+    // ---------------------------------------------------------
+    // Initial Boot on Window Load
+    // ---------------------------------------------------------
+    window.addEventListener('load', () => {
+      selectMlStage(4);
+      renderQuiz();
+      updateKernelMathDemo();
+      selectShapFeature(0);
+      resizeLimeCanvas();
+      updateShapVisuals();
+    });
+
+    window.addEventListener('resize', () => {
+      if (!document.getElementById('labPaneLime').classList.contains('hidden')) {
+        resizeLimeCanvas();
+      }
+    });
+  </script>
+</body>
+</html>

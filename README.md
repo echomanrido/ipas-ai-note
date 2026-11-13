@@ -58,7 +58,7 @@
 ├── 04.補充教材/                 # 精選專題深入教材 (Cross-Entropy, MSE/MAE, YOLO vs TM分類, Focal Loss, 協方差矩陣 等 8篇)
 ├── 05.讀學時光 Rido(Read) & Learn/  # 讀學時光專題實驗室 (波動力學、AI網頁感知操作)
 ├── 06.Enzo_Youtube/             # 機器學習 33 集系列前哨戰 (AI 預測本質、核心概念導覽、簡報投影片、逐字稿)
-├── 07.比較/                     # 專題演算法、資安隱私與生成模型全景比較 (距離演算法vs分群模型、隱私資安、GAN vs VAE vs Diffusion、損失函數 Loss Functions 全方位比較 12篇)
+├── 07.比較/                     # 專題演算法、資安隱私與生成模型全景比較 (距離演算法vs分群模型、隱私資安、GAN vs VAE vs Diffusion、損失函數、可解釋性 AI LIME/SHAP、離散機率三大神器 14篇)
 ├── 08.程式/                     # Python 程式特訓與題型解析
 │   ├── iPAS自學路/              # 分組一：iPAS AI 應用規劃師 Python 必考語法、Pandas 資料操作與解題特訓 (7篇)
 │   ├── 02.任務光譜_TaskSpectrum/ # 分組二：全任務光譜大師指南 (Task Spectrum Master Guide) · 六大核心任務 × 12大模型 × 避坑反事實 × 考前30秒秒殺表
