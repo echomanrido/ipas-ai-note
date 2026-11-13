@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word2Vec 核心架構深度比較：CBOW vs. Skip-gram</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Google Fonts: Inter & Noto Sans TC -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- 引入 FontAwesome 圖示 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+                    },
+                    colors: {
+                        cbow: {
+                            light: '#eff6ff',
+                            DEFAULT: '#3b82f6',
+                            dark: '#1d4ed8',
+                        },
+                        skipgram: {
+                            light: '#f5f3ff',
+                            DEFAULT: '#8b5cf6',
+                            dark: '#6d28d9',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 自定義平滑動畫 */
+        .node-transition {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.7; }
+            50% { transform: scale(1.05); opacity: 0.3; }
+            100% { transform: scale(0.95); opacity: 0.7; }
+        }
+        .animate-ring {
+            animation: pulse-ring 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-indigo-100 selection:text-indigo-900">
+
+    <!-- 頂部導覽列 -->
+    <header class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-sm">
+                    W2V
+                </div>
+                <span class="font-bold text-lg tracking-tight text-slate-900">Word2Vec 架構解析</span>
+            </div>
+            <nav class="hidden md:flex space-x-6 text-sm font-medium text-slate-600">
+                <a href="#metaphor-section" class="hover:text-blue-600 transition">生活化比喻</a>
+                <a href="#interactive-demo" class="hover:text-blue-600 transition">互動架構模擬</a>
+                <a href="#comparison-table" class="hover:text-blue-600 transition">全面比較表</a>
+                <a href="#pros-cons" class="hover:text-blue-600 transition">優缺點分析</a>
+                <a href="#decision-guide" class="hover:text-blue-600 transition">實務選型指南</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 主視覺區塊 (Hero Section) -->
+    <section class="relative overflow-hidden bg-white border-b border-slate-200 py-14 sm:py-20">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 mb-4">
+                自然語言處理 (NLP) 經典演算法
+            </span>
+            <h1 class="text-3xl sm:text-5xl font-extrabold text-slate-900 tracking-tight mb-6">
+                <span class="text-blue-600">CBOW</span> vs. <span class="text-purple-600">Skip-gram</span>
+            </h1>
+            <p class="max-w-2xl mx-auto text-base sm:text-lg text-slate-600 leading-relaxed mb-10">
+                在 Word2Vec 將詞彙轉化為高維度向量的過程中，這兩種神經網路架構扮演著核心角色。它們在訓練目標上完全相反，卻在底層數學邏輯上相輔相成。
+            </p>
+
+            <!-- 核心一句話總結卡片 (新增於最前方) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 max-w-4xl mx-auto text-left">
+                <div class="p-5 sm:p-6 rounded-2xl bg-blue-50/70 border border-blue-200 shadow-xs flex items-start space-x-4">
+                    <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 font-bold text-lg shadow-sm">
+                        C
+                    </div>
+                    <div>
+                        <h2 class="font-bold text-blue-900 text-base sm:text-lg mb-1">CBOW 核心定義</h2>
+                        <p class="text-slate-700 text-sm sm:text-base leading-relaxed">
+                            用<strong>上下文預測中心詞</strong>。訓練速度較快，對<strong>高頻詞</strong>的表徵通常更穩定。
+                        </p>
+                    </div>
+                </div>
+
+                <div class="p-5 sm:p-6 rounded-2xl bg-purple-50/70 border border-purple-200 shadow-xs flex items-start space-x-4">
+                    <div class="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 font-bold text-lg shadow-sm">
+                        S
+                    </div>
+                    <div>
+                        <h2 class="font-bold text-purple-900 text-base sm:text-lg mb-1">Skip-gram 核心定義</h2>
+                        <p class="text-slate-700 text-sm sm:text-base leading-relaxed">
+                            用<strong>中心詞預測上下文</strong>。適合較小的語料庫，對<strong>低頻詞</strong>的捕捉效果較佳。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 生活化比喻區塊 (新增) -->
+    <section id="metaphor-section" class="py-16 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-slate-200">
+        <div class="text-center mb-10">
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 mb-2">
+                直覺理解
+            </span>
+            <h2 class="text-2xl sm:text-3xl font-bold text-slate-900">1. 生活化比喻：一眼秒懂運作邏輯</h2>
+            <p class="text-slate-600 mt-2">透過日常考試與遊戲情境，輕鬆理解兩種模型的思考方式</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+            <!-- CBOW 比喻卡片 -->
+            <div class="bg-white rounded-2xl border-2 border-blue-100 p-6 sm:p-8 shadow-sm flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="px-3 py-1 rounded-lg bg-blue-100 text-blue-800 text-xs font-bold">CBOW 的比喻</span>
+                        <span class="text-sm font-bold text-blue-600"><i class="fa-solid fa-pen-to-square mr-1.5"></i>看周圍猜中間</span>
+                    </div>
+                    <h3 class="text-xl sm:text-2xl font-bold text-slate-900 mb-4">克漏字填空</h3>
+                    
+                    <!-- 題目長相展示框 -->
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 text-center">
+                        <div class="text-xs font-semibold text-slate-400 mb-2">題目長相</div>
+                        <div class="text-base sm:text-lg font-medium text-slate-800 tracking-wide">
+                            「我 <span class="text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded font-bold">每天 早上</span> 都 
+                            <span class="inline-block px-4 py-0.5 mx-1 border-b-2 border-blue-600 text-blue-600 font-extrabold bg-blue-50 rounded-t">＿＿ (喝)</span> 
+                            <span class="text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded font-bold">一杯 咖啡</span>。」
+                        </div>
+                    </div>
+
+                    <ul class="space-y-3 text-sm sm:text-base text-slate-600 leading-relaxed">
+                        <li class="flex items-start">
+                            <span class="font-bold text-slate-800 shrink-0 mr-2">• 情境設定：</span>
+                            <span>你在做英文或國文考卷的「克漏字填空題」。</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="font-bold text-slate-800 shrink-0 mr-2">• 解題邏輯：</span>
+                            <span>看著空格前後的線索（「早上」、「一杯」、「咖啡」），在腦中推敲出空格裡最合理的詞是「<strong>喝</strong>」。</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="font-bold text-blue-700 shrink-0 mr-2">• 模型特性：</span>
+                            <span>因為線索很多（一群詞猜一個詞），很快就能鎖定答案，而且對於常見的搭配（例如「喝咖啡」）會非常熟練。</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Skip-gram 比喻卡片 -->
+            <div class="bg-white rounded-2xl border-2 border-purple-100 p-6 sm:p-8 shadow-sm flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="px-3 py-1 rounded-lg bg-purple-100 text-purple-800 text-xs font-bold">Skip-gram 的比喻</span>
+                        <span class="text-sm font-bold text-purple-600"><i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>看中間猜周圍</span>
+                    </div>
+                    <h3 class="text-xl sm:text-2xl font-bold text-slate-900 mb-4">看字聯想 / 造句接龍</h3>
+                    
+                    <!-- 題目長相展示框 -->
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 text-center">
+                        <div class="text-xs font-semibold text-slate-400 mb-2">題目長相</div>
+                        <div class="text-base sm:text-lg font-medium text-slate-800 flex flex-wrap items-center justify-center gap-2">
+                            <span>題目卡：</span>
+                            <span class="px-3 py-1 rounded-lg bg-purple-600 text-white font-bold shadow-xs">「喝」</span>
+                            <i class="fa-solid fa-arrow-right text-slate-400 text-sm mx-1"></i>
+                            <span class="text-xs sm:text-sm text-amber-800 bg-amber-100 px-2 py-1 rounded-md font-semibold">早上、一杯、咖啡、水、茶...</span>
+                        </div>
+                    </div>
+
+                    <ul class="space-y-3 text-sm sm:text-base text-slate-600 leading-relaxed">
+                        <li class="flex items-start">
+                            <span class="font-bold text-slate-800 shrink-0 mr-2">• 情境設定：</span>
+                            <span>你在玩電視綜藝節目的「聯想猜詞」遊戲，或是老師出一個單字讓你造句。</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="font-bold text-slate-800 shrink-0 mr-2">• 解題邏輯：</span>
+                            <span>根據單一提示詞「<strong>喝</strong>」，猜測它前後可能會出現哪些詞（如「早上」、「一杯」、「咖啡」、「水」、「茶」）。</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="font-bold text-purple-700 shrink-0 mr-2">• 模型特性：</span>
+                            <span>只給一個詞就要猜出周圍好幾個詞，難度較高（訓練較慢），但這也迫使模型必須把每個詞（包括冷門字）的細微含義都記得很清楚，否則根本猜不出周圍會接什麼字。</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 直覺比喻總結對照表 (對應截圖表格) -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="bg-slate-50 px-6 py-3.5 border-b border-slate-200 flex items-center justify-between">
+                <span class="font-bold text-slate-800 text-sm sm:text-base"><i class="fa-solid fa-table-list text-indigo-500 mr-2"></i>直覺學習風格速查表</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-200 text-slate-600 text-xs sm:text-sm bg-slate-50/50">
+                            <th class="py-3.5 px-6 font-bold w-1/5">比較維度</th>
+                            <th class="py-3.5 px-6 font-bold text-blue-700 w-2/5">CBOW</th>
+                            <th class="py-3.5 px-6 font-bold text-purple-700 w-2/5">Skip-gram</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 text-sm sm:text-base">
+                        <tr class="hover:bg-slate-50/80 transition">
+                            <td class="py-4 px-6 font-bold text-slate-900">生活比喻</td>
+                            <td class="py-4 px-6 text-slate-700"><strong>克漏字填空</strong>（給上下文，填中間）</td>
+                            <td class="py-4 px-6 text-slate-700"><strong>單字聯想擴寫</strong>（給一個詞，猜前後文）</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50/80 transition">
+                            <td class="py-4 px-6 font-bold text-slate-900">線索與目標</td>
+                            <td class="py-4 px-6 text-slate-700">多個線索 ➔ 猜 1 個目標</td>
+                            <td class="py-4 px-6 text-slate-700">1 個線索 ➔ 猜多個目標</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50/80 transition">
+                            <td class="py-4 px-6 font-bold text-slate-900">學習風格</td>
+                            <td class="py-4 px-6 text-slate-700">抓大方向、學得快，擅長常見詞彙</td>
+                            <td class="py-4 px-6 text-slate-700">精雕細琢、學得慢，擅長生僻詞彙</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- 互動架構模擬器 -->
+    <section id="interactive-demo" class="py-16 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-10">
+            <h2 class="text-2xl sm:text-3xl font-bold text-slate-900">2. 核心運作原理互動模擬</h2>
+            <p class="text-slate-600 mt-2">點擊下方句子中的任意詞彙作為「中心詞」，觀察兩種模型如何處理輸入與輸出（視窗大小 Window = 2）</p>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
+            <!-- 範例句子選擇器 -->
+            <div class="mb-8">
+                <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 text-center mb-3">
+                    請點擊選擇中心目標詞 (Target Word)
+                </div>
+                <div id="sentence-container" class="flex flex-wrap justify-center gap-2 sm:gap-3">
+                    <!-- 詞彙按鈕將由 JS 動態生成 -->
+                </div>
+            </div>
+
+            <!-- 雙模型對比視覺化面板 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                <!-- CBOW 卡片 -->
+                <div class="rounded-2xl border-2 border-blue-100 bg-blue-50/40 p-6 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="px-3 py-1 rounded-lg bg-blue-600 text-white text-sm font-bold shadow-sm">CBOW 連續詞袋模型</span>
+                            <span class="text-xs font-medium text-blue-700 bg-blue-100 px-2.5 py-1 rounded-md">看上下文 ➔ 猜中間詞</span>
+                        </div>
+                        <p class="text-sm text-slate-600 mb-6">
+                            將周圍上下文詞彙向量<strong>取平均（或加總）</strong>作為輸入，忽略詞序，預測中間的目標詞。
+                        </p>
+                    </div>
+
+                    <!-- CBOW 神經網路流向圖 -->
+                    <div class="bg-white rounded-xl p-5 border border-blue-100 shadow-inner">
+                        <div class="flex items-center justify-between text-center gap-2">
+                            <!-- Input -->
+                            <div class="flex-1">
+                                <div class="text-xs font-bold text-slate-400 mb-2">輸入層 (上下文)</div>
+                                <div id="cbow-inputs" class="flex flex-col gap-2 items-center min-h-[120px] justify-center">
+                                    <!-- 動態填入 -->
+                                </div>
+                            </div>
+                            
+                            <!-- Arrow & Projection -->
+                            <div class="flex flex-col items-center justify-center px-2">
+                                <i class="fa-solid fa-arrow-right text-blue-400 mb-1"></i>
+                                <div class="px-2.5 py-2 rounded-lg bg-blue-50 border border-blue-200 text-xs font-semibold text-blue-800">
+                                    投影層<br><span class="text-[10px] font-normal">(向量平均)</span>
+                                </div>
+                                <i class="fa-solid fa-arrow-right text-blue-400 mt-1"></i>
+                            </div>
+
+                            <!-- Output -->
+                            <div class="flex-1">
+                                <div class="text-xs font-bold text-slate-400 mb-2">輸出層 (預測目標)</div>
+                                <div id="cbow-output" class="flex flex-col items-center justify-center min-h-[120px]">
+                                    <!-- 動態填入 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Skip-gram 卡片 -->
+                <div class="rounded-2xl border-2 border-purple-100 bg-purple-50/40 p-6 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="px-3 py-1 rounded-lg bg-purple-600 text-white text-sm font-bold shadow-sm">Skip-gram 模型</span>
+                            <span class="text-xs font-medium text-purple-700 bg-purple-100 px-2.5 py-1 rounded-md">看中間詞 ➔ 猜上下文</span>
+                        </div>
+                        <p class="text-sm text-slate-600 mb-6">
+                            以單一目標詞作為輸入，分別預測視窗內每一個可能出現的上下文詞彙，訓練樣本數較多。
+                        </p>
+                    </div>
+
+                    <!-- Skip-gram 神經網路流向圖 -->
+                    <div class="bg-white rounded-xl p-5 border border-purple-100 shadow-inner">
+                        <div class="flex items-center justify-between text-center gap-2">
+                            <!-- Input -->
+                            <div class="flex-1">
+                                <div class="text-xs font-bold text-slate-400 mb-2">輸入層 (目標詞)</div>
+                                <div id="sg-input" class="flex flex-col items-center justify-center min-h-[120px]">
+                                    <!-- 動態填入 -->
+                                </div>
+                            </div>
+                            
+                            <!-- Arrow & Projection -->
+                            <div class="flex flex-col items-center justify-center px-2">
+                                <i class="fa-solid fa-arrow-right text-purple-400 mb-1"></i>
+                                <div class="px-2.5 py-2 rounded-lg bg-purple-50 border border-purple-200 text-xs font-semibold text-purple-800">
+                                    投影層<br><span class="text-[10px] font-normal">(獨立映射)</span>
+                                </div>
+                                <i class="fa-solid fa-arrow-right text-purple-400 mt-1"></i>
+                            </div>
+
+                            <!-- Output -->
+                            <div class="flex-1">
+                                <div class="text-xs font-bold text-slate-400 mb-2">輸出層 (預測上下文)</div>
+                                <div id="sg-outputs" class="flex flex-col gap-2 items-center min-h-[120px] justify-center">
+                                    <!-- 動態填入 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- 全面比較表 -->
+    <section id="comparison-table" class="py-12 bg-white border-y border-slate-200">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-10">
+                <h2 class="text-2xl sm:text-3xl font-bold text-slate-900">3. 技術維度全面比較表</h2>
+                <p class="text-slate-600 mt-2">從訓練效率、詞頻敏感度到資料集規模的完整對照</p>
+            </div>
+
+            <div class="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100/80 border-b border-slate-200 text-slate-700 text-sm">
+                            <th class="py-4 px-6 font-bold w-1/5">比較維度</th>
+                            <th class="py-4 px-6 font-bold text-blue-700 w-2/5 bg-blue-50/50">
+                                <i class="fa-solid fa-layer-group mr-2"></i>CBOW (連續詞袋模型)
+                            </th>
+                            <th class="py-4 px-6 font-bold text-purple-700 w-2/5 bg-purple-50/50">
+                                <i class="fa-solid fa-diagram-project mr-2"></i>Skip-gram
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 text-sm sm:text-base">
+                        <tr class="hover:bg-slate-50/80 transition">
+                            <td class="py-4 px-6 font-semibold text-slate-900">預測方向</td>
+                            <td class="py-4 px-6 text-slate-700">上下文 ➔ 目標詞 <br><code class="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">P(w_t | w_{t-c}, ..., w_{t+c})</code></td>
+                            <td class="py-4 px-6 text-slate-700">目標詞 ➔ 上下文 <br><code class="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">P(w_{t-c}, ..., w_{t+c} | w_t)</code></td>
+                        </tr>
+                        <tr class="hover:bg-slate-50/80 transition">
+                            <td class="py-4 px-6 font-semibold text-slate-900">輸入與輸出</td>
+                            <td class="py-4 px-6 text-slate-700"><strong>輸入</strong>：多個上下文詞<br><strong>輸出</strong>：單一目標詞</td>
+                            <td class="py-4 px-6 text-slate-700"><strong>輸入</strong>：單一目標詞<br><strong>輸出</strong>：多個上下文詞</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50/80 transition">
+                            <td class="py-4 px-6 font-semibold text-slate-900">訓練速度</td>
+                            <td class="py-4 px-6 text-slate-700"><span class="inline-block px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold text-xs mr-1">較快</span> 每次更新將上下文平均，計算量較小</td>
+                            <td class="py-4 px-6 text-slate-700"><span class="inline-block px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold text-xs mr-1">較慢</span> 每個上下文詞都要單獨進行預測與更新</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50/80 transition">
+                            <td class="py-4 px-6 font-semibold text-slate-900">高頻詞表現</td>
+                            <td class="py-4 px-6 text-slate-700"><span class="inline-block px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold text-xs mr-1">較好</span> 平滑化效果能穩定高頻詞的表示</td>
+                            <td class="py-4 px-6 text-slate-700"><span class="inline-block px-2 py-0.5 rounded bg-slate-200 text-slate-700 font-semibold text-xs mr-1">一般</span> 易被過度訓練，常需 Subsampling 降採樣</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50/80 transition">
+                            <td class="py-4 px-6 font-semibold text-slate-900">低頻詞 / 生僻詞</td>
+                            <td class="py-4 px-6 text-slate-700"><span class="inline-block px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-semibold text-xs mr-1">較差</span> 容易被上下文的高頻詞「稀釋」或平均掉</td>
+                            <td class="py-4 px-6 text-slate-700"><span class="inline-block px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold text-xs mr-1">較好</span> 每個詞都有獨立作為輸入的機會，不會被平均</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50/80 transition">
+                            <td class="py-4 px-6 font-semibold text-slate-900">語義細節捕捉</td>
+                            <td class="py-4 px-6 text-slate-700">偏向捕捉整體語法與常見搭配</td>
+                            <td class="py-4 px-6 text-slate-700">偏向捕捉細微語義關係（如類比推理）</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50/80 transition">
+                            <td class="py-4 px-6 font-semibold text-slate-900">資料集規模需求</td>
+                            <td class="py-4 px-6 text-slate-700">適合<strong>中小型資料集</strong>（收斂快，不易過擬合）</td>
+                            <td class="py-4 px-6 text-slate-700">適合<strong>大型資料集</strong>（需足夠語料學習低頻詞特徵）</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- 優缺點分析 -->
+    <section id="pros-cons" class="py-16 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-10">
+            <h2 class="text-2xl sm:text-3xl font-bold text-slate-900">4. 優缺點深度剖析</h2>
+            <p class="text-slate-600 mt-2">了解兩種架構在數學更新機制下帶來的先天優勢與限制</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- CBOW 優缺點 -->
+            <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm">
+                <div class="flex items-center space-x-3 mb-6 pb-4 border-b border-slate-100">
+                    <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-lg font-bold">
+                        C
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900">CBOW 優缺點</h3>
+                </div>
+                
+                <div class="space-y-6">
+                    <div>
+                        <h4 class="text-sm font-bold uppercase tracking-wider text-emerald-600 mb-3 flex items-center">
+                            <i class="fa-solid fa-circle-check mr-2"></i>核心優勢
+                        </h4>
+                        <ul class="space-y-3 text-slate-600 text-sm leading-relaxed">
+                            <li class="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100">
+                                <strong class="text-slate-800 block mb-1">訓練效率極高</strong>
+                                對於大規模語料庫，由於上下文資訊被壓縮成單一平均向量，CBOW 的收斂速度明顯快於 Skip-gram。
+                            </li>
+                            <li class="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100">
+                                <strong class="text-slate-800 block mb-1">天然平滑效果</strong>
+                                對上下文取平均的做法能有效過濾雜訊，讓高頻常用詞彙的向量表示非常穩定。
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 class="text-sm font-bold uppercase tracking-wider text-rose-600 mb-3 flex items-center">
+                            <i class="fa-solid fa-circle-xmark mr-2"></i>主要限制
+                        </h4>
+                        <div class="bg-rose-50/50 p-3 rounded-xl border border-rose-100 text-slate-600 text-sm leading-relaxed">
+                            <strong class="text-slate-800 block mb-1">生僻詞表現不佳</strong>
+                            如果一個低頻生僻詞出現在常見詞彙旁邊，它的梯度更新很容易被高頻詞掩蓋，導致無法學到精確的語義向量。
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Skip-gram 優缺點 -->
+            <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm">
+                <div class="flex items-center space-x-3 mb-6 pb-4 border-b border-slate-100">
+                    <div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-lg font-bold">
+                        S
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900">Skip-gram 優缺點</h3>
+                </div>
+                
+                <div class="space-y-6">
+                    <div>
+                        <h4 class="text-sm font-bold uppercase tracking-wider text-emerald-600 mb-3 flex items-center">
+                            <i class="fa-solid fa-circle-check mr-2"></i>核心優勢
+                        </h4>
+                        <ul class="space-y-3 text-slate-600 text-sm leading-relaxed">
+                            <li class="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100">
+                                <strong class="text-slate-800 block mb-1">對罕見詞高度友好</strong>
+                                即使某個詞只出現幾次，每次出現時它都能作為獨立的輸入來預測周圍的詞，不會被稀釋，因此能學到較好的語義。
+                            </li>
+                            <li class="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100">
+                                <strong class="text-slate-800 block mb-1">語義表徵能力強</strong>
+                                在詞彙類比（如：<code class="bg-white px-1 rounded border">國王 - 男人 + 女人 = 女王</code>）任務上通常表現優於 CBOW。
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 class="text-sm font-bold uppercase tracking-wider text-rose-600 mb-3 flex items-center">
+                            <i class="fa-solid fa-circle-xmark mr-2"></i>主要限制
+                        </h4>
+                        <div class="bg-rose-50/50 p-3 rounded-xl border border-rose-100 text-slate-600 text-sm leading-relaxed">
+                            <strong class="text-slate-800 block mb-1">計算成本高昂</strong>
+                            訓練時間比 CBOW 長很多，實務上必須搭配 <strong>Negative Sampling（負採樣）</strong> 或 <strong>Hierarchical Softmax</strong> 才能有效加速訓練。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 實務選型決策助手 -->
+    <section id="decision-guide" class="py-16 bg-slate-900 text-white">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-10">
+                <span class="text-indigo-400 text-xs font-bold uppercase tracking-widest">Practical Guide</span>
+                <h2 class="text-2xl sm:text-3xl font-bold mt-2">5. 實務應用決策助手</h2>
+                <p class="text-slate-400 mt-2">點擊符合您目前專案需求的條件，系統將為您推薦最適合的架構</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                <button onclick="selectScenario('cbow')" id="btn-scenario-cbow" class="text-left p-6 rounded-2xl border-2 border-slate-700 bg-slate-800/60 hover:border-blue-500 transition group">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-bold text-lg text-blue-400 group-hover:text-blue-300">情境 A：追求速度與資源受限</span>
+                        <i class="fa-solid fa-bolt text-blue-400"></i>
+                    </div>
+                    <p class="text-sm text-slate-300">硬體算力有限、語料庫規模中小型，或任務主要依賴高頻詞彙（如一般文本分類、情感分析）。</p>
+                </button>
+
+                <button onclick="selectScenario('skipgram')" id="btn-scenario-skipgram" class="text-left p-6 rounded-2xl border-2 border-slate-700 bg-slate-800/60 hover:border-purple-500 transition group">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-bold text-lg text-purple-400 group-hover:text-purple-300">情境 B：追求高精準與生僻詞捕捉</span>
+                        <i class="fa-solid fa-bullseye text-purple-400"></i>
+                    </div>
+                    <p class="text-sm text-slate-300">擁有海量訓練語料，且領域包含大量專業術語、冷門商品 ID 或實體名稱（如醫療、法律、推薦系統）。</p>
+                </button>
+            </div>
+
+            <!-- 推薦結果顯示框 -->
+            <div id="recommendation-box" class="rounded-2xl bg-slate-800 border border-slate-700 p-6 sm:p-8 transition-all">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">系統建議架構</div>
+                        <h3 id="rec-title" class="text-2xl font-bold text-white">請點擊上方情境卡片查看建議</h3>
+                        <p id="rec-desc" class="text-slate-300 text-sm mt-2 leading-relaxed">
+                            選擇您的資料集特徵與硬體限制，獲得最佳參數與架構配置建議。
+                        </p>
+                    </div>
+                    <div id="rec-badge" class="hidden shrink-0 px-4 py-2 rounded-xl font-bold text-sm">
+                        <!-- 動態標籤 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 頁尾 -->
+    <footer class="bg-slate-950 text-slate-500 py-8 text-center text-sm border-t border-slate-800">
+        <p>Word2Vec 架構比較視覺化指南 • 專為 NLP 學習與實務選型設計</p>
+    </footer>
+
+    <!-- 互動邏輯腳本 -->
+    <script>
+        // 範例句子詞彙陣列
+        const sentence = ["自然", "語言", "處理", "讓", "電腦", "理解", "人類", "文字"];
+        let activeIndex = 2; // 預設選中「處理」
+        const windowSize = 2;
+
+        // 初始化渲染句子與模型流向
+        function renderSimulation() {
+            const container = document.getElementById('sentence-container');
+            container.innerHTML = '';
+
+            // 計算上下文索引範圍
+            const contextIndices = [];
+            for (let i = activeIndex - windowSize; i <= activeIndex + windowSize; i++) {
+                if (i >= 0 && i < sentence.length && i !== activeIndex) {
+                    contextIndices.push(i);
+                }
+            }
+
+            // 渲染句子按鈕
+            sentence.forEach((word, index) => {
+                const btn = document.createElement('button');
+                btn.textContent = word;
+                btn.onclick = () => {
+                    activeIndex = index;
+                    renderSimulation();
+                };
+
+                let baseClass = "px-4 py-2 rounded-xl font-bold text-sm sm:text-base node-transition cursor-pointer border-2 ";
+                if (index === activeIndex) {
+                    // 目標詞樣式
+                    baseClass += "bg-slate-900 text-white border-slate-900 shadow-md scale-105";
+                } else if (contextIndices.includes(index)) {
+                    // 上下文詞樣式
+                    baseClass += "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100";
+                } else {
+                    // 視窗外詞彙樣式
+                    baseClass += "bg-slate-50 text-slate-400 border-slate-200 hover:border-slate-300 hover:text-slate-600";
+                }
+
+                btn.className = baseClass;
+                container.appendChild(btn);
+            });
+
+            const targetWord = sentence[activeIndex];
+            const contextWords = contextIndices.map(idx => sentence[idx]);
+
+            // 更新 CBOW 視覺化
+            const cbowInputsEl = document.getElementById('cbow-inputs');
+            const cbowOutputEl = document.getElementById('cbow-output');
+            
+            cbowInputsEl.innerHTML = contextWords.map(w => 
+                `<span class="px-3 py-1 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold w-20 shadow-xs">${w}</span>`
+            ).join('');
+
+            cbowOutputEl.innerHTML = `
+                <div class="px-4 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-md border-2 border-blue-400">
+                    ${targetWord}
+                </div>
+                <span class="text-[11px] text-blue-600 mt-1.5 font-medium">單一預測目標</span>
+            `;
+
+            // 更新 Skip-gram 視覺化
+            const sgInputEl = document.getElementById('sg-input');
+            const sgOutputsEl = document.getElementById('sg-outputs');
+
+            sgInputEl.innerHTML = `
+                <div class="px-4 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-sm shadow-md border-2 border-purple-400">
+                    ${targetWord}
+                </div>
+                <span class="text-[11px] text-purple-600 mt-1.5 font-medium">單一輸入詞</span>
+            `;
+
+            sgOutputsEl.innerHTML = contextWords.map(w => 
+                `<span class="px-3 py-1 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold w-20 shadow-xs">${w}</span>`
+            ).join('');
+        }
+
+        // 實務選型決策邏輯
+        function selectScenario(type) {
+            const btnCbow = document.getElementById('btn-scenario-cbow');
+            const btnSg = document.getElementById('btn-scenario-skipgram');
+            const recTitle = document.getElementById('rec-title');
+            const recDesc = document.getElementById('rec-desc');
+            const recBadge = document.getElementById('rec-badge');
+
+            // 重置按鈕邊框
+            btnCbow.classList.remove('border-blue-500', 'bg-slate-800');
+            btnCbow.classList.add('border-slate-700', 'bg-slate-800/60');
+            btnSg.classList.remove('border-purple-500', 'bg-slate-800');
+            btnSg.classList.add('border-slate-700', 'bg-slate-800/60');
+
+            recBadge.classList.remove('hidden');
+
+            if (type === 'cbow') {
+                btnCbow.classList.remove('border-slate-700', 'bg-slate-800/60');
+                btnCbow.classList.add('border-blue-500', 'bg-slate-800');
+
+                recTitle.textContent = "推薦採用：CBOW (Continuous Bag-of-Words)";
+                recTitle.className = "text-2xl font-bold text-blue-400";
+                recDesc.innerHTML = "CBOW 是此情境下性價比最高的選擇。它透過平均上下文向量大幅降低計算複雜度，能快速收斂並為常見高頻詞建立穩定的語義表示，非常適合中小型語料或即時性要求較高的訓練任務。";
+                recBadge.textContent = "Gensim 參數：sg=0";
+                recBadge.className = "shrink-0 px-4 py-2 rounded-xl font-bold text-sm bg-blue-500/20 text-blue-300 border border-blue-500/40";
+            } else {
+                btnSg.classList.remove('border-slate-700', 'bg-slate-800/60');
+                btnSg.classList.add('border-purple-500', 'bg-slate-800');
+
+                recTitle.textContent = "推薦採用：Skip-gram + Negative Sampling";
+                recTitle.className = "text-2xl font-bold text-purple-400";
+                recDesc.innerHTML = "Skip-gram 能夠讓每個低頻詞與專有名詞都獲得獨立的梯度更新機會，不會被常見詞彙稀釋。建議務必搭配 <strong>Negative Sampling（負採樣，通常設為 5~20）</strong> 與 <strong>Subsampling</strong> 來加速訓練並抑制高頻停用詞的雜訊。";
+                recBadge.textContent = "Gensim 參數：sg=1, negative=5";
+                recBadge.className = "shrink-0 px-4 py-2 rounded-xl font-bold text-sm bg-purple-500/20 text-purple-300 border border-purple-500/40";
+            }
+        }
+
+        // 頁面載入完成後啟動模擬
+        window.onload = function() {
+            renderSimulation();
+        };
+    </script>
+</body>
+</html>
