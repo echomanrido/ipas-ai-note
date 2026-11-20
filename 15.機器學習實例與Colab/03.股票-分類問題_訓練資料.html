@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2454_classification_data.csv 深度探索儀表板 — 聯發科 (2454.TW) 特徵與訓練資料解析</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700;800&display=swap');
+    body {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    code, .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .col-highlight {
+      background-color: #dbeafe !important;
+      color: #1e40af !important;
+    }
+  </style>
+</head>
+<body class="antialiased">
+
+  <!-- 置頂三段式導覽列 -->
+  <header class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <!-- 左側頁面切換膠囊 -->
+      <div class="flex flex-wrap items-center gap-1.5">
+        <a href="../index.html" title="返回知識庫首頁" class="px-3 py-1.5 rounded-full bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition flex items-center gap-1">
+          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+          <span>返回首頁</span>
+        </a>
+        <a href="03.股票-分類問題.html" class="px-3 py-1.5 rounded-full bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition">05. 分類實戰教學</a>
+        <a href="#sec-01" class="px-3 py-1.5 rounded-full bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition">01. 特徵 5W1H</a>
+        <span class="px-3 py-1.5 rounded-full bg-blue-700 text-white text-xs font-bold shadow-sm">06. 資料探索</span>
+      </div>
+
+      <!-- 中間主標題與副標題 -->
+      <div class="text-center sm:text-left">
+        <div class="font-extrabold text-slate-900 text-sm sm:text-base font-mono">2454_classification_data.csv 深度探索儀表板</div>
+        <div class="text-[11px] text-slate-500">聯發科 (2454.TW) 15 筆實測樣本 × 8 欄位 5W1H 深度解析 × 即時分類推論模擬</div>
+      </div>
+
+      <!-- 右側即時狀態標籤 -->
+      <div id="topStatusPill" class="px-3.5 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700">
+        目前檢視：15 筆樣本 | 選中 2026-11-16
+      </div>
+    </div>
+  </header>
+
+  <main id="top" class="max-w-6xl mx-auto px-4 py-8 space-y-8">
+
+    <!-- Hero 總覽區：PIPELINE INTUITION & DESIGN -->
+    <section class="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 space-y-6">
+      <div>
+        <div class="text-xs font-bold tracking-wider uppercase text-blue-600 mb-1">PIPELINE INTUITION &amp; DESIGN</div>
+        <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">機器學習分類管線核心設計原理與數學直覺（深度解析）</h1>
+      </div>
+
+      <!-- 四階段水平流程圖 -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-stretch">
+        <div class="p-4 rounded-2xl border-2 border-blue-400 bg-blue-50/50 space-y-1 relative">
+          <div class="text-[11px] font-bold text-blue-700">1. 原始 OHLCV + 技術特徵</div>
+          <div class="font-bold text-sm text-slate-900">5 維動能特徵輸入 (X)</div>
+          <div class="text-xs text-slate-600 font-mono">Bias_5, RSI_6, Body, Shadow, Vol</div>
+        </div>
+        <div class="p-4 rounded-2xl border-2 border-slate-300 bg-slate-50 space-y-1">
+          <div class="text-[11px] font-bold text-slate-600">2. 時序切分防洩漏</div>
+          <div class="font-bold text-sm text-slate-900 font-mono">shuffle=False (80/20)</div>
+          <div class="text-xs text-slate-600">前 12 筆訓練 / 後 3 筆測試，絕不偷看未來</div>
+        </div>
+        <div class="p-4 rounded-2xl border-2 border-purple-400 bg-purple-50/50 space-y-1">
+          <div class="text-[11px] font-bold text-purple-700">3. 監督式分類訓練</div>
+          <div class="font-bold text-sm text-slate-900">Scaler + RandomForest</div>
+          <div class="text-xs text-slate-600">100 棵樹學習特徵與隔日 Target 映射</div>
+        </div>
+        <div class="p-4 rounded-2xl border-2 border-emerald-400 bg-emerald-50/50 space-y-1">
+          <div class="text-[11px] font-bold text-emerald-700">4. 機率推論與門檻判定</div>
+          <div class="font-bold text-sm text-slate-900">BUY / SELL/HOLD + 機率%</div>
+          <div class="text-xs text-slate-600">輸出 up_probability 並對照 Baseline</div>
+        </div>
+      </div>
+
+      <!-- 下方三欄原理卡片 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="p-5 rounded-2xl border border-blue-200 bg-blue-50/30 flex flex-col justify-between space-y-3">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-mono text-xs font-bold text-blue-600">01 / 03 特徵工程</span>
+              <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-[11px] font-bold">趨勢與動能萃取</span>
+            </div>
+            <div class="font-bold text-sm text-slate-900 mb-1">為什麼要算乖離率、RSI 與影線比例？</div>
+            <p class="text-xs text-slate-600 leading-relaxed">單看收盤價只有絕對數字（如 3940 元），轉成比率型指標（<code class="font-mono">Bias_5</code>、<code class="font-mono">RSI_6</code>、<code class="font-mono">Shadow_Ratio</code>）才能讓模型在不同價位區間都看得懂「買氣過熱」或「下檔有撐」。</p>
+          </div>
+          <div class="p-3 rounded-xl bg-white border border-dashed border-blue-300 text-[11px] text-slate-700">
+            <strong>💡 生活實例：</strong>就像買水果不能只看一顆多少錢，還要看比上週平均貴幾%（乖離率）與今天搶購人潮（均量比）。
+          </div>
+        </div>
+
+        <div class="p-5 rounded-2xl border border-indigo-200 bg-indigo-50/30 flex flex-col justify-between space-y-3">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-mono text-xs font-bold text-indigo-600">02 / 03 資料對齊與切分</span>
+              <span class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[11px] font-bold">嚴禁未來洩漏</span>
+            </div>
+            <div class="font-bold text-sm text-slate-900 mb-1">為什麼要 shift(-1) 與 dropna()？</div>
+            <p class="text-xs text-slate-600 leading-relaxed">用今天的 5 個指標去猜明天的漲跌，因此必須把「明天收盤 &gt; 今天收盤」往上移一格當作今天的 <code class="font-mono">Target</code>；最後一天因沒有明天資料，必須保留為 <code class="font-mono">NaN</code> 並刪除。</p>
+          </div>
+          <div class="p-3 rounded-xl bg-white border border-dashed border-indigo-300 text-[11px] text-slate-700">
+            <strong>💡 生活實例：</strong>做模擬考題本時，要把「明天考卷的標準答案」對齊到「今天題目」，最後一頁還沒考就必須整頁撕掉。
+          </div>
+        </div>
+
+        <div class="p-5 rounded-2xl border border-emerald-200 bg-emerald-50/30 flex flex-col justify-between space-y-3">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-mono text-xs font-bold text-emerald-600">03 / 03 監督式分類</span>
+              <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[11px] font-bold">方向與機率輸出</span>
+            </div>
+            <div class="font-bold text-sm text-slate-900 mb-1">為什麼分類模型比直接預測股價更抗雜訊？</div>
+            <p class="text-xs text-slate-600 leading-relaxed">股價跳空容易讓迴歸模型產生大幅外推失真；分類模型透過 <code class="font-mono">predict_proba()</code> 計算 100 棵樹的看漲比例（0%～100%），不會因為股價創高就失效。</p>
+          </div>
+          <div class="p-3 rounded-xl bg-white border border-dashed border-emerald-300 text-[11px] text-slate-700">
+            <strong>💡 生活實例：</strong>出門前看「明天會不會下雨（78% 機率）」比精準猜「明天會下幾毫米」更實用，也能決定要不要帶傘。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 01: 全 8 欄位 5W1H 深度解析 -->
+    <section id="sec-01" class="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 space-y-5">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div class="text-xs font-bold tracking-wider uppercase text-blue-600 mb-1">SECTION 01 · WHY THESE FEATURES?</div>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900">1. 全 8 欄位 5W1H 深度解析（為什麼要用這些資料特徵？）</h2>
+        </div>
+        <span class="px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold">點擊卡片可連動表格高亮</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="featureCardsGrid">
+        <!-- Date -->
+        <div onclick="highlightTableCol('Date', this)" class="f-card cursor-pointer p-4 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 transition space-y-2 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="font-mono font-bold text-sm text-slate-900">Date</span>
+            <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-bold">時間索引</span>
+          </div>
+          <div class="text-xs space-y-1 leading-relaxed">
+            <div><strong class="text-slate-900">What：</strong>台股交易日索引（2026-10-29 ～ 11-18）。</div>
+            <div><strong class="text-blue-700">Why：</strong>確保所有指標嚴格按時間先後排列。</div>
+            <div><strong class="text-emerald-700">How：</strong>作為 DataFrame 索引與 <code class="font-mono">shuffle=False</code> 切分依據。</div>
+          </div>
+        </div>
+
+        <!-- Close -->
+        <div onclick="highlightTableCol('Close', this)" class="f-card cursor-pointer p-4 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 transition space-y-2 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="font-mono font-bold text-sm text-slate-900">Close</span>
+            <span class="px-2 py-0.5 rounded bg-rose-100 text-rose-700 text-[10px] font-bold">核心基準</span>
+          </div>
+          <div class="text-xs space-y-1 leading-relaxed">
+            <div><strong class="text-slate-900">What：</strong>當日收盤價（3,390 ～ 4,120 元）。</div>
+            <div><strong class="text-blue-700">Why：</strong>計算乖離率、RSI 與隔日漲跌的基準。</div>
+            <div><strong class="text-emerald-700">How：</strong>不直接進 X（避免價位外推），用來衍生特徵與標籤。</div>
+          </div>
+        </div>
+
+        <!-- Bias_5 -->
+        <div onclick="highlightTableCol('Bias_5', this)" class="f-card cursor-pointer p-4 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 transition space-y-2 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="font-mono font-bold text-sm text-slate-900">Bias_5</span>
+            <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-bold">均線特徵</span>
+          </div>
+          <div class="text-xs space-y-1 leading-relaxed">
+            <div><strong class="text-slate-900">What：</strong><code class="font-mono">(Close - MA_5) / MA_5</code> 5日乖離率。</div>
+            <div><strong class="text-blue-700">Why：</strong>捕捉股價偏離短期平均成本的拉回力道。</div>
+            <div><strong class="text-emerald-700">How：</strong>第 1 維特徵輸入（X₁），經 StandardScaler 縮放。</div>
+          </div>
+        </div>
+
+        <!-- RSI_6 -->
+        <div onclick="highlightTableCol('RSI_6', this)" class="f-card cursor-pointer p-4 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 transition space-y-2 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="font-mono font-bold text-sm text-slate-900">RSI_6</span>
+            <span class="px-2 py-0.5 rounded bg-purple-100 text-purple-700 text-[10px] font-bold">動能特徵</span>
+          </div>
+          <div class="text-xs space-y-1 leading-relaxed">
+            <div><strong class="text-slate-900">What：</strong>純 pandas 手算 6 日相對強弱指標 (0~100)。</div>
+            <div><strong class="text-blue-700">Why：</strong>辨識短線超買（&gt;70）或超賣（&lt;30）轉折點。</div>
+            <div><strong class="text-emerald-700">How：</strong>第 2 維特徵輸入（X₂），Pydantic 限制 0~100。</div>
+          </div>
+        </div>
+
+        <!-- Body_Return -->
+        <div onclick="highlightTableCol('Body_Return', this)" class="f-card cursor-pointer p-4 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 transition space-y-2 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="font-mono font-bold text-sm text-slate-900">Body_Return</span>
+            <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-[10px] font-bold">基礎價量</span>
+          </div>
+          <div class="text-xs space-y-1 leading-relaxed">
+            <div><strong class="text-slate-900">What：</strong><code class="font-mono">(Close - Open) / Open</code> 實體 K 棒漲跌幅。</div>
+            <div><strong class="text-blue-700">Why：</strong>排除開盤跳空，衡量盤中多空實體勝負。</div>
+            <div><strong class="text-emerald-700">How：</strong>第 3 維特徵輸入（X₃），正值代表實體紅 K。</div>
+          </div>
+        </div>
+
+        <!-- Shadow_Ratio -->
+        <div onclick="highlightTableCol('Shadow_Ratio', this)" class="f-card cursor-pointer p-4 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 transition space-y-2 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="font-mono font-bold text-sm text-slate-900">Shadow_Ratio</span>
+            <span class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[10px] font-bold">K棒結構</span>
+          </div>
+          <div class="text-xs space-y-1 leading-relaxed">
+            <div><strong class="text-slate-900">What：</strong><code class="font-mono">(Upper - Lower) / Range</code> 淨影線比 [-1,1]。</div>
+            <div><strong class="text-blue-700">Why：</strong>實測重要度第一（0.27）！辨識高檔賣壓或低檔支撐。</div>
+            <div><strong class="text-emerald-700">How：</strong>第 4 維特徵輸入（X₄），Pydantic 限制 [-1, 1]。</div>
+          </div>
+        </div>
+
+        <!-- Volume_Ratio -->
+        <div onclick="highlightTableCol('Volume_Ratio', this)" class="f-card cursor-pointer p-4 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 transition space-y-2 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="font-mono font-bold text-sm text-slate-900">Volume_Ratio</span>
+            <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold">量能特徵</span>
+          </div>
+          <div class="text-xs space-y-1 leading-relaxed">
+            <div><strong class="text-slate-900">What：</strong>今日成交量除以近 3 日均量。</div>
+            <div><strong class="text-blue-700">Why：</strong>實測重要度第二（0.21）！區分真突破與無量虛漲。</div>
+            <div><strong class="text-emerald-700">How：</strong>第 5 維特徵輸入（X₅），&gt; 1.2 代表明顯放量。</div>
+          </div>
+        </div>
+
+        <!-- Target (Dark Card) -->
+        <div onclick="highlightTableCol('Target', this)" class="f-card cursor-pointer p-4 rounded-2xl bg-slate-900 text-slate-100 border border-slate-800 hover:border-sky-400 transition space-y-2 shadow-md">
+          <div class="flex items-center justify-between">
+            <span class="font-mono font-bold text-sm text-sky-300">Target</span>
+            <span class="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[10px] font-bold">ML 答案</span>
+          </div>
+          <div class="text-xs space-y-1 leading-relaxed text-slate-300">
+            <div><strong class="text-white">What：</strong>隔日收盤 &gt; 今日收盤為 <code class="font-mono text-emerald-300">1</code>，否則為 <code class="font-mono text-rose-300">0</code>。</div>
+            <div><strong class="text-sky-300">Why：</strong>將價格預測轉化為清晰的進出場二元分類。</div>
+            <div><strong class="text-emerald-300">How：</strong>監督式學習目標（y），15 筆中含 8 漲 / 7 跌。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 02: 互動式 CSV 樣本檢視器 -->
+    <section id="sec-02" class="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 space-y-4">
+      <div>
+        <div class="text-xs font-bold tracking-wider uppercase text-blue-600 mb-1">SECTION 02 · INTERACTIVE CSV EXPLORER</div>
+        <h2 class="text-xl sm:text-2xl font-bold text-slate-900">2. 互動式 <code class="font-mono text-blue-700">2454_classification_data.csv</code> 樣本檢視器</h2>
+      </div>
+
+      <!-- 4 個條件篩選按鈕 + 樣本計數 -->
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap gap-2">
+          <button type="button" onclick="filterCsv('all', this)" class="flt-btn px-3.5 py-1.5 rounded-full bg-slate-900 text-white text-xs font-bold transition">全部 (15 筆)</button>
+          <button type="button" onclick="filterCsv('up', this)" class="flt-btn px-3.5 py-1.5 rounded-full bg-white border border-emerald-400 text-emerald-700 hover:bg-emerald-50 text-xs font-bold transition">隔日看漲 (Target = 1)</button>
+          <button type="button" onclick="filterCsv('down', this)" class="flt-btn px-3.5 py-1.5 rounded-full bg-white border border-rose-400 text-rose-700 hover:bg-rose-50 text-xs font-bold transition">隔日看跌/平 (Target = 0)</button>
+          <button type="button" onclick="filterCsv('vol', this)" class="flt-btn px-3.5 py-1.5 rounded-full bg-white border border-amber-400 text-amber-700 hover:bg-amber-50 text-xs font-bold transition">放量異動 (Vol_Ratio &gt; 1.2)</button>
+        </div>
+        <div id="filterCountLabel" class="text-xs font-semibold text-slate-500">顯示 15 筆樣本 (點擊任一列可載入 Section 03 模擬)</div>
+      </div>
+
+      <!-- 互動式 8 欄資料表 -->
+      <div class="overflow-x-auto max-h-96 border border-slate-200 rounded-2xl">
+        <table class="w-full text-left border-collapse text-xs font-mono">
+          <thead class="sticky top-0 bg-slate-100 text-slate-700 border-b border-slate-200 z-10">
+            <tr>
+              <th data-col="Date" class="py-3 px-3">Date</th>
+              <th data-col="Close" class="py-3 px-3">Close</th>
+              <th data-col="Bias_5" class="py-3 px-3">Bias_5</th>
+              <th data-col="RSI_6" class="py-3 px-3">RSI_6</th>
+              <th data-col="Body_Return" class="py-3 px-3">Body_Return</th>
+              <th data-col="Shadow_Ratio" class="py-3 px-3">Shadow_Ratio</th>
+              <th data-col="Volume_Ratio" class="py-3 px-3">Volume_Ratio</th>
+              <th data-col="Target" class="py-3 px-3">Target</th>
+            </tr>
+          </thead>
+          <tbody id="csvTableBody" class="divide-y divide-slate-200 text-slate-700"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECTION 03: 深色夜藍底 即時分類推論模擬與走勢圈選 -->
+    <section id="sec-03" class="rounded-3xl bg-slate-900 text-slate-100 p-6 sm:p-8 shadow-2xl border border-slate-800 space-y-6">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div class="text-xs font-bold tracking-wider uppercase text-sky-400 mb-1">SECTION 03 · REAL-TIME INFERENCE SIMULATION</div>
+          <h2 class="text-xl sm:text-2xl font-bold text-white">3. 機器學習即時分類推論模擬（實例特徵與走勢圈選）</h2>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" onclick="selectRowByDate('2026-11-16')" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition">載入「測試命中日」11-16</button>
+          <button type="button" onclick="selectRowByDate('2026-11-06')" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition">載入「破底強彈日」11-06</button>
+          <button type="button" onclick="selectRowByDate('2026-11-17')" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition">載入「高檔長上影」11-17</button>
+        </div>
+      </div>
+
+      <!-- 左 40% / 右 60% 雙欄佈局 -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- 左欄：2x3 特徵 KPI + 推論判定結果框 -->
+        <div class="lg:col-span-5 space-y-4">
+          <div class="grid grid-cols-2 gap-3" id="kpiGrid"></div>
+
+          <div class="p-4 rounded-2xl bg-slate-800 border border-slate-700 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-400">推論判定結果 (<span id="simDateLabel" class="font-mono text-sky-300">2026-11-16</span>)</span>
+              <span id="simHitBadge" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">✓ 預測命中</span>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="p-3 rounded-xl bg-slate-900 border border-slate-700">
+                <div class="text-[11px] text-slate-400">模型預測訊號 &amp; 機率</div>
+                <div id="simPredVal" class="font-mono font-bold text-base text-amber-300 mt-0.5">BUY (78.7%)</div>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-900 border border-slate-700">
+                <div class="text-[11px] text-slate-400">真實隔日標籤 Target</div>
+                <div id="simActualVal" class="font-mono font-bold text-base text-emerald-300 mt-0.5">1 (看漲)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右欄：走勢圈選圖表 + 暗橘框情境解說 -->
+        <div class="lg:col-span-7 flex flex-col justify-between space-y-4">
+          <div class="p-4 rounded-2xl bg-slate-950/70 border border-slate-800">
+            <div class="text-xs font-bold text-slate-300 mb-2">實例收盤價走勢與選中交易日圈選圖 (2026-10-29 ～ 2026-11-18)</div>
+            <div class="relative h-64">
+              <canvas id="trendChart"></canvas>
+            </div>
+          </div>
+          <div id="scenarioBox" class="p-4 rounded-xl bg-amber-950/50 border border-amber-600/60 text-xs text-amber-100 leading-relaxed"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="max-w-6xl mx-auto px-4 py-8 text-center text-xs text-slate-500">
+    2454_classification_data.csv 專用深度解析檢視器 — 聯發科 (2454.TW) 特徵工程與隔日漲跌分類儀表板
+  </footer>
+
+  <script>
+    const dataset = [
+      { Date: "2026-10-29", Close: 4045.0, Bias_5: -0.0017, RSI_6: 42.3838, Body_Return: -0.0380, Shadow_Ratio: -0.1111, Volume_Ratio: 0.7324, Target: 0, Prob: 41.2, Note: "量縮黑 K（Volume_Ratio=0.73）且收低，模型給出偏空 41.2%，隔日實際下跌（Target=0）。" },
+      { Date: "2026-10-30", Close: 3915.0, Bias_5: -0.0293, RSI_6: 32.8934, Body_Return: 0.0249, Shadow_Ratio: 0.3243, Volume_Ratio: 1.3914, Target: 1, Prob: 64.5, Note: "跌深接近 RSI 超賣區且帶量（1.39 倍）收實體紅 K，成功預判隔日反彈（Target=1）。" },
+      { Date: "2026-11-02", Close: 3970.0, Bias_5: -0.0137, RSI_6: 39.7434, Body_Return: 0.0475, Shadow_Ratio: 0.3571, Volume_Ratio: 1.2033, Target: 0, Prob: 44.8, Note: "雖收紅 K 但留出明顯上影線（Shadow_Ratio=+0.36），隔日遇壓拉回（Target=0）。" },
+      { Date: "2026-11-03", Close: 3675.0, Bias_5: -0.0738, RSI_6: 23.9852, Body_Return: -0.0720, Shadow_Ratio: -0.0339, Volume_Ratio: 0.9869, Target: 1, Prob: 58.3, Note: "負乖離擴大至 -7.38%、RSI_6 跌破 24 進入超賣區，隔日出現技術性反彈（Target=1）。" },
+      { Date: "2026-11-04", Close: 3715.0, Bias_5: -0.0386, RSI_6: 28.5921, Body_Return: -0.0067, Shadow_Ratio: -0.7869, Volume_Ratio: 1.1306, Target: 0, Prob: 47.0, Note: "雖有極長下影線（-0.79）支撐，但弱勢反彈後隔日仍回測低點（Target=0）。" },
+      { Date: "2026-11-05", Close: 3460.0, Bias_5: -0.0766, RSI_6: 19.5351, Body_Return: -0.0389, Shadow_Ratio: 0.3962, Volume_Ratio: 0.9621, Target: 0, Prob: 32.5, Note: "負乖離 -7.66% 伴隨上影線賣壓（+0.40），隔日續跌探底（Target=0）。" },
+      { Date: "2026-11-06", Close: 3390.0, Bias_5: -0.0692, RSI_6: 17.6892, Body_Return: 0.0883, Shadow_Ratio: 0.2466, Volume_Ratio: 1.3587, Target: 1, Prob: 74.2, Note: "🔥 破底強彈日：波段最低價 3390 元出現 +8.83% 長紅棒且爆量 1.36 倍，RSI_6=17.69 極度超賣後強勢反轉（Target=1）。" },
+      { Date: "2026-11-09", Close: 3725.0, Bias_5: 0.0367, RSI_6: 46.6425, Body_Return: 0.0537, Shadow_Ratio: -0.3091, Volume_Ratio: 0.6509, Target: 1, Prob: 66.8, Note: "跳空站回 5 日線之上（+3.67%），搭配下影線支撐（-0.31），隔日續漲（Target=1）。" },
+      { Date: "2026-11-10", Close: 3830.0, Bias_5: 0.0568, RSI_6: 52.8769, Body_Return: -0.0279, Shadow_Ratio: 0.1250, Volume_Ratio: 1.1309, Target: 1, Prob: 59.4, Note: "正乖離 +5.68% 量增換手，隔日再創波段新高（Target=1）。" },
+      { Date: "2026-11-11", Close: 3990.0, Bias_5: 0.0845, RSI_6: 61.1726, Body_Return: 0.0391, Shadow_Ratio: -0.2857, Volume_Ratio: 0.7964, Target: 0, Prob: 43.1, Note: "Bias_5 飆至 +8.45% 橡皮筋拉太遠，且成交量萎縮（0.80），隔日獲利回吐（Target=0）。" },
+      { Date: "2026-11-12", Close: 3850.0, Bias_5: 0.0248, RSI_6: 51.6292, Body_Return: -0.0494, Shadow_Ratio: 0.0794, Volume_Ratio: 0.8908, Target: 1, Prob: 55.6, Note: "回測 5 日線有守（+2.48%），隔日跳空大漲至 4120 元（Target=1）。" },
+      { Date: "2026-11-13", Close: 4120.0, Bias_5: 0.0556, RSI_6: 64.4606, Body_Return: -0.0272, Shadow_Ratio: -0.3429, Volume_Ratio: 1.1461, Target: 0, Prob: 39.8, Note: "創高 4120 元卻收實體黑 K（-2.72%），高檔換手失敗隔日回檔（Target=0）。" },
+      { Date: "2026-11-16", Close: 3795.0, Bias_5: -0.0311, RSI_6: 46.6035, Body_Return: -0.0744, Shadow_Ratio: 0.0000, Volume_Ratio: 0.9147, Target: 1, Prob: 78.7, Note: "✅ 測試集命中日（TP）：經歷急跌 -7.44% 進入低檔，模型給出 78.7% 看漲機率，隔日如期反彈（Target=1）。" },
+      { Date: "2026-11-17", Close: 3840.0, Bias_5: -0.0202, RSI_6: 48.9531, Body_Return: 0.0364, Shadow_Ratio: 0.4364, Volume_Ratio: 1.1018, Target: 1, Prob: 35.0, Note: "⚠️ 高檔長上影日（FN）：Shadow_Ratio=+0.4364 顯示盤中遇賣壓，模型保守僅給 35.0% 看漲機率，但隔日仍收紅（Target=1）。" },
+      { Date: "2026-11-18", Close: 3940.0, Bias_5: 0.0079, RSI_6: 54.3140, Body_Return: -0.0138, Shadow_Ratio: -0.2833, Volume_Ratio: 1.1124, Target: 0, Prob: 36.7, Note: "✅ 測試集避險日（TN）：模型預測看漲機率僅 36.7%（SELL/HOLD），成功避開隔日下跌（Target=0）。" }
+    ];
+
+    let currentFilter = "all";
+    let selectedDate = "2026-11-16";
+    let activeCol = "";
+    let trendChartObj = null;
+
+    document.addEventListener("DOMContentLoaded", function () {
+      renderTable();
+      initTrendChart();
+      selectRowByDate("2026-11-16");
+    });
+
+    function highlightTableCol(colName, cardEl) {
+      activeCol = activeCol === colName ? "" : colName;
+      document.querySelectorAll(".f-card").forEach(function (c) {
+        c.classList.remove("ring-2", "ring-blue-500");
+      });
+      if (activeCol && cardEl) {
+        cardEl.classList.add("ring-2", "ring-blue-500");
+      }
+      renderTable();
+    }
+
+    function filterCsv(mode, btnEl) {
+      currentFilter = mode;
+      document.querySelectorAll(".flt-btn").forEach(function (b) {
+        b.className = "flt-btn px-3.5 py-1.5 rounded-full bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-bold transition";
+      });
+      if (btnEl) {
+        btnEl.className = "flt-btn px-3.5 py-1.5 rounded-full bg-slate-900 text-white text-xs font-bold transition";
+      }
+      renderTable();
+    }
+
+    function getFilteredRows() {
+      if (currentFilter === "up") return dataset.filter(function (r) { return r.Target === 1; });
+      if (currentFilter === "down") return dataset.filter(function (r) { return r.Target === 0; });
+      if (currentFilter === "vol") return dataset.filter(function (r) { return r.Volume_Ratio > 1.2; });
+      return dataset;
+    }
+
+    function renderTable() {
+      const rows = getFilteredRows();
+      document.getElementById("filterCountLabel").textContent = "顯示 " + rows.length + " 筆樣本（點擊任一列載入下方推論模擬）";
+      document.querySelectorAll("th[data-col]").forEach(function (th) {
+        if (th.getAttribute("data-col") === activeCol) th.classList.add("col-highlight");
+        else th.classList.remove("col-highlight");
+      });
+
+      const tbody = document.getElementById("csvTableBody");
+      tbody.innerHTML = "";
+      rows.forEach(function (r) {
+        const isSelected = r.Date === selectedDate;
+        const tr = document.createElement("tr");
+        tr.className = "cursor-pointer transition " + (isSelected ? "bg-blue-50 font-semibold" : "hover:bg-slate-50");
+        tr.onclick = function () { selectRowByDate(r.Date); };
+
+        function cell(col, text, extraCls) {
+          const hl = col === activeCol ? " col-highlight" : "";
+          return '<td class="py-2.5 px-3 ' + (extraCls || "") + hl + '">' + text + '</td>';
+        }
+
+        const bodyCls = r.Body_Return >= 0 ? "text-emerald-700" : "text-rose-700";
+        const volCls = r.Volume_Ratio > 1.2 ? "text-amber-600 font-bold" : "";
+        const tgtCls = r.Target === 1 ? "text-emerald-700 font-bold" : "text-rose-700 font-bold";
+
+        tr.innerHTML =
+          cell("Date", r.Date) +
+          cell("Close", r.Close.toFixed(1)) +
+          cell("Bias_5", (r.Bias_5 >= 0 ? "+" : "") + r.Bias_5.toFixed(4)) +
+          cell("RSI_6", r.RSI_6.toFixed(2)) +
+          cell("Body_Return", (r.Body_Return >= 0 ? "+" : "") + r.Body_Return.toFixed(4), bodyCls) +
+          cell("Shadow_Ratio", (r.Shadow_Ratio >= 0 ? "+" : "") + r.Shadow_Ratio.toFixed(4)) +
+          cell("Volume_Ratio", r.Volume_Ratio.toFixed(4), volCls) +
+          cell("Target", r.Target === 1 ? "1 (看漲)" : "0 (跌/平)", tgtCls);
+        tbody.appendChild(tr);
+      });
+    }
+
+    function selectRowByDate(dateStr) {
+      selectedDate = dateStr;
+      const row = dataset.find(function (r) { return r.Date === dateStr; }) || dataset[0];
+      document.getElementById("topStatusPill").textContent = "目前檢視：" + getFilteredRows().length + " 筆樣本 | 選中 " + row.Date;
+      renderTable();
+
+      // Render 2x3 KPI cards with anomaly highlights
+      const kpis = [
+        { label: "收盤價 (Close)", val: row.Close.toFixed(1) + " 元", alert: row.Close <= 3400 || row.Close >= 4100 },
+        { label: "5日乖離 (Bias_5)", val: (row.Bias_5 * 100).toFixed(2) + "%", alert: Math.abs(row.Bias_5) > 0.06 },
+        { label: "動能指標 (RSI_6)", val: row.RSI_6.toFixed(2), alert: row.RSI_6 < 25 || row.RSI_6 > 65 },
+        { label: "實體漲跌 (Body_Return)", val: (row.Body_Return * 100).toFixed(2) + "%", alert: Math.abs(row.Body_Return) > 0.05 },
+        { label: "淨影線 (Shadow_Ratio)", val: row.Shadow_Ratio.toFixed(4), alert: Math.abs(row.Shadow_Ratio) > 0.4 },
+        { label: "3日均量比 (Vol_Ratio)", val: row.Volume_Ratio.toFixed(2) + "x", alert: row.Volume_Ratio > 1.2 || row.Volume_Ratio < 0.75 }
+      ];
+      const grid = document.getElementById("kpiGrid");
+      grid.innerHTML = "";
+      kpis.forEach(function (k) {
+        const card = document.createElement("div");
+        card.className = k.alert
+          ? "relative p-3.5 rounded-xl bg-rose-950/60 border-2 border-rose-500"
+          : "p-3.5 rounded-xl bg-slate-800/80 border border-slate-700";
+        card.innerHTML =
+          (k.alert ? '<span class="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-rose-400"></span>' : '') +
+          '<div class="text-[11px] text-slate-400">' + k.label + '</div>' +
+          '<div class="font-mono font-bold text-base ' + (k.alert ? 'text-rose-200' : 'text-white') + ' mt-1">' + k.val + '</div>';
+        grid.appendChild(card);
+      });
+
+      // Update Prediction Result Box
+      const predBuy = row.Prob >= 50;
+      const hit = (predBuy ? 1 : 0) === row.Target;
+      document.getElementById("simDateLabel").textContent = row.Date;
+      document.getElementById("simPredVal").textContent = (predBuy ? "BUY (" : "SELL/HOLD (") + row.Prob.toFixed(1) + "%)";
+      document.getElementById("simActualVal").textContent = row.Target === 1 ? "1 (看漲)" : "0 (跌或平盤)";
+      const badge = document.getElementById("simHitBadge");
+      badge.textContent = hit ? "✓ 預測命中" : "✕ 預測失誤";
+      badge.className = hit
+        ? "px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+        : "px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40";
+
+      document.getElementById("scenarioBox").innerHTML =
+        '<strong class="text-amber-300">📌 情境解析（' + row.Date + '）：</strong>' + row.Note;
+
+      // Highlight selected point on Chart
+      if (trendChartObj) {
+        const radii = dataset.map(function (r) { return r.Date === row.Date ? 8 : 3; });
+        const ptColors = dataset.map(function (r) { return r.Date === row.Date ? "#f59e0b" : "#38bdf8"; });
+        trendChartObj.data.datasets[0].pointRadius = radii;
+        trendChartObj.data.datasets[0].pointBackgroundColor = ptColors;
+        trendChartObj.update();
+      }
+    }
+
+    function initTrendChart() {
+      const labels = dataset.map(function (r) { return r.Date.slice(5); });
+      const closes = dataset.map(function (r) { return r.Close; });
+      trendChartObj = new Chart(document.getElementById("trendChart"), {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "收盤價 (Close)",
+            data: closes,
+            borderColor: "#38bdf8",
+            backgroundColor: "rgba(56, 189, 248, 0.15)",
+            fill: true,
+            tension: 0.25,
+            pointRadius: 3,
+            pointBackgroundColor: "#38bdf8"
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: "#cbd5e1", font: { size: 11 } } } },
+          scales: {
+            x: { ticks: { color: "#94a3b8", font: { size: 10 } }, grid: { color: "rgba(148,163,184,0.1)" } },
+            y: { ticks: { color: "#94a3b8", font: { size: 10 } }, grid: { color: "rgba(148,163,184,0.15)" } }
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>
