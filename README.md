@@ -56,7 +56,7 @@
 │   └── 水豚_cnn.html                         # 水豚的影像分類冒險 · CNN 步驟詳解、互動卷積核與特徵圖計算機
 ├── 03.生成式AI/                 # 生成式AI單元筆記（持續更新）
 ├── 04.補充教材/                 # 精選專題深入教材 (Cross-Entropy, MSE/MAE, YOLO vs TM分類, Focal Loss, 協方差矩陣 等 8篇)
-├── 05.讀學時光 Rido(Read) & Learn/  # 讀學時光專題實驗室 (LLM 數學運算全解析、波動力學、AI網頁感知操作 3篇)
+├── 05.讀學時光 Rido(Read) & Learn/  # 讀學時光專題實驗室 (AI 原世代、波動力學、AI 網頁感知操作、LLM 數學運算全解析 4篇)
 ├── 06.Enzo_Youtube/             # 機器學習 33 集系列前哨戰 (AI 預測本質、核心概念導覽、簡報投影片、逐字稿)
 ├── 07.比較/                     # 專題演算法、資安隱私與生成模型全景比較 (距離演算法vs分群模型、隱私資安、GAN vs VAE vs Diffusion、損失函數、可解釋性 AI LIME/SHAP、離散機率三大神器、CBOW vs. Skip-gram 15篇)
 ├── 08.程式/                     # Python 程式特訓與題型解析
