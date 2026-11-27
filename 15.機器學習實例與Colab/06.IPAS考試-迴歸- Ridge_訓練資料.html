@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>iPAS AI 應用規劃師（初級・中級）訓練資料與特徵工程探索儀表板</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- KaTeX (No defer) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+
+  <style>
+    body {
+      font-family: "Inter", "Noto Sans TC", "Microsoft JhengHei", system-ui, -apple-system, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    svg text {
+      user-select: text;
+      -webkit-user-select: text;
+    }
+    .col-highlight {
+      background-color: #fef08a !important;
+      color: #854d0e !important;
+      font-weight: 800 !important;
+      transition: background-color 0.25s ease;
+    }
+    .row-selected {
+      background-color: #e0e7ff !important;
+      outline: 2px solid #4f46e5;
+      outline-offset: -2px;
+    }
+    .field-card {
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+    .field-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 18px rgba(79, 70, 229, 0.12);
+    }
+    .field-card.active-field {
+      border-color: #4f46e5 !important;
+      background-color: #eef2ff !important;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18);
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-indigo-200 selection:text-indigo-900">
+
+  <!-- Sticky Top Navigation -->
+  <header class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5">
+        <a href="../index.html" title="返回知識庫首頁" class="px-2.5 py-1 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1">
+          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+          <span>返回首頁</span>
+        </a>
+        <a href="06.IPAS考試-迴歸- Ridge.html" class="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold hover:bg-indigo-100 transition-colors">11. 實戰教學</a>
+        <span class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-xs font-bold tracking-wider">DATA × FEATURES</span>
+        <span class="font-extrabold text-slate-800 text-sm md:text-base">iPAS 雙資料集深度探索儀表板</span>
+      </div>
+      <nav aria-label="章節導覽" class="flex items-center gap-1.5 text-xs font-bold">
+        <a href="#sec-intro" class="px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-indigo-50 hover:text-indigo-700">設計原理</a>
+        <a href="#sec-01" class="px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-indigo-50 hover:text-indigo-700">01 全欄位 5W1H</a>
+        <a href="#sec-02" class="px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-indigo-50 hover:text-indigo-700">02 CSV 互動檢視器</a>
+        <a href="#sec-03" class="px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-indigo-50 hover:text-indigo-700">03 即時模擬與圈選</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Dark Hero Banner -->
+  <section class="bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white py-10 md:py-14 border-b border-indigo-900/60">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="flex flex-wrap items-center gap-2 mb-3">
+        <span class="px-3 py-1 rounded-full bg-sky-500/20 border border-sky-400/40 text-sky-200 text-xs font-bold">ipas_basic_stats.csv（初級 8 梯次）</span>
+        <span class="px-3 py-1 rounded-full bg-rose-500/20 border border-rose-400/40 text-rose-200 text-xs font-bold">ipas_inter_stats.csv（中級 4 梯次）</span>
+        <span class="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-xs font-bold">經濟部 iPAS 114–115 年官方統計</span>
+      </div>
+      <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight leading-tight mb-3">
+        iPAS AI 應用規劃師：<span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-300 via-indigo-300 to-emerald-300">訓練資料與特徵工程互動探索儀表板</span>
+      </h1>
+      <p class="text-slate-300 text-sm md:text-base max-w-4xl leading-relaxed mb-6">
+        <strong>一句話說明：</strong>本頁面專門拆解 <code>ipas_basic_stats.csv</code> 與 <code>ipas_inter_stats.csv</code> 兩份獨立訓練資料集的每一個欄位（5W1H）、制度差異背後的數學意義，並提供可篩選的 CSV 檢視器與 Ridge 即時預測圈選模擬，帶你從原始數據看懂 116-1 考試趨勢。
+      </p>
+
+      <!-- Hero Dataset KPIs -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
+          <div class="text-xs text-slate-400">初級累積到考人次（8 梯）</div>
+          <div class="text-2xl font-black text-sky-300 mt-1">30,093 人</div>
+          <div class="text-[11px] text-slate-400 mt-1">單梯最高 4,780 人（115-4）</div>
+        </div>
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
+          <div class="text-xs text-slate-400">中級累積到考人次（4 梯）</div>
+          <div class="text-2xl font-black text-rose-300 mt-1">5,723 人</div>
+          <div class="text-[11px] text-slate-400 mt-1">單梯暴增 5 倍（455 → 2,304）</div>
+        </div>
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
+          <div class="text-xs text-slate-400">初級 116-1 獨立預測</div>
+          <div class="text-2xl font-black text-emerald-300 mt-1">48.71%</div>
+          <div class="text-[11px] text-slate-400 mt-1">L11 59.16 分｜L12 75.97 分</div>
+        </div>
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
+          <div class="text-xs text-slate-400">中級 116-1 獨立預測</div>
+          <div class="text-2xl font-black text-amber-300 mt-1">34.67%</div>
+          <div class="text-[11px] text-slate-400 mt-1">L21 72.51｜L22 56.72｜L23 66.58</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <main class="max-w-7xl mx-auto px-4 py-8 space-y-10">
+
+    <!-- ==================== INTRO: DESIGN PRINCIPLES & PIPELINE ==================== -->
+    <section id="sec-intro" class="scroll-mt-20 bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-8 space-y-6">
+      <div>
+        <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Design Principles &amp; Data Pipeline</span>
+        <h2 class="text-2xl font-extrabold text-slate-900">資料集設計原理、4 步管線與生活實例解析</h2>
+      </div>
+
+      <!-- 4-Step Pipeline SVG -->
+      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 overflow-x-auto">
+        <svg viewBox="0 0 960 125" class="w-full min-w-[740px] h-auto" role="img" aria-label="四步驟資料與特徵工程管線圖">
+          <defs>
+            <marker id="dp-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5" />
+            </marker>
+          </defs>
+          <rect x="14" y="20" width="206" height="84" rx="14" fill="#ffffff" stroke="#0284c7" stroke-width="2" />
+          <text x="117" y="46" text-anchor="middle" font-size="11" font-weight="800" fill="#0369a1">STEP 1｜官方放榜彙整</text>
+          <text x="117" y="68" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">114–115 年實測數據</text>
+          <text x="117" y="88" text-anchor="middle" font-size="10.5" fill="#64748b">到考、各科均分、及格與獲證率</text>
+
+          <line x1="220" y1="62" x2="254" y2="62" stroke="#4f46e5" stroke-width="2.4" marker-end="url(#dp-arr)" />
+
+          <rect x="258" y="20" width="206" height="84" rx="14" fill="#eef2ff" stroke="#4f46e5" stroke-width="2" />
+          <text x="361" y="46" text-anchor="middle" font-size="11" font-weight="800" fill="#3730a3">STEP 2｜雙級別解耦拆表</text>
+          <text x="361" y="68" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">初級 8 梯 ⊥ 中級 4 梯</text>
+          <text x="361" y="88" text-anchor="middle" font-size="10.5" fill="#4338ca">消除 2 科 vs 3 科結構衝突</text>
+
+          <line x1="464" y1="62" x2="498" y2="62" stroke="#4f46e5" stroke-width="2.4" marker-end="url(#dp-arr)" />
+
+          <rect x="502" y="20" width="206" height="84" rx="14" fill="#ecfdf5" stroke="#10b981" stroke-width="2" />
+          <text x="605" y="46" text-anchor="middle" font-size="11" font-weight="800" fill="#065f46">STEP 3｜領域特徵工程</text>
+          <text x="605" y="68" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">Lag-1 遞延 + 上下半年週期</text>
+          <text x="605" y="88" text-anchor="middle" font-size="10.5" fill="#047857">捕捉命題週期與 StandardScaler</text>
+
+          <line x1="708" y1="62" x2="742" y2="62" stroke="#4f46e5" stroke-width="2.4" marker-end="url(#dp-arr)" />
+
+          <rect x="746" y="20" width="200" height="84" rx="14" fill="#0f172a" />
+          <text x="846" y="46" text-anchor="middle" font-size="11" font-weight="800" fill="#38bdf8">STEP 4｜獨立預測與 XAI</text>
+          <text x="846" y="68" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">116-1 分數與合格率預測</text>
+          <text x="846" y="88" text-anchor="middle" font-size="10.5" fill="#cbd5e1">SHAP / LIME 歸因與 FastAPI</text>
+        </svg>
+      </div>
+
+      <!-- 3 Life Analogy & Math Principle Cards -->
+      <div class="grid md:grid-cols-3 gap-4">
+        <div class="rounded-2xl border border-sky-200 bg-sky-50/50 p-4 space-y-2">
+          <div class="text-sm font-extrabold text-sky-950">① 為什麼初級與中級必須「拆成兩張表」？</div>
+          <p class="text-xs text-slate-700 leading-relaxed">
+            <strong>生活比喻：</strong>就像「機車駕照（2 關、可平均互補）」與「大貨車駕照（3 選 2、雙科 70 分硬門檻）」不能混在一起算平均分。拆表後，初級專注學習 <code>L11/L12</code> 互補規律，中級專注捕捉 <code>L21/L22/L23</code> 各自走勢。
+          </p>
+        </div>
+        <div class="rounded-2xl border border-rose-200 bg-rose-50/50 p-4 space-y-2">
+          <div class="text-sm font-extrabold text-rose-950">② 為什麼中級要加 <code>is_first_half</code> 週期欄位？</div>
+          <p class="text-xs text-slate-700 leading-relaxed">
+            <strong>數據發現：</strong>中級上半年（114-1、115-1）的 L21 平均分高達 <code>78.37 / 77.60</code>，下半年（114-2、115-2）卻驟降至 <code>65.63 / 62.51</code>。加上 1/0 週期開關，模型就能看懂「上下半年難度交替」而非盲目畫一直線。
+          </p>
+        </div>
+        <div class="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-2">
+          <div class="text-sm font-extrabold text-emerald-950">③ 為什麼「到考人數」與「單科平均分」都要留？</div>
+          <p class="text-xs text-slate-700 leading-relaxed">
+            <strong>統計直覺：</strong>開辦初期多為 AI 相關從業人員應考（中級首梯僅 455 人，獲證率 62.64%）；當報考擴大至 2,304 人、跨領域考生湧入後，母體結構改變會直接壓低平均分數與獲證率。
+          </p>
+        </div>
+      </div>
+
+      <!-- Embedded Real Colab DataFrame Screenshot -->
+      <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+          <span class="text-xs font-extrabold text-slate-800">📸 Google Colab Stage 1 實測輸出（兩份獨立 CSV 原始資料預覽）</span>
+          <a href="https://ipd.nat.gov.tw/ipas/certification/AIAP/exam-info" target="_blank" rel="noopener noreferrer" class="text-xs text-indigo-600 underline hover:text-indigo-800">資料來源：經濟部 iPAS 官方公告</a>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-2 overflow-hidden">
+          <img src="data:image/png;base64,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" alt="Google Colab 輸出初級 8 梯次與中級 4 梯次資料表" class="max-w-full h-auto mx-auto rounded-lg" />
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SECTION 01: ALL-COLUMN 5W1H CARDS ==================== -->
+    <section id="sec-01" class="scroll-mt-20 bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-8 space-y-5">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Section 01 · Interactive Schema Explorer</span>
+          <h2 class="text-2xl font-extrabold text-slate-900">1. 全欄位 5W1H 深度解析（點擊卡片連動高亮下方表格欄位）</h2>
+        </div>
+        <div class="inline-flex rounded-xl bg-slate-100 p-1">
+          <button id="tab-5w1h-basic" type="button" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-sky-600 text-white shadow-sm transition">📘 初級 8 欄位</button>
+          <button id="tab-5w1h-inter" type="button" class="px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition">📕 中級 11 欄位</button>
+        </div>
+      </div>
+
+      <p class="text-xs md:text-sm text-slate-600">
+        👆 點擊任一張欄位卡片，下方 <strong>Section 02 CSV 檢視器</strong>的對應直欄就會立即以黃色高亮標記，方便對照每個欄位的真實數值分佈。
+      </p>
+
+      <div id="field-cards-grid" class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+    </section>
+
+    <!-- ==================== SECTION 02: INTERACTIVE CSV EXPLORER ==================== -->
+    <section id="sec-02" class="scroll-mt-20 bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-8 space-y-5">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Section 02 · Interactive CSV Viewer</span>
+          <h2 class="text-2xl font-extrabold text-slate-900">2. 互動式雙資料集 CSV 檢視器（支援條件篩選與點擊列連動）</h2>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="csv-count-badge" class="px-3 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-extrabold border border-indigo-200">顯示 8 / 8 筆</span>
+          <button id="clear-highlight-btn" type="button" class="px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold">清除欄位高亮</button>
+        </div>
+      </div>
+
+      <!-- Filter Chips -->
+      <div id="csv-filter-bar" class="flex flex-wrap items-center gap-2"></div>
+
+      <!-- Interactive Table -->
+      <div class="overflow-x-auto rounded-2xl border border-slate-200">
+        <table class="w-full text-xs md:text-sm text-left">
+          <thead id="csv-thead" class="bg-slate-900 text-white"></thead>
+          <tbody id="csv-tbody" class="divide-y divide-slate-200 bg-white"></tbody>
+        </table>
+      </div>
+      <p class="text-xs text-slate-500">💡 點擊表格中任一梯次列，下方 <strong>Section 03 深色即時決策分析與走勢圈選圖</strong>會自動切換並圈選該梯次！</p>
+    </section>
+
+    <!-- ==================== SECTION 03: DARK REAL-TIME RIDGE SIMULATOR & CIRCLE HIGHLIGHT ==================== -->
+    <section id="sec-03" class="scroll-mt-20 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white rounded-3xl shadow-xl border border-indigo-900/60 p-6 md:p-8 space-y-6">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-sky-400">Section 03 · Live Ridge Decision &amp; Highlight Plot</span>
+          <h2 class="text-2xl font-extrabold mt-0.5">3. 深色 Ridge 即時推論模擬與走勢圈選分析區</h2>
+        </div>
+        <div id="scenario-btns" class="flex flex-wrap gap-2"></div>
+      </div>
+
+      <div class="grid lg:grid-cols-12 gap-6 items-start">
+        <!-- Left: Traffic Lights & Live Sliders -->
+        <div class="lg:col-span-5 space-y-4">
+          <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span id="sim-selected-title" class="text-sm font-extrabold text-sky-300">目前檢視：初級 115-4（最新實測）</span>
+              <span id="sim-light-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-200 border border-amber-400/40">🟡 單科警戒</span>
+            </div>
+            <div class="grid grid-cols-2 gap-3 mt-3">
+              <div class="bg-slate-950/70 rounded-xl p-3 border border-white/10">
+                <div class="text-[11px] text-slate-400">該梯實際 / 基準獲證率</div>
+                <div id="sim-actual-rate" class="text-2xl font-black text-white mt-0.5">46.88%</div>
+              </div>
+              <div class="bg-slate-950/70 rounded-xl p-3 border border-indigo-400/40">
+                <div class="text-[11px] text-indigo-300">獨立 Ridge 結構模型推論</div>
+                <div id="sim-pred-rate" class="text-2xl font-black text-emerald-400 mt-0.5">45.07%</div>
+              </div>
+            </div>
+            <p id="sim-insight-text" class="text-xs text-slate-300 mt-3 leading-relaxed"></p>
+          </div>
+
+          <!-- Dynamic Sliders (Basic or Intermediate) -->
+          <div class="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
+            <div class="text-xs font-bold text-indigo-300">🎛️ 即時微調各科分數 / 及格率（觀察 Ridge 獲證率變化）</div>
+            <div id="sim-sliders-box" class="space-y-3"></div>
+          </div>
+        </div>
+
+        <!-- Right: Circle-Highlighted Trend Chart -->
+        <div class="lg:col-span-7 rounded-2xl bg-white/5 border border-white/10 p-4 md:p-5 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div id="chart-panel-title" class="text-sm font-extrabold text-white">📈 初級歷屆獲證率走勢與選定梯次圈選（含 116-1 預測）</div>
+            <span class="text-[11px] text-amber-300 font-semibold">🟡 黃色大圓點＝目前圈選梯次</span>
+          </div>
+          <div class="relative h-72 bg-slate-950/60 rounded-xl p-3 border border-white/10">
+            <canvas id="highlightChart"></canvas>
+          </div>
+          <div id="sim-traffic-grid" class="grid grid-cols-3 gap-2.5 text-center text-xs"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="max-w-7xl mx-auto px-4 py-6 text-center text-xs text-slate-500 border-t border-slate-200 mt-6">
+    資料來源：經濟部 iPAS AI 應用規劃師官方統計（114–115 年）、AITerms.tw 與 104學習｜初級與中級獨立訓練資料探索儀表板
+  </footer>
+
+  <script>
+    (function () {
+      // ==================== GROUNDED DATASETS ====================
+      const BASIC_ROWS = [
+        { session: "114-1", seq: 1, attend: 1226, l11_avg: 65.12, l11_pass: 37.24, l12_avg: 73.31, l12_pass: 70.28, cert_rate: 56.61, note: "開辦首梯，報考者多具 AI 基礎，L12 及格率破 7 成帶動獲證率達 56.61%。" },
+        { session: "114-2", seq: 2, attend: 2811, l11_avg: 69.02, l11_pass: 54.24, l12_avg: 72.40, l12_pass: 65.51, cert_rate: 58.95, note: "L11 平均 69.02 分為歷年最高，雙科均衡推升獲證率至 58.95%。" },
+        { session: "114-3", seq: 3, attend: 3965, l11_avg: 65.41, l11_pass: 38.05, l12_avg: 67.68, l12_pass: 50.62, cert_rate: 45.09, note: "到考人數逼近 4 千人，L12 難度拉高（及格率跌至 50.62%），整體獲證率下修。" },
+        { session: "114-4", seq: 4, attend: 4155, l11_avg: 59.07, l11_pass: 25.37, l12_avg: 66.03, l12_pass: 43.62, cert_rate: 38.63, note: "歷史低點！兩科同時變難，L11 平均 59.07 跌破 60 底線，獲證率僅 38.63%。" },
+        { session: "115-1", seq: 5, attend: 4175, l11_avg: 59.09, l11_pass: 23.14, l12_avg: 72.87, l12_pass: 67.09, cert_rate: 43.50, note: "L11 及格率創歷史新低 23.14%，但靠 L12 回升至 72.87 分互補拉回 43.50%。" },
+        { session: "115-2", seq: 6, attend: 4561, l11_avg: 62.62, l11_pass: 30.78, l12_avg: 75.30, l12_pass: 77.31, cert_rate: 50.08, note: "L11 站回 62.62 分安全線，搭配 L12 77.31% 高及格率，獲證率重返 5 成。" },
+        { session: "115-3", seq: 7, attend: 4420, l11_avg: 67.21, l11_pass: 47.50, l12_avg: 82.29, l12_pass: 85.40, cert_rate: 66.58, note: "歷史高點！L12 均分衝上 82.29 分（及格率 85.40%），強勢拉升整體獲證率至 66.58%。" },
+        { session: "115-4", seq: 8, attend: 4780, l11_avg: 59.47, l11_pass: 31.68, l12_avg: 70.13, l12_pass: 56.52, cert_rate: 46.88, note: "最新實測！到考創 4,780 人新高，兩科同步變難（L11 59.47 跌破 60），獲證率回落 46.88%。" }
+      ];
+      const BASIC_NEXT = { session: "116-1(預測)", seq: 9, attend: 4900, l11_avg: 59.16, l11_pass: 25.00, l12_avg: 75.97, l12_pass: 73.10, cert_rate: 48.71, note: "獨立 Lag-1 Ridge 模型預測：L11 仍偏難（59.16 分），但 L12 預期反彈至 75.97 分拉動獲證率達 48.71%。" };
+
+      const INTER_ROWS = [
+        { session: "114-1", seq: 1, is_first_half: 1, attend: 455,  l21_avg: 78.37, l21_pass: 80.97, l22_avg: 70.61, l22_pass: 57.22, l23_avg: 74.70, l23_pass: 70.88, cert_rate: 62.64, note: "首屆中級僅 455 人應考且多為業界實戰者，三科平均皆破 70，獲證率達 62.64%。" },
+        { session: "114-2", seq: 2, is_first_half: 0, attend: 1111, l21_avg: 65.63, l21_pass: 57.99, l22_avg: 65.10, l22_pass: 57.38, l23_avg: 61.99, l23_pass: 45.28, cert_rate: 42.75, note: "下半年報考翻倍至 1,111 人，三科平均全落至 62～66 分，獲證率大降 20 個百分點。" },
+        { session: "115-1", seq: 3, is_first_half: 1, attend: 1853, l21_avg: 77.60, l21_pass: 85.81, l22_avg: 59.35, l22_pass: 22.12, l23_avg: 70.20, l23_pass: 56.78, cert_rate: 40.80, note: "上半年 L21 回升至 85.81%，但 L22 大數據及格率崩跌至 22.12%，拖累整體獲證率至 40.80%。" },
+        { session: "115-2", seq: 4, is_first_half: 0, attend: 2304, l21_avg: 62.51, l21_pass: 47.53, l22_avg: 60.00, l22_pass: 36.96, l23_avg: 60.29, l23_pass: 41.34, cert_rate: 35.20, note: "最新實測！2,304 人到考創新高，L21 及格率腰斬至 47.53%，三科皆低於 63 分，獲證率降至 35.20%。" }
+      ];
+      const INTER_NEXT = { session: "116-1(預測)", seq: 5, is_first_half: 1, attend: 2600, l21_avg: 72.51, l21_pass: 72.70, l22_avg: 56.72, l22_pass: 15.78, l23_avg: 66.58, l23_pass: 50.02, cert_rate: 34.67, note: "獨立週期 Ridge 模型預測：上半年 L21/L23 預期反彈，但 L22 持續下探，整體獲證率保守落在 34.67%。" };
+
+      // Exact Ridge(alpha=1.0) structural parameters fitted separately on Basic (8 rows) & Intermediate (4 rows)
+      function fitRidgeJS(X, y, alpha) {
+        const n = X.length, p = X[0].length;
+        const mean = Array(p).fill(0), scale = Array(p).fill(0);
+        for (let j = 0; j < p; j++) {
+          mean[j] = X.reduce((a, r) => a + r[j], 0) / n;
+          const v = X.reduce((a, r) => a + (r[j] - mean[j]) ** 2, 0) / n;
+          scale[j] = Math.sqrt(v) || 1;
+        }
+        const Xs = X.map(r => r.map((v, j) => (v - mean[j]) / scale[j]));
+        const yMean = y.reduce((a, b) => a + b, 0) / n;
+        // Normal eq: (Xs^T Xs + alpha I) w = Xs^T (y - yMean)
+        const A = Array.from({ length: p }, (_, i) => Array.from({ length: p }, (_, j) => {
+          let sum = (i === j ? alpha : 0);
+          for (let k = 0; k < n; k++) sum += Xs[k][i] * Xs[k][j];
+          return sum;
+        }));
+        const b = Array.from({ length: p }, (_, i) => {
+          let sum = 0;
+          for (let k = 0; k < n; k++) sum += Xs[k][i] * (y[k] - yMean);
+          return sum;
+        });
+        // Gaussian elimination
+        for (let i = 0; i < p; i++) {
+          let maxRow = i;
+          for (let k = i + 1; k < p; k++) if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) maxRow = k;
+          [A[i], A[maxRow]] = [A[maxRow], A[i]];
+          [b[i], b[maxRow]] = [b[maxRow], b[i]];
+          for (let k = i + 1; k < p; k++) {
+            const f = A[k][i] / A[i][i];
+            for (let j = i; j < p; j++) A[k][j] -= f * A[i][j];
+            b[k] -= f * b[i];
+          }
+        }
+        const w = Array(p).fill(0);
+        for (let i = p - 1; i >= 0; i--) {
+          let s = b[i];
+          for (let j = i + 1; j < p; j++) s -= A[i][j] * w[j];
+          w[i] = s / A[i][i];
+        }
+        return { mean, scale, w, yMean };
+      }
+
+      function predRidgeJS(x, m) {
+        let out = m.yMean;
+        for (let j = 0; j < x.length; j++) out += ((x[j] - m.mean[j]) / m.scale[j]) * m.w[j];
+        return Math.max(0, Math.min(100, out));
+      }
+
+      const BASIC_MODEL = fitRidgeJS(
+        BASIC_ROWS.map(r => [r.l11_avg, r.l12_avg, r.l11_pass, r.l12_pass]),
+        BASIC_ROWS.map(r => r.cert_rate),
+        1.0
+      );
+      const INTER_MODEL = fitRidgeJS(
+        INTER_ROWS.map(r => [r.l21_avg, r.l22_avg, r.l23_avg]),
+        INTER_ROWS.map(r => r.cert_rate),
+        1.0
+      );
+
+      // ==================== 5W1H FIELD DEFINITIONS ====================
+      const BASIC_FIELDS = [
+        { key: "session", title: "session（梯次）", tag: "識別鍵", what: "考試年度與梯次編號（114-1～115-4）", why: "追蹤命題趨勢與時間順序切分依據", how: "一年四梯（3、5、8、11 月）" },
+        { key: "seq", title: "seq（時間序號）", tag: "時序特徵", what: "第 1～8 梯連續整數序號（116-1 為 9）", why: "捕捉開辦後題庫成熟度與難度演變", how: "Lag-1 時間序列模型輸入之一" },
+        { key: "attend", title: "attend（到考人數）", tag: "規模指標", what: "實際進場應試人數（1,226～4,780 人）", why: "獲證率分母，反映跨領域考生湧入規模", how: "官方考試成果公告統計" },
+        { key: "l11_avg", title: "l11_avg（L11 平均分）", tag: "核心特徵", what: "科目一「AI 基礎概論」全體平均分數", why: "一旦跌破 60 分底線，極易造成大量考生出局", how: "滿分 100，單科底線 60 分" },
+        { key: "l11_pass", title: "l11_pass（L11 及格率）", tag: "SHAP #1", what: "科目一達 70 分以上之考生比例 (%)", why: "初級 SHAP 影響力第一名，為最主要淘汰關卡", how: "範圍 23.14%～54.24%" },
+        { key: "l12_avg", title: "l12_avg（L12 平均分）", tag: "SHAP #2", what: "科目二「生成式 AI 應用」全體平均分", why: "高分可拉高兩科平均，啟動初級互補救生圈", how: "範圍 66.03～82.29 分" },
+        { key: "l12_pass", title: "l12_pass（L12 及格率）", tag: "應用特徵", what: "科目二達 70 分以上之考生比例 (%)", why: "反映生成式 AI 情境與導入規劃題難易度", how: "範圍 43.62%～85.40%" },
+        { key: "cert_rate", title: "cert_rate（整體獲證率）", tag: "預測目標 y", what: "核發證書數 ÷ 到考人數 (%)", why: "初級模型核心預測目標（含平均互補與跨次補考）", how: "區間 38.63%～66.58%" }
+      ];
+
+      const INTER_FIELDS = [
+        { key: "session", title: "session（梯次）", tag: "識別鍵", what: "中級考試梯次（114-1～115-2）", why: "一年兩梯（5 月與 11 月）時間基準", how: "官方考試成果公告" },
+        { key: "seq", title: "seq（時間序號）", tag: "時序特徵", what: "第 1～4 梯連續整數（116-1 為 5）", why: "捕捉中級獲證率隨規模擴大緩跌趨勢", how: "中級時間模型輸入" },
+        { key: "is_first_half", title: "is_first_half（上半年）", tag: "週期特徵", what: "上半年梯次=1，下半年梯次=0", why: "L21/L23 在上半年平均高出 10+ 分的關鍵週期", how: "二元特徵（116-1 代入 1）" },
+        { key: "attend", title: "attend（到考人數）", tag: "規模指標", what: "實際應考人數（455 → 2,304 人）", why: "人數擴增 5 倍使考生組成趨於多元", how: "官方統計（不含缺考）" },
+        { key: "l21_avg", title: "l21_avg（L21 平均分）", tag: "必考核心", what: "必考科「AI 技術應用與規劃」平均分", why: "兩張中級證書皆必考，沒 70 分直接失敗", how: "範圍 62.51～78.37 分" },
+        { key: "l21_pass", title: "l21_pass（L21 及格率）", tag: "必考指標", what: "L21 達 70 分以上比例 (%)", why: "115-2 驟降至 47.53%，由送分科轉為關卡", how: "範圍 47.53%～85.81%" },
+        { key: "l22_avg", title: "l22_avg（L22 平均分）", tag: "SHAP #1", what: "選考科「大數據處理分析」平均分", why: "中級 SHAP 影響力第一，連跌趨勢最明顯", how: "含 ~25% Python 閱讀題" },
+        { key: "l22_pass", title: "l22_pass（L22 及格率）", tag: "極端波動", what: "L22 達 70 分以上比例 (%)", why: "115-1 曾創 22.12% 最低紀錄，波動劇烈", how: "範圍 22.12%～57.38%" },
+        { key: "l23_avg", title: "l23_avg（L23 平均分）", tag: "SHAP #2", what: "選考科「機器學習技術」平均分", why: "影響力第二，呈現明顯上下半年週期起伏", how: "含 ~25% Python 閱讀題" },
+        { key: "l23_pass", title: "l23_pass（L23 及格率）", tag: "選考指標", what: "L23 達 70 分以上比例 (%)", why: "提供數據分析 vs 機器學習選科難度對照", how: "範圍 41.34%～70.88%" },
+        { key: "cert_rate", title: "cert_rate（整體獲證率）", tag: "預測目標 y", what: "核發證書數 ÷ 到考人數 (%)", why: "無平均互補（雙科皆須 70），逐梯緩跌", how: "區間 35.20%～62.64%" }
+      ];
+
+      // ==================== APP STATE ====================
+      let activeLevel = "basic"; // "basic" | "inter"
+      let highlightedCol = null;
+      let activeFilter = "all";
+      let selectedRowObj = BASIC_ROWS[BASIC_ROWS.length - 1]; // default 115-4 Basic
+      let highlightChart = null;
+
+      // ==================== RENDER 5W1H CARDS ====================
+      function render5W1H() {
+        const grid = document.getElementById("field-cards-grid");
+        const fields = activeLevel === "basic" ? BASIC_FIELDS : INTER_FIELDS;
+        grid.innerHTML = "";
+        fields.forEach(f => {
+          const card = document.createElement("div");
+          card.className = "field-card rounded-2xl border border-slate-200 bg-slate-50/60 p-4 space-y-1.5" + (highlightedCol === f.key ? " active-field" : "");
+          card.innerHTML = `
+            <div class="flex items-center justify-between gap-1">
+              <span class="font-mono font-extrabold text-xs text-slate-900">${f.title}</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 shrink-0">${f.tag}</span>
+            </div>
+            <div class="text-xs text-slate-700"><strong>What：</strong>${f.what}</div>
+            <div class="text-xs text-slate-600"><strong>Why：</strong>${f.why}</div>
+            <div class="text-[11px] text-indigo-700 font-medium"><strong>How：</strong>${f.how}</div>
+          `;
+          card.addEventListener("click", () => {
+            highlightedCol = (highlightedCol === f.key) ? null : f.key;
+            render5W1H();
+            renderTable();
+          });
+          grid.appendChild(card);
+        });
+      }
+
+      // ==================== RENDER FILTER CHIPS ====================
+      function renderFilters() {
+        const bar = document.getElementById("csv-filter-bar");
+        const filters = activeLevel === "basic"
+          ? [
+              { id: "all", label: "全部 8 梯次" },
+              { id: "l11_low", label: "⚠️ L11 平均 < 60 分" },
+              { id: "cert_high", label: "✅ 獲證率 ≥ 50%" },
+              { id: "big_crowd", label: "👥 到考 ≥ 4,000 人" }
+            ]
+          : [
+              { id: "all", label: "全部 4 梯次" },
+              { id: "first_half", label: "🌸 上半年梯次 (is_first_half=1)" },
+              { id: "second_half", label: "🍂 下半年梯次 (is_first_half=0)" },
+              { id: "l22_hard", label: "🔴 L22 及格率 < 40%" }
+            ];
+        bar.innerHTML = "";
+        filters.forEach(ft => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = activeFilter === ft.id
+            ? "px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow-sm"
+            : "px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200";
+          btn.textContent = ft.label;
+          btn.addEventListener("click", () => {
+            activeFilter = ft.id;
+            renderFilters();
+            renderTable();
+          });
+          bar.appendChild(btn);
+        });
+      }
+
+      // ==================== RENDER CSV TABLE ====================
+      function getFilteredRows() {
+        const rows = activeLevel === "basic" ? BASIC_ROWS : INTER_ROWS;
+        return rows.filter(r => {
+          if (activeFilter === "all") return true;
+          if (activeFilter === "l11_low") return r.l11_avg < 60;
+          if (activeFilter === "cert_high") return r.cert_rate >= 50;
+          if (activeFilter === "big_crowd") return r.attend >= 4000;
+          if (activeFilter === "first_half") return r.is_first_half === 1;
+          if (activeFilter === "second_half") return r.is_first_half === 0;
+          if (activeFilter === "l22_hard") return r.l22_pass < 40;
+          return true;
+        });
+      }
+
+      function renderTable() {
+        const cols = activeLevel === "basic"
+          ? ["session", "seq", "attend", "l11_avg", "l11_pass", "l12_avg", "l12_pass", "cert_rate"]
+          : ["session", "seq", "is_first_half", "attend", "l21_avg", "l21_pass", "l22_avg", "l22_pass", "l23_avg", "l23_pass", "cert_rate"];
+        const allRows = activeLevel === "basic" ? BASIC_ROWS : INTER_ROWS;
+        const rows = getFilteredRows();
+        document.getElementById("csv-count-badge").textContent = `顯示 ${rows.length} / ${allRows.length} 筆`;
+
+        const thead = document.getElementById("csv-thead");
+        thead.innerHTML = "<tr>" + cols.map(c =>
+          `<th class="px-3 py-2.5 font-mono text-xs ${highlightedCol === c ? 'bg-amber-400 text-slate-950 font-black' : ''}">${c}</th>`
+        ).join("") + "</tr>";
+
+        const tbody = document.getElementById("csv-tbody");
+        tbody.innerHTML = "";
+        rows.forEach(r => {
+          const tr = document.createElement("tr");
+          tr.className = "cursor-pointer hover:bg-indigo-50/70 transition" + (selectedRowObj.session === r.session ? " row-selected" : "");
+          tr.innerHTML = cols.map(c => {
+            const val = typeof r[c] === "number" && !["seq", "attend", "is_first_half"].includes(c) ? r[c].toFixed(2) : r[c];
+            return `<td class="px-3 py-2.5 font-mono ${highlightedCol === c ? 'col-highlight' : ''}">${val}</td>`;
+          }).join("");
+          tr.addEventListener("click", () => {
+            selectedRowObj = r;
+            renderTable();
+            renderSimulatorFromSelected();
+          });
+          tbody.appendChild(tr);
+        });
+      }
+
+      // ==================== RENDER SECTION 03 SIMULATOR & CIRCLE CHART ====================
+      function renderScenarioButtons() {
+        const box = document.getElementById("scenario-btns");
+        const presets = activeLevel === "basic"
+          ? [
+              { label: "🏆 115-3 高點 (66.58%)", row: BASIC_ROWS[6] },
+              { label: "📉 114-4 低點 (38.63%)", row: BASIC_ROWS[3] },
+              { label: "📌 115-4 最新 (46.88%)", row: BASIC_ROWS[7] },
+              { label: "🔮 116-1 預測 (48.71%)", row: BASIC_NEXT }
+            ]
+          : [
+              { label: "🏆 114-1 首梯 (62.64%)", row: INTER_ROWS[0] },
+              { label: "⚠️ 115-1 L22 崩跌 (40.80%)", row: INTER_ROWS[2] },
+              { label: "📌 115-2 最新 (35.20%)", row: INTER_ROWS[3] },
+              { label: "🔮 116-1 預測 (34.67%)", row: INTER_NEXT }
+            ];
+        box.innerHTML = "";
+        presets.forEach(p => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold border border-white/15 transition";
+          btn.textContent = p.label;
+          btn.addEventListener("click", () => {
+            selectedRowObj = p.row;
+            renderTable();
+            renderSimulatorFromSelected();
+          });
+          box.appendChild(btn);
+        });
+      }
+
+      function renderSimulatorFromSelected() {
+        const r = selectedRowObj;
+        const isBasic = activeLevel === "basic";
+        document.getElementById("sim-selected-title").textContent = `目前圈選：${isBasic ? "初級" : "中級"} ${r.session}`;
+        document.getElementById("sim-actual-rate").textContent = r.cert_rate.toFixed(2) + "%";
+        document.getElementById("sim-insight-text").textContent = r.note;
+
+        const slidersBox = document.getElementById("sim-sliders-box");
+        slidersBox.innerHTML = "";
+
+        const sliderDefs = isBasic
+          ? [
+              { id: "sl-0", label: "L11 平均分 (分)", min: 50, max: 85, step: 0.1, val: r.l11_avg },
+              { id: "sl-1", label: "L12 平均分 (分)", min: 55, max: 90, step: 0.1, val: r.l12_avg },
+              { id: "sl-2", label: "L11 及格率 (%)", min: 15, max: 70, step: 0.2, val: r.l11_pass },
+              { id: "sl-3", label: "L12 及格率 (%)", min: 30, max: 95, step: 0.2, val: r.l12_pass }
+            ]
+          : [
+              { id: "sl-0", label: "L21 必考平均分 (分)", min: 50, max: 90, step: 0.1, val: r.l21_avg },
+              { id: "sl-1", label: "L22 大數據平均分 (分)", min: 45, max: 85, step: 0.1, val: r.l22_avg },
+              { id: "sl-2", label: "L23 機器學習平均分 (分)", min: 45, max: 85, step: 0.1, val: r.l23_avg }
+            ];
+
+        sliderDefs.forEach(sd => {
+          const wrap = document.createElement("div");
+          wrap.innerHTML = `
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300 font-semibold">${sd.label}</span>
+              <span id="${sd.id}-val" class="font-mono font-bold text-sky-300">${sd.val.toFixed(2)}</span>
+            </div>
+            <input id="${sd.id}" type="range" min="${sd.min}" max="${sd.max}" step="${sd.step}" value="${sd.val}" class="w-full accent-indigo-400" />
+          `;
+          slidersBox.appendChild(wrap);
+          wrap.querySelector("input").addEventListener("input", recalcLiveSim);
+        });
+
+        recalcLiveSim();
+        renderHighlightChart();
+      }
+
+      function recalcLiveSim() {
+        const isBasic = activeLevel === "basic";
+        let pred, lights;
+        if (isBasic) {
+          const v0 = parseFloat(document.getElementById("sl-0").value);
+          const v1 = parseFloat(document.getElementById("sl-1").value);
+          const v2 = parseFloat(document.getElementById("sl-2").value);
+          const v3 = parseFloat(document.getElementById("sl-3").value);
+          document.getElementById("sl-0-val").textContent = v0.toFixed(2);
+          document.getElementById("sl-1-val").textContent = v1.toFixed(2);
+          document.getElementById("sl-2-val").textContent = v2.toFixed(2);
+          document.getElementById("sl-3-val").textContent = v3.toFixed(2);
+          pred = predRidgeJS([v0, v1, v2, v3], BASIC_MODEL);
+          lights = [
+            { title: "L11 60 分底線", status: v0 >= 62 ? "🟢 安全" : (v0 >= 60 ? "🟡 邊緣" : "🔴 跌破"), sub: v0.toFixed(2) + " 分" },
+            { title: "L12 拉分能力", status: v1 >= 75 ? "🟢 強勢" : "🟡 一般", sub: v1.toFixed(2) + " 分" },
+            { title: "兩科平均估計", status: (v0 + v1) / 2 >= 70 ? "🟢 達 70" : "🔴 未達", sub: ((v0 + v1) / 2).toFixed(2) + " 分" }
+          ];
+        } else {
+          const v0 = parseFloat(document.getElementById("sl-0").value);
+          const v1 = parseFloat(document.getElementById("sl-1").value);
+          const v2 = parseFloat(document.getElementById("sl-2").value);
+          document.getElementById("sl-0-val").textContent = v0.toFixed(2);
+          document.getElementById("sl-1-val").textContent = v1.toFixed(2);
+          document.getElementById("sl-2-val").textContent = v2.toFixed(2);
+          pred = predRidgeJS([v0, v1, v2], INTER_MODEL);
+          lights = [
+            { title: "L21 必考門檻", status: v0 >= 70 ? "🟢 達 70" : "🔴 偏低", sub: v0.toFixed(2) + " 分" },
+            { title: "L22 大數據風險", status: v1 >= 65 ? "🟢 穩定" : "🔴 警戒", sub: v1.toFixed(2) + " 分" },
+            { title: "L23 機器學習", status: v2 >= 68 ? "🟢 穩健" : "🟡 偏難", sub: v2.toFixed(2) + " 分" }
+          ];
+        }
+
+        document.getElementById("sim-pred-rate").textContent = pred.toFixed(2) + "%";
+        const badge = document.getElementById("sim-light-badge");
+        if (pred >= 52) {
+          badge.textContent = "🟢 相對友善";
+          badge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-200 border border-emerald-400/40";
+        } else if (pred >= 42) {
+          badge.textContent = "🟡 中高難度";
+          badge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-200 border border-amber-400/40";
+        } else {
+          badge.textContent = "🔴 高難度警戒";
+          badge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-200 border border-rose-400/40";
+        }
+
+        document.getElementById("sim-traffic-grid").innerHTML = lights.map(l => `
+          <div class="rounded-xl bg-slate-950/70 border border-white/10 p-2.5">
+            <div class="text-[10px] text-slate-400">${l.title}</div>
+            <div class="font-bold text-white mt-0.5">${l.status}</div>
+            <div class="text-[11px] font-mono text-sky-300">${l.sub}</div>
+          </div>
+        `).join("");
+      }
+
+      function renderHighlightChart() {
+        const isBasic = activeLevel === "basic";
+        const allPts = isBasic ? [...BASIC_ROWS, BASIC_NEXT] : [...INTER_ROWS, INTER_NEXT];
+        document.getElementById("chart-panel-title").textContent =
+          `📈 ${isBasic ? "初級" : "中級"}歷屆獲證率走勢與選定梯次圈選（含 116-1 預測）`;
+
+        const labels = allPts.map(p => p.session);
+        const vals = allPts.map(p => p.cert_rate);
+        const radii = allPts.map(p => p.session === selectedRowObj.session ? 11 : 4.5);
+        const bgColors = allPts.map(p => p.session === selectedRowObj.session ? "#facc15" : "#38bdf8");
+        const borderColors = allPts.map(p => p.session === selectedRowObj.session ? "#ffffff" : "#38bdf8");
+
+        const ctx = document.getElementById("highlightChart").getContext("2d");
+        if (highlightChart) highlightChart.destroy();
+        highlightChart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels,
+            datasets: [{
+              label: "整體獲證率 (%)",
+              data: vals,
+              borderColor: "#818cf8",
+              backgroundColor: "rgba(129, 140, 248, 0.16)",
+              fill: true,
+              borderWidth: 2.8,
+              tension: 0.22,
+              pointRadius: radii,
+              pointHoverRadius: 12,
+              pointBackgroundColor: bgColors,
+              pointBorderColor: borderColors,
+              pointBorderWidth: 2.5
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: "#e2e8f0" } } },
+            scales: {
+              x: { ticks: { color: "#cbd5e1" }, grid: { color: "rgba(148,163,184,0.12)" } },
+              y: { min: 25, max: 75, ticks: { color: "#cbd5e1" }, grid: { color: "rgba(148,163,184,0.15)" } }
+            }
+          }
+        });
+      }
+
+      // ==================== LEVEL SWITCHING ====================
+      function switchLevel(lvl) {
+        activeLevel = lvl;
+        highlightedCol = null;
+        activeFilter = "all";
+        selectedRowObj = lvl === "basic" ? BASIC_ROWS[BASIC_ROWS.length - 1] : INTER_ROWS[INTER_ROWS.length - 1];
+
+        document.getElementById("tab-5w1h-basic").className = lvl === "basic"
+          ? "px-3.5 py-1.5 rounded-lg text-xs font-bold bg-sky-600 text-white shadow-sm transition"
+          : "px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition";
+        document.getElementById("tab-5w1h-inter").className = lvl === "inter"
+          ? "px-3.5 py-1.5 rounded-lg text-xs font-bold bg-rose-600 text-white shadow-sm transition"
+          : "px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition";
+
+        render5W1H();
+        renderFilters();
+        renderTable();
+        renderScenarioButtons();
+        renderSimulatorFromSelected();
+      }
+
+      document.getElementById("tab-5w1h-basic").addEventListener("click", () => switchLevel("basic"));
+      document.getElementById("tab-5w1h-inter").addEventListener("click", () => switchLevel("inter"));
+      document.getElementById("clear-highlight-btn").addEventListener("click", () => {
+        highlightedCol = null;
+        render5W1H();
+        renderTable();
+      });
+
+      function runKaTeX() {
+        if (typeof renderMathInElement === "function") {
+          renderMathInElement(document.body, {
+            delimiters: [{ left: "$$", right: "$$", display: true }, { left: "$", right: "$", display: false }],
+            ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code", "svg"],
+            throwOnError: false
+          });
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        switchLevel("basic");
+        runKaTeX();
+      });
+      window.addEventListener("load", runKaTeX);
+    })();
+  </script>
+</body>
+</html>
